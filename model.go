@@ -4,10 +4,9 @@ package gou
 type Model struct{}
 
 // LoadModel 载入数据模型
-func LoadModel() {}
-
-// Search 查询列表记录
-func (mod *Model) Search() {}
+func LoadModel(name string) *Model {
+	return &Model{}
+}
 
 // Find 查询单条记录
 func (mod *Model) Find() {}
@@ -17,6 +16,9 @@ func (mod *Model) Save() {}
 
 // Delete 删除单条记录
 func (mod *Model) Delete() {}
+
+// Search 按条件检索
+func (mod *Model) Search() {}
 
 // Import 批量导入模型
 func (mod *Model) Import() {}
@@ -35,6 +37,9 @@ func (mod *Model) View() {}
 
 // Migrate 数据迁移
 func (mod *Model) Migrate() {}
+
+// Reload 重新载入
+func (mod *Model) Reload() {}
 
 // Query xun.Query
 func (mod *Model) Query() {}
