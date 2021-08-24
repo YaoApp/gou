@@ -15,3 +15,4 @@
 # vendor/
 *.dev.sh
 app/plugins/dist
+app/plugins/logs

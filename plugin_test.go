@@ -1,12 +1,10 @@
 package gou
 
 import (
-	"encoding/json"
 	"os"
 	"path"
 	"testing"
 
-	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/kun/utils"
 )
 
@@ -23,8 +21,6 @@ func TestLoadPlugin(t *testing.T) {
 	defer p.Client.Kill()
 
 	mod := SelectPlugin("user")
-	res, err := mod.Get("hello", []byte(`{"foo":"bar"}`))
-	v := maps.MakeStrAny()
-	err = json.Unmarshal(res, &v)
-	utils.Dump(v, err)
+	res, err := mod.Exec("login", "13111021983", "#991832")
+	utils.Dump(res.MustMap(), err)
 }

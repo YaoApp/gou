@@ -2,9 +2,11 @@ package gou
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/grpc"
@@ -12,6 +14,13 @@ import (
 
 // Plugins 已加载插件
 var Plugins = map[string]*Plugin{}
+
+// Create an hclog.Logger
+var logger = hclog.New(&hclog.LoggerOptions{
+	Name:   "plugin",
+	Output: os.Stdout,
+	Level:  hclog.Error,
+})
 
 // LoadPlugin 加载插件
 func LoadPlugin(cmd string, name string) *Plugin {
@@ -22,6 +31,7 @@ func LoadPlugin(cmd string, name string) *Plugin {
 		Plugins:          grpc.PluginMap,
 		Cmd:              exec.Command("sh", "-c", cmd),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+		Logger:           logger,
 	})
 
 	// Connect via RPC
@@ -46,6 +56,15 @@ func LoadPlugin(cmd string, name string) *Plugin {
 
 	Plugins[name] = p
 	return p
+}
+
+// SetPluginLogger 设置日志
+func SetPluginLogger(name string, output io.Writer, level hclog.Level) {
+	logger = hclog.New(&hclog.LoggerOptions{
+		Name:   name,
+		Output: output,
+		Level:  level,
+	})
 }
 
 // SelectPlugin 选择插件
