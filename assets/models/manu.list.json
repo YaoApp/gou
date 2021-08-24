@@ -1,0 +1,29 @@
+{
+  "page": {
+    "title": "厂商资料"
+  },
+  "filters": ["keyword"],
+  "columns": [
+    "short_name",
+    "name",
+    "contact_name",
+    "contact_mobile",
+    "type",
+    "created_at",
+    "status"
+  ],
+  "actions": [
+    {
+      "type": "create",
+      "render": {
+        "name": "button",
+        "props": {
+          "label": "添加厂商",
+          "icon": "fas fa-plus"
+        }
+      }
+    }
+  ],
+  "rowActions": ["view"],
+  "pagination": ["pages", "prev", "next"]
+}

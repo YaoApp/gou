@@ -1,0 +1,29 @@
+{
+  "page": {
+    "title": "账号管理"
+  },
+  "filters": ["keyword"],
+  "columns": [
+    "name",
+    "type",
+    "mobile",
+    "key",
+    "secret",
+    "created_at",
+    "status"
+  ],
+  "actions": [
+    {
+      "type": "create",
+      "render": {
+        "name": "button",
+        "props": {
+          "label": "创建账号",
+          "icon": "fas fa-plus"
+        }
+      }
+    }
+  ],
+  "rowActions": ["view"],
+  "pagination": ["pages", "prev", "next"]
+}

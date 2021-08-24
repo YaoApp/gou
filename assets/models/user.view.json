@@ -1,0 +1,44 @@
+{
+  "title": "{{name}}的账号 #{{id}}",
+  "title_create": "创建账号",
+  "page": {
+    "title": "账号详情",
+    "title_create": "创建账号"
+  },
+  "fieldset": [
+    {
+      "title": "账号资料",
+      "description": "",
+      "columns": [
+        { "name": "name", "width": 6, "icon": "fab fa-twitter" },
+        { "name": "mobile", "width": 6 },
+        { "name": "type", "width": 6, "icon": "feather:search" },
+        { "name": "status", "width": 6, "readonly": true },
+        { "name": "password", "width": 6 },
+        { "name": "repassword", "width": 6 }
+      ]
+    },
+    {
+      "title": "API接口",
+      "description": "",
+      "columns": [{ "name": "key", "readonly": true }, "secret"]
+    },
+    {
+      "title": "账号活动",
+      "description": "",
+      "columns": [
+        { "name": "created_at", "width": 6, "readonly": true },
+        { "name": "updated_at", "width": 6, "readonly": true }
+      ]
+    }
+  ],
+  "required": ["name", "mobile", "type", "status"],
+  "createRequired": ["name", "mobile", "type", "password", "status"],
+  "validation": {
+    "repassword": {
+      "method": "eq",
+      "params": [":password", ":repassword"]
+    }
+  },
+  "actions": ["cancel", "save", "delete"]
+}

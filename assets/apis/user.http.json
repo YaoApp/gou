@@ -1,0 +1,36 @@
+{
+  "name": "用户接口",
+  "version": "1.0.0",
+  "description": "用户API",
+  "group": "user",
+  "guard": "bearer-jwt",
+  "table": true,
+  "disabled": ["save"],
+  "paths": [
+    {
+      "path": "/login",
+      "method": "POST",
+      "guard": "-",
+      "type": "application/form-data",
+      "process": "Login",
+      "in": ["$payload.mobile", "$payload.password", "$payload.captcha"],
+      "out": {
+        "status": 200,
+        "type": "application/json",
+        "content": "$response.0"
+      }
+    },
+    {
+      "path": "/info",
+      "method": "GET",
+      "type": "application/form-data",
+      "process": "Find",
+      "in": ["$session.id"],
+      "out": {
+        "status": 200,
+        "type": "application/json",
+        "content": "$response.0"
+      }
+    }
+  ]
+}

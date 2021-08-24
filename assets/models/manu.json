@@ -1,0 +1,93 @@
+{
+  "name": "厂商",
+  "table": {
+    "name": "manu",
+    "comment": "厂商表",
+    "engine": "InnoDB"
+  },
+  "columns": [
+    { "name": "id", "type": "ID" },
+    {
+      "name": "name",
+      "type": "string",
+      "length": 200,
+      "comment": "全称",
+      "unique": true
+    },
+    {
+      "name": "short_name",
+      "type": "string",
+      "length": 200,
+      "comment": "简称",
+      "index": true
+    },
+    {
+      "name": "type",
+      "type": "enum",
+      "option": ["服务商", "采购商", "其他"],
+      "comment": "厂商类型 服务商, 采购商, 其他",
+      "default": "服务商",
+      "index": true
+    },
+    {
+      "name": "logo",
+      "type": "string",
+      "length": 200,
+      "comment": "LOGO",
+      "nullable": true
+    },
+    {
+      "name": "summary",
+      "type": "string",
+      "length": 600,
+      "comment": "简介",
+      "nullable": true,
+      "index": true
+    },
+
+    {
+      "name": "link",
+      "type": "string",
+      "length": 200,
+      "comment": "官网地址",
+      "nullable": true
+    },
+    {
+      "name": "contact_name",
+      "type": "string",
+      "length": 200,
+      "comment": "联系人",
+      "nullable": true,
+      "index": true
+    },
+    {
+      "name": "contact_mobile",
+      "type": "string",
+      "comment": "联系电话",
+      "nullable": true,
+      "index": true
+    },
+    {
+      "name": "desc",
+      "type": "text",
+      "comment": "介绍",
+      "nullable": true
+    },
+    {
+      "name": "rank",
+      "type": "integer",
+      "default": 9999999,
+      "comment": "查询排序"
+    },
+    {
+      "name": "status",
+      "type": "enum",
+      "default": "enabled",
+      "option": ["enabled", "disabled"],
+      "comment": "状态 enabled 开启, disabled 关闭",
+      "index": true
+    }
+  ],
+  "relationships": [],
+  "option": { "timestamps": true, "soft_deletes": true }
+}

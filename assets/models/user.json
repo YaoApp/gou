@@ -1,0 +1,113 @@
+{
+  "name": "用户",
+  "table": {
+    "name": "user",
+    "comment": "用户表",
+    "engine": "InnoDB"
+  },
+  "columns": [
+    { "name": "id", "type": "ID" },
+    {
+      "name": "manu_id",
+      "type": "bigInteger",
+      "length": 50,
+      "comment": "所属厂商",
+      "nullable": true,
+      "index": true
+    },
+    {
+      "name": "type",
+      "type": "enum",
+      "option": ["admin", "staff"],
+      "comment": "账号类型 admin 管理员, staff 员工",
+      "default": "staff",
+      "index": true
+    },
+    {
+      "name": "mobile",
+      "type": "string",
+      "length": 50,
+      "comment": "手机号",
+      "unique": true
+    },
+    {
+      "name": "password",
+      "type": "string",
+      "length": 128,
+      "comment": "登录密码",
+      "index": true
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "length": 80,
+      "comment": "姓名",
+      "index": true
+    },
+    {
+      "name": "idcard",
+      "type": "string",
+      "length": 20,
+      "comment": "身份证号码",
+      "nullable": true,
+      "unique": true
+    },
+    {
+      "name": "balance",
+      "type": "integer",
+      "length": 20,
+      "comment": "账户余额",
+      "default": 0,
+      "index": true
+    },
+    {
+      "name": "key",
+      "type": "string",
+      "length": 12,
+      "comment": "API Key",
+      "nullable": true,
+      "unique": true
+    },
+    {
+      "name": "secret",
+      "type": "string",
+      "length": 32,
+      "nullable": true,
+      "comment": "API 密钥",
+      "index": true
+    },
+    {
+      "name": "status",
+      "type": "enum",
+      "default": "enabled",
+      "option": ["enabled", "disabled"],
+      "index": true
+    }
+  ],
+  "relationships": [],
+  "values": [
+    {
+      "name": "管理员",
+      "org_id": 1,
+      "type": "admin",
+      "idcard": "230624198301170015",
+      "mobile": "13900001111",
+      "password": "11A0C30E8CA25705F7F1166146222C36",
+      "key": "FB3fxCeQ",
+      "secret": "XMTdNRVigbgUiAPdiJCfaWgWcz2PaQXw",
+      "status": "enabled"
+    },
+    {
+      "name": "员工",
+      "org_id": 1,
+      "type": "staff",
+      "idcard": "23082619820207024X",
+      "mobile": "13900002222",
+      "password": "098F82EF451D0A66AAF826A85F170A3F",
+      "key": "JDh2ZiUt",
+      "secret": "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+      "status": "enabled"
+    }
+  ],
+  "option": { "timestamps": true, "soft_deletes": true }
+}
