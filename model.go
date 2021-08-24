@@ -1,11 +1,39 @@
 package gou
 
-// Model 数据模型
-type Model struct{}
+import (
+	"io/fs"
+
+	"github.com/yaoapp/gou/helper"
+)
+
+// Models 已载入模型
+var Models = map[string]*Model{}
 
 // LoadModel 载入数据模型
-func LoadModel(name string) *Model {
-	return &Model{}
+func LoadModel(file fs.File, name string) *Model {
+	defer file.Close()
+	metadata := MetaData{}
+	err := helper.UnmarshalFile(file, &metadata)
+	if err != nil {
+		panic(err)
+	}
+	mod := &Model{
+		Name:     name,
+		File:     file,
+		MetaData: metadata,
+	}
+
+	Models[name] = mod
+	return mod
+}
+
+// Select 读取已加载模型
+func Select(name string) *Model {
+	mod, has := Models[name]
+	if !has {
+		panic(name + "尚未加载")
+	}
+	return mod
 }
 
 // Find 查询单条记录
@@ -40,9 +68,3 @@ func (mod *Model) Migrate() {}
 
 // Reload 重新载入
 func (mod *Model) Reload() {}
-
-// Query xun.Query
-func (mod *Model) Query() {}
-
-// Schema xun.Schema
-func (mod *Model) Schema() {}

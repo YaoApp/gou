@@ -8,15 +8,15 @@ import (
 	"github.com/yaoapp/kun/utils"
 )
 
-// APIROOT
-var APIROOT = "/data/apis"
+// TestAPIRoot
+var TestAPIRoot = "/data/apis"
 
 func init() {
-	APIROOT = os.Getenv("API_ROOT")
+	TestAPIRoot = os.Getenv("GOU_TEST_API_ROOT")
 }
 
 func TestLoadAPI(t *testing.T) {
-	file, err := os.Open(path.Join(APIROOT, "user.http.json"))
+	file, err := os.Open(path.Join(TestAPIRoot, "user.http.json"))
 	if err != nil {
 		panic(err)
 	}
