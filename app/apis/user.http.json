@@ -12,7 +12,7 @@
       "method": "POST",
       "guard": "-",
       "type": "application/form-data",
-      "process": "Login",
+      "process": "plugins.user.Login",
       "in": ["$payload.mobile", "$payload.password", "$payload.captcha"],
       "out": {
         "status": 200,
@@ -24,7 +24,7 @@
       "path": "/info",
       "method": "GET",
       "type": "application/form-data",
-      "process": "Find",
+      "process": "models.user.Find",
       "in": ["$session.id"],
       "out": {
         "status": 200,

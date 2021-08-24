@@ -1,9 +1,12 @@
 package gou
 
 import (
+	"fmt"
 	"io/fs"
 
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/maps"
 )
 
 // Models 已载入模型
@@ -31,13 +34,20 @@ func LoadModel(file fs.File, name string) *Model {
 func Select(name string) *Model {
 	mod, has := Models[name]
 	if !has {
-		panic(name + "尚未加载")
+		exception.New(
+			fmt.Sprintf("Model:%s; 尚未加载", name),
+			400,
+		).Throw()
 	}
 	return mod
 }
 
 // Find 查询单条记录
-func (mod *Model) Find() {}
+func (mod *Model) Find(id interface{}) maps.MapStr {
+	return maps.MapStrOf(map[string]interface{}{
+		"id": 1,
+	})
+}
 
 // Save 保存单条数据
 func (mod *Model) Save() {}
