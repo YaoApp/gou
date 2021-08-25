@@ -54,9 +54,9 @@ func TestRunModel(t *testing.T) {
 }
 
 func TestRunPlugin(t *testing.T) {
+	defer SelectPlugin("user").Client.Kill()
 	res := Run("plugins.user.Login", 1)
 	res2 := Run("plugins.user.Login", 2)
-	defer SelectPlugin("user").Client.Kill()
 	utils.Dump(res.(*grpc.Response).MustMap())
 	utils.Dump(res2.(*grpc.Response).MustMap())
 }
