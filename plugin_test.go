@@ -20,7 +20,7 @@ func TestLoadPlugin(t *testing.T) {
 	p := LoadPlugin(cmd, "user")
 	defer p.Client.Kill()
 
-	mod := SelectPlugin("user")
+	mod := SelectPluginModel("user")
 	res, err := mod.Exec("login", "13111021983", "#991832")
 	utils.Dump(res.MustMap(), err)
 }

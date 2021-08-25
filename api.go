@@ -7,7 +7,7 @@ import (
 
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/kun/exception"
-	"github.com/yaoapp/kun/utils"
+	"github.com/yaoapp/kun/grpc"
 )
 
 // LoadAPI 载入数据接口
@@ -42,9 +42,13 @@ func Run(name string, args ...interface{}) interface{} {
 }
 
 // runModel name = user, method = login, args = [1]
-func runPlugin(name string, method string, args ...interface{}) interface{} {
-	utils.Dump(name, method, args)
-	return nil
+func runPlugin(name string, method string, args ...interface{}) *grpc.Response {
+	mod := SelectPluginModel(name)
+	res, err := mod.Exec(method, args...)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return res
 }
 
 // runModel name = user, method = find, args = [1]

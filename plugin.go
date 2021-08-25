@@ -68,7 +68,19 @@ func SetPluginLogger(name string, output io.Writer, level hclog.Level) {
 }
 
 // SelectPlugin 选择插件
-func SelectPlugin(name string) grpc.Model {
+func SelectPlugin(name string) *Plugin {
+	plugin, has := Plugins[name]
+	if !has {
+		exception.New(
+			fmt.Sprintf("Plugin:%s; 尚未加载", name),
+			400,
+		).Throw()
+	}
+	return plugin
+}
+
+// SelectPluginModel 选择插件
+func SelectPluginModel(name string) grpc.Model {
 	plugin, has := Plugins[name]
 	if !has {
 		exception.New(
