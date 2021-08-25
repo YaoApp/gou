@@ -49,6 +49,18 @@ func (api *API) Reload() *API {
 	return LoadAPI(api.Source, api.Name)
 }
 
+// SelectAPI 读取已加载API
+func SelectAPI(name string) *API {
+	api, has := APIs[name]
+	if !has {
+		exception.New(
+			fmt.Sprintf("API:%s; 尚未加载", name),
+			500,
+		).Throw()
+	}
+	return api
+}
+
 // Run 执行指令并返回结果 name = "models.user.Find", name = "plugins.user.Login"
 func Run(name string, args ...interface{}) interface{} {
 	typ, class, method := extraProcess(name)

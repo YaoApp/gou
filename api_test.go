@@ -37,10 +37,17 @@ func init() {
 	userCMD := path.Join(TestPLGRoot, "user")
 	LoadPlugin(userCMD, "user")
 	defer SelectPlugin("user").Client.Kill()
+
+	LoadAPI("file://"+path.Join(TestAPIRoot, "user.http.json"), "user")
 }
 
 func TestLoadAPI(t *testing.T) {
 	user := LoadAPI("file://"+path.Join(TestAPIRoot, "user.http.json"), "user")
+	user.Reload()
+}
+
+func TestSelectAPI(t *testing.T) {
+	user := SelectAPI("user")
 	user.Reload()
 }
 
