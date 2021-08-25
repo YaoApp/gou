@@ -52,9 +52,9 @@ func TestSelectAPI(t *testing.T) {
 	user.Reload()
 }
 
-func TestServeHTTP(t *testing.T) {
-	ServeHTTP(5011, "127.0.0.1", "/api", "*")
-}
+// func TestServeHTTP(t *testing.T) {
+// 	ServeHTTP(5011, "127.0.0.1", "/api", "*")
+// }
 
 func TestRunModel(t *testing.T) {
 	res := Run("models.user.Find", 1)

@@ -13,7 +13,6 @@ import (
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/grpc"
 	"github.com/yaoapp/kun/maps"
-	"github.com/yaoapp/kun/utils"
 	"github.com/yaoapp/xun"
 )
 
@@ -38,7 +37,6 @@ func (http HTTP) Route(path Path, allow string, router gin.IRoutes) {
 
 	// API响应逻辑
 	handlers = append(handlers, func(c *gin.Context) {
-		utils.Dump(c.Request.Body)
 
 		if c.GetHeader("content-type") == "application/json" {
 			bytes, err := ioutil.ReadAll(c.Request.Body)
