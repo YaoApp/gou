@@ -68,6 +68,15 @@ func LoadPlugin(cmd string, name string) *Plugin {
 	return p
 }
 
+// KillPlugins 关闭插件进程
+func KillPlugins() {
+	for _, plug := range Plugins {
+		if !plug.Client.Exited() {
+			plug.Client.Kill()
+		}
+	}
+}
+
 // SetPluginLogger 设置日志
 func SetPluginLogger(name string, output io.Writer, level hclog.Level) {
 	pluginLogger = hclog.New(&hclog.LoggerOptions{

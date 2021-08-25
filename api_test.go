@@ -39,6 +39,7 @@ func init() {
 	defer SelectPlugin("user").Client.Kill()
 
 	LoadAPI("file://"+path.Join(TestAPIRoot, "user.http.json"), "user")
+	LoadAPI("file://"+path.Join(TestAPIRoot, "manu.http.json"), "manu")
 }
 
 func TestLoadAPI(t *testing.T) {
@@ -49,6 +50,10 @@ func TestLoadAPI(t *testing.T) {
 func TestSelectAPI(t *testing.T) {
 	user := SelectAPI("user")
 	user.Reload()
+}
+
+func TestServeHTTP(t *testing.T) {
+	ServeHTTP(5011, "127.0.0.1", "/api", "*")
 }
 
 func TestRunModel(t *testing.T) {
