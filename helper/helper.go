@@ -3,13 +3,13 @@ package helper
 import (
 	"bytes"
 	"encoding/json"
-	"io/fs"
+	"io"
 )
 
 // 常用函数
 
 // UnmarshalFile JSON Unmarshal
-func UnmarshalFile(file fs.File, v interface{}) error {
+func UnmarshalFile(file io.Reader, v interface{}) error {
 	content, err := ReadFile(file)
 	if err != nil {
 		return err
@@ -18,7 +18,7 @@ func UnmarshalFile(file fs.File, v interface{}) error {
 }
 
 // ReadFile 读取文件内容
-func ReadFile(file fs.File) ([]byte, error) {
+func ReadFile(file io.Reader) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	_, err := buf.ReadFrom(file)
 	if err != nil {
@@ -28,7 +28,7 @@ func ReadFile(file fs.File) ([]byte, error) {
 }
 
 // ReadFileString 读取文件内容, 返回String
-func ReadFileString(file fs.File) (string, error) {
+func ReadFileString(file io.Reader) (string, error) {
 	buf := new(bytes.Buffer)
 	_, err := buf.ReadFrom(file)
 	if err != nil {
