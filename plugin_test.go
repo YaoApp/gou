@@ -1,19 +1,11 @@
 package gou
 
 import (
-	"os"
 	"path"
 	"testing"
 
 	"github.com/yaoapp/kun/utils"
 )
-
-// TestPLGRoot
-var TestPLGRoot = "/data/plugins"
-
-func init() {
-	TestPLGRoot = os.Getenv("GOU_TEST_PLG_ROOT")
-}
 
 func TestLoadPlugin(t *testing.T) {
 	cmd := path.Join(TestPLGRoot, "user")

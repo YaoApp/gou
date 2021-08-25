@@ -1,8 +1,6 @@
 package gou
 
 import (
-	"io/fs"
-
 	"github.com/yaoapp/kun/maps"
 )
 
@@ -24,7 +22,7 @@ const (
 // Model 数据模型
 type Model struct {
 	Name     string
-	File     fs.File
+	Source   string
 	MetaData MetaData
 }
 

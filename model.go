@@ -2,7 +2,9 @@ package gou
 
 import (
 	"fmt"
-	"io/fs"
+	"io"
+	"os"
+	"strings"
 
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/kun/exception"
@@ -13,16 +15,28 @@ import (
 var Models = map[string]*Model{}
 
 // LoadModel 载入数据模型
-func LoadModel(file fs.File, name string) *Model {
-	defer file.Close()
+func LoadModel(source string, name string) *Model {
+	var input io.Reader = nil
+	if strings.HasPrefix(source, "file://") {
+		filename := strings.TrimPrefix(source, "file://")
+		file, err := os.Open(filename)
+		if err != nil {
+			exception.Err(err, 400).Throw()
+		}
+		defer file.Close()
+		input = file
+	} else {
+		input = strings.NewReader(source)
+	}
+
 	metadata := MetaData{}
-	err := helper.UnmarshalFile(file, &metadata)
+	err := helper.UnmarshalFile(input, &metadata)
 	if err != nil {
 		panic(err)
 	}
 	mod := &Model{
 		Name:     name,
-		File:     file,
+		Source:   source,
 		MetaData: metadata,
 	}
 
@@ -40,6 +54,11 @@ func Select(name string) *Model {
 		).Throw()
 	}
 	return mod
+}
+
+// Reload 更新模型
+func (mod *Model) Reload() *Model {
+	return LoadModel(mod.Source, mod.Name)
 }
 
 // Find 查询单条记录
@@ -75,6 +94,3 @@ func (mod *Model) View() {}
 
 // Migrate 数据迁移
 func (mod *Model) Migrate() {}
-
-// Reload 重新载入
-func (mod *Model) Reload() {}

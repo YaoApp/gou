@@ -1,46 +1,13 @@
 package gou
 
 import (
-	"os"
 	"path"
 	"testing"
 
 	"github.com/yaoapp/kun/grpc"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/kun/utils"
-	"github.com/yaoapp/xun/capsule"
 )
-
-// TestAPIRoot
-var TestAPIRoot = "/data/apis"
-
-func init() {
-	TestAPIRoot = os.Getenv("GOU_TEST_API_ROOT")
-	TestModRoot = os.Getenv("GOU_TEST_MOD_ROOT")
-	TestPLGRoot = os.Getenv("GOU_TEST_PLG_ROOT")
-	TestDSN = os.Getenv("GOU_TEST_DSN")
-	capsule.AddConn("primary", "mysql", TestDSN)
-
-	userfile, err := os.Open(path.Join(TestModRoot, "user.json"))
-	if err != nil {
-		panic(err)
-	}
-
-	manufile, err := os.Open(path.Join(TestModRoot, "user.json"))
-	if err != nil {
-		panic(err)
-	}
-
-	LoadModel(userfile, "user")
-	LoadModel(manufile, "manu")
-
-	userCMD := path.Join(TestPLGRoot, "user")
-	LoadPlugin(userCMD, "user")
-	defer SelectPlugin("user").Client.Kill()
-
-	LoadAPI("file://"+path.Join(TestAPIRoot, "user.http.json"), "user")
-	LoadAPI("file://"+path.Join(TestAPIRoot, "manu.http.json"), "manu")
-}
 
 func TestLoadAPI(t *testing.T) {
 	user := LoadAPI("file://"+path.Join(TestAPIRoot, "user.http.json"), "user")
