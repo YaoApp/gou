@@ -25,14 +25,31 @@ var logger = hclog.New(&hclog.LoggerOptions{
 // LoadPlugin 加载插件
 func LoadPlugin(cmd string, name string) *Plugin {
 
-	// We're a host. Start by launching the plugin process.
-	client := plugin.NewClient(&plugin.ClientConfig{
-		HandshakeConfig:  grpc.Handshake,
-		Plugins:          grpc.PluginMap,
-		Cmd:              exec.Command("sh", "-c", cmd),
-		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
-		Logger:           logger,
-	})
+	var client *plugin.Client = nil
+
+	// 已载入
+	plug, has := Plugins[name]
+	if has {
+		reattachConfig := plug.Client.ReattachConfig()
+		client = plugin.NewClient(&plugin.ClientConfig{
+			HandshakeConfig:  grpc.Handshake,
+			Plugins:          grpc.PluginMap,
+			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+			Logger:           logger,
+			Reattach:         reattachConfig,
+		})
+
+	} else {
+
+		// We're a host. Start by launching the plugin process.
+		client = plugin.NewClient(&plugin.ClientConfig{
+			HandshakeConfig:  grpc.Handshake,
+			Plugins:          grpc.PluginMap,
+			Cmd:              exec.Command("sh", "-c", cmd),
+			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+			Logger:           logger,
+		})
+	}
 
 	// Connect via RPC
 	rpcClient, err := client.Client()
@@ -52,6 +69,8 @@ func LoadPlugin(cmd string, name string) *Plugin {
 	p := &Plugin{
 		Client: client,
 		Model:  mod,
+		Name:   name,
+		Cmd:    cmd,
 	}
 
 	Plugins[name] = p
