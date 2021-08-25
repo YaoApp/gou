@@ -28,13 +28,15 @@
       "type": "string",
       "length": 50,
       "comment": "手机号",
-      "unique": true
+      "index": true,
+      "crypt": "AES"
     },
     {
       "name": "password",
       "type": "string",
-      "length": 128,
+      "length": 256,
       "comment": "登录密码",
+      "crypt": "PASSWORD",
       "index": true
     },
     {
@@ -47,10 +49,11 @@
     {
       "name": "idcard",
       "type": "string",
-      "length": 20,
+      "length": 256,
       "comment": "身份证号码",
+      "crypt": "AES",
       "nullable": true,
-      "unique": true
+      "index": true
     },
     {
       "name": "balance",
@@ -63,20 +66,35 @@
     {
       "name": "key",
       "type": "string",
-      "length": 12,
+      "length": 256,
       "comment": "API Key",
+      "crypt": "AES",
       "nullable": true,
       "unique": true
     },
     {
       "name": "secret",
       "type": "string",
-      "length": 32,
+      "length": 256,
       "nullable": true,
+      "crypt": "AES",
       "comment": "API 密钥",
       "index": true
     },
     {
+      "name": "resume",
+      "type": "text",
+      "comment": "简历",
+      "nullable": true
+    },
+    {
+      "name": "extra",
+      "type": "json",
+      "comment": "扩展信息",
+      "nullable": true
+    },
+    {
+      "comment": "用户状态 enabled 有效, disabled 无效",
       "name": "status",
       "type": "enum",
       "default": "enabled",
@@ -95,7 +113,8 @@
       "password": "11A0C30E8CA25705F7F1166146222C36",
       "key": "FB3fxCeQ",
       "secret": "XMTdNRVigbgUiAPdiJCfaWgWcz2PaQXw",
-      "status": "enabled"
+      "status": "enabled",
+      "extra": { "sex": "男" }
     },
     {
       "name": "员工",
@@ -106,7 +125,22 @@
       "password": "098F82EF451D0A66AAF826A85F170A3F",
       "key": "JDh2ZiUt",
       "secret": "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
-      "status": "enabled"
+      "status": "enabled",
+      "extra": { "sex": "女" }
+    }
+  ],
+  "indexes": [
+    {
+      "comment": "厂商用户",
+      "name": "manu_id_mobile_unique",
+      "columns": ["manu_id", "mobile"],
+      "type": "unique"
+    },
+    {
+      "comment": "简历全文检索",
+      "name": "resume_fulltext",
+      "columns": ["resume"],
+      "type": "fulltext"
     }
   ],
   "option": { "timestamps": true, "soft_deletes": true }

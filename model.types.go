@@ -24,6 +24,7 @@ type Model struct {
 	Name     string
 	Source   string
 	MetaData MetaData
+	Columns  map[string]*Column
 }
 
 // MetaData 元数据
@@ -53,8 +54,7 @@ type Column struct {
 	DefaultRaw  string       `json:"default_raw,omitempty"`
 	Example     interface{}  `json:"example,omitempty"`
 	Generate    string       `json:"generate,omitempty"` // Increment, UUID,...
-	Encoder     string       `json:"encoder,omitempty"`  // AES-256, AES-128, PASSWORD-HASH, ...
-	Decoder     string       `json:"decoder,omitempty"`  // AES-256, AES-128, ...
+	Crypt       string       `json:"crypt,omitempty"`    // AES, PASSWORD, AES-256, AES-128, PASSWORD-HASH, ...
 	Validations []Validation `json:"validations,omitempty"`
 	Index       bool         `json:"index,omitempty"`
 	Unique      bool         `json:"unique,omitempty"`

@@ -9,6 +9,8 @@ import (
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
+	"github.com/yaoapp/xun/capsule"
+	"github.com/yaoapp/xun/logger"
 )
 
 // Models 已载入模型
@@ -32,14 +34,21 @@ func LoadModel(source string, name string) *Model {
 	metadata := MetaData{}
 	err := helper.UnmarshalFile(input, &metadata)
 	if err != nil {
-		panic(err)
+		exception.Err(err, 400).Throw()
 	}
+
 	mod := &Model{
 		Name:     name,
 		Source:   source,
 		MetaData: metadata,
 	}
 
+	columns := map[string]*Column{}
+	for i, column := range mod.MetaData.Columns {
+		columns[column.Name] = &mod.MetaData.Columns[i]
+	}
+
+	mod.Columns = columns
 	Models[name] = mod
 	return mod
 }
@@ -56,6 +65,12 @@ func Select(name string) *Model {
 	return mod
 }
 
+// SetModelLogger 设定模型 Logger
+func SetModelLogger(output io.Writer, level logger.LogLevel) {
+	logger.DefaultLogger.SetLevel(level)
+	logger.DefaultLogger.SetOutput(output)
+}
+
 // Reload 更新模型
 func (mod *Model) Reload() *Model {
 	return LoadModel(mod.Source, mod.Name)
@@ -68,8 +83,39 @@ func (mod *Model) Find(id interface{}) maps.MapStr {
 	})
 }
 
+// Create 创建单条数据
+func (mod *Model) Create(row maps.MapStrAny) (int, error) {
+	mod.FliterIn(row)
+
+	id, err := capsule.Query().
+		Table(mod.MetaData.Table.Name).
+		InsertGetID(row)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return int(id), err
+}
+
+// MustCreate 创建单条数据, 失败跑出异常
+func (mod *Model) MustCreate(row maps.MapStrAny) int {
+	id, err := mod.Create(row)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return id
+}
+
+// Insert 插入多条数据
+func (mod *Model) Insert(rows []maps.MapStrAny) error {
+	return nil
+}
+
 // Save 保存单条数据
-func (mod *Model) Save() {}
+func (mod *Model) Save(row maps.MapStrAny) error {
+	return nil
+}
 
 // Delete 删除单条记录
 func (mod *Model) Delete() {}
@@ -93,4 +139,17 @@ func (mod *Model) List() {}
 func (mod *Model) View() {}
 
 // Migrate 数据迁移
-func (mod *Model) Migrate() {}
+func (mod *Model) Migrate(force bool) {
+	table := mod.MetaData.Table.Name
+	schema := capsule.Schema()
+	if force {
+		schema.DropTableIfExists(table)
+	}
+
+	if !schema.MustHasTable(table) {
+		mod.SchemaCreateTable()
+		return
+	}
+
+	mod.SchemaDiffTable()
+}

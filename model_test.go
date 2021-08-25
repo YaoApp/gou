@@ -21,3 +21,8 @@ func TestModelReload(t *testing.T) {
 	assert.Equal(t, user.MetaData.Name, "用户")
 	assert.Equal(t, user.Name, "user")
 }
+
+func TestModelMigrate(t *testing.T) {
+	Select("user").Migrate(true)
+	Select("manu").Migrate(true)
+}
