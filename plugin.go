@@ -16,7 +16,7 @@ import (
 var Plugins = map[string]*Plugin{}
 
 // Create an hclog.Logger
-var logger = hclog.New(&hclog.LoggerOptions{
+var pluginLogger = hclog.New(&hclog.LoggerOptions{
 	Name:   "plugin",
 	Output: os.Stdout,
 	Level:  hclog.Error,
@@ -39,7 +39,7 @@ func LoadPlugin(cmd string, name string) *Plugin {
 		Plugins:          grpc.PluginMap,
 		Cmd:              exec.Command("sh", "-c", cmd),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
-		Logger:           logger,
+		Logger:           pluginLogger,
 	})
 
 	// Connect via RPC
@@ -70,7 +70,7 @@ func LoadPlugin(cmd string, name string) *Plugin {
 
 // SetPluginLogger 设置日志
 func SetPluginLogger(name string, output io.Writer, level hclog.Level) {
-	logger = hclog.New(&hclog.LoggerOptions{
+	pluginLogger = hclog.New(&hclog.LoggerOptions{
 		Name:   name,
 		Output: output,
 		Level:  level,

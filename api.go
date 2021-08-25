@@ -2,7 +2,8 @@ package gou
 
 import (
 	"fmt"
-	"io/fs"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/yaoapp/gou/helper"
@@ -10,24 +11,43 @@ import (
 	"github.com/yaoapp/kun/grpc"
 )
 
+// APIs 已加载API列表
+var APIs = map[string]*API{}
+
 // LoadAPI 载入数据接口
-func LoadAPI(file fs.File) *API {
-	defer file.Close()
+func LoadAPI(source string, name string) *API {
+	var input io.Reader = nil
+	if strings.HasPrefix(source, "file://") {
+		filename := strings.TrimPrefix(source, "file://")
+		file, err := os.Open(filename)
+		if err != nil {
+			exception.Err(err, 400).Throw()
+		}
+		defer file.Close()
+		input = file
+	} else {
+		input = strings.NewReader(source)
+	}
+
 	http := HTTP{}
-	err := helper.UnmarshalFile(file, &http)
+	err := helper.UnmarshalFile(input, &http)
 	if err != nil {
 		panic(err)
 	}
 
-	return &API{
-		File: file,
-		Type: "http",
-		HTTP: http,
+	APIs[name] = &API{
+		Name:   name,
+		Source: source,
+		HTTP:   http,
+		Type:   "http",
 	}
+	return APIs[name]
 }
 
 // Reload 重新载入API
-func (api *API) Reload() {}
+func (api *API) Reload() *API {
+	return LoadAPI(api.Source, api.Name)
+}
 
 // Run 执行指令并返回结果 name = "models.user.Find", name = "plugins.user.Login"
 func Run(name string, args ...interface{}) interface{} {

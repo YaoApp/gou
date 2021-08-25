@@ -1,12 +1,11 @@
 package gou
 
-import "io/fs"
-
 // API 数据接口
 type API struct {
-	File fs.File
-	Type string
-	HTTP HTTP
+	Name   string
+	Source string
+	Type   string
+	HTTP   HTTP
 }
 
 // HTTP http 协议服务
