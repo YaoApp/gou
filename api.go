@@ -32,7 +32,7 @@ func LoadAPI(source string, name string) *API {
 	http := HTTP{}
 	err := helper.UnmarshalFile(input, &http)
 	if err != nil {
-		panic(err)
+		exception.Err(err, 400).Throw()
 	}
 
 	APIs[name] = &API{
