@@ -25,31 +25,22 @@ var logger = hclog.New(&hclog.LoggerOptions{
 // LoadPlugin 加载插件
 func LoadPlugin(cmd string, name string) *Plugin {
 
-	var client *plugin.Client = nil
-
-	// 已载入
+	// 已载入，如果进程存在杀掉重载
 	plug, has := Plugins[name]
 	if has {
-		reattachConfig := plug.Client.ReattachConfig()
-		client = plugin.NewClient(&plugin.ClientConfig{
-			HandshakeConfig:  grpc.Handshake,
-			Plugins:          grpc.PluginMap,
-			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
-			Logger:           logger,
-			Reattach:         reattachConfig,
-		})
-
-	} else {
-
-		// We're a host. Start by launching the plugin process.
-		client = plugin.NewClient(&plugin.ClientConfig{
-			HandshakeConfig:  grpc.Handshake,
-			Plugins:          grpc.PluginMap,
-			Cmd:              exec.Command("sh", "-c", cmd),
-			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
-			Logger:           logger,
-		})
+		if !plug.Client.Exited() {
+			plug.Client.Kill()
+		}
 	}
+
+	// We're a host. Start by launching the plugin process.
+	client := plugin.NewClient(&plugin.ClientConfig{
+		HandshakeConfig:  grpc.Handshake,
+		Plugins:          grpc.PluginMap,
+		Cmd:              exec.Command("sh", "-c", cmd),
+		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+		Logger:           logger,
+	})
 
 	// Connect via RPC
 	rpcClient, err := client.Client()
@@ -88,24 +79,24 @@ func SetPluginLogger(name string, output io.Writer, level hclog.Level) {
 
 // SelectPlugin 选择插件
 func SelectPlugin(name string) *Plugin {
-	plugin, has := Plugins[name]
+	plug, has := Plugins[name]
 	if !has {
 		exception.New(
 			fmt.Sprintf("Plugin:%s; 尚未加载", name),
 			400,
 		).Throw()
 	}
-	return plugin
+
+	// 如果进程已退出，重载
+	if plug.Client.Exited() {
+		plug = LoadPlugin(plug.Cmd, plug.Name)
+	}
+
+	return plug
 }
 
 // SelectPluginModel 选择插件
 func SelectPluginModel(name string) grpc.Model {
-	plugin, has := Plugins[name]
-	if !has {
-		exception.New(
-			fmt.Sprintf("Plugin:%s; 尚未加载", name),
-			400,
-		).Throw()
-	}
-	return plugin.Model
+	plug := SelectPlugin(name)
+	return plug.Model
 }
