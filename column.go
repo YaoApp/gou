@@ -17,6 +17,34 @@ func (column *Column) FliterIn(value interface{}, row maps.MapStrAny) {
 	column.fliterInJSON(value, row)
 }
 
+// FliterOut 输出过滤器
+func (column *Column) FliterOut(value interface{}, row maps.MapStrAny) {
+	column.fliterOutJSON(value, row)
+}
+
+// fliterInJSON JSON字段处理
+func (column *Column) fliterOutJSON(value interface{}, row maps.MapStrAny) {
+	if strings.ToLower(column.Type) != "json" {
+		return
+	}
+	if raw, ok := value.(string); ok {
+
+		var v interface{}
+		err := jsoniter.UnmarshalFromString(raw, &v)
+		if err != nil {
+			exception.Err(err, 400).Throw()
+		}
+		row.Set(column.Name, v)
+	} else if raw, ok := value.([]byte); ok {
+		var v interface{}
+		err := jsoniter.Unmarshal(raw, &v)
+		if err != nil {
+			exception.Err(err, 400).Throw()
+		}
+		row.Set(column.Name, v)
+	}
+}
+
 // fliterInCrypt 加密字段处理
 func (column *Column) fliterInCrypt(value interface{}, row maps.MapStrAny) {
 	if column.Crypt == "" {

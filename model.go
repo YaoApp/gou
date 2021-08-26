@@ -43,12 +43,21 @@ func LoadModel(source string, name string) *Model {
 		MetaData: metadata,
 	}
 
-	columns := map[string]*Column{}
+	// 解析常用数值
+	columns := map[string]*Column{} // 字段映射表
+	columnNames := []string{}       // 字段名称清单
+	PrimaryKey := "id"              // 字段主键
 	for i, column := range mod.MetaData.Columns {
 		columns[column.Name] = &mod.MetaData.Columns[i]
+		columnNames = append(columnNames, column.Name)
+		if strings.ToLower(column.Type) == "id" {
+			PrimaryKey = column.Name
+		}
 	}
 
 	mod.Columns = columns
+	mod.ColumnNames = columnNames
+	mod.PrimaryKey = PrimaryKey
 	Models[name] = mod
 	return mod
 }
@@ -96,10 +105,37 @@ func (mod *Model) Reload() *Model {
 }
 
 // Find 查询单条记录
-func (mod *Model) Find(id interface{}) maps.MapStr {
-	return maps.MapStrOf(map[string]interface{}{
-		"id": 1,
-	})
+func (mod *Model) Find(id interface{}) (maps.MapStr, error) {
+
+	qb := capsule.Query().Table(mod.MetaData.Table.Name)
+	row, err := qb.
+		Where(mod.PrimaryKey, id).
+		Select(mod.SelectColumns()...).
+		First()
+	if err != nil {
+		return nil, err
+	}
+
+	var res maps.MapStr = row.ToMap()
+	mod.FliterOut(res)
+	return res, nil
+}
+
+// SelectColumns 选择字段
+func (mod *Model) SelectColumns(colums ...string) []interface{} {
+	if len(colums) == 0 {
+		colums = mod.ColumnNames
+	}
+	return mod.FliterSelect(colums)
+}
+
+// MustFind 查询单条记录
+func (mod *Model) MustFind(id interface{}) maps.MapStr {
+	res, err := mod.Find(id)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return res
 }
 
 // Create 创建单条数据

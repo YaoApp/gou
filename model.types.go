@@ -21,10 +21,13 @@ const (
 
 // Model 数据模型
 type Model struct {
-	Name     string
-	Source   string
-	MetaData MetaData
-	Columns  map[string]*Column
+	Name        string
+	Source      string
+	MetaData    MetaData
+	Columns     map[string]*Column // 字段映射表
+	ColumnNames []string           // 字段名称清单
+	PrimaryKey  string             // 主键(单一主键)
+	PrimaryKeys []string           // 主键(联合主键)
 }
 
 // MetaData 元数据

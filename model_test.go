@@ -26,3 +26,9 @@ func TestModelMigrate(t *testing.T) {
 	Select("user").Migrate(true)
 	Select("manu").Migrate(true)
 }
+
+func TestModelMustFind(t *testing.T) {
+	user := Select("user").MustFind(1)
+	assert.Equal(t, user.Get("mobile"), "13900001111")
+	assert.Equal(t, user.Dot().Get("extra.sex"), "男")
+}
