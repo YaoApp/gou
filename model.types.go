@@ -40,6 +40,7 @@ type MetaData struct {
 
 // Column the field description struct
 type Column struct {
+	Label       string       `json:"label,omitempty"`
 	Name        string       `json:"name"`
 	Type        string       `json:"type,omitempty"`
 	Title       string       `json:"title,omitempty"`
@@ -63,10 +64,15 @@ type Column struct {
 
 // Validation the field validation struct
 type Validation struct {
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	Type        string `json:"type,omitempty"`
-	Pattern     string `json:"pattern,omitempty"`
+	Method  string        `json:"method"`
+	Args    []interface{} `json:"args,omitempty"`
+	Message string        `json:"message,omitempty"`
+}
+
+// ValidateResponse 数据校验返回结果
+type ValidateResponse struct {
+	Column   string   `json:"column,omitempty"`
+	Messages []string `json:"messages,omitempty"`
 }
 
 // Index the search index struct

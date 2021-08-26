@@ -6,6 +6,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
+	"github.com/yaoapp/kun/str"
 	"github.com/yaoapp/xun/dbal"
 	"github.com/yaoapp/xun/dbal/schema"
 )
@@ -14,10 +15,9 @@ import (
 func (column *Column) FliterIn(value interface{}, row maps.MapStrAny) {
 	column.fliterInCrypt(value, row)
 	column.fliterInJSON(value, row)
-	column.Validate(value, row)
 }
 
-// fliterInCrypt 加密字段
+// fliterInCrypt 加密字段处理
 func (column *Column) fliterInCrypt(value interface{}, row maps.MapStrAny) {
 	if column.Crypt == "" {
 		return
@@ -47,7 +47,7 @@ func (column *Column) fliterInCrypt(value interface{}, row maps.MapStrAny) {
 	row.Set(column.Name, valuehash)
 }
 
-// fliterInJSON JSON字段
+// fliterInJSON JSON字段处理
 func (column *Column) fliterInJSON(value interface{}, row maps.MapStrAny) {
 	if strings.ToLower(column.Type) != "json" {
 		return
@@ -60,7 +60,37 @@ func (column *Column) fliterInJSON(value interface{}, row maps.MapStrAny) {
 }
 
 // Validate 数值有效性验证
-func (column *Column) Validate(value interface{}, row maps.MapStrAny) {
+func (column *Column) Validate(value interface{}, row maps.MapStrAny) (bool, []string) {
+	messages := []string{}
+	success := true
+	for _, v := range column.Validations {
+		method, has := Validations[v.Method]
+		if !has {
+			continue
+		}
+		if !method(value, row, v.Args...) {
+			data := column.Map()
+			data["input"] = value
+			message := str.Bind(v.Message, data)
+			messages = append(messages, message)
+			success = false
+		}
+	}
+	return success, messages
+}
+
+// Map 转换为Map
+func (column *Column) Map() map[string]interface{} {
+	res := map[string]interface{}{}
+	bytes, err := jsoniter.Marshal(column)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	err = jsoniter.Unmarshal(bytes, &res)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return res
 }
 
 // SetOption 设置字段选项

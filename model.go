@@ -71,6 +71,25 @@ func SetModelLogger(output io.Writer, level logger.LogLevel) {
 	logger.DefaultLogger.SetOutput(output)
 }
 
+// Validate 数值校验
+func (mod *Model) Validate(row maps.MapStrAny) []ValidateResponse {
+	res := []ValidateResponse{}
+	for name, value := range row {
+		column, has := mod.Columns[name]
+		if !has {
+			continue
+		}
+		success, messages := column.Validate(value, row)
+		if !success {
+			res = append(res, ValidateResponse{
+				Column:   column.Name,
+				Messages: messages,
+			})
+		}
+	}
+	return res
+}
+
 // Reload 更新模型
 func (mod *Model) Reload() *Model {
 	return LoadModel(mod.Source, mod.Name)
@@ -85,7 +104,13 @@ func (mod *Model) Find(id interface{}) maps.MapStr {
 
 // Create 创建单条数据
 func (mod *Model) Create(row maps.MapStrAny) (int, error) {
-	mod.FliterIn(row)
+
+	errs := mod.Validate(row) // 输入数据校验
+	if len(errs) > 0 {
+		exception.New("输入参数错误", 400).Ctx(errs).Throw()
+	}
+
+	mod.FliterIn(row) // 入库前输入数据预处理
 
 	id, err := capsule.Query().
 		Table(mod.MetaData.Table.Name).
@@ -98,7 +123,7 @@ func (mod *Model) Create(row maps.MapStrAny) (int, error) {
 	return int(id), err
 }
 
-// MustCreate 创建单条数据, 失败跑出异常
+// MustCreate 创建单条数据, 失败抛出异常
 func (mod *Model) MustCreate(row maps.MapStrAny) int {
 	id, err := mod.Create(row)
 	if err != nil {

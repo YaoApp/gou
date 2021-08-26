@@ -2,8 +2,9 @@ package helper
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 // 常用函数
@@ -14,7 +15,8 @@ func UnmarshalFile(file io.Reader, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(content, v)
+
+	return jsoniter.Unmarshal(content, v)
 }
 
 // ReadFile 读取文件内容
