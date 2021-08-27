@@ -32,8 +32,8 @@
       "label": "类型",
       "name": "type",
       "type": "enum",
-      "option": ["admin", "staff"],
-      "comment": "账号类型 admin 管理员, staff 员工",
+      "option": ["admin", "staff", "user"],
+      "comment": "账号类型 admin 管理员, staff 员工, user 用户",
       "default": "staff",
       "index": true,
       "validations": [
@@ -44,8 +44,8 @@
         },
         {
           "method": "enum",
-          "args": ["admin", "staff"],
-          "message": "{{input}}不在许可范围, {{label}}应该为 admin/staff"
+          "args": ["admin", "staff", "user"],
+          "message": "{{input}}不在许可范围, {{label}}应该为 admin/staff/user"
         }
       ]
     },
@@ -263,11 +263,72 @@
       ]
     }
   ],
-  "relationships": [],
+  "relations": {
+    "manu": {
+      "type": "hasOne",
+      "model": "manu",
+      "key": "id",
+      "foreign": "manu_id",
+      "select": ["name", "short_name", "type"]
+    },
+    "address": {
+      "type": "hasMany",
+      "model": "address",
+      "key": "user_id",
+      "foreign": "id",
+      "select": ["province", "city", "location", "status"],
+      "perpage": 20
+    },
+    "mother": {
+      "type": "hasOneThrough",
+      "links": [
+        {
+          "type": "hasOne",
+          "model": "friends",
+          "key": "user_id",
+          "foreign": "id",
+          "select": ["status", "type"],
+          "wheres": [["type", "mother"]]
+        },
+        {
+          "type": "hasOne",
+          "model": "user",
+          "key": "id",
+          "foreign": "friend_id",
+          "select": ["name"],
+          "withs": [
+            { "name": "manu" },
+            { "name": "roles" },
+            { "name": "address" }
+          ]
+        }
+      ]
+    },
+    "roles": {
+      "type": "hasManyThrough",
+      "links": [
+        {
+          "type": "hasMany",
+          "model": "user_roles",
+          "key": "user_id",
+          "foreign": "id",
+          "select": ["status"],
+          "perpage": 20
+        },
+        {
+          "type": "hasOne",
+          "model": "role",
+          "key": "id",
+          "foreign": "role_id",
+          "select": ["name", "label", "permission"]
+        }
+      ]
+    }
+  },
   "values": [
     {
       "name": "管理员",
-      "org_id": 1,
+      "manu_id": 1,
       "type": "admin",
       "idcard": "230624198301170015",
       "mobile": "13900001111",
@@ -279,12 +340,24 @@
     },
     {
       "name": "员工",
-      "org_id": 1,
+      "manu_id": 1,
       "type": "staff",
       "idcard": "23082619820207024X",
       "mobile": "13900002222",
       "password": "qV@uT1DI",
       "key": "JDh2ZiUt",
+      "secret": "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+      "status": "enabled",
+      "extra": { "sex": "女" }
+    },
+    {
+      "name": "用户",
+      "manu_id": 2,
+      "type": "user",
+      "idcard": "23082619820207004X",
+      "mobile": "13900003333",
+      "password": "qV@uT1DI",
+      "key": "XZ12MiPz",
       "secret": "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
       "status": "enabled",
       "extra": { "sex": "女" }

@@ -26,6 +26,10 @@ func init() {
 
 	LoadModel("file://"+path.Join(TestModRoot, "user.json"), "user")
 	LoadModel("file://"+path.Join(TestModRoot, "manu.json"), "manu")
+	LoadModel("file://"+path.Join(TestModRoot, "address.json"), "address")
+	LoadModel("file://"+path.Join(TestModRoot, "role.json"), "role")
+	LoadModel("file://"+path.Join(TestModRoot, "friends.json"), "friends")
+	LoadModel("file://"+path.Join(TestModRoot, "user_roles.json"), "user_roles")
 
 	LoadPlugin(path.Join(TestPLGRoot, "user"), "user")
 	defer SelectPlugin("user").Client.Kill()

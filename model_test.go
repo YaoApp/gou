@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/kun/utils"
 )
 
 func TestLoadModel(t *testing.T) {
@@ -23,8 +24,10 @@ func TestModelReload(t *testing.T) {
 }
 
 func TestModelMigrate(t *testing.T) {
-	Select("user").Migrate(true)
-	Select("manu").Migrate(true)
+	for name, mod := range Models {
+		utils.Dump(name)
+		mod.Migrate(true)
+	}
 }
 
 func TestModelMustFind(t *testing.T) {
