@@ -105,7 +105,7 @@ func (mod *Model) Reload() *Model {
 }
 
 // Find 查询单条记录
-func (mod *Model) Find(id interface{}) (maps.MapStr, error) {
+func (mod *Model) Find(id interface{}, withs ...With) (maps.MapStr, error) {
 
 	qb := capsule.Query().Table(mod.MetaData.Table.Name)
 	row, err := qb.
@@ -130,8 +130,8 @@ func (mod *Model) SelectColumns(colums ...string) []interface{} {
 }
 
 // MustFind 查询单条记录
-func (mod *Model) MustFind(id interface{}) maps.MapStr {
-	res, err := mod.Find(id)
+func (mod *Model) MustFind(id interface{}, withs ...With) maps.MapStr {
+	res, err := mod.Find(id, withs...)
 	if err != nil {
 		exception.Err(err, 500).Throw()
 	}

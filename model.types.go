@@ -98,12 +98,12 @@ type Table struct {
 
 // Relation the new xun model relation
 type Relation struct {
-	Type     string `json:"type"`
-	Key      string `json:"key,omitempty"`
-	Model    string `json:"model"`
-	Foreign  string `json:"foreign,omitempty"`
-	Parent   string `json:"parent,omitempty"`
-	MaxLevel int    `json:"max_level,omitempty"`
+	Type    string     `json:"type"`
+	Key     string     `json:"key,omitempty"`
+	Model   string     `json:"model,omitempty"`
+	Foreign string     `json:"foreign,omitempty"`
+	Links   []Relation `json:"links,omitempty"`
+	Query   Query      `json:"query,omitempty"`
 }
 
 // Option 模型配置选项

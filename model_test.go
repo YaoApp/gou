@@ -35,3 +35,19 @@ func TestModelMustFind(t *testing.T) {
 	assert.Equal(t, user.Get("mobile"), "13900001111")
 	assert.Equal(t, user.Dot().Get("extra.sex"), "男")
 }
+
+func TestModelMustFindWithHasOne(t *testing.T) {
+	user := Select("user").MustFind(1,
+		With{Name: "manu"},
+		With{Name: "addresses", Query: Query{Page: 2, PageSize: 1}},
+		With{Name: "roles"},
+		With{
+			Name: "mother", Query: Query{
+				Withs: map[string]With{"addresses": {
+					Name:  "addresses",
+					Query: Query{Page: 2, PageSize: 1},
+				}},
+			}},
+	)
+	utils.Dump(user)
+}

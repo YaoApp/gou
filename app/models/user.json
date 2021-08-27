@@ -271,13 +271,15 @@
       "foreign": "manu_id",
       "select": ["name", "short_name", "type"]
     },
-    "address": {
+    "addresses": {
       "type": "hasMany",
       "model": "address",
       "key": "user_id",
       "foreign": "id",
-      "select": ["province", "city", "location", "status"],
-      "perpage": 20
+      "query": {
+        "select": ["province", "city", "location", "status"],
+        "pagesize": 20
+      }
     },
     "mother": {
       "type": "hasOneThrough",
@@ -287,20 +289,29 @@
           "model": "friends",
           "key": "user_id",
           "foreign": "id",
-          "select": ["status", "type"],
-          "wheres": [["type", "mother"]]
+          "query": {
+            "select": ["status", "type"],
+            "wheres": [
+              {
+                "column": "type",
+                "value": "monther"
+              }
+            ]
+          }
         },
         {
           "type": "hasOne",
           "model": "user",
           "key": "id",
           "foreign": "friend_id",
-          "select": ["name"],
-          "withs": [
-            { "name": "manu" },
-            { "name": "roles" },
-            { "name": "address" }
-          ]
+          "query": {
+            "select": ["name"],
+            "withs": {
+              "manu": { "name": "manu" },
+              "roles": { "name": "roles" },
+              "address": { "name": "address" }
+            }
+          }
         }
       ]
     },
@@ -312,15 +323,19 @@
           "model": "user_roles",
           "key": "user_id",
           "foreign": "id",
-          "select": ["status"],
-          "perpage": 20
+          "query": {
+            "select": ["status"],
+            "pagesize": 20
+          }
         },
         {
           "type": "hasOne",
           "model": "role",
           "key": "id",
           "foreign": "role_id",
-          "select": ["name", "label", "permission"]
+          "query": {
+            "select": ["name", "label", "permission"]
+          }
         }
       ]
     }
