@@ -1,7 +1,8 @@
 package gou
 
-// Query 数据查询器模型
-type Query struct {
+// QueryParam 数据查询器参数
+type QueryParam struct {
+	Model    string          `json:"model,omitempty"`
 	Table    string          `json:"table,omitempty"`
 	Alias    string          `json:"alias,omitempty"`
 	Select   []interface{}   `json:"select,omitempty"` // string | dbal.Raw
@@ -15,16 +16,16 @@ type Query struct {
 
 // With relations 关联查询
 type With struct {
-	Name  string `json:"name"`
-	Query Query  `json:"query,omitempty"`
+	Name  string     `json:"name"`
+	Query QueryParam `json:"query,omitempty"`
 }
 
 // QueryWhere Where 查询条件
 type QueryWhere struct {
-	Column string      `json:"column,omitempty"`
-	Value  interface{} `json:"value,omitempty"`
-	Method string      `json:"method,omitempty"` // where,orwhere, wherein, orwherein...
-	Query  Query       `json:"query,omitempty"`  // 分组查询
+	Column string       `json:"column,omitempty"`
+	Value  interface{}  `json:"value,omitempty"`
+	Method string       `json:"method,omitempty"` // where,orwhere, wherein, orwherein...
+	Wheres []QueryWhere `json:"wheres,omitempty"` // 分组查询
 }
 
 // QueryOrder Order 查询排序

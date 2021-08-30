@@ -25,7 +25,7 @@ type Model struct {
 	Source      string
 	MetaData    MetaData
 	Columns     map[string]*Column // 字段映射表
-	ColumnNames []string           // 字段名称清单
+	ColumnNames []interface{}      // 字段名称清单
 	PrimaryKey  string             // 主键(单一主键)
 	PrimaryKeys []string           // 主键(联合主键)
 }
@@ -103,7 +103,7 @@ type Relation struct {
 	Model   string     `json:"model,omitempty"`
 	Foreign string     `json:"foreign,omitempty"`
 	Links   []Relation `json:"links,omitempty"`
-	Query   Query      `json:"query,omitempty"`
+	Query   QueryParam `json:"query,omitempty"`
 }
 
 // Option 模型配置选项

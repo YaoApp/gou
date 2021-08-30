@@ -45,7 +45,7 @@ func LoadModel(source string, name string) *Model {
 
 	// 解析常用数值
 	columns := map[string]*Column{} // 字段映射表
-	columnNames := []string{}       // 字段名称清单
+	columnNames := []interface{}{}  // 字段名称清单
 	PrimaryKey := "id"              // 字段主键
 	for i, column := range mod.MetaData.Columns {
 		columns[column.Name] = &mod.MetaData.Columns[i]
@@ -110,7 +110,7 @@ func (mod *Model) Find(id interface{}, withs ...With) (maps.MapStr, error) {
 	qb := capsule.Query().Table(mod.MetaData.Table.Name)
 	row, err := qb.
 		Where(mod.PrimaryKey, id).
-		Select(mod.SelectColumns()...).
+		Select(mod.SelectColumns(mod.MetaData.Table.Name)...).
 		First()
 	if err != nil {
 		return nil, err
@@ -122,11 +122,11 @@ func (mod *Model) Find(id interface{}, withs ...With) (maps.MapStr, error) {
 }
 
 // SelectColumns 选择字段
-func (mod *Model) SelectColumns(colums ...string) []interface{} {
+func (mod *Model) SelectColumns(alias string, colums ...interface{}) []interface{} {
 	if len(colums) == 0 {
 		colums = mod.ColumnNames
 	}
-	return mod.FliterSelect(colums)
+	return mod.FliterSelect(alias, colums)
 }
 
 // MustFind 查询单条记录

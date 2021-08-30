@@ -39,13 +39,13 @@ func TestModelMustFind(t *testing.T) {
 func TestModelMustFindWithHasOne(t *testing.T) {
 	user := Select("user").MustFind(1,
 		With{Name: "manu"},
-		With{Name: "addresses", Query: Query{Page: 2, PageSize: 1}},
+		With{Name: "addresses", Query: QueryParam{Page: 2, PageSize: 1}},
 		With{Name: "roles"},
 		With{
-			Name: "mother", Query: Query{
+			Name: "mother", Query: QueryParam{
 				Withs: map[string]With{"addresses": {
 					Name:  "addresses",
-					Query: Query{Page: 2, PageSize: 1},
+					Query: QueryParam{Page: 2, PageSize: 1},
 				}},
 			}},
 	)

@@ -92,7 +92,11 @@ func (aes EncryptorAES) Encode(value string) (string, error) {
 
 // Decode AES Decode
 func (aes EncryptorAES) Decode(field string) (string, error) {
-	return fmt.Sprintf("AES_DECRYPT(UNHEX(`%s`), '%s') as `%s`", field, aes.Key, field), nil
+	if strings.Contains(field, ".") {
+		namer := strings.Split(field, ".")
+		return fmt.Sprintf("AES_DECRYPT(UNHEX(`%s`.`%s`), '%s')", namer[0], namer[1], aes.Key), nil
+	}
+	return fmt.Sprintf("AES_DECRYPT(UNHEX(`%s`), '%s'", field, aes.Key), nil
 }
 
 // Validate AES Decode
