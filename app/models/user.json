@@ -305,7 +305,7 @@
           "key": "id",
           "foreign": "mother_friends.friend_id",
           "query": {
-            "select": ["name", "id", "status", "type"],
+            "select": ["name", "id", "status", "type", "secret"],
             "withs": {
               "manu": { "name": "manu" },
               "roles": { "name": "roles" },
