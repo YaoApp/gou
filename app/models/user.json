@@ -288,7 +288,7 @@
           "type": "hasOne",
           "model": "friends",
           "key": "user_id",
-          "foreign": "id",
+          "foreign": "user.id",
           "query": {
             "select": ["status", "type", "friend_id"],
             "wheres": [
@@ -303,7 +303,7 @@
           "type": "hasOne",
           "model": "user",
           "key": "id",
-          "foreign": "mother_friends.friend_id",
+          "foreign": "user_mother_friends.friend_id",
           "query": {
             "select": ["name", "id", "status", "type", "secret"],
             "withs": {

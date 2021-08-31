@@ -8,7 +8,7 @@ import (
 )
 
 // Query 构建查询栈
-func (param QueryParam) Query(root query.Query, prefix string) []query.Query {
+func (param QueryParam) Query(root query.Query) []query.Query {
 	qbs := []query.Query{}
 	if param.Model == "" {
 		return qbs
@@ -17,7 +17,7 @@ func (param QueryParam) Query(root query.Query, prefix string) []query.Query {
 	mod := Select(param.Model)
 	param.Table = mod.MetaData.Table.Name
 	if param.Alias == "" {
-		param.Alias = prefix + param.Table
+		param.Alias = param.Table
 	}
 
 	if root == nil {
@@ -39,14 +39,14 @@ func (param QueryParam) Query(root query.Query, prefix string) []query.Query {
 
 	// Withs
 	for _, with := range param.Withs {
-		param.With(with, root, mod, prefix)
+		param.With(with, root, mod)
 	}
 
 	return qbs
 }
 
 // With 关联查询
-func (param QueryParam) With(with With, qb query.Query, mod *Model, prefix string) []query.Query {
+func (param QueryParam) With(with With, qb query.Query, mod *Model) []query.Query {
 	qbs := []query.Query{}
 	rel, has := mod.MetaData.Relations[with.Name]
 	if !has {
@@ -55,89 +55,102 @@ func (param QueryParam) With(with With, qb query.Query, mod *Model, prefix strin
 
 	switch rel.Type {
 	case "hasOne":
-		return param.withHasOne(rel, with, qb, mod, prefix)
+		return param.withHasOne(rel, with, qb)
 	case "hasOneThrough":
-		return param.withHasOneThrough(rel, with, qb, mod)
+		return param.withHasOneThrough(rel, with, qb)
 	}
 
 	return qbs
 }
 
-func (param QueryParam) withHasOneThrough(rel Relation, with With, qb query.Query, mod *Model) []query.Query {
+// withHasOne hasOneThrough 关联查询
+func (param QueryParam) withHasOneThrough(rel Relation, with With, qb query.Query) []query.Query {
 	qbs := []query.Query{}
 	links := rel.Links
+	prev := param
+	alias := with.Name
+	if param.Alias != "" {
+		alias = param.Alias + "_" + alias
+	}
+
 	for _, link := range links {
-		qbs = param.withHasOne(link, with, qb, mod, with.Name+"_")
+		prev.Alias = alias
+		qbs = prev.withHasOne(link, with, qb)
 		qb = qbs[0]
+		prev = link.Query
+		prev.Model = link.Model
 	}
 	return qbs
 }
 
 // withHasOne hasOne 关联查询
-func (param QueryParam) withHasOne(rel Relation, with With, qb query.Query, mod *Model, prefix string) []query.Query {
+func (param QueryParam) withHasOne(rel Relation, with With, qb query.Query) []query.Query {
 	qbs := []query.Query{}
-	hasOneMod := Select(rel.Model)
-	hasOneQueryParam := with.Query
-	hasOneQueryParam.Model = rel.Model
-	hasOneQueryParam.Table = hasOneMod.MetaData.Table.Name
-	hasOneQueryParam.Alias = prefix + hasOneQueryParam.Table
+	withModel := Select(rel.Model)
+	withParam := with.Query
+	withParam.Model = rel.Model
+	withParam.Table = withModel.MetaData.Table.Name
+	withParam.Alias = withParam.Table
+	if param.Alias != "" {
+		withParam.Alias = param.Alias + "_" + withParam.Alias
+	}
 
-	key := hasOneQueryParam.Alias + "." + rel.Key
+	key := withParam.Alias + "." + rel.Key
 	if strings.Contains(rel.Key, ".") {
 		key = rel.Key
 	}
+
 	foreign := param.Alias + "." + rel.Foreign
 	if strings.Contains(rel.Foreign, ".") {
 		foreign = rel.Foreign
 	}
 
-	if len(hasOneQueryParam.Wheres) == 0 && len(rel.Query.Wheres) > 0 {
-		hasOneQueryParam.Wheres = rel.Query.Wheres
+	if len(withParam.Wheres) == 0 && len(rel.Query.Wheres) > 0 {
+		withParam.Wheres = rel.Query.Wheres
 	}
 
-	if len(hasOneQueryParam.Select) == 0 && len(rel.Query.Select) > 0 {
-		hasOneQueryParam.Select = rel.Query.Select
+	if len(withParam.Select) == 0 && len(rel.Query.Select) > 0 {
+		withParam.Select = rel.Query.Select
 	}
 
-	if len(hasOneQueryParam.Wheres) > 0 || len(hasOneQueryParam.Orders) > 0 {
+	if len(withParam.Wheres) > 0 || len(withParam.Orders) > 0 {
 
-		hasOneQueryParamSub := hasOneQueryParam
-		hasOneQueryParamSub.Alias = hasOneQueryParam.Table
+		withSubParam := withParam
+		withSubParam.Alias = withParam.Table
 
 		// SubQuery
 		qb.LeftJoinSub(func(sub query.Query) {
 
-			sub.Table(hasOneQueryParamSub.Table)
+			sub.Table(withSubParam.Table)
 
 			// Select
-			if len(hasOneQueryParam.Select) == 0 {
-				hasOneQueryParamSub.Select = hasOneMod.ColumnNames // Select All
-			} else if !hasOneQueryParam.hasSelectColumn(rel.Key) {
-				hasOneQueryParamSub.Select = append(hasOneQueryParam.Select, rel.Key)
+			if len(withParam.Select) == 0 {
+				withSubParam.Select = withModel.ColumnNames // Select All
+			} else if !withParam.hasSelectColumn(rel.Key) {
+				withSubParam.Select = append(withParam.Select, rel.Key)
 			}
-			sub.SelectAppend(hasOneMod.FliterSelect("", hasOneQueryParamSub.Select)...)
+			sub.SelectAppend(withModel.FliterSelect("", withSubParam.Select)...)
 
 			// Where
-			for _, where := range hasOneQueryParamSub.Wheres {
-				hasOneQueryParamSub.Where(where, sub, hasOneMod)
+			for _, where := range withSubParam.Wheres {
+				withSubParam.Where(where, sub, withModel)
 			}
+		}, withParam.Alias, key, "=", foreign)
 
-		}, hasOneQueryParam.Alias, key, "=", foreign)
-
-		hasOneQueryParam.Wheres = []QueryWhere{}
-		hasOneQueryParam.Orders = []QueryOrder{}
+		withParam.Wheres = []QueryWhere{}
+		withParam.Orders = []QueryOrder{}
 	} else {
 
 		// 直接Join
 		qb.LeftJoin(
-			hasOneQueryParam.Table+" as "+hasOneQueryParam.Alias,
+			withParam.Table+" as "+withParam.Alias,
 			key,
 			"=",
 			foreign,
 		)
 	}
 
-	qbs = hasOneQueryParam.Query(qb, "")
+	qbs = withParam.Query(qb)
 	return qbs
 }
 
@@ -148,18 +161,47 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 	m := mod
 	if where.Rel != "" {
 
-		// 忽略未关联关系查询
-		if _, has := param.Withs[where.Rel]; !has {
-			return
+		if strings.Contains(where.Rel, ".") { // mother.friends
+
+			rels := strings.Split(where.Rel, ".")
+			rel, has := mod.MetaData.Relations[rels[0]]
+			if !has {
+				return
+			}
+
+			has = false
+			for _, link := range rel.Links {
+				if link.Model == rels[1] {
+					has = true
+					rel = link
+					break
+				}
+			}
+
+			if !has {
+				return
+			}
+
+			alias = strings.ReplaceAll(where.Rel, ".", "_")
+			if param.Alias != "" {
+				alias = param.Alias + "_" + alias
+			}
+			m = Select(rel.Model)
+
+		} else { // manu
+			rel, has := mod.MetaData.Relations[where.Rel]
+			if !has {
+				return
+			}
+
+			alias = where.Rel
+			if param.Alias != "" {
+				alias = param.Alias + "_" + alias
+			}
+
+			m = Select(rel.Model)
 		}
 
-		rel, has := mod.MetaData.Relations[where.Rel]
-		if !has {
-			return
-		}
-
-		alias = where.Rel
-		m = Select(rel.Model)
 	}
 
 	if where.Method == "" {

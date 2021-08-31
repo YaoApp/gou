@@ -20,7 +20,7 @@ func TestQueryWhere(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil, "")
+	qbs := param.Query(nil)
 	for _, qb := range qbs {
 		rows := qb.MustGet()
 		utils.Dump(rows)
@@ -59,7 +59,7 @@ func TestQueryOrWhere(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil, "")
+	qbs := param.Query(nil)
 	for _, qb := range qbs {
 		rows := qb.MustGet()
 		utils.Dump(rows)
@@ -107,7 +107,7 @@ func TestQueryHasOne(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil, "")
+	qbs := param.Query(nil)
 	for _, qb := range qbs {
 		utils.Dump(qb.ToSQL())
 		rows := qb.MustGet()
@@ -156,7 +156,7 @@ func TestQueryHasOneWhere(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil, "")
+	qbs := param.Query(nil)
 	for _, qb := range qbs {
 		utils.Dump(qb.ToSQL())
 		rows := qb.MustGet()
@@ -201,7 +201,7 @@ func TestQueryHasOneRel(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil, "")
+	qbs := param.Query(nil)
 	for _, qb := range qbs {
 		utils.Dump(qb.ToSQL())
 		rows := qb.MustGet()
@@ -237,7 +237,48 @@ func TestQueryHasOneThrough(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil, "")
+	qbs := param.Query(nil)
+	for _, qb := range qbs {
+		utils.Dump(qb.ToSQL())
+		rows := qb.MustGet()
+		utils.Dump(rows)
+	}
+}
+
+func TestQueryHasOneThroughWhere(t *testing.T) {
+	param := QueryParam{
+		Model: "user",
+		Withs: map[string]With{
+			"mother": {Name: "mother"},
+		},
+		Select: []interface{}{"name", "secret", "status", "type", "id"},
+		Wheres: []QueryWhere{
+			{
+				Rel:    "mother.friends",
+				Column: "status",
+				Value:  "enabled",
+			},
+			{
+				Column: "status",
+				Value:  "enabled",
+			},
+			{
+				Wheres: []QueryWhere{
+					{
+						Column: "type",
+						Method: "where",
+						Value:  "admin",
+					},
+					{
+						Column: "type",
+						Method: "orWhere",
+						Value:  "staff",
+					},
+				},
+			},
+		},
+	}
+	qbs := param.Query(nil)
 	for _, qb := range qbs {
 		utils.Dump(qb.ToSQL())
 		rows := qb.MustGet()
