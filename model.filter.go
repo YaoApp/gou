@@ -44,8 +44,10 @@ func (mod *Model) FliterSelect(alias string, columns []interface{}) []interface{
 
 		// alias.field
 		field := name
+		varName := name
 		if alias != "" {
 			field = alias + "." + name
+			varName = alias + "_" + name
 		}
 
 		// 加密字段
@@ -55,10 +57,11 @@ func (mod *Model) FliterSelect(alias string, columns []interface{}) []interface{
 			if err != nil {
 				exception.Err(err, 500).Throw()
 			}
-			raw = raw + " as " + name
+			raw = raw + " as " + varName
 			res = append(res, dbal.Raw(raw))
 		} else {
-			res = append(res, field)
+			raw := field + " as  " + varName
+			res = append(res, raw)
 		}
 	}
 	return res

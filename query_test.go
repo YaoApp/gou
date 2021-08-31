@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/kun/utils"
 )
 
 func TestQueryWhere(t *testing.T) {
@@ -66,5 +67,143 @@ func TestQueryOrWhere(t *testing.T) {
 			assert.Equal(t, row.Get("mobile"), "13900002222")
 			assert.Equal(t, row.Get("type"), "staff")
 		}
+	}
+}
+
+func TestQueryHasOne(t *testing.T) {
+	param := QueryParam{
+		Model: "user",
+		Withs: map[string]With{
+			"manu": {
+				Name: "manu",
+				Query: QueryParam{
+					Select: []interface{}{"name", "status", "short_name"},
+				},
+			},
+		},
+		Select: []interface{}{"name", "secret", "status", "type"},
+		Wheres: []QueryWhere{
+			{
+				Column: "status",
+				Value:  "enabled",
+			},
+			{
+				Wheres: []QueryWhere{
+					{
+						Column: "type",
+						Method: "where",
+						Value:  "admin",
+					},
+					{
+						Column: "type",
+						Method: "orWhere",
+						Value:  "staff",
+					},
+				},
+			}, {
+				Column: "mobile",
+				Value:  "13900002222",
+			},
+		},
+	}
+	qbs := param.Query(nil)
+	for _, qb := range qbs {
+		utils.Dump(qb.ToSQL())
+		rows := qb.MustGet()
+		utils.Dump(rows)
+	}
+}
+func TestQueryHasOneWhere(t *testing.T) {
+	param := QueryParam{
+		Model: "user",
+		Withs: map[string]With{
+			"manu": {
+				Name: "manu",
+				Query: QueryParam{
+					Select: []interface{}{"name", "status", "short_name"},
+					Wheres: []QueryWhere{
+						{
+							Column: "status",
+							Method: "where",
+							Value:  "disabled",
+						}},
+				},
+			},
+		},
+		Select: []interface{}{"name", "secret", "status", "type"},
+		Wheres: []QueryWhere{
+			{
+				Column: "status",
+				Value:  "enabled",
+			},
+			{
+				Wheres: []QueryWhere{
+					{
+						Column: "type",
+						Method: "where",
+						Value:  "admin",
+					},
+					{
+						Column: "type",
+						Method: "orWhere",
+						Value:  "staff",
+					},
+				},
+			}, {
+				Column: "mobile",
+				Value:  "13900002222",
+			},
+		},
+	}
+	qbs := param.Query(nil)
+	for _, qb := range qbs {
+		utils.Dump(qb.ToSQL())
+		rows := qb.MustGet()
+		utils.Dump(rows)
+	}
+}
+
+func TestQueryHasOneRel(t *testing.T) {
+	param := QueryParam{
+		Model: "user",
+		Withs: map[string]With{
+			"manu": {
+				Name: "manu",
+				Query: QueryParam{
+					Select: []interface{}{"name", "status", "short_name"},
+				},
+			},
+		},
+		Select: []interface{}{"name", "secret", "status", "type"},
+		Wheres: []QueryWhere{
+			{
+				Column: "status",
+				Value:  "enabled",
+			},
+			{
+				Wheres: []QueryWhere{
+					{
+						Column: "type",
+						Method: "where",
+						Value:  "admin",
+					},
+					{
+						Column: "type",
+						Method: "orWhere",
+						Value:  "staff",
+					},
+				},
+			}, {
+				Rel:    "manu",
+				Column: "short_name",
+				Value:  "云道天成",
+			},
+		},
+	}
+	qbs := param.Query(nil)
+	for _, qb := range qbs {
+		utils.Dump(qb.ToSQL())
+		rows := qb.MustGet()
+		utils.Dump(rows)
 	}
 }
