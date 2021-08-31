@@ -2,8 +2,6 @@ package gou
 
 import (
 	"testing"
-
-	"github.com/yaoapp/kun/utils"
 )
 
 func TestQueryWhere(t *testing.T) {
@@ -20,16 +18,9 @@ func TestQueryWhere(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil)
-	for _, qb := range qbs {
-		rows := qb.MustGet()
-		utils.Dump(rows)
-		// assert.Equal(t, len(rows), 1)
-		// for _, row := range rows {
-		// 	assert.Equal(t, row.Get("mobile"), "13900001111")
-		// 	assert.Equal(t, row.Get("type"), "admin")
-		// }
-	}
+	stack := param.Query(nil)
+	stack.Run()
+
 }
 
 func TestQueryOrWhere(t *testing.T) {
@@ -59,16 +50,8 @@ func TestQueryOrWhere(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil)
-	for _, qb := range qbs {
-		rows := qb.MustGet()
-		utils.Dump(rows)
-		// assert.Equal(t, len(rows), 1)
-		// for _, row := range rows {
-		// 	assert.Equal(t, row.Get("mobile"), "13900002222")
-		// 	assert.Equal(t, row.Get("type"), "staff")
-		// }
-	}
+	stack := param.Query(nil)
+	stack.Run()
 }
 
 func TestQueryHasOne(t *testing.T) {
@@ -107,12 +90,8 @@ func TestQueryHasOne(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil)
-	for _, qb := range qbs {
-		utils.Dump(qb.ToSQL())
-		rows := qb.MustGet()
-		utils.Dump(rows)
-	}
+	stack := param.Query(nil)
+	stack.Run()
 }
 func TestQueryHasOneWhere(t *testing.T) {
 	param := QueryParam{
@@ -156,12 +135,8 @@ func TestQueryHasOneWhere(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil)
-	for _, qb := range qbs {
-		utils.Dump(qb.ToSQL())
-		rows := qb.MustGet()
-		utils.Dump(rows)
-	}
+	stack := param.Query(nil)
+	stack.Run()
 }
 
 func TestQueryHasOneRel(t *testing.T) {
@@ -201,12 +176,8 @@ func TestQueryHasOneRel(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil)
-	for _, qb := range qbs {
-		utils.Dump(qb.ToSQL())
-		rows := qb.MustGet()
-		utils.Dump(rows)
-	}
+	stack := param.Query(nil)
+	stack.Run()
 }
 
 func TestQueryHasOneThrough(t *testing.T) {
@@ -237,12 +208,8 @@ func TestQueryHasOneThrough(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil)
-	for _, qb := range qbs {
-		utils.Dump(qb.ToSQL())
-		rows := qb.MustGet()
-		utils.Dump(rows)
-	}
+	stack := param.Query(nil)
+	stack.Run()
 }
 
 func TestQueryHasOneThroughWhere(t *testing.T) {
@@ -278,10 +245,47 @@ func TestQueryHasOneThroughWhere(t *testing.T) {
 			},
 		},
 	}
-	qbs := param.Query(nil)
-	for _, qb := range qbs {
-		utils.Dump(qb.ToSQL())
-		rows := qb.MustGet()
-		utils.Dump(rows)
+	stack := param.Query(nil)
+	stack.Run()
+}
+
+func TestQueryHasMany(t *testing.T) {
+	param := QueryParam{
+		Model: "user",
+		Withs: map[string]With{
+			"addresses": {
+				Name: "addresses",
+				Query: QueryParam{
+					Select:   []interface{}{"province", "city", "location", "status"},
+					PageSize: 20,
+				},
+			},
+		},
+		Select: []interface{}{"name", "secret", "status", "type"},
+		Wheres: []QueryWhere{
+			{
+				Column: "status",
+				Value:  "enabled",
+			},
+			{
+				Wheres: []QueryWhere{
+					{
+						Column: "type",
+						Method: "where",
+						Value:  "admin",
+					},
+					{
+						Column: "type",
+						Method: "orWhere",
+						Value:  "staff",
+					},
+				},
+			}, {
+				Column: "mobile",
+				Value:  "13900002222",
+			},
+		},
 	}
+	stack := param.Query(nil)
+	stack.Run()
 }

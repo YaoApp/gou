@@ -7,65 +7,70 @@ import (
 	"github.com/yaoapp/xun/dbal/query"
 )
 
-// Query 构建查询栈
-func (param QueryParam) Query(root query.Query) []query.Query {
-	qbs := []query.Query{}
-	if param.Model == "" {
-		return qbs
-	}
+// Query 构建查询栈(本版先实现，下一版本根据实际应用场景迭代)
+func (param QueryParam) Query(stack *QueryStack, stackWheres ...map[string]interface{}) *QueryStack {
 
+	if param.Model == "" {
+		return stack
+	}
 	mod := Select(param.Model)
 	param.Table = mod.MetaData.Table.Name
 	if param.Alias == "" {
 		param.Alias = param.Table
 	}
 
-	if root == nil {
-		root = capsule.Query().Table(param.Table + " as " + param.Alias)
+	if stack == nil {
+		stack = NewQueryStack()
+		var wheres map[string]interface{} = nil
+		if len(stackWheres) > 0 {
+			wheres = stackWheres[0]
+		}
+		stack.Push(capsule.Query().Table(param.Table+" as "+param.Alias), wheres)
 	}
 
 	// Select
 	if len(param.Select) == 0 {
 		param.Select = mod.ColumnNames // Select All
 	}
-	root.SelectAppend(mod.FliterSelect(param.Alias, param.Select)...)
+	stack.Query().SelectAppend(mod.FliterSelect(param.Alias, param.Select)...)
 
 	// Where
 	for _, where := range param.Wheres {
-		param.Where(where, root, mod)
+		param.Where(where, stack.Query(), mod)
 	}
-
-	qbs = append(qbs, root)
 
 	// Withs
 	for _, with := range param.Withs {
-		param.With(with, root, mod)
+		param.With(stack, with, mod)
 	}
 
-	return qbs
+	return stack
 }
 
 // With 关联查询
-func (param QueryParam) With(with With, qb query.Query, mod *Model) []query.Query {
-	qbs := []query.Query{}
+func (param QueryParam) With(stack *QueryStack, with With, mod *Model) {
 	rel, has := mod.MetaData.Relations[with.Name]
 	if !has {
-		return qbs
+		return
 	}
 
 	switch rel.Type {
 	case "hasOne":
-		return param.withHasOne(rel, with, qb)
+		param.withHasOne(stack, rel, with)
+		return
 	case "hasOneThrough":
-		return param.withHasOneThrough(rel, with, qb)
+		param.withHasOneThrough(stack, rel, with)
+		return
+	case "hasMany":
+		param.withHasMany(stack, rel, with)
+		return
+
 	}
 
-	return qbs
 }
 
 // withHasOne hasOneThrough 关联查询
-func (param QueryParam) withHasOneThrough(rel Relation, with With, qb query.Query) []query.Query {
-	qbs := []query.Query{}
+func (param QueryParam) withHasOneThrough(stack *QueryStack, rel Relation, with With) {
 	links := rel.Links
 	prev := param
 	alias := with.Name
@@ -75,17 +80,14 @@ func (param QueryParam) withHasOneThrough(rel Relation, with With, qb query.Quer
 
 	for _, link := range links {
 		prev.Alias = alias
-		qbs = prev.withHasOne(link, with, qb)
-		qb = qbs[0]
+		prev.withHasOne(stack, link, with)
 		prev = link.Query
 		prev.Model = link.Model
 	}
-	return qbs
 }
 
 // withHasOne hasOne 关联查询
-func (param QueryParam) withHasOne(rel Relation, with With, qb query.Query) []query.Query {
-	qbs := []query.Query{}
+func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 	withModel := Select(rel.Model)
 	withParam := with.Query
 	withParam.Model = rel.Model
@@ -119,7 +121,7 @@ func (param QueryParam) withHasOne(rel Relation, with With, qb query.Query) []qu
 		withSubParam.Alias = withParam.Table
 
 		// SubQuery
-		qb.LeftJoinSub(func(sub query.Query) {
+		stack.Query().LeftJoinSub(func(sub query.Query) {
 
 			sub.Table(withSubParam.Table)
 
@@ -142,7 +144,7 @@ func (param QueryParam) withHasOne(rel Relation, with With, qb query.Query) []qu
 	} else {
 
 		// 直接Join
-		qb.LeftJoin(
+		stack.Query().LeftJoin(
 			withParam.Table+" as "+withParam.Alias,
 			key,
 			"=",
@@ -150,8 +152,7 @@ func (param QueryParam) withHasOne(rel Relation, with With, qb query.Query) []qu
 		)
 	}
 
-	qbs = withParam.Query(qb)
-	return qbs
+	withParam.Query(stack)
 }
 
 // Where 查询条件
@@ -227,6 +228,34 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 		qb.OrWhere(column, where.Value)
 		break
 	}
+}
+
+// withHasMany hasMany 关联查询
+func (param QueryParam) withHasMany(stack *QueryStack, rel Relation, with With) {
+	withModel := Select(rel.Model)
+	withParam := with.Query
+	withParam.Model = rel.Model
+	withParam.Table = withModel.MetaData.Table.Name
+	withParam.Alias = withParam.Table
+
+	withParam.Alias = withParam.Table
+	if param.Alias != "" {
+		withParam.Alias = param.Alias + "_" + withParam.Alias
+	}
+
+	key := withParam.Alias + "." + rel.Key
+	if strings.Contains(rel.Key, ".") {
+		key = rel.Key
+	}
+
+	foreign := param.Alias + "." + rel.Foreign
+	if strings.Contains(rel.Foreign, ".") {
+		foreign = rel.Foreign
+	}
+	wheres := map[string]interface{}{}
+	wheres[key] = foreign
+	newStack := withParam.Query(nil, wheres)
+	stack.Merge(newStack)
 }
 
 // hasSelectColumn 检查字段是否已存在
