@@ -290,7 +290,7 @@
           "key": "user_id",
           "foreign": "id",
           "query": {
-            "select": ["status", "type"],
+            "select": ["status", "type", "friend_id"],
             "wheres": [
               {
                 "column": "type",
@@ -303,9 +303,9 @@
           "type": "hasOne",
           "model": "user",
           "key": "id",
-          "foreign": "friend_id",
+          "foreign": "mother_friends.friend_id",
           "query": {
-            "select": ["name"],
+            "select": ["name", "id", "status", "type"],
             "withs": {
               "manu": { "name": "manu" },
               "roles": { "name": "roles" },
