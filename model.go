@@ -105,20 +105,21 @@ func (mod *Model) Reload() *Model {
 }
 
 // Find 查询单条记录
-func (mod *Model) Find(id interface{}, withs ...With) (maps.MapStr, error) {
-
-	qb := capsule.Query().Table(mod.MetaData.Table.Name)
-	row, err := qb.
-		Where(mod.PrimaryKey, id).
-		Select(mod.SelectColumns(mod.MetaData.Table.Name)...).
-		First()
-	if err != nil {
-		return nil, err
+func (mod *Model) Find(id interface{}, param QueryParam) (maps.MapStr, error) {
+	param.Model = mod.Name
+	param.Wheres = []QueryWhere{
+		{
+			Column: mod.PrimaryKey,
+			Value:  id,
+		},
 	}
+	stack := NewQueryStack(param)
+	res := stack.Run()
+	if len(res) <= 0 {
+		return nil, fmt.Errorf("ID=%v的数据不存在", id)
+	}
+	return res[0], nil
 
-	var res maps.MapStr = row.ToMap()
-	mod.FliterOut(res)
-	return res, nil
 }
 
 // SelectColumns 选择字段
@@ -130,8 +131,8 @@ func (mod *Model) SelectColumns(alias string, colums ...interface{}) []interface
 }
 
 // MustFind 查询单条记录
-func (mod *Model) MustFind(id interface{}, withs ...With) maps.MapStr {
-	res, err := mod.Find(id, withs...)
+func (mod *Model) MustFind(id interface{}, param QueryParam) maps.MapStr {
+	res, err := mod.Find(id, param)
 	if err != nil {
 		exception.Err(err, 500).Throw()
 	}

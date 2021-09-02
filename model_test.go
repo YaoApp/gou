@@ -31,24 +31,27 @@ func TestModelMigrate(t *testing.T) {
 }
 
 func TestModelMustFind(t *testing.T) {
-	user := Select("user").MustFind(1)
+	user := Select("user").MustFind(1, QueryParam{})
 	utils.Dump(user)
 	// assert.Equal(t, user.Get("mobile"), "13900001111")
 	// assert.Equal(t, user.Dot().Get("extra.sex"), "男")
 }
 
-func TestModelMustFindWithHasOne(t *testing.T) {
+func TestModelMustFindWiths(t *testing.T) {
 	user := Select("user").MustFind(1,
-		With{Name: "manu"},
-		With{Name: "addresses", Query: QueryParam{Page: 2, PageSize: 1}},
-		With{Name: "roles"},
-		With{
-			Name: "mother", Query: QueryParam{
-				Withs: map[string]With{"addresses": {
-					Name:  "addresses",
-					Query: QueryParam{Page: 2, PageSize: 1},
-				}},
-			}},
-	)
+		QueryParam{
+			Withs: map[string]With{
+				"manu":      {},
+				"addresses": {},
+				"roles":     {}, // 暂未实现
+				"mother":    {
+					// Query: QueryParam{ // 数据归集存在BUG
+					// 	Withs: map[string]With{
+					// 		"addresses": {},
+					// 	},
+					// },
+				},
+			},
+		})
 	utils.Dump(user)
 }

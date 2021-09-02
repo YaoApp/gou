@@ -145,8 +145,8 @@ func runModel(name string, method string, args ...interface{}) interface{} {
 	mod := Select(name)
 	switch method {
 	case "find":
-		validateArgs(name, method, args, 1)
-		return mod.MustFind(args[0])
+		validateArgs(name, method, args, 2)
+		return mod.MustFind(args[0], QueryParam{})
 	}
 	return nil
 }
