@@ -52,6 +52,11 @@ func (param QueryParam) Query(stack *QueryStack, stackParams ...QueryStackParam)
 		param.Where(where, stack.Query(), mod)
 	}
 
+	// Order
+	for _, order := range param.Orders {
+		param.Order(order, stack.Query(), mod)
+	}
+
 	// Withs
 	for name, with := range param.Withs {
 		param.With(name, stack, with, mod)
@@ -175,6 +180,64 @@ func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 
 	withParam.Export = param.Export
 	withParam.Query(stack)
+}
+
+// Order 排序条件
+func (param QueryParam) Order(order QueryOrder, qb query.Query, mod *Model) {
+
+	alias := param.Alias
+	m := mod
+	if order.Rel != "" {
+
+		if strings.Contains(order.Rel, ".") { // mother.friends
+
+			rels := strings.Split(order.Rel, ".")
+			rel, has := mod.MetaData.Relations[rels[0]]
+			if !has {
+				return
+			}
+
+			has = false
+			for _, link := range rel.Links {
+				if link.Model == rels[1] {
+					has = true
+					rel = link
+					break
+				}
+			}
+
+			if !has {
+				return
+			}
+
+			alias = strings.ReplaceAll(order.Rel, ".", "_")
+			if param.Alias != "" {
+				alias = param.Alias + "_" + alias
+			}
+			m = Select(rel.Model)
+
+		} else { // manu
+			rel, has := mod.MetaData.Relations[order.Rel]
+			if !has {
+				return
+			}
+
+			alias = order.Rel
+			if param.Alias != "" {
+				alias = param.Alias + "_" + alias
+			}
+
+			m = Select(rel.Model)
+		}
+
+	}
+
+	if order.Option == "" {
+		order.Option = "asc"
+	}
+
+	column := m.FliterWhere(alias, order.Column)
+	qb.OrderBy(column, order.Option)
 }
 
 // Where 查询条件

@@ -32,6 +32,7 @@ type QueryWhere struct {
 
 // QueryOrder Order 查询排序
 type QueryOrder struct {
+	Rel    string `json:"rel,omitempty"` // Relation Name
 	Column string `json:"column"`
 	Option string `json:"option,omitempty"` // desc, asc
 }
