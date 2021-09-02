@@ -208,7 +208,7 @@ func (stack *QueryStack) paginate(page int, pagesize int, res *[][]maps.MapStrAn
 			fmtRow[key] = value
 		}
 
-		fmtRows = append(fmtRows, fmtRow)
+		fmtRows = append(fmtRows, fmtRow.UnDot())
 	}
 	*res = append(*res, fmtRows)
 	stack.Next()
@@ -233,8 +233,7 @@ func (stack *QueryStack) run(res *[][]maps.MapStrAny, builder QueryStackBuilder,
 			}
 			fmtRow[key] = value
 		}
-
-		fmtRows = append(fmtRows, fmtRow)
+		fmtRows = append(fmtRows, fmtRow.UnDot())
 	}
 	*res = append(*res, fmtRows)
 	stack.Next()
@@ -276,8 +275,9 @@ func (stack *QueryStack) runHasMany(res *[][]maps.MapStrAny, builder QueryStackB
 		relKey := rel.Key
 		relVal := fmtRow.Get(relKey)
 		if relVal != nil {
-			fmtRows = append(fmtRows, fmtRow)
-			fmtRowMap[relVal] = fmtRow
+			unDotRows := fmtRow.UnDot()
+			fmtRows = append(fmtRows, unDotRows)
+			fmtRowMap[relVal] = unDotRows
 		}
 	}
 

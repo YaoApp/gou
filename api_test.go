@@ -24,7 +24,7 @@ func TestSelectAPI(t *testing.T) {
 // }
 
 func TestRunModel(t *testing.T) {
-	res := Run("models.user.Find", 1)
+	res := Run("models.user.Find", 1, QueryParam{})
 	id := res.(maps.MapStr).Get("id")
 	utils.Dump(id)
 }
