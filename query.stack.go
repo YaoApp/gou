@@ -2,6 +2,7 @@ package gou
 
 import (
 	"github.com/yaoapp/kun/maps"
+	"github.com/yaoapp/xun"
 	"github.com/yaoapp/xun/dbal/query"
 )
 
@@ -147,8 +148,75 @@ func (stack *QueryStack) Run() []maps.MapStrAny {
 	return res[0]
 }
 
+// Paginate 执行查询栈(分页查询)
+func (stack *QueryStack) Paginate(page int, pagesize int) maps.MapStrAny {
+	res := [][]maps.MapStrAny{}
+	var pageInfo xun.P
+	for i, qb := range stack.Builders {
+		param := stack.Params[i]
+		if i == 0 {
+			pageInfo = stack.paginate(page, pagesize, &res, qb, param)
+			continue
+		}
+		switch param.Relation.Type {
+		case "hasMany":
+			stack.runHasMany(&res, qb, param)
+			break
+		default:
+			stack.run(&res, qb, param)
+		}
+	}
+
+	if len(res) < 0 {
+		return nil
+	}
+
+	response := maps.MapStrAny{}
+	response["data"] = res[0]
+	response["pagesize"] = pageInfo.PageSize
+	response["pagecnt"] = pageInfo.TotalPages
+	response["pagesize"] = pageInfo.PageSize
+	response["page"] = pageInfo.CurrentPage
+	response["next"] = pageInfo.NextPage
+	response["prev"] = pageInfo.PreviousPage
+	response["total"] = pageInfo.Total
+	return response
+}
+
+func (stack *QueryStack) paginate(page int, pagesize int, res *[][]maps.MapStrAny, builder QueryStackBuilder, param QueryStackParam) xun.P {
+
+	rows := []xun.R{}
+	pageRes := builder.Query.MustPaginate(pagesize, page)
+	for _, item := range pageRes.Items {
+		rows = append(rows, xun.MakeR(item))
+	}
+
+	fmtRows := []maps.MapStr{}
+	for _, row := range rows {
+		fmtRow := maps.MapStr{}
+		for key, value := range row {
+			if cmap, has := builder.ColumnMap[key]; has {
+				fmtRow[cmap.Export] = value
+				cmap.Column.FliterOut(value, fmtRow, cmap.Export)
+				continue
+			}
+			fmtRow[key] = value
+		}
+
+		fmtRows = append(fmtRows, fmtRow)
+	}
+	*res = append(*res, fmtRows)
+	stack.Next()
+	return pageRes
+}
+
 func (stack *QueryStack) run(res *[][]maps.MapStrAny, builder QueryStackBuilder, param QueryStackParam) {
-	rows := builder.Query.MustGet()
+
+	limit := 100
+	if param.QueryParam.Limit > 0 {
+		limit = param.QueryParam.Limit
+	}
+	rows := builder.Query.Limit(limit).MustGet()
 	fmtRows := []maps.MapStr{}
 	for _, row := range rows {
 		fmtRow := maps.MapStr{}
@@ -183,7 +251,8 @@ func (stack *QueryStack) runHasMany(res *[][]maps.MapStrAny, builder QueryStackB
 	if param.QueryParam.Alias != "" {
 		name = param.QueryParam.Alias + "." + name
 	}
-	builder.Query.WhereIn(name, foreignIDs)
+
+	builder.Query.WhereIn(name, foreignIDs).Limit(100)
 	rows := builder.Query.MustGet()
 
 	// 格式化数据

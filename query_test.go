@@ -345,3 +345,32 @@ func TestQueryHasManyAndOne(t *testing.T) {
 	res := stack.Run()
 	utils.Dump(res)
 }
+
+func TestQueryHasManyAndOnePaginate(t *testing.T) {
+	param := QueryParam{
+		Model: "user",
+		Withs: map[string]With{
+			"manu": {
+				Query: QueryParam{
+					Select: []interface{}{"name", "status", "short_name"},
+				},
+			},
+			"addresses": {
+				Query: QueryParam{
+					Select:   []interface{}{"province", "city", "location", "status"},
+					PageSize: 20,
+				},
+			},
+		},
+		Select: []interface{}{"name", "secret", "status", "type", "extra"},
+		Wheres: []QueryWhere{
+			{
+				Column: "status",
+				Value:  "enabled",
+			},
+		},
+	}
+	stack := param.Query(nil)
+	res := stack.Paginate(1, 2)
+	utils.Dump(res)
+}
