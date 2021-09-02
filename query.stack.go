@@ -2,7 +2,6 @@ package gou
 
 import (
 	"github.com/yaoapp/kun/maps"
-	"github.com/yaoapp/kun/utils"
 	"github.com/yaoapp/xun/dbal/query"
 )
 
@@ -128,7 +127,7 @@ func (stack *QueryStack) PrevParam() *QueryStackParam {
 }
 
 // Run 执行查询栈
-func (stack *QueryStack) Run() {
+func (stack *QueryStack) Run() []maps.MapStrAny {
 	res := [][]maps.MapStrAny{}
 	for i, qb := range stack.Builders {
 		param := stack.Params[i]
@@ -140,6 +139,11 @@ func (stack *QueryStack) Run() {
 			stack.run(&res, qb, param)
 		}
 	}
+
+	if len(res) < 0 {
+		return nil
+	}
+	return res[0]
 }
 
 func (stack *QueryStack) run(res *[][]maps.MapStrAny, builder QueryStackBuilder, param QueryStackParam) {
@@ -222,5 +226,4 @@ func (stack *QueryStack) runHasMany(res *[][]maps.MapStrAny, builder QueryStackB
 	}
 
 	*res = append(*res, fmtRows)
-	utils.Dump(res)
 }

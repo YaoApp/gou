@@ -2,6 +2,8 @@ package gou
 
 import (
 	"testing"
+
+	"github.com/yaoapp/kun/utils"
 )
 
 func TestQueryWhere(t *testing.T) {
@@ -91,7 +93,8 @@ func TestQueryHasOne(t *testing.T) {
 		},
 	}
 	stack := param.Query(nil)
-	stack.Run()
+	res := stack.Run()
+	utils.Dump(res)
 }
 func TestQueryHasOneWhere(t *testing.T) {
 	param := QueryParam{
@@ -137,6 +140,8 @@ func TestQueryHasOneWhere(t *testing.T) {
 	}
 	stack := param.Query(nil)
 	stack.Run()
+	res := stack.Run()
+	utils.Dump(res)
 }
 
 func TestQueryHasOneRel(t *testing.T) {
@@ -177,7 +182,9 @@ func TestQueryHasOneRel(t *testing.T) {
 		},
 	}
 	stack := param.Query(nil)
-	stack.Run()
+	res := stack.Run()
+	utils.Dump(res)
+
 }
 
 func TestQueryHasOneThrough(t *testing.T) {
@@ -209,7 +216,8 @@ func TestQueryHasOneThrough(t *testing.T) {
 		},
 	}
 	stack := param.Query(nil)
-	stack.Run()
+	res := stack.Run()
+	utils.Dump(res)
 }
 
 func TestQueryHasOneThroughWhere(t *testing.T) {
@@ -246,7 +254,8 @@ func TestQueryHasOneThroughWhere(t *testing.T) {
 		},
 	}
 	stack := param.Query(nil)
-	stack.Run()
+	res := stack.Run()
+	utils.Dump(res)
 }
 
 func TestQueryHasMany(t *testing.T) {
