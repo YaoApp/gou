@@ -298,3 +298,51 @@ func TestQueryHasMany(t *testing.T) {
 	stack := param.Query(nil)
 	stack.Run()
 }
+
+func TestQueryHasManyAndOne(t *testing.T) {
+	param := QueryParam{
+		Model: "user",
+		Withs: map[string]With{
+			"manu": {
+				Name: "manu",
+				Query: QueryParam{
+					Select: []interface{}{"name", "status", "short_name"},
+				},
+			},
+			"addresses": {
+				Name: "addresses",
+				Query: QueryParam{
+					Select:   []interface{}{"province", "city", "location", "status"},
+					PageSize: 20,
+				},
+			},
+		},
+		Select: []interface{}{"name", "secret", "status", "type", "extra"},
+		Wheres: []QueryWhere{
+			{
+				Column: "status",
+				Value:  "enabled",
+			},
+			{
+				Wheres: []QueryWhere{
+					{
+						Column: "type",
+						Method: "where",
+						Value:  "admin",
+					},
+					{
+						Column: "type",
+						Method: "orWhere",
+						Value:  "staff",
+					},
+				},
+			}, {
+				Column: "mobile",
+				Value:  "13900002222",
+			},
+		},
+	}
+	stack := param.Query(nil)
+	res := stack.Run()
+	utils.Dump(res)
+}
