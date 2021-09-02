@@ -7,6 +7,11 @@ import (
 	"github.com/yaoapp/xun/dbal/query"
 )
 
+// NewQuery 新建查询栈
+func (param QueryParam) NewQuery() *QueryStack {
+	return param.Query(nil)
+}
+
 // Query 构建查询栈(本版先实现，下一版本根据实际应用场景迭代)
 func (param QueryParam) Query(stack *QueryStack, stackParams ...QueryStackParam) *QueryStack {
 
@@ -21,7 +26,7 @@ func (param QueryParam) Query(stack *QueryStack, stackParams ...QueryStackParam)
 
 	exportPrefix := param.Export
 	if stack == nil {
-		stack = NewQueryStack()
+		stack = MakeQueryStack()
 		stackParam := QueryStackParam{
 			QueryParam: param,
 		}

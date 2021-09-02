@@ -27,13 +27,18 @@ type QueryStackParam struct {
 	ExportPrefix string // 字段导出前缀
 }
 
-// NewQueryStack 创建查询栈
-func NewQueryStack() *QueryStack {
+// MakeQueryStack 创建查询栈
+func MakeQueryStack() *QueryStack {
 	return &QueryStack{
 		Builders: []QueryStackBuilder{},
 		Params:   []QueryStackParam{},
 		Current:  -1,
 	}
+}
+
+// NewQueryStack 新建查询栈
+func NewQueryStack(param QueryParam) *QueryStack {
+	return param.Query(nil)
 }
 
 // Push 添加查询器

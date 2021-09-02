@@ -20,7 +20,7 @@ func TestQueryWhere(t *testing.T) {
 			},
 		},
 	}
-	stack := param.Query(nil)
+	stack := NewQueryStack(param)
 	stack.Run()
 
 }
@@ -52,7 +52,7 @@ func TestQueryOrWhere(t *testing.T) {
 			},
 		},
 	}
-	stack := param.Query(nil)
+	stack := NewQueryStack(param)
 	stack.Run()
 }
 
@@ -92,7 +92,7 @@ func TestQueryHasOne(t *testing.T) {
 			},
 		},
 	}
-	stack := param.Query(nil)
+	stack := NewQueryStack(param)
 	res := stack.Run()
 	utils.Dump(res)
 }
@@ -138,7 +138,7 @@ func TestQueryHasOneWhere(t *testing.T) {
 			},
 		},
 	}
-	stack := param.Query(nil)
+	stack := NewQueryStack(param)
 	stack.Run()
 	res := stack.Run()
 	utils.Dump(res)
@@ -181,7 +181,7 @@ func TestQueryHasOneRel(t *testing.T) {
 			},
 		},
 	}
-	stack := param.Query(nil)
+	stack := NewQueryStack(param)
 	res := stack.Run()
 	utils.Dump(res)
 
@@ -215,7 +215,7 @@ func TestQueryHasOneThrough(t *testing.T) {
 			},
 		},
 	}
-	stack := param.Query(nil)
+	stack := NewQueryStack(param)
 	res := stack.Run()
 	utils.Dump(res)
 }
@@ -253,7 +253,7 @@ func TestQueryHasOneThroughWhere(t *testing.T) {
 			},
 		},
 	}
-	stack := param.Query(nil)
+	stack := NewQueryStack(param)
 	res := stack.Run()
 	utils.Dump(res)
 }
@@ -294,7 +294,7 @@ func TestQueryHasMany(t *testing.T) {
 			},
 		},
 	}
-	stack := param.Query(nil)
+	stack := NewQueryStack(param)
 	res := stack.Run()
 	utils.Dump(res)
 
@@ -341,7 +341,7 @@ func TestQueryHasManyAndOne(t *testing.T) {
 			},
 		},
 	}
-	stack := param.Query(nil)
+	stack := NewQueryStack(param)
 	res := stack.Run()
 	utils.Dump(res)
 }
@@ -370,7 +370,7 @@ func TestQueryHasManyAndOnePaginate(t *testing.T) {
 			},
 		},
 	}
-	stack := param.Query(nil)
+	stack := NewQueryStack(param)
 	res := stack.Paginate(1, 2)
 	utils.Dump(res)
 }
@@ -405,7 +405,7 @@ func TestQueryHasManyAndOnePaginateOrder(t *testing.T) {
 			},
 		},
 	}
-	stack := param.Query(nil)
+	stack := NewQueryStack(param)
 	res := stack.Paginate(1, 2)
 	utils.Dump(res)
 }
