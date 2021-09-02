@@ -115,3 +115,9 @@ type Option struct {
 	Permission  bool `json:"permission,omitempty"`   // + __permission 字段
 	Logging     bool `json:"logging,omitempty"`      // + __logging_id 字段
 }
+
+// ColumnMap ColumnMap 字段映射
+type ColumnMap struct {
+	Column *Column
+	Model  *Model
+}

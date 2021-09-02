@@ -23,8 +23,12 @@ func (mod *Model) FliterIn(row maps.MapStrAny) {
 }
 
 // FliterSelect 选择字段
-func (mod *Model) FliterSelect(alias string, columns []interface{}) []interface{} {
+func (mod *Model) FliterSelect(alias string, columns []interface{}, cmap map[string]ColumnMap) []interface{} {
 	res := []interface{}{}
+	if cmap == nil {
+		cmap = map[string]ColumnMap{}
+	}
+
 	for _, col := range columns {
 
 		if _, ok := col.(dbal.Expression); ok {
@@ -48,6 +52,12 @@ func (mod *Model) FliterSelect(alias string, columns []interface{}) []interface{
 		if alias != "" {
 			field = alias + "." + name
 			varName = alias + "_" + name
+		}
+
+		// 字段映射表
+		cmap[varName] = ColumnMap{
+			Model:  mod,
+			Column: column,
 		}
 
 		// 加密字段

@@ -261,7 +261,7 @@ func TestQueryHasMany(t *testing.T) {
 				},
 			},
 		},
-		Select: []interface{}{"name", "secret", "status", "type"},
+		Select: []interface{}{"name", "secret", "status", "type", "extra"},
 		Wheres: []QueryWhere{
 			{
 				Column: "status",

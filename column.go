@@ -18,15 +18,20 @@ func (column *Column) FliterIn(value interface{}, row maps.MapStrAny) {
 }
 
 // FliterOut 输出过滤器
-func (column *Column) FliterOut(value interface{}, row maps.MapStrAny) {
-	column.fliterOutJSON(value, row)
+func (column *Column) FliterOut(value interface{}, row maps.MapStrAny, prefix ...string) {
+	pre := ""
+	if len(prefix) > 0 {
+		pre = prefix[0]
+	}
+	column.fliterOutJSON(value, row, pre)
 }
 
 // fliterInJSON JSON字段处理
-func (column *Column) fliterOutJSON(value interface{}, row maps.MapStrAny) {
+func (column *Column) fliterOutJSON(value interface{}, row maps.MapStrAny, prefix string) {
 	if strings.ToLower(column.Type) != "json" {
 		return
 	}
+	name := prefix + column.Name
 	if raw, ok := value.(string); ok {
 
 		var v interface{}
@@ -34,14 +39,14 @@ func (column *Column) fliterOutJSON(value interface{}, row maps.MapStrAny) {
 		if err != nil {
 			exception.Err(err, 400).Throw()
 		}
-		row.Set(column.Name, v)
+		row.Set(name, v)
 	} else if raw, ok := value.([]byte); ok {
 		var v interface{}
 		err := jsoniter.Unmarshal(raw, &v)
 		if err != nil {
 			exception.Err(err, 400).Throw()
 		}
-		row.Set(column.Name, v)
+		row.Set(name, v)
 	}
 }
 

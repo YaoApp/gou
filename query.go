@@ -8,7 +8,7 @@ import (
 )
 
 // Query 构建查询栈(本版先实现，下一版本根据实际应用场景迭代)
-func (param QueryParam) Query(stack *QueryStack, stackWheres ...map[string]interface{}) *QueryStack {
+func (param QueryParam) Query(stack *QueryStack, stackParams ...QueryStackParam) *QueryStack {
 
 	if param.Model == "" {
 		return stack
@@ -21,18 +21,29 @@ func (param QueryParam) Query(stack *QueryStack, stackWheres ...map[string]inter
 
 	if stack == nil {
 		stack = NewQueryStack()
-		var wheres map[string]interface{} = nil
-		if len(stackWheres) > 0 {
-			wheres = stackWheres[0]
+		stackParam := QueryStackParam{
+			QueryParam: param,
 		}
-		stack.Push(capsule.Query().Table(param.Table+" as "+param.Alias), wheres)
+		if len(stackParams) > 0 {
+			stackParam = stackParams[0]
+		}
+
+		builder := QueryStackBuilder{
+			Model:     mod,
+			Query:     capsule.Query().Table(param.Table + " as " + param.Alias),
+			ColumnMap: map[string]ColumnMap{},
+		}
+
+		stack.Push(builder, stackParam)
 	}
 
 	// Select
 	if len(param.Select) == 0 {
 		param.Select = mod.ColumnNames // Select All
 	}
-	stack.Query().SelectAppend(mod.FliterSelect(param.Alias, param.Select)...)
+
+	selects := mod.FliterSelect(param.Alias, param.Select, stack.Builder().ColumnMap)
+	stack.Query().SelectAppend(selects...)
 
 	// Where
 	for _, where := range param.Wheres {
@@ -131,7 +142,9 @@ func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 			} else if !withParam.hasSelectColumn(rel.Key) {
 				withSubParam.Select = append(withParam.Select, rel.Key)
 			}
-			sub.SelectAppend(withModel.FliterSelect("", withSubParam.Select)...)
+
+			selects := withModel.FliterSelect("", withSubParam.Select, nil)
+			sub.SelectAppend(selects...)
 
 			// Where
 			for _, where := range withSubParam.Wheres {
@@ -232,29 +245,36 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 
 // withHasMany hasMany 关联查询
 func (param QueryParam) withHasMany(stack *QueryStack, rel Relation, with With) {
+
 	withModel := Select(rel.Model)
 	withParam := with.Query
 	withParam.Model = rel.Model
 	withParam.Table = withModel.MetaData.Table.Name
 	withParam.Alias = withParam.Table
-
 	withParam.Alias = withParam.Table
 	if param.Alias != "" {
 		withParam.Alias = param.Alias + "_" + withParam.Alias
 	}
 
-	key := withParam.Alias + "." + rel.Key
-	if strings.Contains(rel.Key, ".") {
-		key = rel.Key
+	// Select & 添加关联主键
+	if len(withParam.Select) == 0 {
+		withParam.Select = withModel.ColumnNames // Select all
+	} else if !withParam.hasSelectColumn(rel.Key) {
+		withParam.Select = append(withParam.Select, rel.Key) // 添加关联主键
 	}
 
-	foreign := param.Alias + "." + rel.Foreign
-	if strings.Contains(rel.Foreign, ".") {
-		foreign = rel.Foreign
+	// 添加关联外键
+	if !param.hasSelectColumn(rel.Foreign) {
+		mod := Select(param.Model)
+		selects := mod.FliterSelect(param.Alias, []interface{}{rel.Foreign}, stack.Builder().ColumnMap)
+		stack.Query().SelectAppend(selects...)
 	}
-	wheres := map[string]interface{}{}
-	wheres[key] = foreign
-	newStack := withParam.Query(nil, wheres)
+
+	stackParam := QueryStackParam{
+		QueryParam: withParam,
+		Relation:   rel,
+	}
+	newStack := withParam.Query(nil, stackParam)
 	stack.Merge(newStack)
 }
 
