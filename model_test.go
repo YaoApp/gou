@@ -43,13 +43,14 @@ func TestModelMustFindWiths(t *testing.T) {
 			Withs: map[string]With{
 				"manu":      {},
 				"addresses": {},
-				"roles":     {}, // 暂未实现
-				"mother":    {
-					// Query: QueryParam{ // 数据归集存在BUG
-					// 	Withs: map[string]With{
-					// 		"addresses": {},
-					// 	},
-					// },
+				"roles":     {}, // 暂未实现（ 下一版支持 )
+				"mother": {
+					Query: QueryParam{ // 数据归集存在BUG（ 下一版修复 )
+						Withs: map[string]With{
+							// "addresses": {},
+							// "manu": {},
+						},
+					},
 				},
 			},
 		})
