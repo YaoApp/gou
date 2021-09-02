@@ -224,7 +224,7 @@ func TestQueryHasOneThroughWhere(t *testing.T) {
 	param := QueryParam{
 		Model: "user",
 		Withs: map[string]With{
-			"mother": {Name: "mother"},
+			"mother": {},
 		},
 		Select: []interface{}{"name", "secret", "status", "type", "id"},
 		Wheres: []QueryWhere{
@@ -263,7 +263,6 @@ func TestQueryHasMany(t *testing.T) {
 		Model: "user",
 		Withs: map[string]With{
 			"addresses": {
-				Name: "addresses",
 				Query: QueryParam{
 					Select:   []interface{}{"province", "city", "location", "status"},
 					PageSize: 20,
@@ -296,7 +295,9 @@ func TestQueryHasMany(t *testing.T) {
 		},
 	}
 	stack := param.Query(nil)
-	stack.Run()
+	res := stack.Run()
+	utils.Dump(res)
+
 }
 
 func TestQueryHasManyAndOne(t *testing.T) {
@@ -304,13 +305,11 @@ func TestQueryHasManyAndOne(t *testing.T) {
 		Model: "user",
 		Withs: map[string]With{
 			"manu": {
-				Name: "manu",
 				Query: QueryParam{
 					Select: []interface{}{"name", "status", "short_name"},
 				},
 			},
 			"addresses": {
-				Name: "addresses",
 				Query: QueryParam{
 					Select:   []interface{}{"province", "city", "location", "status"},
 					PageSize: 20,

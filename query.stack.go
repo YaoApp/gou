@@ -21,8 +21,9 @@ type QueryStackBuilder struct {
 
 // QueryStackParam QueryStack 查询参数
 type QueryStackParam struct {
-	QueryParam QueryParam
-	Relation   Relation
+	QueryParam   QueryParam
+	Relation     Relation
+	ExportPrefix string // 字段导出前缀
 }
 
 // NewQueryStack 创建查询栈
@@ -153,10 +154,8 @@ func (stack *QueryStack) run(res *[][]maps.MapStrAny, builder QueryStackBuilder,
 		fmtRow := maps.MapStr{}
 		for key, value := range row {
 			if cmap, has := builder.ColumnMap[key]; has {
-				prefix := cmap.Model.Name + "."
-				name := prefix + cmap.Column.Name
-				fmtRow[name] = value
-				cmap.Column.FliterOut(value, fmtRow, prefix)
+				fmtRow[cmap.Export] = value
+				cmap.Column.FliterOut(value, fmtRow, cmap.Export)
 				continue
 			}
 			fmtRow[key] = value
@@ -173,10 +172,9 @@ func (stack *QueryStack) runHasMany(res *[][]maps.MapStrAny, builder QueryStackB
 	// 获取上次查询结果，拼接结果集ID
 	rel := stack.Relation()
 	foreignIDs := []interface{}{}
-	prevModel := stack.PrevModel().Name
 	prevRows := (*res)[len(*res)-1]
 	for _, row := range prevRows {
-		id := row.Get(prevModel + "." + rel.Foreign)
+		id := row.Get(rel.Foreign)
 		foreignIDs = append(foreignIDs, id)
 	}
 
@@ -191,21 +189,17 @@ func (stack *QueryStack) runHasMany(res *[][]maps.MapStrAny, builder QueryStackB
 	// 格式化数据
 	fmtRowMap := map[interface{}]maps.MapStr{}
 	fmtRows := []maps.MapStr{}
-	currModel := builder.Model.Name
 	for _, row := range rows {
 		fmtRow := maps.MapStr{}
 		for key, value := range row {
 			if cmap, has := builder.ColumnMap[key]; has {
-				prefix := cmap.Model.Name + "."
-				name := prefix + cmap.Column.Name
-				fmtRow[name] = value
-				cmap.Column.FliterOut(value, fmtRow, prefix)
+				fmtRow[cmap.Export] = value
+				cmap.Column.FliterOut(value, fmtRow, cmap.Export)
 				continue
 			}
 			fmtRow[key] = value
 		}
-
-		relKey := currModel + "." + rel.Key
+		relKey := rel.Key
 		relVal := fmtRow.Get(relKey)
 		if relVal != nil {
 			fmtRows = append(fmtRows, fmtRow)
@@ -214,9 +208,9 @@ func (stack *QueryStack) runHasMany(res *[][]maps.MapStrAny, builder QueryStackB
 	}
 
 	// 追加到上一层
-	varname := currModel
+	varname := rel.Name
 	for idx, prow := range prevRows {
-		id := prow.Get(prevModel + "." + rel.Foreign)
+		id := prow.Get(rel.Foreign)
 		if row, has := fmtRowMap[id]; has {
 			if _, has := prevRows[idx][varname]; !has {
 				prevRows[idx][varname] = []maps.MapStr{}

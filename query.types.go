@@ -5,6 +5,7 @@ type QueryParam struct {
 	Model    string          `json:"model,omitempty"`
 	Table    string          `json:"table,omitempty"`
 	Alias    string          `json:"alias,omitempty"`
+	Export   string          `json:"export,omitempty"` // 导出前缀
 	Select   []interface{}   `json:"select,omitempty"` // string | dbal.Raw
 	Wheres   []QueryWhere    `json:"wheres,omitempty"`
 	Orders   []QueryOrder    `json:"orders,omitempty"`

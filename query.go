@@ -19,6 +19,7 @@ func (param QueryParam) Query(stack *QueryStack, stackParams ...QueryStackParam)
 		param.Alias = param.Table
 	}
 
+	exportPrefix := param.Export
 	if stack == nil {
 		stack = NewQueryStack()
 		stackParam := QueryStackParam{
@@ -34,6 +35,7 @@ func (param QueryParam) Query(stack *QueryStack, stackParams ...QueryStackParam)
 			ColumnMap: map[string]ColumnMap{},
 		}
 
+		exportPrefix = ""
 		stack.Push(builder, stackParam)
 	}
 
@@ -42,7 +44,7 @@ func (param QueryParam) Query(stack *QueryStack, stackParams ...QueryStackParam)
 		param.Select = mod.ColumnNames // Select All
 	}
 
-	selects := mod.FliterSelect(param.Alias, param.Select, stack.Builder().ColumnMap)
+	selects := mod.FliterSelect(param.Alias, param.Select, stack.Builder().ColumnMap, exportPrefix)
 	stack.Query().SelectAppend(selects...)
 
 	// Where
@@ -51,22 +53,24 @@ func (param QueryParam) Query(stack *QueryStack, stackParams ...QueryStackParam)
 	}
 
 	// Withs
-	for _, with := range param.Withs {
-		param.With(stack, with, mod)
+	for name, with := range param.Withs {
+		param.With(name, stack, with, mod)
 	}
 
 	return stack
 }
 
 // With 关联查询
-func (param QueryParam) With(stack *QueryStack, with With, mod *Model) {
-	rel, has := mod.MetaData.Relations[with.Name]
+func (param QueryParam) With(name string, stack *QueryStack, with With, mod *Model) {
+	rel, has := mod.MetaData.Relations[name]
 	if !has {
 		return
 	}
 
+	rel.Name = name
 	switch rel.Type {
 	case "hasOne":
+		param.Export = rel.Name
 		param.withHasOne(stack, rel, with)
 		return
 	case "hasOneThrough":
@@ -84,12 +88,16 @@ func (param QueryParam) With(stack *QueryStack, with With, mod *Model) {
 func (param QueryParam) withHasOneThrough(stack *QueryStack, rel Relation, with With) {
 	links := rel.Links
 	prev := param
-	alias := with.Name
+	alias := rel.Name
 	if param.Alias != "" {
 		alias = param.Alias + "_" + alias
 	}
-
-	for _, link := range links {
+	length := len(links)
+	for i, link := range links {
+		prev.Export = rel.Name + "." + link.Model
+		if i == length-1 {
+			prev.Export = rel.Name
+		}
 		prev.Alias = alias
 		prev.withHasOne(stack, link, with)
 		prev = link.Query
@@ -143,7 +151,7 @@ func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 				withSubParam.Select = append(withParam.Select, rel.Key)
 			}
 
-			selects := withModel.FliterSelect("", withSubParam.Select, nil)
+			selects := withModel.FliterSelect("", withSubParam.Select, nil, "")
 			sub.SelectAppend(selects...)
 
 			// Where
@@ -165,6 +173,7 @@ func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 		)
 	}
 
+	withParam.Export = param.Export
 	withParam.Query(stack)
 }
 
@@ -266,7 +275,7 @@ func (param QueryParam) withHasMany(stack *QueryStack, rel Relation, with With) 
 	// 添加关联外键
 	if !param.hasSelectColumn(rel.Foreign) {
 		mod := Select(param.Model)
-		selects := mod.FliterSelect(param.Alias, []interface{}{rel.Foreign}, stack.Builder().ColumnMap)
+		selects := mod.FliterSelect(param.Alias, []interface{}{rel.Foreign}, stack.Builder().ColumnMap, "")
 		stack.Query().SelectAppend(selects...)
 	}
 

@@ -126,7 +126,7 @@ func (mod *Model) SelectColumns(alias string, colums ...interface{}) []interface
 	if len(colums) == 0 {
 		colums = mod.ColumnNames
 	}
-	return mod.FliterSelect(alias, colums, nil)
+	return mod.FliterSelect(alias, colums, nil, "")
 }
 
 // MustFind 查询单条记录

@@ -98,6 +98,7 @@ type Table struct {
 
 // Relation the new xun model relation
 type Relation struct {
+	Name    string     `json:"-"`
 	Type    string     `json:"type"`
 	Key     string     `json:"key,omitempty"`
 	Model   string     `json:"model,omitempty"`
@@ -120,4 +121,5 @@ type Option struct {
 type ColumnMap struct {
 	Column *Column
 	Model  *Model
+	Export string // 取值时的变量名
 }
