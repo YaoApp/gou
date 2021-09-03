@@ -83,3 +83,7 @@ plugin-mac:
 	rm -rf ./app/plugins/user/dist
 	go build -o ./app/plugins/dist/user ./app/plugins/user
 	chmod +x ./app/plugins/dist/user
+
+.PHONY: migrate
+migrate:
+	$(GO) test -tags $(TESTTAGS) -run TestModelMigrate$

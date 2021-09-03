@@ -35,6 +35,7 @@ script:
   - make fmt-check
   - make misspell-check
   - make plugin
+  - make migrate
   - make test
 
 after_success:
