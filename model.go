@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/xun/capsule"
@@ -161,18 +162,59 @@ func (mod *Model) MustCreate(row maps.MapStrAny) int {
 	return id
 }
 
-// Insert 插入多条数据
-func (mod *Model) Insert(rows []maps.MapStrAny) error {
-	return nil
+// Save 保存单条数据
+func (mod *Model) Save(row maps.MapStrAny) (int, error) {
+
+	errs := mod.Validate(row) // 输入数据校验
+	if len(errs) > 0 {
+		exception.New("输入参数错误", 400).Ctx(errs).Throw()
+	}
+
+	mod.FliterIn(row) // 入库前输入数据预处理
+
+	// 更新
+	if row.Has(mod.PrimaryKey) {
+		id := row.Get(mod.PrimaryKey)
+		_, err := capsule.Query().
+			Table(mod.MetaData.Table.Name).
+			Where(mod.PrimaryKey, id).
+			Update(row)
+
+		if err != nil {
+			return 0, err
+		}
+
+		return any.Of(id).Int(), nil
+	}
+
+	// 创建
+	id, err := capsule.Query().
+		Table(mod.MetaData.Table.Name).
+		InsertGetID(row)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return int(id), err
 }
 
-// Save 保存单条数据
-func (mod *Model) Save(row maps.MapStrAny) error {
-	return nil
+// MustSave 保存单条数据, 失败抛出异常
+func (mod *Model) MustSave(row maps.MapStrAny) int {
+	id, err := mod.Save(row)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return id
 }
 
 // Delete 删除单条记录
 func (mod *Model) Delete() {}
+
+// Insert 插入多条数据
+func (mod *Model) Insert(rows []maps.MapStrAny) error {
+	return nil
+}
 
 // Search 按条件检索
 func (mod *Model) Search(param QueryParam, page int, pagesize int) (maps.MapStr, error) {

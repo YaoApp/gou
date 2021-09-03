@@ -5,7 +5,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/kun/any"
+	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/kun/utils"
+	"github.com/yaoapp/xun/capsule"
 )
 
 func TestLoadModel(t *testing.T) {
@@ -158,4 +161,43 @@ func TestModelMustSearchWithsWheresOrder(t *testing.T) {
 	assert.Equal(t, userDot.Get("data.1.extra.sex"), "男")
 	assert.Equal(t, userDot.Get("data.1.addresses.0.location"), "北京国家数字出版基地A103")
 
+}
+
+func TestModelMustSaveNew(t *testing.T) {
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name":     "用户创建",
+		"manu_id":  2,
+		"type":     "user",
+		"idcard":   "23082619820207006X",
+		"mobile":   "13900004444",
+		"password": "qV@uT1DI",
+		"key":      "XZ12MiPp",
+		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+		"status":   "enabled",
+		"extra":    maps.MapStr{"sex": "女"},
+	})
+
+	row := user.MustFind(id, QueryParam{})
+
+	// 清空数据
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+
+	assert.Equal(t, row.Get("name"), "用户创建")
+	assert.Equal(t, row.Dot().Get("extra.sex"), "女")
+
+}
+
+func TestModelMustSaveUpdate(t *testing.T) {
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"id":      1,
+		"balance": 200,
+	})
+
+	row := user.MustFind(id, QueryParam{})
+
+	// 恢复数据
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Update(maps.MapStr{"balance": 0})
+	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
 }
