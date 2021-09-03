@@ -77,6 +77,9 @@ tools:
 .PHONY: plugin
 plugin: 
 	rm -rf ./app/plugins/user/dist
+	GOOS=linux GOARCH=amd64 go build -o ./app/plugins/dist/user ./app/plugins/user
+	chmod +x ./app/plugins/dist/user
+plugin-mac: 
+	rm -rf ./app/plugins/user/dist
 	go build -o ./app/plugins/dist/user ./app/plugins/user
 	chmod +x ./app/plugins/dist/user
-	

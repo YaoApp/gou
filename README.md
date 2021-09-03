@@ -1,6 +1,6 @@
 # Gou
 
-[![Build Status](https://travis-ci.com/YaoApp/gou.svg?branch=main)](https://travis-ci.com/YaoApp/gou)
+[![Build Status](https://app.travis-ci.com/YaoApp/gou.svg?token=Jqysc4yfkBQZkf1VWXhK&branch=main)](https://travis-ci.com/github/YaoApp/gou)
 [![codecov](https://codecov.io/gh/YaoApp/gou/branch/main/graph/badge.svg?token=R4FW9PXF01)](https://codecov.io/gh/YaoApp/gou)
 [![Go Report Card](https://goreportcard.com/badge/github.com/YaoApp/gou)](https://goreportcard.com/report/github.com/YaoApp/gou)
 [![Go Reference](https://pkg.go.dev/badge/github.com/yaoapp/gou.svg)](https://pkg.go.dev/github.com/yaoapp/gou)
