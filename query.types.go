@@ -27,6 +27,7 @@ type QueryWhere struct {
 	Column string       `json:"column,omitempty"`
 	Value  interface{}  `json:"value,omitempty"`
 	Method string       `json:"method,omitempty"` // where,orwhere, wherein, orwherein...
+	OP     string       `json:"op,omitempty"`     // 操作 eq/gt/lt/ge/le/like...
 	Wheres []QueryWhere `json:"wheres,omitempty"` // 分组查询
 }
 
