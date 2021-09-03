@@ -310,11 +310,11 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 	}
 
 	column := m.FliterWhere(alias, where.Column)
-	switch where.Method {
+	switch strings.ToLower(where.Method) {
 	case "where":
 		qb.Where(column, where.Value)
 		break
-	case "orWhere":
+	case "orwhere":
 		qb.OrWhere(column, where.Value)
 		break
 	}

@@ -32,9 +32,8 @@ func TestModelMigrate(t *testing.T) {
 
 func TestModelMustFind(t *testing.T) {
 	user := Select("user").MustFind(1, QueryParam{})
-	utils.Dump(user)
-	// assert.Equal(t, user.Get("mobile"), "13900001111")
-	// assert.Equal(t, user.Dot().Get("extra.sex"), "男")
+	assert.Equal(t, user.Get("mobile"), "13900001111")
+	assert.Equal(t, user.Dot().Get("extra.sex"), "男")
 }
 
 func TestModelMustFindWiths(t *testing.T) {
@@ -54,5 +53,109 @@ func TestModelMustFindWiths(t *testing.T) {
 				},
 			},
 		})
-	utils.Dump(user)
+
+	userDot := user.Dot()
+	assert.Equal(t, userDot.Get("mobile"), "13900001111")
+	assert.Equal(t, userDot.Get("extra.sex"), "男")
+	assert.Equal(t, userDot.Get("manu.name"), "北京云道天成科技有限公司")
+	assert.Equal(t, userDot.Get("addresses.0.location"), "北京国家数字出版基地A103")
+	assert.Equal(t, userDot.Get("mother.extra.sex"), "女")
+	assert.Equal(t, userDot.Get("mother.friends.friend_id"), int64(2))
+	assert.Equal(t, userDot.Get("mother.friends.type"), "monther")
+}
+
+func TestModelMustSearch(t *testing.T) {
+	user := Select("user").MustSearch(QueryParam{}, 1, 2)
+	userDot := user.Dot()
+	assert.Equal(t, userDot.Get("total"), 3)
+	assert.Equal(t, userDot.Get("next"), 2)
+	assert.Equal(t, userDot.Get("page"), 1)
+	assert.Equal(t, userDot.Get("data.0.id"), int64(1))
+	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
+}
+
+func TestModelMustSearchWiths(t *testing.T) {
+	user := Select("user").MustSearch(QueryParam{
+		Withs: map[string]With{
+			"manu":      {},
+			"addresses": {},
+			"mother":    {},
+		},
+	}, 1, 2)
+	userDot := user.Dot()
+	assert.Equal(t, userDot.Get("total"), 3)
+	assert.Equal(t, userDot.Get("next"), 2)
+	assert.Equal(t, userDot.Get("page"), 1)
+	assert.Equal(t, userDot.Get("data.0.id"), int64(1))
+	assert.Equal(t, userDot.Get("data.0.manu.name"), "北京云道天成科技有限公司")
+	assert.Equal(t, userDot.Get("data.0.mother.extra.sex"), "女")
+	assert.Equal(t, userDot.Get("data.0.extra.sex"), "男")
+	assert.Equal(t, userDot.Get("data.0.addresses.0.location"), "北京国家数字出版基地A103")
+	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
+}
+
+func TestModelMustSearchWithsWhere(t *testing.T) {
+	user := Select("user").MustSearch(QueryParam{
+		Wheres: []QueryWhere{
+			{
+				Column: "mobile",
+				Value:  "13900001111",
+			},
+		},
+		Withs: map[string]With{
+			"manu":      {},
+			"addresses": {},
+			"mother":    {},
+		},
+	}, 1, 2)
+	userDot := user.Dot()
+	assert.Equal(t, userDot.Get("total"), 1)
+	assert.Equal(t, userDot.Get("next"), -1)
+	assert.Equal(t, userDot.Get("page"), 1)
+	assert.Equal(t, userDot.Get("data.0.id"), int64(1))
+	assert.Equal(t, userDot.Get("data.0.manu.name"), "北京云道天成科技有限公司")
+	assert.Equal(t, userDot.Get("data.0.mother.extra.sex"), "女")
+	assert.Equal(t, userDot.Get("data.0.extra.sex"), "男")
+	assert.Equal(t, userDot.Get("data.0.addresses.0.location"), "北京国家数字出版基地A103")
+
+}
+
+func TestModelMustSearchWithsWheresOrder(t *testing.T) {
+	user := Select("user").MustSearch(QueryParam{
+		Orders: []QueryOrder{
+			{
+				Column: "id",
+				Option: "desc",
+			},
+		},
+		Wheres: []QueryWhere{
+			{
+				Wheres: []QueryWhere{
+					{
+						Column: "mobile",
+						Value:  "13900002222",
+					}, {
+						Column: "mobile",
+						Method: "orwhere",
+						Value:  "13900001111",
+					},
+				},
+			},
+		},
+		Withs: map[string]With{
+			"manu":      {},
+			"addresses": {},
+			"mother":    {},
+		},
+	}, 1, 2)
+	userDot := user.Dot()
+	assert.Equal(t, userDot.Get("total"), 2)
+	assert.Equal(t, userDot.Get("next"), -1)
+	assert.Equal(t, userDot.Get("page"), 1)
+	assert.Equal(t, userDot.Get("data.1.id"), int64(1))
+	assert.Equal(t, userDot.Get("data.1.manu.name"), "北京云道天成科技有限公司")
+	assert.Equal(t, userDot.Get("data.1.mother.extra.sex"), "女")
+	assert.Equal(t, userDot.Get("data.1.extra.sex"), "男")
+	assert.Equal(t, userDot.Get("data.1.addresses.0.location"), "北京国家数字出版基地A103")
+
 }

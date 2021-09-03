@@ -175,7 +175,21 @@ func (mod *Model) Save(row maps.MapStrAny) error {
 func (mod *Model) Delete() {}
 
 // Search 按条件检索
-func (mod *Model) Search() {}
+func (mod *Model) Search(param QueryParam, page int, pagesize int) (maps.MapStr, error) {
+	param.Model = mod.Name
+	stack := NewQueryStack(param)
+	res := stack.Paginate(page, pagesize)
+	return res, nil
+}
+
+// MustSearch 按条件检索
+func (mod *Model) MustSearch(param QueryParam, page int, pagesize int) maps.MapStr {
+	res, err := mod.Search(param, page, pagesize)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return res
+}
 
 // Migrate 数据迁移
 func (mod *Model) Migrate(force bool) {
