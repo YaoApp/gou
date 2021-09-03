@@ -37,7 +37,7 @@ func LoadPlugin(cmd string, name string) *Plugin {
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig:  grpc.Handshake,
 		Plugins:          grpc.PluginMap,
-		Cmd:              exec.Command("sh", "-c", cmd),
+		Cmd:              exec.Command(cmd),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		Logger:           pluginLogger,
 	})
