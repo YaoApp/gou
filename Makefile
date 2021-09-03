@@ -4,6 +4,7 @@ PACKAGES ?= $(shell $(GO) list ./...)
 VETPACKAGES ?= $(shell $(GO) list ./... | grep -v /examples/)
 GOFILES := $(shell find . -name "*.go")
 
+ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 TESTFOLDER := $(shell $(GO) list ./... | grep -E './gou$$' | grep -v examples)
 TESTTAGS ?= ""
 
@@ -77,15 +78,13 @@ tools:
 .PHONY: plugin
 plugin: 
 	rm -rf ./app/plugins/user/dist
-	GOOS=linux GOARCH=amd64 go build -o ./app/plugins/dist/user ./app/plugins/user
-	chmod +x ./app/plugins/dist/user
+	GOOS=linux GOARCH=amd64 go build -o ${ROOT_DIR}/app/plugins/dist/user ./app/plugins/user
+	chmod +x ${ROOT_DIR}/app/plugins/dist/user
 	# sudo /sbin/setcap cap_ipc_lock=+ep ./app/plugins/dist/user
 	mkdir -p ./app/plugins/logs
 	ls -l ./app/plugins/dist
 	ls -l ./app/plugins/logs
-	export puser=$(find $(pwd)/app/plugins/dist -type f)
-	ls -l $puser
-	$puser 2>&1 || true
+	${ROOT_DIR}/app/plugins/dist/user 2>&1 || true
 plugin-mac: 
 	rm -rf ./app/plugins/user/dist
 	go build -o ./app/plugins/dist/user ./app/plugins/user
