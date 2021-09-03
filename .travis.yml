@@ -27,7 +27,7 @@ install:
   - if [[ "${GO111MODULE}" = "on" ]]; then export PATH="${GOPATH}/bin:${GOROOT}/bin:${PATH}"; fi
   - if [[ "${GO111MODULE}" = "on" ]]; then make tools; fi
 
-go_import_path: github.com/yaoapp/xun
+go_import_path: github.com/yaoapp/gou
 
 script:
   - export
