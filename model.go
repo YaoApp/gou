@@ -122,14 +122,6 @@ func (mod *Model) Find(id interface{}, param QueryParam) (maps.MapStr, error) {
 
 }
 
-// SelectColumns 选择字段
-func (mod *Model) SelectColumns(alias string, colums ...interface{}) []interface{} {
-	if len(colums) == 0 {
-		colums = mod.ColumnNames
-	}
-	return mod.FliterSelect(alias, colums, nil, "")
-}
-
 // MustFind 查询单条记录
 func (mod *Model) MustFind(id interface{}, param QueryParam) maps.MapStr {
 	res, err := mod.Find(id, param)
@@ -184,21 +176,6 @@ func (mod *Model) Delete() {}
 
 // Search 按条件检索
 func (mod *Model) Search() {}
-
-// Import 批量导入模型
-func (mod *Model) Import() {}
-
-// Export 导出数据模型
-func (mod *Model) Export() {}
-
-// Setting 数据模型配置
-func (mod *Model) Setting() {}
-
-// List 列表界面配置
-func (mod *Model) List() {}
-
-// View 详情界面配置
-func (mod *Model) View() {}
 
 // Migrate 数据迁移
 func (mod *Model) Migrate(force bool) {
