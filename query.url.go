@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const reURLWhereStr = "(where|orwhere|wherein|orwherein)\\.(.+)\\.(eq|gt|lt|ge|le|like)"
+const reURLWhereStr = "(where|orwhere|wherein|orwherein)\\.(.+)\\.(eq|gt|lt|ge|le|like|null|notnull)"
 
 var reURLWhere = regexp.MustCompile("^" + reURLWhereStr + "$")
 var reURLGroupWhere = regexp.MustCompile("^group\\.([a-zA-Z_]{1}[0-9a-zA-Z_]+)\\." + reURLWhereStr + "$")
