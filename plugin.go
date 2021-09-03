@@ -45,15 +45,13 @@ func LoadPlugin(cmd string, name string) *Plugin {
 	// Connect via RPC
 	rpcClient, err := client.Client()
 	if err != nil {
-		fmt.Println("Error:", err.Error())
-		os.Exit(1)
+		exception.Err(err, 500).Throw()
 	}
 
 	// Request the plugin
 	raw, err := rpcClient.Dispense("model")
 	if err != nil {
-		fmt.Println("Error:", err.Error())
-		os.Exit(1)
+		exception.Err(err, 500).Throw()
 	}
 
 	mod := raw.(grpc.Model)

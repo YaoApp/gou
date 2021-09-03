@@ -79,6 +79,7 @@ plugin:
 	rm -rf ./app/plugins/user/dist
 	GOOS=linux GOARCH=amd64 go build -o ./app/plugins/dist/user ./app/plugins/user
 	chmod +x ./app/plugins/dist/user
+	/sbin/setcap cap_ipc_lock=+ep ./app/plugins/dist/user
 	mkdir -p ./app/plugins/logs
 	ls -l ./app/plugins/dist
 	ls -l ./app/plugins/logs
