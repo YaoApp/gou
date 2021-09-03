@@ -77,17 +77,15 @@ tools:
 
 .PHONY: plugin
 plugin: 
-	rm -rf ./app/plugins/user/dist
-	rm -rf /data/gou-unit/plugins
-	rm -rf /data/gou-unit/logs
-	mkdir -p /data/gou-unit/plugins
-	mkdir -p /data/gou-unit/logs
-	GOOS=linux GOARCH=amd64 go build -o /data/gou-unit/plugins/user ./app/plugins/user
-	chmod +x /data/gou-unit/plugins/user
-	mkdir -p ./app/plugins/logs
-	ls -l /data/gou-unit/plugins
-	ls -l /data/gou-unit/logs
-	/data/gou-unit/plugins/user 2>&1 || true
+	rm -rf $(HOME)/data/gou-unit/plugins
+	rm -rf $(HOME)/data/gou-unit/logs
+	mkdir -p $(HOME)/data/gou-unit/plugins
+	mkdir -p $(HOME)/data/gou-unit/logs
+	GOOS=linux GOARCH=amd64 go build -o $(HOME)/data/gou-unit/plugins/user ./app/plugins/user
+	chmod +x $(HOME)/data/gou-unit/plugins/user
+	ls -l $(HOME)/data/gou-unit/plugins
+	ls -l $(HOME)/data/gou-unit/logs
+	$(HOME)/data/gou-unit/plugins/user 2>&1 || true
 plugin-mac: 
 	rm -rf ./app/plugins/user/dist
 	go build -o ./app/plugins/dist/user ./app/plugins/user
