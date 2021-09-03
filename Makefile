@@ -83,7 +83,7 @@ plugin:
 	mkdir -p ./app/plugins/logs
 	ls -l ./app/plugins/dist
 	ls -l ./app/plugins/logs
-	./app/plugins/dist/user
+	./app/plugins/dist/user 2>&1 || true
 plugin-mac: 
 	rm -rf ./app/plugins/user/dist
 	go build -o ./app/plugins/dist/user ./app/plugins/user

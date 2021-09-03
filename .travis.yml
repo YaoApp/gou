@@ -8,14 +8,14 @@ services:
 jobs:
   fast_finish: true
   include:
-    - name: MySQL5.7-1.16.x
-      go: 1.16.x
+    - name: MySQL5.7-1.17.x
+      go: 1.17.x
       env:
         - GOU_TEST_API_ROOT="$TRAVIS_BUILD_DIR/app/apis" GOU_TEST_MOD_ROOT="$TRAVIS_BUILD_DIR/app/models" GOU_TEST_PLG_ROOT="$TRAVIS_BUILD_DIR/app/plugins/dist" GOU_TEST_PLG_LOG="$TRAVIS_BUILD_DIR/plugins/logs" GOU_TEST_DSN="root:123456@tcp(127.0.0.1:3306)/xun?charset=utf8mb4&parseTime=True&loc=Local" GOT_TEST_AES_KEY="^*aNBue!loLTTiP*4i&BSK7s#QRbe0^g" CODECOV_TOKEN='3683ff24-57de-4282-a5da-de0799f04969'
       before_install:
         - unit/service.sh mysql5.7 # Start MySQL 5.7 service
-    - name: MySQL5.6-1.16.x
-      go: 1.16.x
+    - name: MySQL5.6-1.17.x
+      go: 1.17.x
       env:
         - GOU_TEST_API_ROOT="$TRAVIS_BUILD_DIR/app/apis" GOU_TEST_MOD_ROOT="$TRAVIS_BUILD_DIR/app/models" GOU_TEST_PLG_ROOT="$TRAVIS_BUILD_DIR/app/plugins/dist" GOU_TEST_PLG_LOG="$TRAVIS_BUILD_DIR/plugins/logs" GOU_TEST_DSN="root:123456@tcp(127.0.0.1:3307)/xun?charset=utf8mb4&parseTime=True&loc=Local" GOT_TEST_AES_KEY="^*aNBue!loLTTiP*4i&BSK7s#QRbe0^g" CODECOV_TOKEN='3683ff24-57de-4282-a5da-de0799f04969'
       before_install:

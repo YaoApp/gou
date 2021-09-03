@@ -9,6 +9,7 @@ import (
 
 func TestLoadPlugin(t *testing.T) {
 	cmd := path.Join(TestPLGRoot, "user")
+	utils.Dump(cmd)
 	p := LoadPlugin(cmd, "user")
 	defer p.Client.Kill()
 
