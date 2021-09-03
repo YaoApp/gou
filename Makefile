@@ -78,13 +78,16 @@ tools:
 .PHONY: plugin
 plugin: 
 	rm -rf ./app/plugins/user/dist
-	GOOS=linux GOARCH=amd64 go build -o ./app/plugins/dist/user ./app/plugins/user
-	chmod +x ./app/plugins/dist/user
-	# sudo /sbin/setcap cap_ipc_lock=+ep ./app/plugins/dist/user
+	rm -rf /data/gou-unit/plugins
+	rm -rf /data/gou-unit/logs
+	mkdir -p /data/gou-unit/plugins
+	mkdir -p /data/gou-unit/logs
+	GOOS=linux GOARCH=amd64 go build -o /data/gou-unit/plugins/user ./app/plugins/user
+	chmod +x /data/gou-unit/plugins/user
 	mkdir -p ./app/plugins/logs
-	ls -l ./app/plugins/dist
-	ls -l ./app/plugins/logs
-	./app/plugins/dist/user 2>&1 || true
+	ls -l /data/gou-unit/plugins
+	ls -l /data/gou-unit/logs
+	/data/gou-unit/plugins/user 2>&1 || true
 plugin-mac: 
 	rm -rf ./app/plugins/user/dist
 	go build -o ./app/plugins/dist/user ./app/plugins/user
