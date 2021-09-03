@@ -4,6 +4,7 @@ import (
 	"path"
 	"testing"
 
+	"github.com/yaoapp/kun/grpc"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/kun/utils"
 )
@@ -14,8 +15,8 @@ func TestLoadAPI(t *testing.T) {
 }
 
 func TestSelectAPI(t *testing.T) {
-	// user := SelectAPI("user")
-	// user.Reload()
+	user := SelectAPI("user")
+	user.Reload()
 }
 
 // func TestServeHTTP(t *testing.T) {
@@ -29,9 +30,9 @@ func TestRunModel(t *testing.T) {
 }
 
 func TestRunPlugin(t *testing.T) {
-	// defer SelectPlugin("user").Client.Kill()
-	// res := Run("plugins.user.Login", 1)
-	// res2 := Run("plugins.user.Login", 2)
-	// utils.Dump(res.(*grpc.Response).MustMap())
-	// utils.Dump(res2.(*grpc.Response).MustMap())
+	defer SelectPlugin("user").Client.Kill()
+	res := Run("plugins.user.Login", 1)
+	res2 := Run("plugins.user.Login", 2)
+	utils.Dump(res.(*grpc.Response).MustMap())
+	utils.Dump(res2.(*grpc.Response).MustMap())
 }
