@@ -83,7 +83,7 @@ plugin:
 	mkdir -p ./app/plugins/logs
 	ls -l ./app/plugins/dist
 	ls -l ./app/plugins/logs
-	puser=$(find $(pwd)/app/plugins/dist -type f)
+	export puser=$(find $(pwd)/app/plugins/dist -type f)
 	ls -l $puser
 	$puser 2>&1 || true
 plugin-mac: 
