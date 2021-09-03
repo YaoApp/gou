@@ -5,12 +5,15 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/xun/capsule"
+	"github.com/yaoapp/xun/dbal"
 	"github.com/yaoapp/xun/logger"
 )
 
@@ -48,17 +51,67 @@ func LoadModel(source string, name string) *Model {
 	columns := map[string]*Column{} // 字段映射表
 	columnNames := []interface{}{}  // 字段名称清单
 	PrimaryKey := "id"              // 字段主键
+	uniqueColumns := []*Column{}    // 唯一字段清单
+
+	// 补充字段(软删除)
+	if mod.MetaData.Option.SoftDeletes {
+		mod.MetaData.Columns = append(mod.MetaData.Columns, Column{
+			Label:    "删除标记",
+			Name:     "deleted_at",
+			Type:     "timestamp",
+			Comment:  "删除标记",
+			Nullable: true,
+		})
+	}
+
+	// 补充时间戳(软删除)
+	if mod.MetaData.Option.Timestamps {
+		mod.MetaData.Columns = append(mod.MetaData.Columns,
+			Column{
+				Label:    "创建时间",
+				Name:     "created_at",
+				Type:     "timestamp",
+				Comment:  "创建时间",
+				Nullable: true,
+			},
+			Column{
+				Label:    "更新时间",
+				Name:     "updated_at",
+				Type:     "timestamp",
+				Comment:  "更新时间",
+				Nullable: true,
+			},
+		)
+	}
+
 	for i, column := range mod.MetaData.Columns {
 		columns[column.Name] = &mod.MetaData.Columns[i]
 		columnNames = append(columnNames, column.Name)
 		if strings.ToLower(column.Type) == "id" {
 			PrimaryKey = column.Name
 		}
+		// 唯一字段
+		if column.Unique {
+			uniqueColumns = append(uniqueColumns, columns[column.Name])
+		}
+	}
+
+	// 唯一索引
+	for _, index := range mod.MetaData.Indexes {
+		if strings.ToLower(index.Type) == "unique" {
+			for _, name := range index.Columns {
+				col, has := columns[name]
+				if has {
+					uniqueColumns = append(uniqueColumns, col)
+				}
+			}
+		}
 	}
 
 	mod.Columns = columns
 	mod.ColumnNames = columnNames
 	mod.PrimaryKey = PrimaryKey
+	mod.UniqueColumns = uniqueColumns
 	Models[name] = mod
 	return mod
 }
@@ -114,6 +167,7 @@ func (mod *Model) Find(id interface{}, param QueryParam) (maps.MapStr, error) {
 			Value:  id,
 		},
 	}
+
 	stack := NewQueryStack(param)
 	res := stack.Run()
 	if len(res) <= 0 {
@@ -132,7 +186,7 @@ func (mod *Model) MustFind(id interface{}, param QueryParam) maps.MapStr {
 	return res
 }
 
-// Create 创建单条数据
+// Create 创建单条数据, 返回新创建数据ID
 func (mod *Model) Create(row maps.MapStrAny) (int, error) {
 
 	errs := mod.Validate(row) // 输入数据校验
@@ -141,6 +195,10 @@ func (mod *Model) Create(row maps.MapStrAny) (int, error) {
 	}
 
 	mod.FliterIn(row) // 入库前输入数据预处理
+
+	if mod.MetaData.Option.Timestamps {
+		row.Set("created_at", dbal.Raw("NOW()"))
+	}
 
 	id, err := capsule.Query().
 		Table(mod.MetaData.Table.Name).
@@ -153,7 +211,7 @@ func (mod *Model) Create(row maps.MapStrAny) (int, error) {
 	return int(id), err
 }
 
-// MustCreate 创建单条数据, 失败抛出异常
+// MustCreate 创建单条数据, 返回新创建数据ID, 失败抛出异常
 func (mod *Model) MustCreate(row maps.MapStrAny) int {
 	id, err := mod.Create(row)
 	if err != nil {
@@ -162,7 +220,7 @@ func (mod *Model) MustCreate(row maps.MapStrAny) int {
 	return id
 }
 
-// Save 保存单条数据
+// Save 保存单条数据, 返回数据ID
 func (mod *Model) Save(row maps.MapStrAny) (int, error) {
 
 	errs := mod.Validate(row) // 输入数据校验
@@ -174,6 +232,11 @@ func (mod *Model) Save(row maps.MapStrAny) (int, error) {
 
 	// 更新
 	if row.Has(mod.PrimaryKey) {
+
+		if mod.MetaData.Option.Timestamps {
+			row.Set("updated_at", dbal.Raw("NOW()"))
+		}
+
 		id := row.Get(mod.PrimaryKey)
 		_, err := capsule.Query().
 			Table(mod.MetaData.Table.Name).
@@ -188,6 +251,10 @@ func (mod *Model) Save(row maps.MapStrAny) (int, error) {
 	}
 
 	// 创建
+	if mod.MetaData.Option.Timestamps {
+		row.Set("created_at", dbal.Raw("NOW()"))
+	}
+
 	id, err := capsule.Query().
 		Table(mod.MetaData.Table.Name).
 		InsertGetID(row)
@@ -199,7 +266,7 @@ func (mod *Model) Save(row maps.MapStrAny) (int, error) {
 	return int(id), err
 }
 
-// MustSave 保存单条数据, 失败抛出异常
+// MustSave 保存单条数据, 返回数据ID, 失败抛出异常
 func (mod *Model) MustSave(row maps.MapStrAny) int {
 	id, err := mod.Save(row)
 	if err != nil {
@@ -209,7 +276,53 @@ func (mod *Model) MustSave(row maps.MapStrAny) int {
 }
 
 // Delete 删除单条记录
-func (mod *Model) Delete() {}
+func (mod *Model) Delete(id interface{}) error {
+
+	// 软删除
+	if mod.MetaData.Option.SoftDeletes {
+		selects := []interface{}{}
+		data := maps.MapStrAny{}
+		for _, col := range mod.UniqueColumns {
+			selects = append(selects, col.Name)
+			typ := strings.ToLower(col.Type)
+			if col.Nullable {
+				data[col.Name] = nil
+			} else if typ == "string" {
+				data[col.Name] = dbal.Raw(fmt.Sprintf("CONCAT_WS('_', '%d')", time.Now().UnixNano()))
+			}
+		}
+		row, err := mod.Find(id, QueryParam{Select: selects})
+		if err != nil {
+			return err
+		}
+
+		restore, err := jsoniter.MarshalToString(row)
+		if err != nil {
+			return err
+		}
+
+		data["__restore_data"] = restore
+		data["deleted_at"] = dbal.Raw("NOW()")
+
+		_, err = capsule.Query().
+			Table(mod.MetaData.Table.Name).
+			Where(mod.PrimaryKey, id).
+			Update(data)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return mod.Destroy(id)
+}
+
+// Destroy 真删除数据
+func (mod *Model) Destroy(id interface{}) error {
+	_, err := capsule.Query().Table(mod.MetaData.Table.Name).Where("id", id).Delete()
+	return err
+}
 
 // Insert 插入多条数据
 func (mod *Model) Insert(rows []maps.MapStrAny) error {

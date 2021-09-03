@@ -26,6 +26,23 @@ func (mod *Model) SchemaCreateTable() {
 		for _, index := range mod.MetaData.Indexes {
 			index.SetIndex(table)
 		}
+
+		// 创建时间, 更新时间
+		if mod.MetaData.Option.Timestamps {
+			table.Timestamps()
+		}
+
+		// 软删除
+		if mod.MetaData.Option.SoftDeletes {
+			table.SoftDeletes()
+			table.JSON("__restore_data").Null()
+		}
+
+		// 追溯ID
+		if mod.MetaData.Option.Trackings || mod.MetaData.Option.Logging {
+			table.BigInteger("__tracking_id").Index().Null()
+		}
+
 	})
 
 	if err != nil {

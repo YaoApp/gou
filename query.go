@@ -7,6 +7,15 @@ import (
 	"github.com/yaoapp/xun/dbal/query"
 )
 
+var opmap map[string]string = map[string]string{
+	"like": "like",
+	"eq":   "=",
+	"gt":   ">",
+	"lt":   "<",
+	"ge":   ">=",
+	"le":   "<=",
+}
+
 // NewQuery 新建查询栈
 func (param QueryParam) NewQuery() *QueryStack {
 	return param.Query(nil)
@@ -55,6 +64,11 @@ func (param QueryParam) Query(stack *QueryStack, stackParams ...QueryStackParam)
 	// Where
 	for _, where := range param.Wheres {
 		param.Where(where, stack.Query(), mod)
+	}
+
+	// 软删除
+	if mod.MetaData.Option.SoftDeletes {
+		param.Where(QueryWhere{Column: "deleted_at", OP: "null"}, stack.Query(), mod)
 	}
 
 	// Order
@@ -159,6 +173,11 @@ func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 				withSubParam.Select = withModel.ColumnNames // Select All
 			} else if !withParam.hasSelectColumn(rel.Key) {
 				withSubParam.Select = append(withParam.Select, rel.Key)
+			}
+
+			// 软删除
+			if withModel.MetaData.Option.SoftDeletes && !withSubParam.hasSelectColumn("deleted_at") {
+				withSubParam.Select = append(withSubParam.Select, "deleted_at")
 			}
 
 			selects := withModel.FliterSelect("", withSubParam.Select, nil, "")
@@ -312,10 +331,36 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 	column := m.FliterWhere(alias, where.Column)
 	switch strings.ToLower(where.Method) {
 	case "where":
-		qb.Where(column, where.Value)
+		switch where.OP {
+		case "null":
+			qb.WhereNull(column)
+			break
+		case "notnull":
+			qb.WhereNotNull(column)
+			break
+		default:
+			op, has := opmap[where.OP]
+			if !has {
+				op = "="
+			}
+			qb.Where(column, op, where.Value)
+		}
 		break
 	case "orwhere":
-		qb.OrWhere(column, where.Value)
+		switch where.OP {
+		case "null":
+			qb.OrWhereNull(column)
+			break
+		case "notnull":
+			qb.OrWhereNotNull(column)
+			break
+		default:
+			op, has := opmap[where.OP]
+			if !has {
+				op = "="
+			}
+			qb.OrWhere(column, op, where.Value)
+		}
 		break
 	}
 }

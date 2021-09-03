@@ -201,3 +201,48 @@ func TestModelMustSaveUpdate(t *testing.T) {
 	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Update(maps.MapStr{"balance": 0})
 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
 }
+
+func TestModelMustDeleteSoft(t *testing.T) {
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name":     "用户创建",
+		"manu_id":  2,
+		"type":     "user",
+		"idcard":   "23082619820207006X",
+		"mobile":   "13900004444",
+		"password": "qV@uT1DI",
+		"key":      "XZ12MiPp",
+		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+		"status":   "enabled",
+		"extra":    maps.MapStr{"sex": "女"},
+	})
+	err := user.Delete(id)
+	row, _ := user.Find(id, QueryParam{})
+
+	// 清空数据
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+	assert.Nil(t, row)
+	assert.Nil(t, err)
+}
+
+func TestModelMustDestory(t *testing.T) {
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name":     "用户创建",
+		"manu_id":  2,
+		"type":     "user",
+		"idcard":   "23082619820207006X",
+		"mobile":   "13900004444",
+		"password": "qV@uT1DI",
+		"key":      "XZ12MiPp",
+		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+		"status":   "enabled",
+		"extra":    maps.MapStr{"sex": "女"},
+	})
+	err := user.Destroy(id)
+	assert.Nil(t, err)
+
+	row, err := capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).First()
+	assert.True(t, row.IsEmpty())
+	assert.Nil(t, err)
+}
