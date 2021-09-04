@@ -275,6 +275,40 @@ func (mod *Model) MustSave(row maps.MapStrAny) int {
 	return id
 }
 
+// Update 按条件更新记录, 返回更新行数
+func (mod *Model) Update(param QueryParam, row maps.MapStrAny) (int, error) {
+
+	errs := mod.Validate(row) // 输入数据校验
+	if len(errs) > 0 {
+		exception.New("输入参数错误", 400).Ctx(errs).Throw()
+	}
+
+	mod.FliterIn(row) // 入库前输入数据预处理
+
+	if mod.MetaData.Option.Timestamps {
+		row.Set("updated_at", dbal.Raw("NOW()"))
+	}
+
+	param.Model = mod.Name
+	stack := NewQueryStack(param)
+	qb := stack.FirstQuery()
+	effect, err := qb.Update(row)
+	if err != nil {
+		return 0, err
+	}
+
+	return int(effect), err
+}
+
+// MustUpdate 按条件更新记录, 返回更新行数, 失败抛出异常
+func (mod *Model) MustUpdate(param QueryParam, row maps.MapStrAny) int {
+	effect, err := mod.Update(param, row)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return effect
+}
+
 // Delete 删除单条记录
 func (mod *Model) Delete(id interface{}) error {
 

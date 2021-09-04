@@ -202,6 +202,28 @@ func TestModelMustSaveUpdate(t *testing.T) {
 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
 }
 
+func TestModelMustUpdate(t *testing.T) {
+	user := Select("user")
+	id := user.MustUpdate(
+		QueryParam{
+			Wheres: []QueryWhere{
+				{
+					Column: "id",
+					Value:  1,
+				},
+			},
+		},
+		maps.MapStr{
+			"balance": 200,
+		})
+
+	row := user.MustFind(id, QueryParam{})
+
+	// 恢复数据
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Update(maps.MapStr{"balance": 0})
+	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
+}
+
 func TestModelMustDeleteSoft(t *testing.T) {
 	user := Select("user")
 	id := user.MustSave(maps.MapStr{

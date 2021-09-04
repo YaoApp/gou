@@ -79,6 +79,14 @@ func (stack *QueryStack) Query() query.Query {
 	return stack.Builders[stack.Current].Query
 }
 
+// FirstQuery 返回第一个查询器
+func (stack *QueryStack) FirstQuery() query.Query {
+	if len(stack.Builders) == 0 {
+		return nil
+	}
+	return stack.Builders[0].Query
+}
+
 // QueryParam 返回当前查询参数
 func (stack *QueryStack) QueryParam() QueryParam {
 	if stack.Current < 0 {
@@ -103,34 +111,6 @@ func (stack *QueryStack) Next() int {
 		return next
 	}
 	return -1
-}
-
-// Prev 返回上一个查询器
-func (stack *QueryStack) Prev() int {
-	prev := stack.Current - 1
-	if prev > 0 {
-		stack.Current = prev
-		return prev
-	}
-	return -1
-}
-
-// PrevModel 上一个查询的 Model
-func (stack *QueryStack) PrevModel() *Model {
-	prev := stack.Current - 1
-	if prev >= 0 {
-		return stack.Builders[prev].Model
-	}
-	return nil
-}
-
-// PrevParam 上一个查询的 Param
-func (stack *QueryStack) PrevParam() *QueryStackParam {
-	prev := stack.Current - 1
-	if prev >= 0 {
-		return &stack.Params[prev]
-	}
-	return nil
 }
 
 // Run 执行查询栈
