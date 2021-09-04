@@ -473,8 +473,10 @@ func (mod *Model) MustDeleteWhere(param QueryParam) int {
 // DestoryWhere 批量真删除数据, 返回更新行数
 func (mod *Model) DestoryWhere(param QueryParam) (int, error) {
 	param.Model = mod.Name
-	stack := NewQueryStack(param)
-	qb := stack.FirstQuery()
+	qb := capsule.Query().Table(mod.MetaData.Table.Name)
+	for _, where := range param.Wheres {
+		param.Where(where, qb, mod)
+	}
 	effect, err := qb.Delete()
 	if err != nil {
 		return 0, err
