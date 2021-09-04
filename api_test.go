@@ -33,7 +33,7 @@ func TestServeHTTP(t *testing.T) {
 	})
 
 	// 等待服务启动
-	time.Sleep(time.Microsecond * 100)
+	time.Sleep(time.Microsecond * 200)
 	resp, err := http.Get("http://127.0.0.1:5001/user/info/1?select=id,name")
 	if err != nil {
 		assert.Nil(t, err)
