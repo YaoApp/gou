@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 )
 
@@ -19,8 +20,9 @@ type Caller struct {
 
 // ModelHandlers 模型运行器
 var ModelHandlers = map[string]func(caller *Caller) interface{}{
-	"find": callerFind,
-	"get":  callerGet,
+	"find":     callerFind,
+	"get":      callerGet,
+	"paginate": callerPaginate,
 }
 
 // NewCaller 创建运行器
@@ -97,7 +99,21 @@ func callerGet(caller *Caller) interface{} {
 	mod := Select(caller.Class)
 	params, ok := caller.Args[0].(QueryParam)
 	if !ok {
-		exception.New("查询参数错误 %v", 400, caller.Args[0]).Throw()
+		exception.New("第1个查询参数错误 %v", 400, caller.Args[0]).Throw()
 	}
 	return mod.MustGet(params)
+}
+
+// callerPaginate 运行模型 Paginate
+func callerPaginate(caller *Caller) interface{} {
+	caller.validateArgNums(3)
+	mod := Select(caller.Class)
+	params, ok := caller.Args[0].(QueryParam)
+	if !ok {
+		exception.New("第1个查询参数错误 %v", 400, caller.Args[0]).Throw()
+	}
+
+	page := any.Of(caller.Args[1]).CInt()
+	pagesize := any.Of(caller.Args[2]).CInt()
+	return mod.MustPaginate(params, page, pagesize)
 }

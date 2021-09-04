@@ -86,8 +86,22 @@ func TestCallerGet(t *testing.T) {
 	rows := NewCaller("models.user.Get", QueryParam{Limit: 2}).Run().([]maps.MapStr)
 	res := maps.Map{"data": rows}.Dot()
 	assert.Equal(t, 2, len(rows))
-	assert.Equal(t, 1, any.Of(res.Dot().Get("data.0.id")).CInt())
-	assert.Equal(t, "男", res.Dot().Get("data.0.extra.sex"))
-	assert.Equal(t, 2, any.Of(res.Dot().Get("data.1.id")).CInt())
-	assert.Equal(t, "女", res.Dot().Get("data.1.extra.sex"))
+	assert.Equal(t, 1, any.Of(res.Get("data.0.id")).CInt())
+	assert.Equal(t, "男", res.Get("data.0.extra.sex"))
+	assert.Equal(t, 2, any.Of(res.Get("data.1.id")).CInt())
+	assert.Equal(t, "女", res.Get("data.1.extra.sex"))
+}
+
+func TestCallerPaginate(t *testing.T) {
+	res := NewCaller("models.user.Paginate", QueryParam{}, 1, 2).Run().(maps.MapStr).Dot()
+	assert.Equal(t, 3, res.Get("total"))
+	assert.Equal(t, 1, res.Get("page"))
+	assert.Equal(t, 2, res.Get("pagesize"))
+	assert.Equal(t, 2, res.Get("pagecnt"))
+	assert.Equal(t, 2, res.Get("next"))
+	assert.Equal(t, -1, res.Get("prev"))
+	assert.Equal(t, 1, any.Of(res.Get("data.0.id")).CInt())
+	assert.Equal(t, "男", res.Get("data.0.extra.sex"))
+	assert.Equal(t, 2, any.Of(res.Get("data.1.id")).CInt())
+	assert.Equal(t, "女", res.Get("data.1.extra.sex"))
 }
