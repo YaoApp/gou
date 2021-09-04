@@ -13,8 +13,8 @@ type Caller struct {
 	Type    string
 	Class   string
 	Method  string
-	Handler func(caller *Caller) interface{}
 	Args    []interface{}
+	Handler func(caller *Caller) interface{}
 }
 
 // ModelHandlers 模型运行器
@@ -69,7 +69,7 @@ func (caller *Caller) validateArgNums(length int) {
 	}
 }
 
-// callerExec 运行API
+// callerExec 运行插件中的方法
 func callerExec(caller *Caller) interface{} {
 	mod := SelectPluginModel(caller.Class)
 	res, err := mod.Exec(caller.Method, caller.Args...)
@@ -79,7 +79,7 @@ func callerExec(caller *Caller) interface{} {
 	return res
 }
 
-// callerFind 查找模型
+// callerFind 运行模型 MustFind
 func callerFind(caller *Caller) interface{} {
 	caller.validateArgNums(2)
 	mod := Select(caller.Class)

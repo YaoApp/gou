@@ -16,17 +16,17 @@ import (
 	"github.com/yaoapp/xun"
 )
 
-// Guards 支持的中间件
-var Guards = map[string]gin.HandlerFunc{}
+// HTTPGuards 支持的中间件
+var HTTPGuards = map[string]gin.HandlerFunc{}
 
-// SetGuards 加载中间件
-func SetGuards(guards map[string]gin.HandlerFunc) {
-	Guards = guards
+// SetHTTPGuards 加载中间件
+func SetHTTPGuards(guards map[string]gin.HandlerFunc) {
+	HTTPGuards = guards
 }
 
-// AddGuard 添加中间件
-func AddGuard(name string, guard gin.HandlerFunc) {
-	Guards[name] = guard
+// AddHTTPGuard 添加中间件
+func AddHTTPGuard(name string, guard gin.HandlerFunc) {
+	HTTPGuards[name] = guard
 }
 
 // Routes 配置转换为路由
@@ -123,7 +123,7 @@ func (http HTTP) guard(handlers *[]gin.HandlerFunc, guard string, defaults strin
 		guards := strings.Split(guard, ",")
 		for _, name := range guards {
 			name = strings.TrimSpace(name)
-			if handler, has := Guards[name]; has {
+			if handler, has := HTTPGuards[name]; has {
 				*handlers = append(*handlers, handler)
 			}
 		}
