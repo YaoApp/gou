@@ -26,7 +26,9 @@ func TestSelectAPI(t *testing.T) {
 }
 
 func TestServeHTTP(t *testing.T) {
+
 	go ServeHTTP(Server{
+		Debug:  true,
 		Host:   "127.0.0.1",
 		Port:   5001,
 		Allows: []string{"a.com", "b.com"},

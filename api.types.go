@@ -40,6 +40,7 @@ type Out struct {
 
 // Server API 服务配置
 type Server struct {
+	Debug  bool     `json:"debug,omitempty"`
 	Port   int      `json:"port,omitempty"`
 	Host   string   `json:"host,omitempty"`
 	Root   string   `json:"root,omitempty"`   // API 根目录

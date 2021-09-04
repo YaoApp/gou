@@ -75,6 +75,13 @@ func Run(name string, args ...interface{}) interface{} {
 
 // ServeHTTP  启动HTTP服务
 func ServeHTTP(server Server, middlewares ...gin.HandlerFunc) {
+
+	if server.Debug {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	router := gin.Default()
 	ServeHTTPCustomRouter(router, server, middlewares...)
 }
@@ -124,7 +131,7 @@ func ServeHTTPCustomRouter(router *gin.Engine, server Server, middlewares ...gin
 		api.HTTP.Routes(router, server.Root, server.Allows...)
 	}
 
-	// 服务终止时释放资源
+	// 服务终止时 关闭插件进程
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
