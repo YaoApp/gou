@@ -73,10 +73,21 @@ func Run(name string, args ...interface{}) interface{} {
 	return nil
 }
 
-// ServeHTTP 启动HTTP服务
-func ServeHTTP(port int, host string, root string, allow string) {
-
+// ServeHTTP  启动HTTP服务
+func ServeHTTP(server Server, middlewares ...gin.HandlerFunc) {
 	router := gin.Default()
+	ServeHTTPCustomRouter(router, server, middlewares...)
+}
+
+// ServeHTTPCustomRouter 启动HTTP服务, 自定义路由器
+func ServeHTTPCustomRouter(router *gin.Engine, server Server, middlewares ...gin.HandlerFunc) {
+
+	// 添加中间件
+	for _, handler := range middlewares {
+		router.Use(handler)
+	}
+
+	// 错误处理
 	router.Use(gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
 
 		var code = http.StatusInternalServerError
@@ -108,26 +119,22 @@ func ServeHTTP(port int, host string, root string, allow string) {
 		c.AbortWithStatus(code)
 	}))
 
+	// 加载API
 	for _, api := range APIs {
-		api.HTTP.Routes(root, allow, router)
+		api.HTTP.Routes(router, server.Root, server.Allows...)
 	}
 
-	// 释放资源
+	// 服务终止时释放资源
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
 		<-c
 		KillPlugins()
 		os.Exit(1)
 	}()
 
-	hosting := fmt.Sprintf("%s:%d", host, port)
+	hosting := fmt.Sprintf("%s:%d", server.Host, server.Port)
 	router.Run(hosting)
-}
-
-// Reload 重新载入API
-func (api *API) Reload() *API {
-	return LoadAPI(api.Source, api.Name)
 }
 
 // runModel name = user, method = login, args = [1]
@@ -146,7 +153,11 @@ func runModel(name string, method string, args ...interface{}) interface{} {
 	switch method {
 	case "find":
 		validateArgs(name, method, args, 2)
-		return mod.MustFind(args[0], QueryParam{})
+		params, ok := args[1].(QueryParam)
+		if !ok {
+			params = QueryParam{}
+		}
+		return mod.MustFind(args[0], params)
 	}
 	return nil
 }
@@ -176,4 +187,9 @@ func extraProcess(name string) (typ string, class string, method string) {
 	class = strings.ToLower(strings.Join(namer[1:last], "."))
 	method = strings.ToLower(namer[last])
 	return typ, class, method
+}
+
+// Reload 重新载入API
+func (api *API) Reload() *API {
+	return LoadAPI(api.Source, api.Name)
 }

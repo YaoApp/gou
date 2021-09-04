@@ -1,9 +1,15 @@
 package gou
 
 import (
+	"io/ioutil"
+	"net/http"
 	"path"
 	"testing"
+	"time"
 
+	jsoniter "github.com/json-iterator/go"
+	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/grpc"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/kun/utils"
@@ -19,9 +25,31 @@ func TestSelectAPI(t *testing.T) {
 	user.Reload()
 }
 
-// func TestServeHTTP(t *testing.T) {
-// 	ServeHTTP(5011, "127.0.0.1", "/api", "*")
-// }
+func TestServeHTTP(t *testing.T) {
+	go ServeHTTP(Server{
+		Host:   "127.0.0.1",
+		Port:   5001,
+		Allows: []string{"a.com", "b.com"},
+	})
+
+	// 等待服务启动
+	time.Sleep(time.Microsecond * 100)
+	resp, err := http.Get("http://127.0.0.1:5001/user/info/1?select=id,name")
+	if err != nil {
+		assert.Nil(t, err)
+		return
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	res := maps.MakeMapStr()
+	err = jsoniter.Unmarshal(body, &res)
+	if err != nil {
+		assert.Nil(t, err)
+		return
+	}
+	assert.Equal(t, 1, any.Of(res.Get("id")).CInt())
+	assert.Equal(t, "管理员", res.Get("name"))
+}
 
 func TestRunModel(t *testing.T) {
 	res := Run("models.user.Find", 1, QueryParam{})

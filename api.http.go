@@ -16,24 +16,47 @@ import (
 	"github.com/yaoapp/xun"
 )
 
+// Guards 支持的中间件
+var Guards = map[string]gin.HandlerFunc{}
+
+// SetGuards 加载中间件
+func SetGuards(guards map[string]gin.HandlerFunc) {
+	Guards = guards
+}
+
+// AddGuard 添加中间件
+func AddGuard(name string, guard gin.HandlerFunc) {
+	Guards[name] = guard
+}
+
 // Routes 配置转换为路由
-func (http HTTP) Routes(root string, allow string, router *gin.Engine) {
+func (http HTTP) Routes(router *gin.Engine, root string, allows ...string) {
 	var group gin.IRoutes = router
 	if http.Group != "" {
 		root = path.Join(root, "/", http.Group)
 	}
 	group = router.Group(root)
 	for _, path := range http.Paths {
-		http.Route(path, allow, group)
+		http.Route(group, path, allows...)
 	}
 }
 
 // Route 路径配置转换为路由
-func (http HTTP) Route(path Path, allow string, router gin.IRoutes) {
+func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 	getArgs := http.parseIn(path.In, path.Type)
 	handlers := []gin.HandlerFunc{}
+
+	// 跨域访问
+	if len(allows) > 0 {
+		allowsMap := map[string]bool{}
+		for _, allow := range allows {
+			allowsMap[allow] = true
+		}
+		http.crossDomain(path.Path, allowsMap, router)
+	}
+
+	// 中间件
 	http.guard(&handlers, path.Guard, http.Guard)
-	http.crossDomain(path.Path, allow, router)
 
 	// API响应逻辑
 	handlers = append(handlers, func(c *gin.Context) {
@@ -56,6 +79,7 @@ func (http HTTP) Route(path Path, allow string, router gin.IRoutes) {
 			}
 		}
 
+		// 运行 Process
 		var args []interface{} = getArgs(c)
 		var resp interface{} = Run(path.Process, args...)
 		var status int = path.Out.Status
@@ -88,31 +112,32 @@ func (http HTTP) Route(path Path, allow string, router gin.IRoutes) {
 	http.method(path.Method, path.Path, router, handlers...)
 }
 
-// 加载中间件
+// 加载特定中间件
 func (http HTTP) guard(handlers *[]gin.HandlerFunc, guard string, defaults string) {
-	// 过滤中间件
+
 	if guard == "" {
 		guard = defaults
 	}
 
-	// handlers = append(handlers, CrossDomain, ParsePayload)
 	if guard != "-" {
 		guards := strings.Split(guard, ",")
 		for _, name := range guards {
 			name = strings.TrimSpace(name)
-			// if handler, has := guardLibs[name]; has {
-			// 	handlers = append(handlers, handler)
-			// 	fmt.Printf(color.YellowString("[%s] ", name))
-			// }
+			if handler, has := Guards[name]; has {
+				*handlers = append(*handlers, handler)
+			}
 		}
 	}
 }
 
 // crossDomain 跨域许可
-func (http HTTP) crossDomain(path string, allow string, router gin.IRoutes) {
+func (http HTTP) crossDomain(path string, allows map[string]bool, router gin.IRoutes) {
 	http.method("OPTIONS", path, router, func(c *gin.Context) {
-		url := allow
-		c.Writer.Header().Set("Access-Control-Allow-Origin", url)
+		if _, has := allows[c.Request.Host]; !has {
+			c.AbortWithStatus(403)
+			return
+		}
+		c.Writer.Header().Set("Access-Control-Allow-Origin", c.Request.Host)
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
@@ -148,6 +173,12 @@ func (http HTTP) parseIn(in []string, typ string) func(c *gin.Context) []interfa
 		} else if v == ":query" {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
 				return c.Request.URL.Query()
+			})
+			continue
+		} else if v == ":params" {
+			getValues = append(getValues, func(c *gin.Context) interface{} {
+				values := c.Request.URL.Query()
+				return URLToQueryParam(values)
 			})
 			continue
 		} else if v == ":context" {

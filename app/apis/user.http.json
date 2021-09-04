@@ -21,11 +21,11 @@
       }
     },
     {
-      "path": "/info",
+      "path": "/info/:id",
       "method": "GET",
       "type": "application/form-data",
       "process": "models.user.Find",
-      "in": ["$session.id"],
+      "in": ["$param.id", ":params"],
       "out": {
         "status": 200,
         "type": "application/json",

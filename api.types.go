@@ -34,7 +34,14 @@ type Path struct {
 
 // Out http 输出
 type Out struct {
-	Status  int         `json:"status"`
-	Type    string      `json:"type,omitempty"`
-	Content interface{} `json:"content,omitempty"`
+	Status int    `json:"status"`
+	Type   string `json:"type,omitempty"`
+}
+
+// Server API 服务配置
+type Server struct {
+	Port   int      `json:"port,omitempty"`
+	Host   string   `json:"host,omitempty"`
+	Root   string   `json:"root,omitempty"`   // API 根目录
+	Allows []string `json:"allows,omitempty"` // 许可跨域访问域名
 }
