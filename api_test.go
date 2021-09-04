@@ -134,3 +134,23 @@ func TestCallerUpdate(t *testing.T) {
 	// 恢复数据
 	capsule.Query().Table(Select("user").MetaData.Table.Name).Where("id", 1).Update(maps.MapStr{"balance": 0})
 }
+
+func TestCallerSave(t *testing.T) {
+	row := maps.MapStr{
+		"name":     "用户创建",
+		"manu_id":  2,
+		"type":     "user",
+		"idcard":   "23082619820207006X",
+		"mobile":   "13900004444",
+		"password": "qV@uT1DI",
+		"key":      "XZ12MiPp",
+		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+		"status":   "enabled",
+		"extra":    maps.MapStr{"sex": "女"},
+	}
+	id := NewCaller("models.user.Save", row).Run().(int)
+	assert.Greater(t, id, 0)
+
+	// 清空数据
+	capsule.Query().Table(Select("user").MetaData.Table.Name).Where("id", id).Delete()
+}
