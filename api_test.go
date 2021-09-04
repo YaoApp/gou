@@ -32,23 +32,37 @@ func TestServeHTTP(t *testing.T) {
 		Allows: []string{"a.com", "b.com"},
 	})
 
+	// 发送请求
+	request := func() (maps.MapStr, error) {
+		time.Sleep(time.Microsecond * 100)
+		resp, err := http.Get("http://127.0.0.1:5001/user/info/1?select=id,name")
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		res := maps.MakeMapStr()
+		err = jsoniter.Unmarshal(body, &res)
+		if err != nil {
+			return nil, err
+		}
+		return res, nil
+	}
+
 	// 等待服务启动
-	time.Sleep(time.Microsecond * 200)
-	resp, err := http.Get("http://127.0.0.1:5001/user/info/1?select=id,name")
-	if err != nil {
-		assert.Nil(t, err)
+	times := 0
+	for times < 20 { // 2秒超时
+		times++
+		res, err := request()
+		if err != nil {
+			continue
+		}
+		assert.Equal(t, 1, any.Of(res.Get("id")).CInt())
+		assert.Equal(t, "管理员", res.Get("name"))
 		return
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	res := maps.MakeMapStr()
-	err = jsoniter.Unmarshal(body, &res)
-	if err != nil {
-		assert.Nil(t, err)
-		return
-	}
-	assert.Equal(t, 1, any.Of(res.Get("id")).CInt())
-	assert.Equal(t, "管理员", res.Get("name"))
+
+	assert.True(t, false)
 }
 
 func TestRunModel(t *testing.T) {
