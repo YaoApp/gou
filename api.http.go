@@ -157,7 +157,15 @@ func (http HTTP) parseIn(in []string, typ string) func(c *gin.Context) []interfa
 			continue
 		} else if v == ":payload" {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
-				return xun.MakeRow(c.Get("__payloads"))
+				value, has := c.Get("__payloads")
+				if !has {
+					return maps.MapStr{}
+				}
+				valueMap, ok := value.(map[string]interface{})
+				if !ok {
+					return maps.MapStr{}
+				}
+				return valueMap
 			})
 			continue
 		} else if v == ":query" {

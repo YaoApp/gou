@@ -12,6 +12,7 @@ import (
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/grpc"
 	"github.com/yaoapp/kun/maps"
+	"github.com/yaoapp/xun/capsule"
 )
 
 func TestLoadAPI(t *testing.T) {
@@ -104,4 +105,24 @@ func TestCallerPaginate(t *testing.T) {
 	assert.Equal(t, "男", res.Get("data.0.extra.sex"))
 	assert.Equal(t, 2, any.Of(res.Get("data.1.id")).CInt())
 	assert.Equal(t, "女", res.Get("data.1.extra.sex"))
+}
+
+func TestCallerCreate(t *testing.T) {
+	row := maps.MapStr{
+		"name":     "用户创建",
+		"manu_id":  2,
+		"type":     "user",
+		"idcard":   "23082619820207006X",
+		"mobile":   "13900004444",
+		"password": "qV@uT1DI",
+		"key":      "XZ12MiPp",
+		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+		"status":   "enabled",
+		"extra":    maps.MapStr{"sex": "女"},
+	}
+	id := NewCaller("models.user.Create", row).Run().(int)
+	assert.Greater(t, id, 0)
+
+	// 清空数据
+	capsule.Query().Table(Select("user").MetaData.Table.Name).Where("id", id).Delete()
 }

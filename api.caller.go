@@ -23,6 +23,7 @@ var ModelHandlers = map[string]func(caller *Caller) interface{}{
 	"find":     callerFind,
 	"get":      callerGet,
 	"paginate": callerPaginate,
+	"create":   callerCreate,
 }
 
 // NewCaller 创建运行器
@@ -93,7 +94,7 @@ func callerFind(caller *Caller) interface{} {
 	return mod.MustFind(caller.Args[0], params)
 }
 
-// callerGet 运行模型 Get
+// callerGet 运行模型 MustGet
 func callerGet(caller *Caller) interface{} {
 	caller.validateArgNums(1)
 	mod := Select(caller.Class)
@@ -104,7 +105,7 @@ func callerGet(caller *Caller) interface{} {
 	return mod.MustGet(params)
 }
 
-// callerPaginate 运行模型 Paginate
+// callerPaginate 运行模型 MustPaginate
 func callerPaginate(caller *Caller) interface{} {
 	caller.validateArgNums(3)
 	mod := Select(caller.Class)
@@ -116,4 +117,12 @@ func callerPaginate(caller *Caller) interface{} {
 	page := any.Of(caller.Args[1]).CInt()
 	pagesize := any.Of(caller.Args[2]).CInt()
 	return mod.MustPaginate(params, page, pagesize)
+}
+
+// callerCreate 运行模型 MustCreate
+func callerCreate(caller *Caller) interface{} {
+	caller.validateArgNums(1)
+	mod := Select(caller.Class)
+	row := any.Of(caller.Args[0]).Map().MapStrAny
+	return mod.MustCreate(row)
 }
