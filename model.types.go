@@ -75,6 +75,7 @@ type Validation struct {
 
 // ValidateResponse 数据校验返回结果
 type ValidateResponse struct {
+	Line     int      `json:"line,omitempty"`
 	Column   string   `json:"column,omitempty"`
 	Messages []string `json:"messages,omitempty"`
 }

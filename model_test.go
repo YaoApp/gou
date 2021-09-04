@@ -266,3 +266,28 @@ func TestModelMustDestory(t *testing.T) {
 	assert.True(t, row.IsEmpty())
 	assert.Nil(t, err)
 }
+
+func TestModelMustInsert(t *testing.T) {
+	columns := []string{"user_id", "province", "city", "location"}
+	rows := [][]interface{}{
+		{4, "北京市", "丰台区", "银海星月9号楼9单元9层1024室"},
+		{4, "天津市", "塘沽区", "益海星云7号楼3单元1003室"},
+	}
+	address := Select("address")
+	err := address.Insert(columns, rows)
+	assert.Nil(t, err)
+	capsule.Query().Table(address.MetaData.Table.Name).Where("user_id", 4).Delete()
+}
+
+func TestModelMustInsertError(t *testing.T) {
+	columns := []string{"user_id", "province", "city", "location"}
+	rows := [][]interface{}{
+		{4, "北京市", "丰台区", "银海星月9号楼9单元9层1024室"},
+		{4, "天津市", "塘沽区", "益海星云7号楼3单元1003室", 5028},
+		{4, "天津市", "塘沽区", "益海星云7号楼3单元1002室"},
+	}
+	address := Select("address")
+	assert.Panics(t, func() {
+		address.Insert(columns, rows)
+	})
+}

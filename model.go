@@ -186,6 +186,23 @@ func (mod *Model) MustFind(id interface{}, param QueryParam) maps.MapStr {
 	return res
 }
 
+// Search 按条件检索
+func (mod *Model) Search(param QueryParam, page int, pagesize int) (maps.MapStr, error) {
+	param.Model = mod.Name
+	stack := NewQueryStack(param)
+	res := stack.Paginate(page, pagesize)
+	return res, nil
+}
+
+// MustSearch 按条件检索
+func (mod *Model) MustSearch(param QueryParam, page int, pagesize int) maps.MapStr {
+	res, err := mod.Search(param, page, pagesize)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return res
+}
+
 // Create 创建单条数据, 返回新创建数据ID
 func (mod *Model) Create(row maps.MapStrAny) (int, error) {
 
@@ -273,6 +290,63 @@ func (mod *Model) MustSave(row maps.MapStrAny) int {
 		exception.Err(err, 500).Throw()
 	}
 	return id
+}
+
+// Insert 插入多条数据
+func (mod *Model) Insert(columns []string, rows [][]interface{}) error {
+
+	// 数据校验
+	errs := []ValidateResponse{}
+	columnCnt := len(columns)
+	for rid, values := range rows {
+
+		if len(values) != columnCnt {
+			errs = append(errs, ValidateResponse{
+				Line:     rid,
+				Column:   "*",
+				Messages: []string{fmt.Sprintf("第%d条数据，字段数量与提供字段清单不符.", rid+1)},
+			})
+		}
+
+		row := maps.MakeMapStr()
+		for cid, name := range columns {
+			row[name] = values[cid]
+		}
+
+		rowerrs := mod.Validate(row) // 输入数据校验
+		if len(rowerrs) > 0 {
+			for _, err := range rowerrs {
+				err.Line = rid
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	if len(errs) > 0 {
+		exception.New("输入参数错误", 400).Ctx(errs).Throw()
+	}
+
+	// 添加创建时间戳
+	if mod.MetaData.Option.Timestamps {
+		columns = append(columns, "created_at")
+		for i := range rows {
+			rows[i] = append(rows[i], dbal.Raw("NOW()"))
+		}
+	}
+
+	// 写入到数据库
+	return capsule.Query().
+		Table(mod.MetaData.Table.Name).
+		Insert(rows, columns)
+
+}
+
+// MustInsert 插入多条数据, 失败抛出异常
+func (mod *Model) MustInsert(columns []string, rows [][]interface{}) {
+	err := mod.Insert(columns, rows)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
 }
 
 // Update 按条件更新记录, 返回更新行数
@@ -372,28 +446,6 @@ func (mod *Model) MustDestroy(id interface{}) {
 	if err != nil {
 		exception.Err(err, 500).Throw()
 	}
-}
-
-// Insert 插入多条数据
-func (mod *Model) Insert(rows []maps.MapStrAny) error {
-	return nil
-}
-
-// Search 按条件检索
-func (mod *Model) Search(param QueryParam, page int, pagesize int) (maps.MapStr, error) {
-	param.Model = mod.Name
-	stack := NewQueryStack(param)
-	res := stack.Paginate(page, pagesize)
-	return res, nil
-}
-
-// MustSearch 按条件检索
-func (mod *Model) MustSearch(param QueryParam, page int, pagesize int) maps.MapStr {
-	res, err := mod.Search(param, page, pagesize)
-	if err != nil {
-		exception.Err(err, 500).Throw()
-	}
-	return res
 }
 
 // Migrate 数据迁移
