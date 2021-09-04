@@ -12,7 +12,6 @@ import (
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/grpc"
 	"github.com/yaoapp/kun/maps"
-	"github.com/yaoapp/kun/utils"
 )
 
 func TestLoadAPI(t *testing.T) {
@@ -67,16 +66,18 @@ func TestServeHTTP(t *testing.T) {
 	assert.True(t, false)
 }
 
-func TestRunModel(t *testing.T) {
-	res := Run("models.user.Find", 1, QueryParam{})
-	id := res.(maps.MapStr).Get("id")
-	utils.Dump(id)
+func TestCallerExec(t *testing.T) {
+	defer SelectPlugin("user").Client.Kill()
+	res := NewCaller("plugins.user.Login", 1).Run().(*grpc.Response).MustMap()
+	res2 := NewCaller("plugins.user.Login", 2).Run().(*grpc.Response).MustMap()
+	assert.Equal(t, "login", res.Get("name"))
+	assert.Equal(t, "login", res2.Get("name"))
+	assert.Equal(t, 1, any.Of(res.Dot().Get("args.0")).CInt())
+	assert.Equal(t, 2, any.Of(res2.Dot().Get("args.0")).CInt())
 }
 
-func TestRunPlugin(t *testing.T) {
-	defer SelectPlugin("user").Client.Kill()
-	res := Run("plugins.user.Login", 1)
-	res2 := Run("plugins.user.Login", 2)
-	utils.Dump(res.(*grpc.Response).MustMap())
-	utils.Dump(res2.(*grpc.Response).MustMap())
+func TestCallerFind(t *testing.T) {
+	res := NewCaller("models.user.Find", 1, QueryParam{}).Run().(maps.MapStr)
+	assert.Equal(t, 1, any.Of(res.Dot().Get("id")).CInt())
+	assert.Equal(t, "男", res.Dot().Get("extra.sex"))
 }
