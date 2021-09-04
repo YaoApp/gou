@@ -20,6 +20,7 @@ type Caller struct {
 // ModelHandlers 模型运行器
 var ModelHandlers = map[string]func(caller *Caller) interface{}{
 	"find": callerFind,
+	"get":  callerGet,
 }
 
 // NewCaller 创建运行器
@@ -63,7 +64,7 @@ func (caller *Caller) extraProcess() {
 func (caller *Caller) validateArgNums(length int) {
 	if len(caller.Args) < length {
 		exception.New(
-			fmt.Sprintf("Model:%s%s(args...); 参数错误", caller.Class, caller.Name),
+			fmt.Sprintf("Model:%s%s(args...); 缺少查询参数", caller.Class, caller.Name),
 			400,
 		).Throw()
 	}
@@ -88,4 +89,15 @@ func callerFind(caller *Caller) interface{} {
 		params = QueryParam{}
 	}
 	return mod.MustFind(caller.Args[0], params)
+}
+
+// callerGet 运行模型 Get
+func callerGet(caller *Caller) interface{} {
+	caller.validateArgNums(1)
+	mod := Select(caller.Class)
+	params, ok := caller.Args[0].(QueryParam)
+	if !ok {
+		exception.New("查询参数错误 %v", 400, caller.Args[0]).Throw()
+	}
+	return mod.MustGet(params)
 }

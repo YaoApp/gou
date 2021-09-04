@@ -81,3 +81,13 @@ func TestCallerFind(t *testing.T) {
 	assert.Equal(t, 1, any.Of(res.Dot().Get("id")).CInt())
 	assert.Equal(t, "男", res.Dot().Get("extra.sex"))
 }
+
+func TestCallerGet(t *testing.T) {
+	rows := NewCaller("models.user.Get", QueryParam{Limit: 2}).Run().([]maps.MapStr)
+	res := maps.Map{"data": rows}.Dot()
+	assert.Equal(t, 2, len(rows))
+	assert.Equal(t, 1, any.Of(res.Dot().Get("data.0.id")).CInt())
+	assert.Equal(t, "男", res.Dot().Get("data.0.extra.sex"))
+	assert.Equal(t, 2, any.Of(res.Dot().Get("data.1.id")).CInt())
+	assert.Equal(t, "女", res.Dot().Get("data.1.extra.sex"))
+}
