@@ -21,15 +21,16 @@ type Caller struct {
 
 // ModelHandlers 模型运行器
 var ModelHandlers = map[string]func(caller *Caller) interface{}{
-	"find":     callerFind,
-	"get":      callerGet,
-	"paginate": callerPaginate,
-	"create":   callerCreate,
-	"update":   callerUpdate,
-	"save":     callerSave,
-	"delete":   callerDelete,
-	"destroy":  callerDestroy,
-	"insert":   callerInsert,
+	"find":        callerFind,
+	"get":         callerGet,
+	"paginate":    callerPaginate,
+	"create":      callerCreate,
+	"update":      callerUpdate,
+	"save":        callerSave,
+	"delete":      callerDelete,
+	"destroy":     callerDestroy,
+	"insert":      callerInsert,
+	"updatewhere": callerUpdateWhere,
 }
 
 // NewCaller 创建运行器
@@ -202,4 +203,16 @@ func callerInsert(caller *Caller) interface{} {
 
 	mod.MustInsert(colums, rows)
 	return nil
+}
+
+// callerUpdateWhere 运行模型 MustGet
+func callerUpdateWhere(caller *Caller) interface{} {
+	caller.validateArgNums(2)
+	mod := Select(caller.Class)
+	params, ok := caller.Args[0].(QueryParam)
+	if !ok {
+		exception.New("第1个查询参数错误 %v", 400, caller.Args[0]).Throw()
+	}
+	row := any.Of(caller.Args[1]).Map().MapStrAny
+	return mod.MustUpdateWhere(params, row)
 }

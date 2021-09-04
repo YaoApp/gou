@@ -223,7 +223,7 @@ func TestModelMustUpdate(t *testing.T) {
 
 func TestModelMustUpdateWhere(t *testing.T) {
 	user := Select("user")
-	id := user.MustUpdateWhere(
+	effect := user.MustUpdateWhere(
 		QueryParam{
 			Wheres: []QueryWhere{
 				{
@@ -236,11 +236,12 @@ func TestModelMustUpdateWhere(t *testing.T) {
 			"balance": 200,
 		})
 
-	row := user.MustFind(id, QueryParam{})
+	row := user.MustFind(1, QueryParam{})
 
 	// 恢复数据
-	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Update(maps.MapStr{"balance": 0})
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", 1).Update(maps.MapStr{"balance": 0})
 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
+	assert.Equal(t, effect, 1)
 }
 
 func TestModelMustDeleteSoft(t *testing.T) {

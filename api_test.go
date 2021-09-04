@@ -222,3 +222,28 @@ func TestCallerInsert(t *testing.T) {
 	address := Select("address")
 	capsule.Query().Table(address.MetaData.Table.Name).Where("user_id", 4).Delete()
 }
+
+func TestCallerUpdateWhere(t *testing.T) {
+	effect := NewCaller("models.user.UpdateWhere",
+		QueryParam{
+			Limit: 1,
+			Wheres: []QueryWhere{
+				{
+					Column: "id",
+					Value:  1,
+				},
+			},
+		},
+		maps.MapStr{
+			"balance": 200,
+		},
+	).Run().(int)
+
+	user := Select("user")
+	row := user.MustFind(1, QueryParam{})
+
+	// 恢复数据
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", 1).Update(maps.MapStr{"balance": 0})
+	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
+	assert.Equal(t, 1, effect)
+}
