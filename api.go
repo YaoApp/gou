@@ -131,6 +131,16 @@ func ServeHTTPCustomRouter(router *gin.Engine, server Server, middlewares ...gin
 	router.Run(hosting)
 }
 
+// SetHTTPGuards 加载中间件
+func SetHTTPGuards(guards map[string]gin.HandlerFunc) {
+	HTTPGuards = guards
+}
+
+// AddHTTPGuard 添加中间件
+func AddHTTPGuard(name string, guard gin.HandlerFunc) {
+	HTTPGuards[name] = guard
+}
+
 // Reload 重新载入API
 func (api *API) Reload() *API {
 	return LoadAPI(api.Source, api.Name)

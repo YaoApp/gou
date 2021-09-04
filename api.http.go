@@ -19,16 +19,6 @@ import (
 // HTTPGuards 支持的中间件
 var HTTPGuards = map[string]gin.HandlerFunc{}
 
-// SetHTTPGuards 加载中间件
-func SetHTTPGuards(guards map[string]gin.HandlerFunc) {
-	HTTPGuards = guards
-}
-
-// AddHTTPGuard 添加中间件
-func AddHTTPGuard(name string, guard gin.HandlerFunc) {
-	HTTPGuards[name] = guard
-}
-
 // Routes 配置转换为路由
 func (http HTTP) Routes(router *gin.Engine, root string, allows ...string) {
 	var group gin.IRoutes = router
