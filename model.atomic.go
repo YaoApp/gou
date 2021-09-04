@@ -374,7 +374,7 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 		return int(effect), nil
 	}
 
-	return mod.DestoryWhere(param)
+	return mod.DestroyWhere(param)
 }
 
 // MustDeleteWhere 批量删除数据, 返回更新行数, 失败跑出异常
@@ -386,8 +386,8 @@ func (mod *Model) MustDeleteWhere(param QueryParam) int {
 	return effect
 }
 
-// DestoryWhere 批量真删除数据, 返回更新行数
-func (mod *Model) DestoryWhere(param QueryParam) (int, error) {
+// DestroyWhere 批量真删除数据, 返回更新行数
+func (mod *Model) DestroyWhere(param QueryParam) (int, error) {
 	param.Model = mod.Name
 	qb := capsule.Query().Table(mod.MetaData.Table.Name)
 	for _, where := range param.Wheres {
@@ -400,9 +400,9 @@ func (mod *Model) DestoryWhere(param QueryParam) (int, error) {
 	return int(effect), nil
 }
 
-// MustDestoryWhere 批量真删除数据, 返回更新行数, 失败跑出异常
-func (mod *Model) MustDestoryWhere(param QueryParam) int {
-	effect, err := mod.DestoryWhere(param)
+// MustDestroyWhere 批量真删除数据, 返回更新行数, 失败跑出异常
+func (mod *Model) MustDestroyWhere(param QueryParam) int {
+	effect, err := mod.DestroyWhere(param)
 	if err != nil {
 		exception.Err(err, 500).Throw()
 	}

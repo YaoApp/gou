@@ -21,16 +21,18 @@ type Caller struct {
 
 // ModelHandlers 模型运行器
 var ModelHandlers = map[string]func(caller *Caller) interface{}{
-	"find":        callerFind,
-	"get":         callerGet,
-	"paginate":    callerPaginate,
-	"create":      callerCreate,
-	"update":      callerUpdate,
-	"save":        callerSave,
-	"delete":      callerDelete,
-	"destroy":     callerDestroy,
-	"insert":      callerInsert,
-	"updatewhere": callerUpdateWhere,
+	"find":         callerFind,
+	"get":          callerGet,
+	"paginate":     callerPaginate,
+	"create":       callerCreate,
+	"update":       callerUpdate,
+	"save":         callerSave,
+	"delete":       callerDelete,
+	"destroy":      callerDestroy,
+	"insert":       callerInsert,
+	"updatewhere":  callerUpdateWhere,
+	"deletewhere":  callerDeleteWhere,
+	"destroywhere": callerDestroyWhere,
 }
 
 // NewCaller 创建运行器
@@ -205,7 +207,7 @@ func callerInsert(caller *Caller) interface{} {
 	return nil
 }
 
-// callerUpdateWhere 运行模型 MustGet
+// callerUpdateWhere 运行模型 MustUpdateWhere
 func callerUpdateWhere(caller *Caller) interface{} {
 	caller.validateArgNums(2)
 	mod := Select(caller.Class)
@@ -215,4 +217,26 @@ func callerUpdateWhere(caller *Caller) interface{} {
 	}
 	row := any.Of(caller.Args[1]).Map().MapStrAny
 	return mod.MustUpdateWhere(params, row)
+}
+
+// callerDeleteWhere 运行模型 MustDeleteWhere
+func callerDeleteWhere(caller *Caller) interface{} {
+	caller.validateArgNums(1)
+	mod := Select(caller.Class)
+	params, ok := caller.Args[0].(QueryParam)
+	if !ok {
+		params = QueryParam{}
+	}
+	return mod.MustDeleteWhere(params)
+}
+
+// callerDestroyWhere 运行模型 MustDestroyWhere
+func callerDestroyWhere(caller *Caller) interface{} {
+	caller.validateArgNums(1)
+	mod := Select(caller.Class)
+	params, ok := caller.Args[0].(QueryParam)
+	if !ok {
+		params = QueryParam{}
+	}
+	return mod.MustDestroyWhere(params)
 }

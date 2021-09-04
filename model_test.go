@@ -266,7 +266,7 @@ func TestModelMustDeleteSoft(t *testing.T) {
 	assert.Nil(t, row)
 }
 
-func TestModelMustDestory(t *testing.T) {
+func TestModelMustDestroy(t *testing.T) {
 	user := Select("user")
 	id := user.MustSave(maps.MapStr{
 		"name":     "用户创建",
@@ -335,7 +335,7 @@ func TestModelMustDeleteWhere(t *testing.T) {
 	assert.Equal(t, effect, 3)
 }
 
-func TestModelMustDestoryWhere(t *testing.T) {
+func TestModelMustDestroyWhere(t *testing.T) {
 	columns := []string{"name", "manu_id", "type", "idcard", "mobile", "password", "key", "secret", "status"}
 	rows := [][]interface{}{
 		{"用户创建1", 5, "user", "23082619820207006X", "13900004444", "qV@uT1DI", "XZ12MiP1", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
@@ -351,7 +351,7 @@ func TestModelMustDestoryWhere(t *testing.T) {
 			Value:  5,
 		},
 	}}
-	effect := user.MustDestoryWhere(param)
+	effect := user.MustDestroyWhere(param)
 
 	// 清理数据
 	assert.Equal(t, effect, 3)

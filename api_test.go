@@ -247,3 +247,49 @@ func TestCallerUpdateWhere(t *testing.T) {
 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
 	assert.Equal(t, 1, effect)
 }
+func TestCallerDeleteWhere(t *testing.T) {
+
+	columns := []string{"name", "manu_id", "type", "idcard", "mobile", "password", "key", "secret", "status"}
+	rows := [][]interface{}{
+		{"用户创建1", 5, "user", "23082619820207006X", "13900004444", "qV@uT1DI", "XZ12MiP1", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
+		{"用户创建2", 5, "user", "33082619820207006X", "13900005555", "qV@uT1DI", "XZ12MiP2", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
+		{"用户创建3", 5, "user", "43082619820207006X", "13900006666", "qV@uT1DI", "XZ12MiP3", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
+	}
+
+	user := Select("user")
+	user.Insert(columns, rows)
+	param := QueryParam{Wheres: []QueryWhere{
+		{
+			Column: "manu_id",
+			Value:  5,
+		},
+	}}
+	effect := NewCaller("models.user.DeleteWhere", param).Run().(int)
+
+	// 清理数据
+	capsule.Query().Table(user.MetaData.Table.Name).Where("name", "like", "用户创建%").Delete()
+	assert.Equal(t, effect, 3)
+}
+
+func TestCallerDestroyWhere(t *testing.T) {
+
+	columns := []string{"name", "manu_id", "type", "idcard", "mobile", "password", "key", "secret", "status"}
+	rows := [][]interface{}{
+		{"用户创建1", 5, "user", "23082619820207006X", "13900004444", "qV@uT1DI", "XZ12MiP1", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
+		{"用户创建2", 5, "user", "33082619820207006X", "13900005555", "qV@uT1DI", "XZ12MiP2", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
+		{"用户创建3", 5, "user", "43082619820207006X", "13900006666", "qV@uT1DI", "XZ12MiP3", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
+	}
+
+	user := Select("user")
+	user.Insert(columns, rows)
+	param := QueryParam{Wheres: []QueryWhere{
+		{
+			Column: "manu_id",
+			Value:  5,
+		},
+	}}
+	effect := NewCaller("models.user.DestroyWhere", param).Run().(int)
+
+	// 清理数据
+	assert.Equal(t, effect, 3)
+}
