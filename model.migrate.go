@@ -6,12 +6,16 @@ import (
 	"github.com/yaoapp/xun/dbal/schema"
 )
 
-// SchemaDiffTable 旧表数据结构差别对比
-func (mod *Model) SchemaDiffTable() {
+// SchemaTableUpgrade 旧表数据结构差别对比后升级
+func (mod *Model) SchemaTableUpgrade() {
 }
 
-// SchemaCreateTable 创建新的数据表
-func (mod *Model) SchemaCreateTable() {
+// SchemaTableDiff 旧表数据结构差别对比
+func (mod *Model) SchemaTableDiff() {
+}
+
+// SchemaTableCreate 创建新的数据表
+func (mod *Model) SchemaTableCreate() {
 
 	sch := capsule.Schema()
 	err := sch.CreateTable(mod.MetaData.Table.Name, func(table schema.Blueprint) {

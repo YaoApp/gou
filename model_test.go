@@ -67,6 +67,14 @@ func TestModelMustFindWiths(t *testing.T) {
 	assert.Equal(t, userDot.Get("mother.friends.type"), "monther")
 }
 
+func TestModelMustGet(t *testing.T) {
+	users := Select("user").MustGet(QueryParam{Limit: 2})
+	assert.Equal(t, len(users), 2)
+	userDot := maps.MapStr{"data": users}.Dot()
+	assert.Equal(t, userDot.Get("data.0.id"), int64(1))
+	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
+}
+
 func TestModelMustSearch(t *testing.T) {
 	user := Select("user").MustSearch(QueryParam{}, 1, 2)
 	userDot := user.Dot()
@@ -204,7 +212,18 @@ func TestModelMustSaveUpdate(t *testing.T) {
 
 func TestModelMustUpdate(t *testing.T) {
 	user := Select("user")
-	id := user.MustUpdate(
+	user.MustUpdate(1, maps.MapStr{"balance": 200})
+
+	row := user.MustFind(1, QueryParam{})
+
+	// 恢复数据
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", 1).Update(maps.MapStr{"balance": 0})
+	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
+}
+
+func TestModelMustUpdateWhere(t *testing.T) {
+	user := Select("user")
+	id := user.MustUpdateWhere(
 		QueryParam{
 			Wheres: []QueryWhere{
 				{
