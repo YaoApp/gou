@@ -126,3 +126,11 @@ func TestCallerCreate(t *testing.T) {
 	// 清空数据
 	capsule.Query().Table(Select("user").MetaData.Table.Name).Where("id", id).Delete()
 }
+
+func TestCallerUpdate(t *testing.T) {
+	id := NewCaller("models.user.Update", 1, maps.MapStr{"balance": 200}).Run()
+	assert.Nil(t, id)
+
+	// 恢复数据
+	capsule.Query().Table(Select("user").MetaData.Table.Name).Where("id", 1).Update(maps.MapStr{"balance": 0})
+}

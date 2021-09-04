@@ -24,6 +24,7 @@ var ModelHandlers = map[string]func(caller *Caller) interface{}{
 	"get":      callerGet,
 	"paginate": callerPaginate,
 	"create":   callerCreate,
+	"update":   callerUpdate,
 }
 
 // NewCaller 创建运行器
@@ -125,4 +126,14 @@ func callerCreate(caller *Caller) interface{} {
 	mod := Select(caller.Class)
 	row := any.Of(caller.Args[0]).Map().MapStrAny
 	return mod.MustCreate(row)
+}
+
+// callerUpdate 运行模型 callerUpdate
+func callerUpdate(caller *Caller) interface{} {
+	caller.validateArgNums(2)
+	mod := Select(caller.Class)
+	id := caller.Args[0]
+	row := any.Of(caller.Args[1]).Map().MapStrAny
+	mod.MustUpdate(id, row)
+	return nil
 }
