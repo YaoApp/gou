@@ -318,10 +318,26 @@ func (mod *Model) Delete(id interface{}) error {
 	return mod.Destroy(id)
 }
 
-// Destroy 真删除数据
+// MustDelete 删除单条记录, 失败抛出异常
+func (mod *Model) MustDelete(id interface{}) {
+	err := mod.Delete(id)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+}
+
+// Destroy 真删除单条记录
 func (mod *Model) Destroy(id interface{}) error {
 	_, err := capsule.Query().Table(mod.MetaData.Table.Name).Where("id", id).Delete()
 	return err
+}
+
+// MustDestroy 真删除单条记录, 失败抛出异常
+func (mod *Model) MustDestroy(id interface{}) {
+	err := mod.Destroy(id)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
 }
 
 // Insert 插入多条数据

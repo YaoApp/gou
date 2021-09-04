@@ -216,13 +216,12 @@ func TestModelMustDeleteSoft(t *testing.T) {
 		"status":   "enabled",
 		"extra":    maps.MapStr{"sex": "女"},
 	})
-	err := user.Delete(id)
+	user.MustDelete(id)
 	row, _ := user.Find(id, QueryParam{})
 
 	// 清空数据
 	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
 	assert.Nil(t, row)
-	assert.Nil(t, err)
 }
 
 func TestModelMustDestory(t *testing.T) {
@@ -239,8 +238,7 @@ func TestModelMustDestory(t *testing.T) {
 		"status":   "enabled",
 		"extra":    maps.MapStr{"sex": "女"},
 	})
-	err := user.Destroy(id)
-	assert.Nil(t, err)
+	user.MustDestroy(id)
 
 	row, err := capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).First()
 	assert.True(t, row.IsEmpty())
