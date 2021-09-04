@@ -201,7 +201,7 @@ func (mod *Model) MustFind(id interface{}, param QueryParam) maps.MapStr {
 	return res
 }
 
-// Get 按条件查询，不分页
+// Get 按条件查询, 不分页
 func (mod *Model) Get(param QueryParam) ([]maps.MapStr, error) {
 	param.Model = mod.Name
 	stack := NewQueryStack(param)
@@ -209,7 +209,7 @@ func (mod *Model) Get(param QueryParam) ([]maps.MapStr, error) {
 	return res, nil
 }
 
-// MustGet 按条件查询，不分页
+// MustGet 按条件查询, 不分页, 失败抛出异常
 func (mod *Model) MustGet(param QueryParam) []maps.MapStr {
 	res, err := mod.Get(param)
 	if err != nil {
@@ -218,17 +218,17 @@ func (mod *Model) MustGet(param QueryParam) []maps.MapStr {
 	return res
 }
 
-// Search 按条件检索
-func (mod *Model) Search(param QueryParam, page int, pagesize int) (maps.MapStr, error) {
+// Paginate 按条件查询, 分页
+func (mod *Model) Paginate(param QueryParam, page int, pagesize int) (maps.MapStr, error) {
 	param.Model = mod.Name
 	stack := NewQueryStack(param)
 	res := stack.Paginate(page, pagesize)
 	return res, nil
 }
 
-// MustSearch 按条件检索
-func (mod *Model) MustSearch(param QueryParam, page int, pagesize int) maps.MapStr {
-	res, err := mod.Search(param, page, pagesize)
+// MustPaginate 按条件查询, 分页, 失败抛出异常
+func (mod *Model) MustPaginate(param QueryParam, page int, pagesize int) maps.MapStr {
+	res, err := mod.Paginate(param, page, pagesize)
 	if err != nil {
 		exception.Err(err, 500).Throw()
 	}

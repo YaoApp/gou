@@ -75,8 +75,8 @@ func TestModelMustGet(t *testing.T) {
 	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
 }
 
-func TestModelMustSearch(t *testing.T) {
-	user := Select("user").MustSearch(QueryParam{}, 1, 2)
+func TestModelMustPaginate(t *testing.T) {
+	user := Select("user").MustPaginate(QueryParam{}, 1, 2)
 	userDot := user.Dot()
 	assert.Equal(t, userDot.Get("total"), 3)
 	assert.Equal(t, userDot.Get("next"), 2)
@@ -85,8 +85,8 @@ func TestModelMustSearch(t *testing.T) {
 	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
 }
 
-func TestModelMustSearchWiths(t *testing.T) {
-	user := Select("user").MustSearch(QueryParam{
+func TestModelMustPaginateWiths(t *testing.T) {
+	user := Select("user").MustPaginate(QueryParam{
 		Withs: map[string]With{
 			"manu":      {},
 			"addresses": {},
@@ -105,8 +105,8 @@ func TestModelMustSearchWiths(t *testing.T) {
 	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
 }
 
-func TestModelMustSearchWithsWhere(t *testing.T) {
-	user := Select("user").MustSearch(QueryParam{
+func TestModelMustPaginateWithsWhere(t *testing.T) {
+	user := Select("user").MustPaginate(QueryParam{
 		Wheres: []QueryWhere{
 			{
 				Column: "mobile",
@@ -131,8 +131,8 @@ func TestModelMustSearchWithsWhere(t *testing.T) {
 
 }
 
-func TestModelMustSearchWithsWheresOrder(t *testing.T) {
-	user := Select("user").MustSearch(QueryParam{
+func TestModelMustPaginateWithsWheresOrder(t *testing.T) {
+	user := Select("user").MustPaginate(QueryParam{
 		Orders: []QueryOrder{
 			{
 				Column: "id",
