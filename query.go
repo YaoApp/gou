@@ -76,6 +76,11 @@ func (param QueryParam) Query(stack *QueryStack, stackParams ...QueryStackParam)
 		param.Order(order, stack.Query(), mod)
 	}
 
+	// Limit
+	if param.Limit > 0 {
+		stack.Query().Limit(param.Limit)
+	}
+
 	// Withs
 	for name, with := range param.Withs {
 		param.With(name, stack, with, mod)

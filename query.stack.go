@@ -236,6 +236,16 @@ func (stack *QueryStack) runHasMany(res *[][]maps.MapStrAny, builder QueryStackB
 		name = param.QueryParam.Alias + "." + name
 	}
 
+	// 空数据
+	if len(foreignIDs) == 0 {
+		*res = append(*res, []maps.MapStr{})
+		varname := rel.Name
+		for idx := range prevRows {
+			prevRows[idx][varname] = []maps.MapStr{}
+		}
+		return
+	}
+
 	builder.Query.WhereIn(name, foreignIDs).Limit(100)
 	rows := builder.Query.MustGet()
 

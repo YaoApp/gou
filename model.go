@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
@@ -258,6 +257,7 @@ func (mod *Model) Save(row maps.MapStrAny) (int, error) {
 		_, err := capsule.Query().
 			Table(mod.MetaData.Table.Name).
 			Where(mod.PrimaryKey, id).
+			Limit(1).
 			Update(row)
 
 		if err != nil {
@@ -341,6 +341,42 @@ func (mod *Model) Insert(columns []string, rows [][]interface{}) error {
 
 }
 
+// Delete 删除单条记录
+func (mod *Model) Delete(id interface{}) error {
+	_, err := mod.DeleteWhere(QueryParam{
+		Wheres: []QueryWhere{
+			{
+				Column: mod.PrimaryKey,
+				Value:  id,
+			},
+		},
+		Limit: 1,
+	})
+	return err
+}
+
+// MustDelete 删除单条记录, 失败抛出异常
+func (mod *Model) MustDelete(id interface{}) {
+	err := mod.Delete(id)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+}
+
+// Destroy 真删除单条记录
+func (mod *Model) Destroy(id interface{}) error {
+	_, err := capsule.Query().Table(mod.MetaData.Table.Name).Where("id", id).Limit(1).Delete()
+	return err
+}
+
+// MustDestroy 真删除单条记录, 失败抛出异常
+func (mod *Model) MustDestroy(id interface{}) {
+	err := mod.Destroy(id)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+}
+
 // MustInsert 插入多条数据, 失败抛出异常
 func (mod *Model) MustInsert(columns []string, rows [][]interface{}) {
 	err := mod.Insert(columns, rows)
@@ -374,6 +410,87 @@ func (mod *Model) Update(param QueryParam, row maps.MapStrAny) (int, error) {
 	return int(effect), err
 }
 
+// DeleteWhere 批量删除数据, 返回更新行数
+func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
+
+	// 软删除
+	if mod.MetaData.Option.SoftDeletes {
+		data := maps.MapStrAny{}
+		columns := []string{}
+		for _, col := range mod.UniqueColumns {
+			typ := strings.ToLower(col.Type)
+			if typ == "string" {
+				data[col.Name] = dbal.Raw(fmt.Sprintf("CONCAT_WS('_', '%d')", time.Now().UnixNano()))
+				columns = append(
+					columns,
+					fmt.Sprintf("CONCAT('\"%s\":\"', `%s`, '\"')", col.Name, col.Name),
+				)
+			} else { // 数字, 布尔型等
+				columns = append(
+					columns,
+					fmt.Sprintf("CONCAT('\"%s\":', `%s`)", col.Name, col.Name),
+				)
+			}
+			if col.Nullable {
+				data[col.Name] = nil
+			}
+		}
+
+		param.Model = mod.Name
+		stack := NewQueryStack(param)
+		qb := stack.FirstQuery()
+
+		// 备份唯一数据
+		if len(columns) > 0 {
+			restore := dbal.Raw("CONCAT('{'," + strings.Join(columns, ",',',") + ",'}')")
+			_, err := qb.Update(maps.MapStr{"__restore_data": restore})
+			if err != nil {
+				return 0, err
+			}
+		}
+
+		// 删除数据
+		data["deleted_at"] = dbal.Raw("NOW()")
+		effect, err := qb.Update(data)
+		if err != nil {
+			return 0, err
+		}
+		return int(effect), nil
+	}
+
+	return mod.DestoryWhere(param)
+}
+
+// MustDeleteWhere 批量删除数据, 返回更新行数, 失败跑出异常
+func (mod *Model) MustDeleteWhere(param QueryParam) int {
+	effect, err := mod.DeleteWhere(param)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return effect
+}
+
+// DestoryWhere 批量真删除数据, 返回更新行数
+func (mod *Model) DestoryWhere(param QueryParam) (int, error) {
+	param.Model = mod.Name
+	stack := NewQueryStack(param)
+	qb := stack.FirstQuery()
+	effect, err := qb.Delete()
+	if err != nil {
+		return 0, err
+	}
+	return int(effect), nil
+}
+
+// MustDestoryWhere 批量真删除数据, 返回更新行数, 失败跑出异常
+func (mod *Model) MustDestoryWhere(param QueryParam) int {
+	effect, err := mod.DestoryWhere(param)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return effect
+}
+
 // MustUpdate 按条件更新记录, 返回更新行数, 失败抛出异常
 func (mod *Model) MustUpdate(param QueryParam, row maps.MapStrAny) int {
 	effect, err := mod.Update(param, row)
@@ -381,71 +498,6 @@ func (mod *Model) MustUpdate(param QueryParam, row maps.MapStrAny) int {
 		exception.Err(err, 500).Throw()
 	}
 	return effect
-}
-
-// Delete 删除单条记录
-func (mod *Model) Delete(id interface{}) error {
-
-	// 软删除
-	if mod.MetaData.Option.SoftDeletes {
-		selects := []interface{}{}
-		data := maps.MapStrAny{}
-		for _, col := range mod.UniqueColumns {
-			selects = append(selects, col.Name)
-			typ := strings.ToLower(col.Type)
-			if col.Nullable {
-				data[col.Name] = nil
-			} else if typ == "string" {
-				data[col.Name] = dbal.Raw(fmt.Sprintf("CONCAT_WS('_', '%d')", time.Now().UnixNano()))
-			}
-		}
-		row, err := mod.Find(id, QueryParam{Select: selects})
-		if err != nil {
-			return err
-		}
-
-		restore, err := jsoniter.MarshalToString(row)
-		if err != nil {
-			return err
-		}
-
-		data["__restore_data"] = restore
-		data["deleted_at"] = dbal.Raw("NOW()")
-
-		_, err = capsule.Query().
-			Table(mod.MetaData.Table.Name).
-			Where(mod.PrimaryKey, id).
-			Update(data)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	return mod.Destroy(id)
-}
-
-// MustDelete 删除单条记录, 失败抛出异常
-func (mod *Model) MustDelete(id interface{}) {
-	err := mod.Delete(id)
-	if err != nil {
-		exception.Err(err, 500).Throw()
-	}
-}
-
-// Destroy 真删除单条记录
-func (mod *Model) Destroy(id interface{}) error {
-	_, err := capsule.Query().Table(mod.MetaData.Table.Name).Where("id", id).Delete()
-	return err
-}
-
-// MustDestroy 真删除单条记录, 失败抛出异常
-func (mod *Model) MustDestroy(id interface{}) {
-	err := mod.Destroy(id)
-	if err != nil {
-		exception.Err(err, 500).Throw()
-	}
 }
 
 // Migrate 数据迁移
