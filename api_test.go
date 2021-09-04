@@ -154,3 +154,47 @@ func TestCallerSave(t *testing.T) {
 	// 清空数据
 	capsule.Query().Table(Select("user").MetaData.Table.Name).Where("id", id).Delete()
 }
+
+func TestCallerDelete(t *testing.T) {
+	row := maps.MapStr{
+		"name":     "用户创建",
+		"manu_id":  2,
+		"type":     "user",
+		"idcard":   "23082619820207006X",
+		"mobile":   "13900004444",
+		"password": "qV@uT1DI",
+		"key":      "XZ12MiPp",
+		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+		"status":   "enabled",
+		"extra":    maps.MapStr{"sex": "女"},
+	}
+
+	user := Select("user")
+	id := user.MustSave(row)
+	NewCaller("models.user.Delete", id).Run()
+
+	// 清空数据
+	capsule.Query().Table(Select("user").MetaData.Table.Name).Where("id", id).Delete()
+}
+
+func TestCallerDestroy(t *testing.T) {
+	row := maps.MapStr{
+		"name":     "用户创建",
+		"manu_id":  2,
+		"type":     "user",
+		"idcard":   "23082619820207006X",
+		"mobile":   "13900004444",
+		"password": "qV@uT1DI",
+		"key":      "XZ12MiPp",
+		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+		"status":   "enabled",
+		"extra":    maps.MapStr{"sex": "女"},
+	}
+
+	user := Select("user")
+	id := user.MustSave(row)
+	NewCaller("models.user.Destroy", id).Run()
+
+	// 清空数据
+	capsule.Query().Table(Select("user").MetaData.Table.Name).Where("id", id).Delete()
+}

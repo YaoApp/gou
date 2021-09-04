@@ -26,6 +26,8 @@ var ModelHandlers = map[string]func(caller *Caller) interface{}{
 	"create":   callerCreate,
 	"update":   callerUpdate,
 	"save":     callerSave,
+	"delete":   callerDelete,
+	"destroy":  callerDestroy,
 }
 
 // NewCaller 创建运行器
@@ -145,4 +147,20 @@ func callerSave(caller *Caller) interface{} {
 	mod := Select(caller.Class)
 	row := any.Of(caller.Args[0]).Map().MapStrAny
 	return mod.MustSave(row)
+}
+
+// callerDelete 运行模型 MustDelete
+func callerDelete(caller *Caller) interface{} {
+	caller.validateArgNums(1)
+	mod := Select(caller.Class)
+	mod.MustDelete(caller.Args[0])
+	return nil
+}
+
+// callerDestroy 运行模型 MustDestroy
+func callerDestroy(caller *Caller) interface{} {
+	caller.validateArgNums(1)
+	mod := Select(caller.Class)
+	mod.MustDestroy(caller.Args[0])
+	return nil
 }
