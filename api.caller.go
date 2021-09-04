@@ -6,6 +6,7 @@ import (
 
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/str"
 )
 
 // Caller 运行器
@@ -28,6 +29,7 @@ var ModelHandlers = map[string]func(caller *Caller) interface{}{
 	"save":     callerSave,
 	"delete":   callerDelete,
 	"destroy":  callerDestroy,
+	"insert":   callerInsert,
 }
 
 // NewCaller 创建运行器
@@ -162,5 +164,42 @@ func callerDestroy(caller *Caller) interface{} {
 	caller.validateArgNums(1)
 	mod := Select(caller.Class)
 	mod.MustDestroy(caller.Args[0])
+	return nil
+}
+
+// callerInsert 运行模型 MustInsert
+func callerInsert(caller *Caller) interface{} {
+	caller.validateArgNums(2)
+	mod := Select(caller.Class)
+	var colums = []string{}
+	colums, ok := caller.Args[0].([]string)
+	if !ok {
+		anyColums, ok := caller.Args[0].([]interface{})
+		if !ok {
+			exception.New("第1个查询参数错误 %v", 400, caller.Args[0]).Throw()
+		}
+		for _, col := range anyColums {
+			colums = append(colums, string(str.Of(col)))
+		}
+	}
+
+	var rows = [][]interface{}{}
+	rows, ok = caller.Args[1].([][]interface{})
+	if !ok {
+		anyRows, ok := caller.Args[1].([]interface{})
+		if !ok {
+			exception.New("第2个查询参数错误 %v", 400, caller.Args[1]).Throw()
+		}
+		for _, anyRow := range anyRows {
+
+			row, ok := anyRow.([]interface{})
+			if !ok {
+				exception.New("第2个查询参数错误 %v", 400, caller.Args[1]).Throw()
+			}
+			rows = append(rows, row)
+		}
+	}
+
+	mod.MustInsert(colums, rows)
 	return nil
 }

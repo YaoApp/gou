@@ -198,3 +198,27 @@ func TestCallerDestroy(t *testing.T) {
 	// 清空数据
 	capsule.Query().Table(Select("user").MetaData.Table.Name).Where("id", id).Delete()
 }
+
+func TestCallerInsert(t *testing.T) {
+
+	content := `{
+		"columns": ["user_id", "province", "city", "location"],
+		"rows": [
+			[4, "北京市", "丰台区", "银海星月9号楼9单元9层1024室"],
+			[4, "天津市", "塘沽区", "益海星云7号楼3单元1003室"]
+		]
+	}`
+
+	payload := map[string]interface{}{}
+	err := jsoniter.UnmarshalFromString(content, &payload)
+	if err != nil {
+		assert.Nil(t, err)
+		return
+	}
+
+	NewCaller("models.address.Insert", payload["columns"], payload["rows"]).Run()
+
+	// 清理数据
+	address := Select("address")
+	capsule.Query().Table(address.MetaData.Table.Name).Where("user_id", 4).Delete()
+}
