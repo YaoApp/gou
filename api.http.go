@@ -71,7 +71,7 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 
 		// 运行 Process
 		var args []interface{} = getArgs(c)
-		var resp interface{} = NewCaller(path.Process, args...).Run()
+		var resp interface{} = NewProcess(path.Process, args...).Run()
 		var status int = path.Out.Status
 		var contentType string = path.Out.Type
 
