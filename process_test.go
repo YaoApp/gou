@@ -237,3 +237,36 @@ func TestProcessDestroyWhere(t *testing.T) {
 	// 清理数据
 	assert.Equal(t, effect, 3)
 }
+
+func TestProcessRegisterProcessHandler(t *testing.T) {
+
+	RegisterProcessHandler("charts", func(process *Process) interface{} {
+		return maps.Map{
+			"name":   "charts",
+			"class":  process.Class,
+			"method": process.Method,
+			"args":   process.Args,
+		}
+	})
+
+	RegisterProcessHandler("charts.user.world", func(process *Process) interface{} {
+		return maps.Map{
+			"name":   "charts.user.world",
+			"class":  process.Class,
+			"method": process.Method,
+			"args":   process.Args,
+		}
+	})
+
+	res := NewProcess("charts.user.Hello", "foo", "bar").Run().(maps.Map)
+	assert.Equal(t, "charts", res.Get("name"))
+	assert.Equal(t, "user", res.Get("class"))
+	assert.Equal(t, "hello", res.Get("method"))
+	assert.Equal(t, []interface{}{"foo", "bar"}, res.Get("args"))
+
+	res2 := NewProcess("charts.user.World", "bar", "foo").Run().(maps.Map)
+	assert.Equal(t, "charts.user.world", res2.Get("name"))
+	assert.Equal(t, "user", res2.Get("class"))
+	assert.Equal(t, "world", res2.Get("method"))
+	assert.Equal(t, []interface{}{"bar", "foo"}, res2.Get("args"))
+}

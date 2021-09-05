@@ -16,11 +16,17 @@ type Process struct {
 	Class   string
 	Method  string
 	Args    []interface{}
-	Handler func(process *Process) interface{}
+	Handler ProcessHandler
 }
 
+// ProcessHandler 处理程序
+type ProcessHandler func(process *Process) interface{}
+
+// ThirdHandlers 第三方处理器
+var ThirdHandlers = map[string]ProcessHandler{}
+
 // ModelHandlers 模型运行器
-var ModelHandlers = map[string]func(process *Process) interface{}{
+var ModelHandlers = map[string]ProcessHandler{
 	"find":         processFind,
 	"get":          processGet,
 	"paginate":     processPaginate,
@@ -40,6 +46,11 @@ func NewProcess(name string, args ...interface{}) *Process {
 	process := &Process{Name: name, Args: args}
 	process.extraProcess()
 	return process
+}
+
+// RegisterProcessHandler 注册 ProcessHandler
+func RegisterProcessHandler(name string, handler ProcessHandler) {
+	ThirdHandlers[name] = handler
 }
 
 // Run 运行方法
@@ -68,6 +79,10 @@ func (process *Process) extraProcess() {
 		if !has {
 			exception.New("%s 方法不存在", 404, process.Method).Throw()
 		}
+		process.Handler = handler
+	} else if handler, has := ThirdHandlers[strings.ToLower(process.Name)]; has {
+		process.Handler = handler
+	} else if handler, has := ThirdHandlers[process.Type]; has {
 		process.Handler = handler
 	}
 }
