@@ -58,7 +58,7 @@ func (param QueryParam) Query(stack *QueryStack, stackParams ...QueryStackParam)
 		param.Select = mod.ColumnNames // Select All
 	}
 
-	selects := mod.FliterSelect(param.Alias, param.Select, stack.Builder().ColumnMap, exportPrefix)
+	selects := mod.Filterselect(param.Alias, param.Select, stack.Builder().ColumnMap, exportPrefix)
 	stack.Query().SelectAppend(selects...)
 
 	// Where
@@ -185,7 +185,7 @@ func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 				withSubParam.Select = append(withSubParam.Select, "deleted_at")
 			}
 
-			selects := withModel.FliterSelect("", withSubParam.Select, nil, "")
+			selects := withModel.Filterselect("", withSubParam.Select, nil, "")
 			sub.SelectAppend(selects...)
 
 			// Where
@@ -393,7 +393,7 @@ func (param QueryParam) withHasMany(stack *QueryStack, rel Relation, with With) 
 	// 添加关联外键
 	if !param.hasSelectColumn(rel.Foreign) {
 		mod := Select(param.Model)
-		selects := mod.FliterSelect(param.Alias, []interface{}{rel.Foreign}, stack.Builder().ColumnMap, "")
+		selects := mod.Filterselect(param.Alias, []interface{}{rel.Foreign}, stack.Builder().ColumnMap, "")
 		stack.Query().SelectAppend(selects...)
 	}
 

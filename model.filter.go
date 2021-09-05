@@ -22,8 +22,8 @@ func (mod *Model) FliterIn(row maps.MapStrAny) {
 	}
 }
 
-// FliterSelect 选择字段
-func (mod *Model) FliterSelect(alias string, columns []interface{}, cmap map[string]ColumnMap, exportPrefix string) []interface{} {
+// Filterselect 选择字段
+func (mod *Model) Filterselect(alias string, columns []interface{}, cmap map[string]ColumnMap, exportPrefix string) []interface{} {
 	res := []interface{}{}
 	if cmap == nil {
 		cmap = map[string]ColumnMap{}

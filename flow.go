@@ -136,12 +136,12 @@ func Bind(v interface{}, data maps.Map) interface{} {
 			}
 		}
 
-		// ReplaceFliters
+		// ReplaceFilters
 		matches = reFun.FindAllStringSubmatch(input, -1)
 		length = len(matches)
 		if length == 1 {
 			name := matches[0][1]
-			if method, has := Fliters[name]; has {
+			if method, has := Filters[name]; has {
 				args := extraFunArgs(matches[0][2], data)
 				res = method(args...)
 			} else {
