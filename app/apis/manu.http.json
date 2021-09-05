@@ -4,7 +4,5 @@
   "description": "厂商API",
   "group": "manu",
   "guard": "bearer-jwt",
-  "table": true,
-  "disabled": ["save"],
   "paths": []
 }
