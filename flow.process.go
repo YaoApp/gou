@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/yaoapp/kun/maps"
-	"github.com/yaoapp/kun/utils"
 )
 
 // Exec 运行flow
@@ -25,9 +24,6 @@ func (flow *Flow) Exec(args ...interface{}) interface{} {
 	for i, node := range flow.Nodes {
 		flow.ExecNode(&node, flowCtx, i-1)
 	}
-
-	utils.DD(flowCtx.Res)
-
 	return res
 }
 
