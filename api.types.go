@@ -10,24 +10,20 @@ type API struct {
 
 // HTTP http 协议服务
 type HTTP struct {
-	Name        string   `json:"name"`
-	Version     string   `json:"version"`
-	Description string   `json:"description,omitempty"`
-	Group       string   `json:"group,omitempty"`
-	Guard       string   `json:"guard,omitempty"`
-	Table       bool     `json:"table,omitempty"`
-	Disabled    []string `json:"disabled,omitempty"`
-	Enabled     []string `json:"enabled,omitempty"`
-	Paths       []Path   `json:"paths,omitempty"`
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	Description string `json:"description,omitempty"`
+	Group       string `json:"group,omitempty"`
+	Guard       string `json:"guard,omitempty"`
+	Paths       []Path `json:"paths,omitempty"`
 }
 
 // Path HTTP Path
 type Path struct {
 	Path    string   `json:"path"`
 	Method  string   `json:"method"`
-	Guard   string   `json:"guard,omitempty"`
-	Type    string   `json:"type,omitempty"`
 	Process string   `json:"process"`
+	Guard   string   `json:"guard,omitempty"`
 	In      []string `json:"in,omitempty"`
 	Out     Out      `json:"out,omitempty"`
 }

@@ -33,7 +33,7 @@ func (http HTTP) Routes(router *gin.Engine, root string, allows ...string) {
 
 // Route 路径配置转换为路由
 func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
-	getArgs := http.parseIn(path.In, path.Type)
+	getArgs := http.parseIn(path.In)
 	handlers := []gin.HandlerFunc{}
 
 	// 跨域访问
@@ -136,7 +136,7 @@ func (http HTTP) crossDomain(path string, allows map[string]bool, router gin.IRo
 }
 
 // parseIn 接口传参解析
-func (http HTTP) parseIn(in []string, typ string) func(c *gin.Context) []interface{} {
+func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
 	getValues := []func(c *gin.Context) interface{}{}
 
 	for _, v := range in {

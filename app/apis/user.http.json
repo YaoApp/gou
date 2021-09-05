@@ -4,32 +4,26 @@
   "description": "用户API",
   "group": "user",
   "guard": "bearer-jwt",
-  "table": true,
-  "disabled": ["save"],
   "paths": [
     {
       "path": "/login",
       "method": "POST",
       "guard": "-",
-      "type": "application/form-data",
       "process": "plugins.user.Login",
       "in": ["$payload.mobile", "$payload.password", "$payload.captcha"],
       "out": {
         "status": 200,
-        "type": "application/json",
-        "content": "$response.0"
+        "type": "application/json"
       }
     },
     {
       "path": "/info/:id",
       "method": "GET",
-      "type": "application/form-data",
       "process": "models.user.Find",
       "in": ["$param.id", ":params"],
       "out": {
         "status": 200,
-        "type": "application/json",
-        "content": "$response.0"
+        "type": "application/json"
       }
     }
   ]
