@@ -1,56 +1,59 @@
-[
-  {
-    "name": "users",
-    "process": "model.user.paginate",
-    "args": [
-      {
-        "select": ["id", "name", "extra", "resume"],
-        "withs": {
-          "manu": { "select": ["name", "short_name"] },
-          "addresses": { "select": ["province", "city", "location"] }
-        },
-        "page": 1,
-        "pagesize": 20,
-        "orders": [{ "column": "created_at", "option": "desc" }],
-        "wheres": [
-          { "column": "status", "value": "enabled" },
-          { "column": "name", "value": "{{$in.0}}", "op": "like" }
-        ]
-      }
-    ],
-    "outs": ["{{$out.data}}"]
-  },
-  {
-    "name": "manu1st",
-    "process": "model.manu.get",
-    "args": [
-      {
-        "select": ["id", "name", "short_name"],
-        "limit": 1,
-        "orders": [{ "column": "created_at", "option": "desc" }],
-        "wheres": [
-          { "column": "status", "value": "enabled" },
-          { "column": "name", "value": "{{$in.1}}", "op": "like" }
-        ]
-      }
-    ],
-    "script": "rank",
-    "outs": ["{{$out.0}}"]
-  },
-  {
-    "name": "github",
-    "process": "plugins.user.github",
-    "args": ["{{$res.users.data}}", "{{$res.manu1st}}", "foo", 1]
-  },
-  {
-    "name": "count",
-    "script": "count"
-  },
-  {
-    "output": {
-      "users": "{{$res.users}}",
-      "manu1st": "{{$res.manu1st}}",
-      "count": "{{$res.count}}"
+{
+  "label": "最新信息",
+  "version": "1.0.0",
+  "description": "最新信息",
+  "nodes": [
+    {
+      "name": "users",
+      "process": "model.user.paginate",
+      "args": [
+        {
+          "select": ["id", "name", "extra", "resume"],
+          "withs": {
+            "manu": { "select": ["name", "short_name"] },
+            "addresses": { "select": ["province", "city", "location"] }
+          },
+          "page": 1,
+          "pagesize": 20,
+          "orders": [{ "column": "created_at", "option": "desc" }],
+          "wheres": [
+            { "column": "status", "value": "enabled" },
+            { "column": "name", "value": "{{$in.0}}", "op": "like" }
+          ]
+        }
+      ],
+      "outs": ["{{$out.data}}"]
+    },
+    {
+      "name": "manu1st",
+      "process": "model.manu.get",
+      "args": [
+        {
+          "select": ["id", "name", "short_name"],
+          "limit": 1,
+          "orders": [{ "column": "created_at", "option": "desc" }],
+          "wheres": [
+            { "column": "status", "value": "enabled" },
+            { "column": "name", "value": "{{$in.1}}", "op": "like" }
+          ]
+        }
+      ],
+      "script": "rank",
+      "outs": ["{{$out.0}}"]
+    },
+    {
+      "name": "github",
+      "process": "plugins.user.github",
+      "args": ["{{$res.users.data}}", "{{$res.manu1st}}", "foo", 1]
+    },
+    {
+      "name": "count",
+      "script": "count"
     }
+  ],
+  "output": {
+    "users": "{{$res.users}}",
+    "manu1st": "{{$res.manu1st}}",
+    "count": "{{$res.count}}"
   }
-]
+}

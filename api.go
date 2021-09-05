@@ -143,5 +143,6 @@ func AddHTTPGuard(name string, guard gin.HandlerFunc) {
 
 // Reload 重新载入API
 func (api *API) Reload() *API {
-	return LoadAPI(api.Source, api.Name)
+	api = LoadAPI(api.Source, api.Name)
+	return api
 }
