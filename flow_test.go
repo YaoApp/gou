@@ -24,3 +24,8 @@ func TestSelectFlow(t *testing.T) {
 	assert.Equal(t, latestFlow.Name, "latest")
 	assert.Equal(t, len(latestFlow.Nodes), 4)
 }
+
+func TestFlowExec(t *testing.T) {
+	flow := SelectFlow("latest")
+	flow.Exec("%公司%", "bar")
+}

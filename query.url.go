@@ -4,12 +4,35 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 const reURLWhereStr = "(where|orwhere|wherein|orwherein)\\.(.+)\\.(eq|gt|lt|ge|le|like|null|notnull)"
 
 var reURLWhere = regexp.MustCompile("^" + reURLWhereStr + "$")
 var reURLGroupWhere = regexp.MustCompile("^group\\.([a-zA-Z_]{1}[0-9a-zA-Z_]+)\\." + reURLWhereStr + "$")
+
+// AnyToQueryParam interface 转换为 QueryParams
+func AnyToQueryParam(v interface{}) (QueryParam, bool) {
+	params := QueryParam{}
+	params, ok := v.(QueryParam)
+	if ok {
+		return params, true
+	}
+
+	bytes, err := jsoniter.Marshal(v)
+	if err != nil {
+		return params, false
+	}
+
+	err = jsoniter.Unmarshal(bytes, &params)
+	if err != nil {
+		return params, false
+	}
+
+	return params, true
+}
 
 // URLToQueryParam url.Values 转换为 QueryParams
 func URLToQueryParam(values url.Values) QueryParam {

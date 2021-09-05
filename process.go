@@ -42,17 +42,23 @@ func (process *Process) extraProcess() {
 	process.Method = strings.ToLower(namer[last])
 	if process.Type == "plugins" { // Plugin
 		process.Handler = processExec
+		return
 	} else if process.Type == "models" { // Model
 		handler, has := ModelHandlers[process.Method]
 		if !has {
 			exception.New("%s 方法不存在", 404, process.Method).Throw()
 		}
 		process.Handler = handler
+		return
 	} else if handler, has := ThirdHandlers[strings.ToLower(process.Name)]; has {
 		process.Handler = handler
+		return
 	} else if handler, has := ThirdHandlers[process.Type]; has {
 		process.Handler = handler
+		return
 	}
+
+	exception.New("%s 未找到处理器", 404, process.Name).Throw()
 }
 
 // validateArgs( args )
@@ -90,7 +96,7 @@ func processFind(process *Process) interface{} {
 func processGet(process *Process) interface{} {
 	process.validateArgNums(1)
 	mod := Select(process.Class)
-	params, ok := process.Args[0].(QueryParam)
+	params, ok := AnyToQueryParam(process.Args[0])
 	if !ok {
 		exception.New("第1个查询参数错误 %v", 400, process.Args[0]).Throw()
 	}
@@ -101,7 +107,7 @@ func processGet(process *Process) interface{} {
 func processPaginate(process *Process) interface{} {
 	process.validateArgNums(3)
 	mod := Select(process.Class)
-	params, ok := process.Args[0].(QueryParam)
+	params, ok := AnyToQueryParam(process.Args[0])
 	if !ok {
 		exception.New("第1个查询参数错误 %v", 400, process.Args[0]).Throw()
 	}
@@ -194,7 +200,7 @@ func processInsert(process *Process) interface{} {
 func processUpdateWhere(process *Process) interface{} {
 	process.validateArgNums(2)
 	mod := Select(process.Class)
-	params, ok := process.Args[0].(QueryParam)
+	params, ok := AnyToQueryParam(process.Args[0])
 	if !ok {
 		exception.New("第1个查询参数错误 %v", 400, process.Args[0]).Throw()
 	}
@@ -206,7 +212,7 @@ func processUpdateWhere(process *Process) interface{} {
 func processDeleteWhere(process *Process) interface{} {
 	process.validateArgNums(1)
 	mod := Select(process.Class)
-	params, ok := process.Args[0].(QueryParam)
+	params, ok := AnyToQueryParam(process.Args[0])
 	if !ok {
 		params = QueryParam{}
 	}
@@ -217,7 +223,7 @@ func processDeleteWhere(process *Process) interface{} {
 func processDestroyWhere(process *Process) interface{} {
 	process.validateArgNums(1)
 	mod := Select(process.Class)
-	params, ok := process.Args[0].(QueryParam)
+	params, ok := AnyToQueryParam(process.Args[0])
 	if !ok {
 		params = QueryParam{}
 	}

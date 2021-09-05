@@ -1,5 +1,14 @@
 package gou
 
+import (
+	"context"
+	"regexp"
+)
+
+var reVar = regexp.MustCompile("{{[ ]*([^\\s]+)[ ]*}}")                     // {{in.2}}
+var reFun = regexp.MustCompile("{{[ ]*([0-9a-zA-Z_]+)[ ]*\\((.*)\\)[ ]*}}") // {{pluck($res.users, 'id')}}
+var reFunArg = regexp.MustCompile("([^\\s,]+)")                             // $res.users, 'id'
+
 // Flow  工作流
 type Flow struct {
 	Name         string            `json:"-"`
@@ -21,3 +30,14 @@ type FlowNode struct {
 	Args    []interface{} `json:"args,omitempty"`
 	Outs    []interface{} `json:"outs,omitempty"`
 }
+
+// FlowContext 工作流上下文
+type FlowContext struct {
+	In      []interface{}
+	Res     map[string]interface{}
+	Context *context.Context
+	Cancel  context.CancelFunc
+}
+
+// Helper 转换器
+type Helper func(...interface{}) interface{}

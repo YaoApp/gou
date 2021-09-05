@@ -4,17 +4,12 @@
   "description": "最新信息",
   "nodes": [
     {
-      "name": "users",
-      "process": "model.user.paginate",
+      "name": "manus",
+      "process": "models.manu.get",
       "args": [
         {
-          "select": ["id", "name", "extra", "resume"],
-          "withs": {
-            "manu": { "select": ["name", "short_name"] },
-            "addresses": { "select": ["province", "city", "location"] }
-          },
-          "page": 1,
-          "pagesize": 20,
+          "select": ["id", "name", "short_name"],
+          "limit": 20,
           "orders": [{ "column": "created_at", "option": "desc" }],
           "wheres": [
             { "column": "status", "value": "enabled" },
@@ -22,29 +17,43 @@
           ]
         }
       ],
-      "outs": ["{{$out.data}}"]
+      "script": "rank",
+      "outs": ["{{$out}}", "{{$out.manus}}", "{{$out.manu_ids}}"]
     },
     {
-      "name": "manu1st",
-      "process": "model.manu.get",
+      "name": "users",
+      "process": "models.user.paginate",
       "args": [
         {
-          "select": ["id", "name", "short_name"],
-          "limit": 1,
+          "select": ["id", "name", "extra", "resume"],
+          "withs": {
+            "manu": { "select": ["name", "short_name"] },
+            "addresses": { "select": ["province", "city", "location"] }
+          },
           "orders": [{ "column": "created_at", "option": "desc" }],
           "wheres": [
             { "column": "status", "value": "enabled" },
-            { "column": "name", "value": "{{$in.1}}", "op": "like" }
+            { "column": "manu_id", "value": "{{$res.manus.1}}", "op": "in" }
           ]
-        }
+        },
+        1,
+        20
       ],
-      "script": "rank",
-      "outs": ["{{$out.0}}"]
+      "outs": ["{{$out.data}}"]
     },
     {
       "name": "github",
       "process": "plugins.user.github",
-      "args": ["{{$res.users.data}}", "{{$res.manu1st}}", "foo", 1]
+      "args": [
+        "{{$res.users.0}}",
+        "{{$res.manus}}",
+        "{{$in.0}}",
+        "{{$in.1}}",
+        "{{$in.2}}",
+        "{{pluck(:$res.users, 'id', 0.618, 10)}}",
+        "foo",
+        1
+      ]
     },
     {
       "name": "count",
@@ -52,8 +61,8 @@
     }
   ],
   "output": {
+    "manus": "{{$res.manus}}",
     "users": "{{$res.users}}",
-    "manu1st": "{{$res.manu1st}}",
     "count": "{{$res.count}}"
   }
 }
