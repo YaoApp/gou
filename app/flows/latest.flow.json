@@ -18,7 +18,7 @@
         }
       ],
       "script": "rank",
-      "outs": ["{{$out}}", "{{$out.manus}}", "{{$out.manu_ids}}"]
+      "outs": ["{{$out.manus}}", "{{$out.manu_ids}}"]
     },
     {
       "name": "users",
@@ -27,8 +27,10 @@
         {
           "select": ["id", "name", "extra", "resume"],
           "withs": {
-            "manu": { "select": ["name", "short_name"] },
-            "addresses": { "select": ["province", "city", "location"] }
+            "manu": { "query": { "select": ["name", "short_name"] } },
+            "addresses": {
+              "query": { "select": ["province", "city", "location"] }
+            }
           },
           "orders": [{ "column": "created_at", "option": "desc" }],
           "wheres": [
@@ -61,8 +63,12 @@
     }
   ],
   "output": {
-    "manus": "{{$res.manus}}",
-    "users": "{{$res.users}}",
-    "count": "{{$res.count}}"
+    "params": "{{$in}}",
+    "plugin": "{{$res.github}}",
+    "data": {
+      "manus": "{{$res.manus}}",
+      "users": "{{$res.users}}",
+      "count": "{{$res.count}}"
+    }
   }
 }

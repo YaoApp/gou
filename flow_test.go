@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/kun/utils"
 )
 
 func TestLoadFlow(t *testing.T) {
@@ -27,5 +28,6 @@ func TestSelectFlow(t *testing.T) {
 
 func TestFlowExec(t *testing.T) {
 	flow := SelectFlow("latest")
-	flow.Exec("%公司%", "bar")
+	res := flow.Exec("%公司%", "bar")
+	utils.Dump(res)
 }

@@ -343,6 +343,9 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 		case "notnull":
 			qb.WhereNotNull(column)
 			break
+		case "in":
+			qb.WhereIn(column, where.Value)
+			break
 		default:
 			op, has := opmap[where.OP]
 			if !has {
@@ -359,6 +362,8 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 		case "notnull":
 			qb.OrWhereNotNull(column)
 			break
+		case "in":
+			qb.OrWhereIn(column, where.Value)
 		default:
 			op, has := opmap[where.OP]
 			if !has {

@@ -3,6 +3,8 @@ package gou
 import (
 	"context"
 	"regexp"
+
+	"github.com/robertkrimen/otto"
 )
 
 var reVar = regexp.MustCompile("{{[ ]*([^\\s]+)[ ]*}}")                     // {{in.2}}
@@ -37,6 +39,11 @@ type FlowContext struct {
 	Res     map[string]interface{}
 	Context *context.Context
 	Cancel  context.CancelFunc
+}
+
+// FlowVM 数据处理脚本程序运行器
+type FlowVM struct {
+	*otto.Otto
 }
 
 // Helper 转换器
