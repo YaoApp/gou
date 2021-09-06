@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yaoapp/kun/utils"
+	"github.com/yaoapp/kun/maps"
 )
 
 func TestLoadFlow(t *testing.T) {
@@ -28,6 +28,11 @@ func TestSelectFlow(t *testing.T) {
 
 func TestFlowExec(t *testing.T) {
 	flow := SelectFlow("latest")
-	res := flow.Exec("%公司%", "bar")
-	utils.Dump(res)
+	res := maps.Of(flow.Exec("%公司%", "bar").(map[string]interface{}))
+	assert.Equal(t, res.Get("params"), []interface{}{"%公司%", "bar"})
+	assert.Equal(t, len(res.Dot().Get("data.users").([]maps.Map)), 3)
+	assert.Equal(t, len(res.Dot().Get("data.manus").([]maps.Map)), 4)
+	// assert.Equal(t, res.Dot().Get("data.users.0.id"), int64(3))
+	// assert.Equal(t, res.Dot().Get("data.manus.1.id"), int64(3))
+	assert.Equal(t, res.Dot().Get("data.count.plugin"), "github")
 }

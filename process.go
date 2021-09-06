@@ -31,18 +31,30 @@ func (process *Process) Run() interface{} {
 func (process *Process) extraProcess() {
 	namer := strings.Split(process.Name, ".")
 	last := len(namer) - 1
-	if last < 2 {
+	if last < 2 && namer[0] != "flows" {
 		exception.New(
 			fmt.Sprintf("Process:%s 格式错误", process.Name),
 			400,
 		).Throw()
 	}
+
 	process.Type = strings.ToLower(namer[0])
-	process.Class = strings.ToLower(strings.Join(namer[1:last], "."))
-	process.Method = strings.ToLower(namer[last])
+	if last > 1 {
+		process.Class = strings.ToLower(strings.Join(namer[1:last], "."))
+		process.Method = strings.ToLower(namer[last])
+	} else {
+		process.Class = namer[1]
+		process.Method = ""
+	}
+
 	if process.Type == "plugins" { // Plugin
 		process.Handler = processExec
 		return
+
+	} else if process.Type == "flows" { // Flow
+		process.Handler = processFlow
+		return
+
 	} else if process.Type == "models" { // Model
 		handler, has := ModelHandlers[process.Method]
 		if !has {
@@ -50,9 +62,11 @@ func (process *Process) extraProcess() {
 		}
 		process.Handler = handler
 		return
+
 	} else if handler, has := ThirdHandlers[strings.ToLower(process.Name)]; has {
 		process.Handler = handler
 		return
+
 	} else if handler, has := ThirdHandlers[process.Type]; has {
 		process.Handler = handler
 		return
@@ -79,6 +93,12 @@ func processExec(process *Process) interface{} {
 		exception.Err(err, 500).Throw()
 	}
 	return res.MustValue()
+}
+
+// processFlow 运行工作流
+func processFlow(process *Process) interface{} {
+	flow := SelectFlow(process.Class)
+	return flow.Exec(process.Args...)
 }
 
 // processFind 运行模型 MustFind

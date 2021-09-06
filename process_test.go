@@ -12,13 +12,20 @@ import (
 
 func TestProcessExec(t *testing.T) {
 	defer SelectPlugin("user").Client.Kill()
-
 	res := NewProcess("plugins.user.Login", 1).Run().(maps.Map)
 	res2 := NewProcess("plugins.user.Login", 2).Run().(maps.Map)
 	assert.Equal(t, "login", res.Get("name"))
 	assert.Equal(t, "login", res2.Get("name"))
 	assert.Equal(t, 1, any.Of(res.Dot().Get("args.0")).CInt())
 	assert.Equal(t, 2, any.Of(res2.Dot().Get("args.0")).CInt())
+}
+
+func TestProcessFlow(t *testing.T) {
+	res := maps.Of(NewProcess("flows.latest", "%公司%", "bar").Run().(map[string]interface{}))
+	assert.Equal(t, res.Get("params"), []interface{}{"%公司%", "bar"})
+	assert.Equal(t, len(res.Dot().Get("data.users").([]maps.Map)), 3)
+	assert.Equal(t, len(res.Dot().Get("data.manus").([]maps.Map)), 4)
+	assert.Equal(t, res.Dot().Get("data.count.plugin"), "github")
 }
 
 func TestProcessFind(t *testing.T) {

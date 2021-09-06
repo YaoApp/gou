@@ -1,7 +1,6 @@
-function main(args, github, res) {
-  console.log("github", github);
+function main(args, out, res) {
   return {
     args: args,
-    response: github,
+    plugin: res.github.name,
   };
 }

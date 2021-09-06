@@ -65,8 +65,8 @@
   "output": {
     "params": "{{$in}}",
     "data": {
-      "manus": "{{$res.manus}}",
-      "users": "{{$res.users}}",
+      "manus": "{{$res.manus.0}}",
+      "users": "{{$res.users.0}}",
       "count": "{{$res.count}}"
     }
   }
