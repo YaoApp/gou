@@ -78,7 +78,7 @@ func processExec(process *Process) interface{} {
 	if err != nil {
 		exception.Err(err, 500).Throw()
 	}
-	return res
+	return res.MustValue()
 }
 
 // processFind 运行模型 MustFind

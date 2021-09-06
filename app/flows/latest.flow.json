@@ -64,7 +64,6 @@
   ],
   "output": {
     "params": "{{$in}}",
-    "plugin": "{{$res.github}}",
     "data": {
       "manus": "{{$res.manus}}",
       "users": "{{$res.users}}",
