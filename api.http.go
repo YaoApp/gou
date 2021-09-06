@@ -11,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/kun/exception"
-	"github.com/yaoapp/kun/grpc"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/xun"
 )
@@ -82,17 +81,23 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 		if resp == nil {
 			c.Done()
 			return
-		} else if res, ok := resp.(maps.MapStrAny); ok {
-			c.JSON(status, res)
-			c.Done()
-			return
-		} else if res, ok := resp.(*grpc.Response); ok {
-			c.String(status, string(res.Bytes))
-			c.Done()
-			return
+		}
 
-		} else if res, ok := resp.(string); ok {
-			c.String(status, res)
+		switch resp.(type) {
+		case maps.Map, map[string]interface{}, []interface{}, []maps.Map, []map[string]interface{}:
+			c.JSON(status, resp)
+			c.Done()
+			return
+		// case []byte:
+		// 	c.String(status, string(resp.([]byte)))
+		// 	c.Done()
+		// 	return
+		// case string:
+		// 	c.String(status, resp.(string))
+		// 	c.Done()
+		// 	return
+		default:
+			c.String(status, "%v", resp)
 			c.Done()
 			return
 		}
