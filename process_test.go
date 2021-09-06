@@ -6,15 +6,15 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/kun/any"
-	"github.com/yaoapp/kun/grpc"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/xun/capsule"
 )
 
 func TestProcessExec(t *testing.T) {
 	defer SelectPlugin("user").Client.Kill()
-	res := NewProcess("plugins.user.Login", 1).Run().(*grpc.Response).MustMap()
-	res2 := NewProcess("plugins.user.Login", 2).Run().(*grpc.Response).MustMap()
+
+	res := NewProcess("plugins.user.Login", 1).Run().(maps.Map)
+	res2 := NewProcess("plugins.user.Login", 2).Run().(maps.Map)
 	assert.Equal(t, "login", res.Get("name"))
 	assert.Equal(t, "login", res2.Get("name"))
 	assert.Equal(t, 1, any.Of(res.Dot().Get("args.0")).CInt())
