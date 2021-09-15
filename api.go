@@ -1,13 +1,16 @@
 package gou
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yaoapp/gou/helper"
@@ -61,7 +64,7 @@ func SelectAPI(name string) *API {
 }
 
 // ServeHTTP  启动HTTP服务
-func ServeHTTP(server Server, middlewares ...gin.HandlerFunc) {
+func ServeHTTP(server Server, shutdown *chan bool, onShutdown func(Server), middlewares ...gin.HandlerFunc) {
 
 	if server.Debug {
 		gin.SetMode(gin.DebugMode)
@@ -70,11 +73,11 @@ func ServeHTTP(server Server, middlewares ...gin.HandlerFunc) {
 	}
 
 	router := gin.Default()
-	ServeHTTPCustomRouter(router, server, middlewares...)
+	ServeHTTPCustomRouter(router, server, shutdown, onShutdown, middlewares...)
 }
 
 // ServeHTTPCustomRouter 启动HTTP服务, 自定义路由器
-func ServeHTTPCustomRouter(router *gin.Engine, server Server, middlewares ...gin.HandlerFunc) {
+func ServeHTTPCustomRouter(router *gin.Engine, server Server, shutdown *chan bool, onShutdown func(Server), middlewares ...gin.HandlerFunc) {
 
 	// 添加中间件
 	for _, handler := range middlewares {
@@ -118,17 +121,36 @@ func ServeHTTPCustomRouter(router *gin.Engine, server Server, middlewares ...gin
 		api.HTTP.Routes(router, server.Root, server.Allows...)
 	}
 
-	// 服务终止时 关闭插件进程
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	// 服务配置
+	addr := fmt.Sprintf("%s:%d", server.Host, server.Port)
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: router,
+	}
+
 	go func() {
-		<-c
-		KillPlugins()
-		os.Exit(1)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
 	}()
 
-	hosting := fmt.Sprintf("%s:%d", server.Host, server.Port)
-	router.Run(hosting)
+	// 接收关闭信号
+	go func() {
+		<-*shutdown
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Fatal("服务关闭失败:", err)
+		}
+		KillPlugins()
+		onShutdown(server)
+	}()
+
+	// 服务终止时 关闭插件进程
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+	<-quit
+	KillPlugins()
 }
 
 // SetHTTPGuards 加载中间件
