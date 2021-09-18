@@ -57,6 +57,8 @@ func TestModelMustFindWiths(t *testing.T) {
 			},
 		})
 
+	// utils.Dump(user)
+
 	userDot := user.Dot()
 	assert.Equal(t, userDot.Get("mobile"), "13900001111")
 	assert.Equal(t, userDot.Get("extra.sex"), "男")
@@ -69,9 +71,34 @@ func TestModelMustFindWiths(t *testing.T) {
 
 func TestModelMustGet(t *testing.T) {
 	users := Select("user").MustGet(QueryParam{Limit: 2})
+	// utils.Dump(users)
 	assert.Equal(t, len(users), 2)
 	userDot := maps.MapStr{"data": users}.Dot()
 	assert.Equal(t, userDot.Get("data.0.id"), int64(1))
+	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
+}
+
+func TestModelMustGetWiths(t *testing.T) {
+	users := Select("user").MustGet(QueryParam{
+		Select: []interface{}{"id", "name", "mobile"},
+		Withs: map[string]With{
+			"manu":      {},
+			"addresses": {},
+			"mother":    {},
+		},
+		Wheres: []QueryWhere{
+			{Column: "status", Value: "enabled"},
+		},
+		Orders: []QueryOrder{
+			{Column: "id", Option: "desc"},
+		},
+		Limit: 2,
+	})
+	// utils.Dump(users)
+
+	assert.Equal(t, len(users), 2)
+	userDot := maps.MapStr{"data": users}.Dot()
+	assert.Equal(t, userDot.Get("data.0.id"), int64(3))
 	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
 }
 
@@ -87,12 +114,16 @@ func TestModelMustPaginate(t *testing.T) {
 
 func TestModelMustPaginateWiths(t *testing.T) {
 	user := Select("user").MustPaginate(QueryParam{
+		Select: []interface{}{"id", "name", "mobile", "extra"},
 		Withs: map[string]With{
 			"manu":      {},
 			"addresses": {},
 			"mother":    {},
 		},
 	}, 1, 2)
+
+	// utils.Dump(user)
+
 	userDot := user.Dot()
 	assert.Equal(t, userDot.Get("total"), 3)
 	assert.Equal(t, userDot.Get("next"), 2)
@@ -168,6 +199,33 @@ func TestModelMustPaginateWithsWheresOrder(t *testing.T) {
 	assert.Equal(t, userDot.Get("data.1.mother.extra.sex"), "女")
 	assert.Equal(t, userDot.Get("data.1.extra.sex"), "男")
 	assert.Equal(t, userDot.Get("data.1.addresses.0.location"), "北京国家数字出版基地A103")
+
+}
+
+func TestModelMustCreate(t *testing.T) {
+	user := Select("user")
+	id := user.MustCreate(maps.MapStr{
+		"name":     "用户创建",
+		"manu_id":  2,
+		"type":     "user",
+		"idcard":   "23082619820207006X",
+		"mobile":   "13900004444",
+		"password": "qV@uT1DI",
+		"key":      "XZ12MiPp",
+		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+		"status":   "enabled",
+		"extra":    maps.MapStr{"sex": "女"},
+	})
+
+	// utils.Dump(id)
+
+	row := user.MustFind(id, QueryParam{})
+
+	// 清空数据
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+
+	assert.Equal(t, row.Get("name"), "用户创建")
+	assert.Equal(t, row.Dot().Get("extra.sex"), "女")
 
 }
 
