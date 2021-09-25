@@ -178,7 +178,13 @@ func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
 				return c.Request.URL.Query()
 			})
 			continue
-		} else if v == ":params" {
+		} else if v == ":form" {
+			getValues = append(getValues, func(c *gin.Context) interface{} {
+				values := c.Request.PostForm
+				return values
+			})
+			continue
+		} else if v == ":params" || v == ":query-param" {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
 				values := c.Request.URL.Query()
 				return URLToQueryParam(values)
