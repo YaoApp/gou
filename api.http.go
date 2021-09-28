@@ -70,6 +70,9 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 
 		// 运行 Process
 		var args []interface{} = getArgs(c)
+		if path.Guard == "in-process" { // 如果 path.Guard == "in-process" 在调用中鉴权
+			args = append(args, c)
+		}
 		var resp interface{} = NewProcess(path.Process, args...).Run()
 		var status int = path.Out.Status
 		var contentType string = path.Out.Type
@@ -114,7 +117,7 @@ func (http HTTP) guard(handlers *[]gin.HandlerFunc, guard string, defaults strin
 		guard = defaults
 	}
 
-	if guard != "-" {
+	if guard != "-" && guard != "in-process" {
 		guards := strings.Split(guard, ",")
 		for _, name := range guards {
 			name = strings.TrimSpace(name)
