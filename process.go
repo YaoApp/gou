@@ -11,6 +11,7 @@ import (
 
 // NewProcess 创建运行器
 func NewProcess(name string, args ...interface{}) *Process {
+	name = strings.ToLower(name)
 	process := &Process{Name: name, Args: args}
 	process.extraProcess()
 	return process
@@ -18,6 +19,7 @@ func NewProcess(name string, args ...interface{}) *Process {
 
 // RegisterProcessHandler 注册 ProcessHandler
 func RegisterProcessHandler(name string, handler ProcessHandler) {
+	name = strings.ToLower(name)
 	ThirdHandlers[name] = handler
 }
 
@@ -75,8 +77,8 @@ func (process *Process) extraProcess() {
 	exception.New("%s 未找到处理器", 404, process.Name).Throw()
 }
 
-// validateArgs( args )
-func (process *Process) validateArgNums(length int) {
+// ValidateArgNums 校验参数数量( args )
+func (process *Process) ValidateArgNums(length int) {
 	if len(process.Args) < length {
 		exception.New(
 			fmt.Sprintf("Model:%s%s(args...); 缺少查询参数", process.Class, process.Name),
@@ -103,7 +105,7 @@ func processFlow(process *Process) interface{} {
 
 // processFind 运行模型 MustFind
 func processFind(process *Process) interface{} {
-	process.validateArgNums(2)
+	process.ValidateArgNums(2)
 	mod := Select(process.Class)
 	params, ok := process.Args[1].(QueryParam)
 	if !ok {
@@ -114,7 +116,7 @@ func processFind(process *Process) interface{} {
 
 // processGet 运行模型 MustGet
 func processGet(process *Process) interface{} {
-	process.validateArgNums(1)
+	process.ValidateArgNums(1)
 	mod := Select(process.Class)
 	params, ok := AnyToQueryParam(process.Args[0])
 	if !ok {
@@ -125,7 +127,7 @@ func processGet(process *Process) interface{} {
 
 // processPaginate 运行模型 MustPaginate
 func processPaginate(process *Process) interface{} {
-	process.validateArgNums(3)
+	process.ValidateArgNums(3)
 	mod := Select(process.Class)
 	params, ok := AnyToQueryParam(process.Args[0])
 	if !ok {
@@ -139,7 +141,7 @@ func processPaginate(process *Process) interface{} {
 
 // processCreate 运行模型 MustCreate
 func processCreate(process *Process) interface{} {
-	process.validateArgNums(1)
+	process.ValidateArgNums(1)
 	mod := Select(process.Class)
 	row := any.Of(process.Args[0]).Map().MapStrAny
 	return mod.MustCreate(row)
@@ -147,7 +149,7 @@ func processCreate(process *Process) interface{} {
 
 // processUpdate 运行模型 MustUpdate
 func processUpdate(process *Process) interface{} {
-	process.validateArgNums(2)
+	process.ValidateArgNums(2)
 	mod := Select(process.Class)
 	id := process.Args[0]
 	row := any.Of(process.Args[1]).Map().MapStrAny
@@ -157,7 +159,7 @@ func processUpdate(process *Process) interface{} {
 
 // processSave 运行模型 MustSave
 func processSave(process *Process) interface{} {
-	process.validateArgNums(1)
+	process.ValidateArgNums(1)
 	mod := Select(process.Class)
 	row := any.Of(process.Args[0]).Map().MapStrAny
 	return mod.MustSave(row)
@@ -165,7 +167,7 @@ func processSave(process *Process) interface{} {
 
 // processDelete 运行模型 MustDelete
 func processDelete(process *Process) interface{} {
-	process.validateArgNums(1)
+	process.ValidateArgNums(1)
 	mod := Select(process.Class)
 	mod.MustDelete(process.Args[0])
 	return nil
@@ -173,7 +175,7 @@ func processDelete(process *Process) interface{} {
 
 // processDestroy 运行模型 MustDestroy
 func processDestroy(process *Process) interface{} {
-	process.validateArgNums(1)
+	process.ValidateArgNums(1)
 	mod := Select(process.Class)
 	mod.MustDestroy(process.Args[0])
 	return nil
@@ -181,7 +183,7 @@ func processDestroy(process *Process) interface{} {
 
 // processInsert 运行模型 MustInsert
 func processInsert(process *Process) interface{} {
-	process.validateArgNums(2)
+	process.ValidateArgNums(2)
 	mod := Select(process.Class)
 	var colums = []string{}
 	colums, ok := process.Args[0].([]string)
@@ -218,7 +220,7 @@ func processInsert(process *Process) interface{} {
 
 // processUpdateWhere 运行模型 MustUpdateWhere
 func processUpdateWhere(process *Process) interface{} {
-	process.validateArgNums(2)
+	process.ValidateArgNums(2)
 	mod := Select(process.Class)
 	params, ok := AnyToQueryParam(process.Args[0])
 	if !ok {
@@ -230,7 +232,7 @@ func processUpdateWhere(process *Process) interface{} {
 
 // processDeleteWhere 运行模型 MustDeleteWhere
 func processDeleteWhere(process *Process) interface{} {
-	process.validateArgNums(1)
+	process.ValidateArgNums(1)
 	mod := Select(process.Class)
 	params, ok := AnyToQueryParam(process.Args[0])
 	if !ok {
@@ -241,7 +243,7 @@ func processDeleteWhere(process *Process) interface{} {
 
 // processDestroyWhere 运行模型 MustDestroyWhere
 func processDestroyWhere(process *Process) interface{} {
-	process.validateArgNums(1)
+	process.ValidateArgNums(1)
 	mod := Select(process.Class)
 	params, ok := AnyToQueryParam(process.Args[0])
 	if !ok {
