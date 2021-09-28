@@ -70,7 +70,7 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 
 		// 运行 Process
 		var args []interface{} = getArgs(c)
-		if path.Guard == "in-process" { // 如果 path.Guard == "in-process" 在调用中鉴权
+		if path.Guard == "in-process" || (path.Guard == "" && http.Guard == "in-process") { // 如果 path.Guard == "in-process" 在调用中鉴权
 			args = append(args, c)
 		}
 		var resp interface{} = NewProcess(path.Process, args...).Run()
