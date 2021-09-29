@@ -77,16 +77,6 @@ func (process *Process) extraProcess() {
 	exception.New("%s 未找到处理器", 404, process.Name).Throw()
 }
 
-// ValidateArgNums 校验参数数量( args )
-func (process *Process) ValidateArgNums(length int) {
-	if len(process.Args) < length {
-		exception.New(
-			fmt.Sprintf("Model:%s%s(args...); 缺少查询参数", process.Class, process.Name),
-			400,
-		).Throw()
-	}
-}
-
 // processExec 运行插件中的方法
 func processExec(process *Process) interface{} {
 	mod := SelectPluginModel(process.Class)
