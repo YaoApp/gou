@@ -127,3 +127,22 @@ func (process *Process) ArgsString(i int, defaults ...string) string {
 	}
 	return value
 }
+
+// ArgsMap 读取Map 类型参数
+func (process *Process) ArgsMap(i int, defaults ...maps.MapStrAny) maps.MapStrAny {
+	value := maps.Map{}
+	ok := false
+	if len(defaults) > 0 {
+		value = defaults[0]
+	}
+
+	if process.Args[i] == nil || len(process.Args) <= i {
+		return value
+	}
+
+	value, ok = process.Args[i].(maps.Map)
+	if !ok {
+		value = any.Of(process.Args[i]).Map().MapStrAny
+	}
+	return value
+}
