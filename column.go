@@ -285,7 +285,7 @@ func (column Column) SetType(table schema.Blueprint) *schema.Column {
 		return table.UnsignedDouble(column.Name, column.Precision, column.Scale)
 
 	// Boolen,enum
-	case "Boolean":
+	case "Boolean", "boolean":
 		return table.Boolean(column.Name)
 
 	case "enum":
@@ -312,6 +312,8 @@ func (column Column) SetType(table schema.Blueprint) *schema.Column {
 		return table.Year(column.Name)
 
 	}
+
+	exception.New("类型错误 %s %s", 400, column.Type, column.Name).Throw()
 
 	return nil
 }
