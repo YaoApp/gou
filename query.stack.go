@@ -246,11 +246,15 @@ func (stack *QueryStack) runHasMany(res *[][]maps.MapStrAny, builder QueryStackB
 		return
 	}
 
-	builder.Query.WhereIn(name, foreignIDs).Limit(100)
+	limit := 100
+	if param.QueryParam.Limit > 0 {
+		limit = param.QueryParam.Limit
+	}
+	builder.Query.WhereIn(name, foreignIDs).Limit(limit)
 	rows := builder.Query.MustGet()
 
 	// 格式化数据
-	fmtRowMap := map[interface{}]maps.MapStr{}
+	fmtRowMap := map[interface{}][]maps.MapStr{}
 	fmtRows := []maps.MapStr{}
 	for _, row := range rows {
 		fmtRow := maps.MapStr{}
@@ -267,19 +271,23 @@ func (stack *QueryStack) runHasMany(res *[][]maps.MapStrAny, builder QueryStackB
 		if relVal != nil {
 			unDotRows := fmtRow.UnDot()
 			fmtRows = append(fmtRows, unDotRows)
-			fmtRowMap[relVal] = unDotRows
+			if _, has := fmtRowMap[relVal]; !has {
+				fmtRowMap[relVal] = []maps.MapStr{}
+			}
+			fmtRowMap[relVal] = append(fmtRowMap[relVal], unDotRows)
 		}
 	}
 
 	// 追加到上一层
 	varname := rel.Name
+	// utils.Dump(fmtRows, rel.Foreign, varname, fmtRowMap, prevRows)
 	for idx, prow := range prevRows {
 		id := prow.Get(rel.Foreign)
-		if row, has := fmtRowMap[id]; has {
+		if rows, has := fmtRowMap[id]; has {
 			if _, has := prevRows[idx][varname]; !has {
 				prevRows[idx][varname] = []maps.MapStr{}
 			}
-			prevRows[idx][varname] = append(prevRows[idx][varname].([]maps.MapStr), row)
+			prevRows[idx][varname] = append(prevRows[idx][varname].([]maps.MapStr), rows...)
 		}
 	}
 

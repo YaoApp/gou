@@ -63,7 +63,7 @@ func TestModelMustFindWiths(t *testing.T) {
 	assert.Equal(t, userDot.Get("mobile"), "13900001111")
 	assert.Equal(t, userDot.Get("extra.sex"), "男")
 	assert.Equal(t, userDot.Get("manu.name"), "北京云道天成科技有限公司")
-	assert.Equal(t, userDot.Get("addresses.0.location"), "北京国家数字出版基地A103")
+	assert.Equal(t, userDot.Get("addresses.0.location"), "银海星月9号楼9单元9层1024室")
 	assert.Equal(t, userDot.Get("mother.extra.sex"), "女")
 	assert.Equal(t, userDot.Get("mother.friends.friend_id"), int64(2))
 	assert.Equal(t, userDot.Get("mother.friends.type"), "monther")
@@ -132,7 +132,7 @@ func TestModelMustPaginateWiths(t *testing.T) {
 	assert.Equal(t, userDot.Get("data.0.manu.name"), "北京云道天成科技有限公司")
 	assert.Equal(t, userDot.Get("data.0.mother.extra.sex"), "女")
 	assert.Equal(t, userDot.Get("data.0.extra.sex"), "男")
-	assert.Equal(t, userDot.Get("data.0.addresses.0.location"), "北京国家数字出版基地A103")
+	assert.Equal(t, userDot.Get("data.0.addresses.0.location"), "银海星月9号楼9单元9层1024室")
 	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
 }
 
@@ -158,7 +158,7 @@ func TestModelMustPaginateWithsWhere(t *testing.T) {
 	assert.Equal(t, userDot.Get("data.0.manu.name"), "北京云道天成科技有限公司")
 	assert.Equal(t, userDot.Get("data.0.mother.extra.sex"), "女")
 	assert.Equal(t, userDot.Get("data.0.extra.sex"), "男")
-	assert.Equal(t, userDot.Get("data.0.addresses.0.location"), "北京国家数字出版基地A103")
+	assert.Equal(t, userDot.Get("data.0.addresses.0.location"), "银海星月9号楼9单元9层1024室")
 
 }
 
@@ -198,7 +198,7 @@ func TestModelMustPaginateWithsWheresOrder(t *testing.T) {
 	assert.Equal(t, userDot.Get("data.1.manu.name"), "北京云道天成科技有限公司")
 	assert.Equal(t, userDot.Get("data.1.mother.extra.sex"), "女")
 	assert.Equal(t, userDot.Get("data.1.extra.sex"), "男")
-	assert.Equal(t, userDot.Get("data.1.addresses.0.location"), "北京国家数字出版基地A103")
+	assert.Equal(t, userDot.Get("data.1.addresses.0.location"), "银海星月9号楼9单元9层1024室")
 
 }
 

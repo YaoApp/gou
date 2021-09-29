@@ -89,7 +89,8 @@ func processExec(process *Process) interface{} {
 
 // processFlow 运行工作流
 func processFlow(process *Process) interface{} {
-	flow := SelectFlow(process.Class)
+	name := strings.TrimPrefix(process.Name, "flows.")
+	flow := SelectFlow(name)
 	return flow.Exec(process.Args...)
 }
 
