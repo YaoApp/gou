@@ -60,6 +60,11 @@ func (column *Column) fliterInCrypt(value interface{}, row maps.MapStrAny) {
 		return
 	}
 
+	// 忽略空值
+	if value == nil {
+		return
+	}
+
 	icrypt := SelectCrypt(column.Crypt)
 
 	valuestr, ok := value.(string)

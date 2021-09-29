@@ -160,6 +160,12 @@ func (mod *Model) Validate(row maps.MapStrAny) []ValidateResponse {
 		if !has {
 			continue
 		}
+
+		// 如果允许为 null
+		if value == nil && column.Nullable {
+			continue
+		}
+
 		success, messages := column.Validate(value, row)
 		if !success {
 			res = append(res, ValidateResponse{

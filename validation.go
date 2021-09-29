@@ -2,6 +2,7 @@ package gou
 
 import (
 	"fmt"
+	"net/mail"
 	"regexp"
 	"time"
 
@@ -19,6 +20,8 @@ var Validations = map[string]func(value interface{}, row maps.MapStrAny, args ..
 	"pattern":   ValidationPattern,   // 正则匹配
 	"minLength": ValidationMinLength, // 最小长度
 	"maxLength": ValidationMaxLength, // 最大长度
+	"email":     ValidationEmail,     // 邮箱地址
+	"mobile":    ValidationMobile,    // 手机号
 }
 
 // ValidationTypeof 校验数值类型
@@ -140,4 +143,34 @@ func ValidationMaxLength(value interface{}, row maps.MapStrAny, args ...interfac
 		return true
 	}
 	return str.Of(value).Length() <= any.Of(args[0]).CInt()
+}
+
+// ValidationEmail 验证邮箱
+func ValidationEmail(value interface{}, row maps.MapStrAny, args ...interface{}) bool {
+	v := any.Of(value)
+	if !v.IsString() {
+		return false
+	}
+	_, err := mail.ParseAddress(v.String())
+	return err == nil
+}
+
+// ValidationMobile 验证手机号
+func ValidationMobile(value interface{}, row maps.MapStrAny, args ...interface{}) bool {
+
+	v := any.Of(value)
+	if !v.IsString() {
+		return false
+	}
+
+	zone := "cn"
+	if len(args) > 0 {
+		zone = any.Of(args[0]).String()
+	}
+	reg := regexp.MustCompile("^1[3-9]\\d{9}$")
+	switch zone {
+	case "us":
+		reg = regexp.MustCompile(`^[0-9]{3}-[0-9]{3}-[0-9]{4}$`)
+	}
+	return reg.MatchString(v.String())
 }

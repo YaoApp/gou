@@ -97,3 +97,16 @@ func TestValidationEnum(t *testing.T) {
 	assert.True(t, ValidationEnum(1024, nil, 1024, 1983, "7749"))
 	assert.True(t, ValidationEnum("7749", nil, 1024, 1983, "7749"))
 }
+
+func TestValidationEmail(t *testing.T) {
+	assert.True(t, ValidationEmail("xiang@iqka.com", nil))
+	assert.False(t, ValidationEmail("xiang", nil))
+	assert.False(t, ValidationEmail(1, nil))
+}
+
+func TestValidationMobile(t *testing.T) {
+	assert.True(t, ValidationMobile("13299991111", nil))
+	assert.True(t, ValidationMobile("123-123-1234", nil, "us"))
+	assert.False(t, ValidationMobile("xiang", nil))
+	assert.False(t, ValidationMobile(1, nil))
+}
