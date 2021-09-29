@@ -17,6 +17,16 @@ func (process *Process) ValidateArgNums(length int) {
 	}
 }
 
+// NumOfArgs 参数数量
+func (process *Process) NumOfArgs() int {
+	return len(process.Args)
+}
+
+// NumOfArgsIs 参数数量是否等以给等值
+func (process *Process) NumOfArgsIs(num int) bool {
+	return len(process.Args) == num
+}
+
 // ArgsNotNull 查询参数不能为空
 func (process *Process) ArgsNotNull(i int) {
 	if process.Args[i] == nil || len(process.Args) <= i {
