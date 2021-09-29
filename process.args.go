@@ -2,9 +2,11 @@ package gou
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/maps"
 )
 
 // ValidateArgNums 校验参数数量( args )
@@ -31,6 +33,40 @@ func (process *Process) NumOfArgsIs(num int) bool {
 func (process *Process) ArgsNotNull(i int) {
 	if process.Args[i] == nil || len(process.Args) <= i {
 		exception.New("第%d个查询参数不能为空 %v", 400, i, process.Args[0]).Throw()
+	}
+}
+
+// ArgsURLValue 读取参数
+func (process *Process) ArgsURLValue(i int, name string, defaults ...string) string {
+	value := ""
+	if len(defaults) > 0 {
+		value = defaults[0]
+	}
+	switch process.Args[i].(type) {
+	case url.Values:
+		if !process.Args[i].(url.Values).Has(name) {
+			return value
+		}
+		return process.Args[i].(url.Values).Get(name)
+	case map[string]string:
+		v, has := process.Args[i].(map[string]string)[name]
+		if !has {
+			return value
+		}
+		return v
+	case map[string]interface{}:
+		v, has := process.Args[i].(map[string]interface{})[name]
+		if !has {
+			return value
+		}
+		return fmt.Sprintf("%s", v)
+	case maps.Map:
+		if !process.Args[i].(maps.Map).Has(name) {
+			return value
+		}
+		return fmt.Sprintf("%s", process.Args[i].(maps.Map).Get(name))
+	default:
+		return value
 	}
 }
 
