@@ -146,3 +146,22 @@ func (process *Process) ArgsMap(i int, defaults ...maps.MapStrAny) maps.MapStrAn
 	}
 	return value
 }
+
+// ArgsBool 读取参数 String
+func (process *Process) ArgsBool(i int, defaults ...bool) bool {
+	value := false
+	ok := false
+	if len(defaults) > 0 {
+		value = defaults[0]
+	}
+
+	if process.Args[i] == nil || len(process.Args) <= i {
+		return value
+	}
+
+	value, ok = process.Args[i].(bool)
+	if !ok {
+		value = any.Of(process.Args[i]).CBool()
+	}
+	return value
+}

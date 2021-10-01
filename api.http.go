@@ -103,7 +103,11 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 		// 	c.Done()
 		// 	return
 		default:
-			c.String(status, "%v", resp)
+			if contentType == "application/json" {
+				c.JSON(status, resp)
+			} else {
+				c.String(status, "%v", resp)
+			}
 			c.Done()
 			return
 		}
