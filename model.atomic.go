@@ -263,6 +263,14 @@ func (mod *Model) Insert(columns []string, rows [][]interface{}) error {
 				errs = append(errs, err)
 			}
 		}
+
+		// 入库前输入数据预处理
+		mod.FliterIn(row)
+		values := []interface{}{}
+		for _, name := range columns {
+			values = append(values, row[name])
+		}
+		rows[rid] = values
 	}
 
 	if len(errs) > 0 {
