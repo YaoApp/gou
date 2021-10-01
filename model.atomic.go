@@ -314,6 +314,15 @@ func (mod *Model) UpdateWhere(param QueryParam, row maps.MapStrAny) (int, error)
 		row.Set("updated_at", dbal.Raw("NOW()"))
 	}
 
+	// Wrap
+	for name, value := range row {
+		if !strings.Contains(name, ".") {
+			new := fmt.Sprintf("%s.%s", mod.MetaData.Table.Name, name)
+			row.Set(new, value)
+			row.Del(name)
+		}
+	}
+
 	param.Model = mod.Name
 	stack := NewQueryStack(param)
 	qb := stack.FirstQuery()
@@ -374,7 +383,9 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 		}
 
 		// 删除数据
-		data["deleted_at"] = dbal.Raw("NOW()")
+		field := fmt.Sprintf("%s.%s", mod.MetaData.Table.Name, "deleted_at")
+		// data["deleted_at"] = dbal.Raw("NOW()")
+		data[field] = dbal.Raw("NOW()")
 		effect, err := qb.Update(data)
 		if err != nil {
 			return 0, err
