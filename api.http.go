@@ -50,7 +50,7 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 	// API响应逻辑
 	handlers = append(handlers, func(c *gin.Context) {
 
-		if c.GetHeader("content-type") == "application/json" {
+		if strings.HasPrefix(strings.ToLower(c.GetHeader("content-type")), "application/json") {
 			bytes, err := ioutil.ReadAll(c.Request.Body)
 			if err != nil {
 				panic(err)
