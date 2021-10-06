@@ -16,7 +16,10 @@ jobs:
     env:
       DSN: default
     steps:
-      - name: Setup ${{ matrix.db }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Database ${{ matrix.db }}
         uses: ./.github/actions/setup-db
         with:
           kind: "${{ matrix.db }}"
@@ -27,9 +30,6 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go }}
-
-      - name: Checkout code
-        uses: actions/checkout@v2
 
       - name: Test
         run: |
