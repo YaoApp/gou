@@ -13,6 +13,7 @@ startMySQL() {
 
     DB_DSN="$INPUT_USER:$INPUT_PASSWORD@tcp(127.0.0.1:3306)/$INPUT_DB?charset=utf8mb4&parseTime=True&loc=Local"
     echo "DSN=$DB_DSN" >> $GITHUB_ENV
+    echo $DB_DSN
 }
 
 startPostgres() {
@@ -26,6 +27,7 @@ startPostgres() {
 
     DB_DSN="postgres://$INPUT_USER:$INPUT_PASSWORD@127.0.0.1/$INPUT_DB?sslmode=disable"
     echo "DSN=$DB_DSN" >> $GITHUB_ENV
+    echo $DB_DSN
 }
 
 startSQLite3() {
