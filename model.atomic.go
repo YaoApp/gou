@@ -85,7 +85,7 @@ func (mod *Model) Create(row maps.MapStrAny) (int, error) {
 	mod.FliterIn(row) // 入库前输入数据预处理
 
 	if mod.MetaData.Option.Timestamps {
-		row.Set("created_at", dbal.Raw("NOW()"))
+		row.Set("created_at", dbal.Raw("CURRENT_TIMESTAMP"))
 	}
 
 	id, err := capsule.Query().
@@ -119,7 +119,7 @@ func (mod *Model) Update(id interface{}, row maps.MapStrAny) error {
 	mod.FliterIn(row) // 入库前输入数据预处理
 
 	if mod.MetaData.Option.Timestamps {
-		row.Set("updated_at", dbal.Raw("NOW()"))
+		row.Set("updated_at", dbal.Raw("CURRENT_TIMESTAMP"))
 	}
 
 	effect, err := capsule.Query().
@@ -157,7 +157,7 @@ func (mod *Model) Save(row maps.MapStrAny) (int, error) {
 	if row.Has(mod.PrimaryKey) {
 
 		if mod.MetaData.Option.Timestamps {
-			row.Set("updated_at", dbal.Raw("NOW()"))
+			row.Set("updated_at", dbal.Raw("CURRENT_TIMESTAMP"))
 		}
 
 		id := row.Get(mod.PrimaryKey)
@@ -176,7 +176,7 @@ func (mod *Model) Save(row maps.MapStrAny) (int, error) {
 
 	// 创建
 	if mod.MetaData.Option.Timestamps {
-		row.Set("created_at", dbal.Raw("NOW()"))
+		row.Set("created_at", dbal.Raw("CURRENT_TIMESTAMP"))
 	}
 
 	id, err := capsule.Query().
@@ -281,7 +281,7 @@ func (mod *Model) Insert(columns []string, rows [][]interface{}) error {
 	if mod.MetaData.Option.Timestamps {
 		columns = append(columns, "created_at")
 		for i := range rows {
-			rows[i] = append(rows[i], dbal.Raw("NOW()"))
+			rows[i] = append(rows[i], dbal.Raw("CURRENT_TIMESTAMP"))
 		}
 	}
 
@@ -311,7 +311,7 @@ func (mod *Model) UpdateWhere(param QueryParam, row maps.MapStrAny) (int, error)
 	mod.FliterIn(row) // 入库前输入数据预处理
 
 	if mod.MetaData.Option.Timestamps {
-		row.Set("updated_at", dbal.Raw("NOW()"))
+		row.Set("updated_at", dbal.Raw("CURRENT_TIMESTAMP"))
 	}
 
 	// Wrap
@@ -384,8 +384,8 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 
 		// 删除数据
 		field := fmt.Sprintf("%s.%s", mod.MetaData.Table.Name, "deleted_at")
-		// data["deleted_at"] = dbal.Raw("NOW()")
-		data[field] = dbal.Raw("NOW()")
+		// data["deleted_at"] = dbal.Raw("CURRENT_TIMESTAMP")
+		data[field] = dbal.Raw("CURRENT_TIMESTAMP")
 		effect, err := qb.Update(data)
 		if err != nil {
 			return 0, err
