@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [main]
 env:
-  CODECOV_TOKEN: 3683ff24-57de-4282-a5da-de0799f04969
   GOT_TEST_AES_KEY: "^*aNBue!loLTTiP*4i&BSK7s#QRbe0^g"
 jobs:
   unit-test:
@@ -56,3 +55,8 @@ jobs:
           make plugin
           make migrate
           make test
+
+      - name: Codecov Report
+      - uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
