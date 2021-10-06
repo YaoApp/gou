@@ -17,10 +17,10 @@ jobs:
       DSN: default
     steps:
       - name: Setup MySQL8.0
-        id: db-setting
+        id: MySQL8.0
         if: "contains(matrix.db, 'MySQL8.0')"
         env:
-          DSN: MySQL8.0
+          DSN: MySQL8.0          
         uses: mirromutth/mysql-action@v1.1
         with:
           character set server: "utf8"
@@ -30,8 +30,7 @@ jobs:
           mysql root password: "123456"
           mysql user: "gou"
           mysql password: "123456"
-        outputs:
-          DSN: ${{ env.DSN }}
+       
 
       - name: Setup MySQL5.7
         id: db-setting
@@ -47,8 +46,6 @@ jobs:
           mysql root password: "123456"
           mysql user: "gou"
           mysql password: "123456"
-        outputs:
-          DSN: "MySQL5.7"
 
       - name: Setup Postgres9.6
         if: "contains(matrix.db, 'Postgres9.6')"
@@ -88,5 +85,5 @@ jobs:
 
       - name: Test
         run: |
-          echo ${{steps.db-setting.outputs.DSN}}
+          echo $DSN
           export
