@@ -5,7 +5,31 @@ docker_run="docker run"
 startMySQL() {
     VERSION=$1
     echo "Start MySQL $VERSION"
-    echo "DSN=MySQL $VERSION" >> $GITHUB_ENV
+    if [ -n "$INPUT_USER" ]; then
+        if [ -z "$INPUT_PASSWORD" ]; then
+            echo "The mysql password must not be empty when mysql user exists"
+            exit 1
+        fi
+
+        echo "Use specified user and password"
+        docker_run="$docker_run -e MYSQL_RANDOM_ROOT_PASSWORD=true -e MYSQL_USER=$INPUT_USER -e MYSQL_PASSWORD=$INPUT_PASSWORD"
+    else
+        echo "Both root password and superuser are empty, must contains one superuser"
+        exit 1
+    fi
+
+    if [ -n "$INPUT_DB" ]; then
+        echo "Use specified database"
+        docker_run="$docker_run -e MYSQL_DATABASE=$INPUT_DB"
+    fi
+
+    docker_run="$docker_run -d -p 3306:3306 mysql:$VERSION --port=3306"
+    docker_run="$docker_run --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci"
+    sh -c "$docker_run"
+
+    # Output DSN
+    DB_DSN="$INPUT_USER:$INPUT_PASSWORD@tcp(127.0.0.1:3306)/xun?charset=utf8mb4&parseTime=True&loc=Local"
+    echo "DSN=$DB_DSN" >> $GITHUB_ENV
 }
 
 startPostgres() {
