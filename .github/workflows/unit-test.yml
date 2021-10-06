@@ -63,7 +63,6 @@ jobs:
           postgresql user: "gou"
           postgresql password: "123456"
 
-
       - name: Setup Postgres9.6 ENV
         if: "contains(matrix.db, 'Postgres9.6')"
         env:
@@ -87,19 +86,17 @@ jobs:
           DSN: Postgres14
         run: echo "DSN=${{ env.DSN }}" >> $GITHUB_ENV
 
-
       - name: Setup SQLite3
         if: "contains(matrix.db, 'SQLite3')"
         env:
           DSN: SQLite3
         run: echo "SQLite"
-      
-       - name: Setup SQLite3 ENV
+
+      - name: Setup SQLite3 ENV
         if: "contains(matrix.db, 'SQLite3')"
         env:
           DSN: SQLite3
         run: echo "DSN=${{ env.DSN }}" >> $GITHUB_ENV
-
 
       - name: Setup Go ${{ matrix.go }}
         uses: actions/setup-go@v2
