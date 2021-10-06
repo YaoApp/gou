@@ -4,96 +4,16 @@ inputs:
     required: true
   db:
     description: "The name of database"
-    required: true
+    required: false
+    default: "github"
   user:
     description: "The user of database"
     required: false
-    default: "gou"
+    default: "github"
   password:
     description: "The passowrd of database"
     required: false
     default: "123456"
 runs:
-  using: "composite"
-  steps:
-    - name: Setup MySQL8.0
-      if: "contains(inputs.kind, 'MySQL8.0')"
-      uses: mirromutth/mysql-action@v1.1
-      with:
-        character set server: "utf8"
-        collation server: "utf8_general_ci"
-        mysql version: "8.0"
-        mysql database: "${{ inputs.db }}"
-        mysql root password: "${{ inputs.password }}"
-        mysql user: "${{ inputs.user }}"
-        mysql password: "${{ inputs.password }}"
-
-    - name: Setup MySQL8.0 ENV
-      if: "contains(inputs.kind, 'MySQL8.0')"
-      env:
-        DSN: MySQL8.0
-      run: echo "DSN=${{ env.DSN }}" >> $GITHUB_ENV
-
-    - name: Setup MySQL5.7
-      if: "contains(inputs.kind, 'MySQL5.7')"
-      uses: mirromutth/mysql-action@v1.1
-      with:
-        character set server: "utf8"
-        collation server: "utf8_general_ci"
-        mysql version: "5.7"
-        mysql database: "${{ inputs.db }}"
-        mysql root password: "${{ inputs.password }}"
-        mysql user: "${{ inputs.user }}"
-        mysql password: "${{ inputs.password }}"
-
-    - name: Setup MySQL5.7 ENV
-      if: "contains(inputs.kind, 'MySQL5.7')"
-      env:
-        DSN: MySQL5.7
-      run: echo "DSN=${{ env.DSN }}" >> $GITHUB_ENV
-
-    - name: Setup Postgres9.6
-      if: "contains(inputs.kind, 'Postgres9.6')"
-      env:
-        DSN: Postgres9.6
-      uses: harmon758/postgresql-action@v1
-      with:
-        postgresql version: "9.6"
-        postgresql db: "${{ inputs.db }}"
-        postgresql user: "${{ inputs.user }}"
-        postgresql password: "${{ inputs.password }}"
-
-    - name: Setup Postgres9.6 ENV
-      if: "contains(inputs.kind, 'Postgres9.6')"
-      env:
-        DSN: Postgres9.6
-      run: echo "DSN=${{ env.DSN }}" >> $GITHUB_ENV
-
-    - name: Setup Postgres14
-      if: "contains(inputs.kind, 'Postgres14')"
-      uses: harmon758/postgresql-action@v1
-      env:
-        DSN: Postgres14
-      with:
-        postgresql version: "14"
-        postgresql db: "${{ inputs.db }}"
-        postgresql user: "${{ inputs.user }}"
-        postgresql password: "${{ inputs.password }}"
-
-    - name: Setup Postgres14 ENV
-      if: "contains(inputs.kind, 'Postgres14')"
-      env:
-        DSN: Postgres14
-      run: echo "DSN=${{ env.DSN }}" >> $GITHUB_ENV
-
-    - name: Setup SQLite3
-      if: "contains(inputs.kind, 'SQLite3')"
-      env:
-        DSN: SQLite3
-      run: echo "SQLite"
-
-    - name: Setup SQLite3 ENV
-      if: "contains(inputs.kind, 'SQLite3')"
-      env:
-        DSN: SQLite3
-      run: echo "DSN=${{ env.DSN }}" >> $GITHUB_ENV
+  using: 'docker'
+  image: 'Dockerfile
