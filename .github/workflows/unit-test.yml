@@ -13,13 +13,6 @@ jobs:
       matrix:
         go: [1.13, 1.17]
         db: [MySQL8.0, MySQL5.7, Postgres9.6, Postgres14, SQLite3]
-    env:
-      GOU_TEST_DSN: default
-      GOU_TEST_API_ROOT: "${{ env.GITHUB_WORKSPACE }}/app/apis"
-      GOU_TEST_FLW_ROOT: "${{ env.GITHUB_WORKSPACE }}/app/flows"
-      GOU_TEST_MOD_ROOT: "${{ env.GITHUB_WORKSPACE }}/app/models"
-      GOU_TEST_PLG_ROOT: "${{ env.HOME }}/data/gou-unit/plugins"
-      GOU_TEST_PLG_LOG: "${{ env.HOME }}/data/gou-unit/logs"
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -28,6 +21,7 @@ jobs:
         uses: ./.github/actions/setup-db
         with:
           kind: "${{ matrix.db }}"
+          db: "gou"
           user: "gou"
           password: "123456"
 
@@ -38,7 +32,15 @@ jobs:
 
       - name: Run Test
         run: |
+          # Setup ENV
           GOU_TEST_DSN=$DSN
+          GOU_TEST_API_ROOT="$GITHUB_WORKSPACE/app/apis"
+          GOU_TEST_FLW_ROOT="$GITHUB_WORKSPACE/app/flows"
+          GOU_TEST_MOD_ROOT="$GITHUB_WORKSPACE/app/models"
+          GOU_TEST_PLG_ROOT="$HOME/data/gou-unit/plugins"
+          GOU_TEST_PLG_LOG="$HOME/data/gou-unit/logs"
+
+          # RUN Test
           echo $GOU_TEST_DSN
           echo $GOU_TEST_API_ROOT
           echo $GOU_TEST_PLG_ROOT
