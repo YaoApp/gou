@@ -19,7 +19,7 @@ jobs:
       - name: Setup ${{ matrix.db }}
         uses: ./.github/actions/setup-db
         with:
-          kind: "gou"
+          kind: "${{ matrix.db }}"
           user: "gou"
           password: "123456"
 
