@@ -15,5 +15,5 @@ inputs:
     required: false
     default: "123456"
 runs:
-  using: 'docker'
-  image: 'Dockerfile
+  using: "docker"
+  image: "Dockerfile"
