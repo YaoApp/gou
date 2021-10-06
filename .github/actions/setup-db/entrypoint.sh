@@ -5,15 +5,18 @@ docker_run="docker run"
 startMySQL() {
     VERSION=$1
     echo "Start MySQL $VERSION"
+    echo "DSN=MySQL $VERSION" >> $GITHUB_ENV
 }
 
 startPostgres() {
     VERSION=$1
     echo "Start Postgres $VERSION"
+    echo "DSN=Postgres $VERSION" >> $GITHUB_ENV
 }
 
 startSQLite3() {
     echo "Start SQLite3"
+    echo "DSN=SQLite3 $VERSION" >> $GITHUB_ENV
 }
 
 # MySQL8.0, MySQL5.7, Postgres9.6, Postgres14, SQLite3
@@ -25,10 +28,10 @@ MySQL5.7)
     startMySQL 5.7
     ;;
 Postgres9.6)
-    startMySQL 9.6
+    startPostgres 9.6
     ;;
 Postgres14)
-    startMySQL 14
+    startPostgres 14
     ;;
 SQLite3)
     startSQLite3 

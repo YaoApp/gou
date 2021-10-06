@@ -19,7 +19,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Setup Database ${{ matrix.db }}
+      - name: Setup ${{ matrix.db }}
         uses: ./.github/actions/setup-db
         with:
           kind: "${{ matrix.db }}"
