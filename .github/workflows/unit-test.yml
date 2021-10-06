@@ -29,6 +29,7 @@ jobs:
           mysql root password: "123456"
           mysql user: "gou"
           mysql password: "123456"
+        run: echo "gou_dsn={{ env.DSN }}" >> $GITHUB_ENV
 
       - name: Setup MySQL5.7
         if: "contains(matrix.db, 'MySQL5.7')"
@@ -43,6 +44,7 @@ jobs:
           mysql root password: "123456"
           mysql user: "gou"
           mysql password: "123456"
+          run: echo "gou_dsn=MySQL5.7" >> $GITHUB_ENV
 
       - name: Setup Postgres9.6
         if: "contains(matrix.db, 'Postgres9.6')"
@@ -82,5 +84,5 @@ jobs:
 
       - name: Test
         run: |
-          echo $DSN
+          echo $gou_dsn
           export
