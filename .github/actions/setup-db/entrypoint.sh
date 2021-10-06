@@ -13,6 +13,7 @@ startMySQL() {
 
     DB_DSN="$INPUT_USER:$INPUT_PASSWORD@tcp(127.0.0.1:3306)/$INPUT_DB?charset=utf8mb4&parseTime=True&loc=Local"
     echo "DSN=$DB_DSN" >> $GITHUB_ENV
+    echo "DB_DRIVER=mysql" >> $GITHUB_ENV
     echo $DB_DSN
 }
 
@@ -27,12 +28,14 @@ startPostgres() {
 
     DB_DSN="postgres://$INPUT_USER:$INPUT_PASSWORD@127.0.0.1/$INPUT_DB?sslmode=disable"
     echo "DSN=$DB_DSN" >> $GITHUB_ENV
+    echo "DB_DRIVER=postgres" >> $GITHUB_ENV
     echo $DB_DSN
 }
 
 startSQLite3() {
     echo "Start SQLite3"
-    echo "DSN=file:$INPUT_DB.db?cache=shared&mode=memory" >> $GITHUB_ENV
+    echo "DSN=:memory:" >> $GITHUB_ENV
+    echo "DB_DRIVER=sqlite3" >> $GITHUB_ENV
 }
 
 # MySQL8.0, MySQL5.7, Postgres9.6, Postgres14, SQLite3
