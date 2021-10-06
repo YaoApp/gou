@@ -5,7 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-
+env:
+  CODECOV_TOKEN: 3683ff24-57de-4282-a5da-de0799f04969
 jobs:
   unit-test:
     runs-on: ubuntu-latest
@@ -41,7 +42,9 @@ jobs:
           GOU_TEST_PLG_LOG="$HOME/data/gou-unit/logs"
 
           # RUN Test
-          echo $GOU_TEST_DSN
-          echo $GOU_TEST_API_ROOT
-          echo $GOU_TEST_PLG_ROOT
-          export
+          make vet
+          make fmt-check
+          make misspell-check
+          make plugin
+          make migrate
+          make test
