@@ -7,6 +7,7 @@ on:
     branches: [main]
 env:
   CODECOV_TOKEN: 3683ff24-57de-4282-a5da-de0799f04969
+  GOT_TEST_AES_KEY: "^*aNBue!loLTTiP*4i&BSK7s#QRbe0^g"
 jobs:
   unit-test:
     runs-on: ubuntu-latest

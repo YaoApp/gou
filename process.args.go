@@ -44,7 +44,7 @@ func (process *Process) ArgsURLValue(i int, name string, defaults ...string) str
 	}
 	switch process.Args[i].(type) {
 	case url.Values:
-		if !process.Args[i].(url.Values).Has(name) {
+		if _, has := process.Args[i].(url.Values)[name]; !has {
 			return value
 		}
 		return process.Args[i].(url.Values).Get(name)
@@ -61,7 +61,7 @@ func (process *Process) ArgsURLValue(i int, name string, defaults ...string) str
 		}
 		return fmt.Sprintf("%s", v)
 	case maps.Map:
-		if !process.Args[i].(maps.Map).Has(name) {
+		if _, has := process.Args[i].(url.Values)[name]; !has {
 			return value
 		}
 		return fmt.Sprintf("%s", process.Args[i].(maps.Map).Get(name))
