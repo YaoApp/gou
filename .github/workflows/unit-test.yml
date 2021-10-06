@@ -39,12 +39,12 @@ jobs:
           if [[ "${GO111MODULE}" = "on" ]]; then export PATH="${GOPATH}/bin:${GOROOT}/bin:${PATH}"; fi
           if [[ "${GO111MODULE}" = "on" ]]; then make tools; fi
           # Setup ENV
-          GOU_TEST_DSN=$DSN
-          GOU_TEST_API_ROOT="$GITHUB_WORKSPACE/app/apis"
-          GOU_TEST_FLW_ROOT="$GITHUB_WORKSPACE/app/flows"
-          GOU_TEST_MOD_ROOT="$GITHUB_WORKSPACE/app/models"
-          GOU_TEST_PLG_ROOT="$HOME/data/gou-unit/plugins"
-          GOU_TEST_PLG_LOG="$HOME/data/gou-unit/logs"
+          export GOU_TEST_DSN=$DSN
+          export GOU_TEST_API_ROOT="$GITHUB_WORKSPACE/app/apis"
+          export GOU_TEST_FLW_ROOT="$GITHUB_WORKSPACE/app/flows"
+          export GOU_TEST_MOD_ROOT="$GITHUB_WORKSPACE/app/models"
+          export GOU_TEST_PLG_ROOT="$HOME/data/gou-unit/plugins"
+          export GOU_TEST_PLG_LOG="$HOME/data/gou-unit/logs"
           # RUN Test
           make vet
           make fmt-check
