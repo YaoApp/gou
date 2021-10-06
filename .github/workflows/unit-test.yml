@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         go: [1.13, 1.17]
-        db: [MySQL8.0, MySQL5.7, Postgres9.6, Postgres14, SQLite3]
+        db: [MySQL8.0, MySQL5.7, SQLite3]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -38,23 +38,23 @@ jobs:
           if [[ "${GO111MODULE}" = "on" ]]; then export PATH="${GOPATH}/bin:${GOROOT}/bin:${PATH}"; fi
           if [[ "${GO111MODULE}" = "on" ]]; then make tools; fi
 
+      - name: Setup ENV
+        run: |
+          echo "GOU_TEST_DSN=$DSN" >> $GITHUB_ENV
+          echo "GOU_TEST_API_ROOT="$GITHUB_WORKSPACE/app/apis" >> $GITHUB_ENV
+          echo "GOU_TEST_FLW_ROOT="$GITHUB_WORKSPACE/app/flows" >> $GITHUB_ENV
+          echo "GOU_TEST_MOD_ROOT="$GITHUB_WORKSPACE/app/models" >> $GITHUB_ENV
+          echo "GOU_TEST_PLG_ROOT="$HOME/data/gou-unit/plugins" >> $GITHUB_ENV
+          echo "GOU_TEST_PLG_LOG="$HOME/data/gou-unit/logs" >> $GITHUB_ENV
+
       - name: Run Test
         run: |
-          # Run Test
-          export GOU_TEST_DSN=$DSN
-          export GOU_TEST_API_ROOT="$GITHUB_WORKSPACE/app/apis"
-          export GOU_TEST_FLW_ROOT="$GITHUB_WORKSPACE/app/flows"
-          export GOU_TEST_MOD_ROOT="$GITHUB_WORKSPACE/app/models"
-          export GOU_TEST_PLG_ROOT="$HOME/data/gou-unit/plugins"
-          export GOU_TEST_PLG_LOG="$HOME/data/gou-unit/logs"
-
           echo "GOU_TEST_DSN=$GOU_TEST_DSN"
           echo "GOU_TEST_API_ROOT=$GOU_TEST_API_ROOT"
           echo "GOU_TEST_FLW_ROOT=$GOU_TEST_FLW_ROOT"
           echo "GOU_TEST_MOD_ROOT=$GOU_TEST_MOD_ROOT"
           echo "GOU_TEST_PLG_ROOT=$GOU_TEST_PLG_ROOT"
           echo "GOU_TEST_PLG_LOG=$GOU_TEST_PLG_LOG"
-
           make vet
           make fmt-check
           make misspell-check
