@@ -32,7 +32,7 @@ startPostgres() {
 
 startSQLite3() {
     echo "Start SQLite3"
-    echo "DSN=:memory:" >> $GITHUB_ENV
+    echo "DSN=file:$INPUT_DB.db?cache=shared&mode=memory" >> $GITHUB_ENV
 }
 
 # MySQL8.0, MySQL5.7, Postgres9.6, Postgres14, SQLite3
