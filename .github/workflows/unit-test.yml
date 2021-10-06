@@ -1,0 +1,83 @@
+name: Go
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  unit-test:
+      runs-on: ubuntu-latest
+      strategy:
+        matrix:
+          go: [1.13, 1.17]
+          db: [MySQL8.0,MySQL5.7,Postgres9.6,Postgres14,SQLite3]
+      steps:
+      - name: Setup MySQL8.0
+        if: "contains(matrix.db, 'MySQL8.0')"
+        uses: mirromutth/mysql-action@v1.1
+        with:
+          character set server: 'utf8' 
+          collation server: 'utf8_general_ci' 
+          mysql version: '8.0' 
+          mysql database: 'gou' 
+          mysql root password: '123456'
+          mysql user: 'gou'
+          mysql password: '123456'
+          
+      - name: Setup MySQL5.7
+        if: "contains(matrix.db, 'MySQL5.7')"
+        uses: mirromutth/mysql-action@v1.1
+        with:
+          character set server: 'utf8' 
+          collation server: 'utf8_general_ci' 
+          mysql version: '5.7' 
+          mysql database: 'gou' 
+          mysql root password: '123456'
+          mysql user: 'gou'
+          mysql password: '123456'
+          
+      - name: Setup MySQL5.7
+        if: "contains(matrix.db, 'MySQL5.7')"
+        uses: mirromutth/mysql-action@v1.1
+        with:
+          character set server: 'utf8' 
+          collation server: 'utf8_general_ci' 
+          mysql version: '5.7' 
+          mysql database: 'gou' 
+          mysql root password: '123456'
+          mysql user: 'gou'
+          mysql password: '123456'
+          
+      - name: Setup Postgres9.6
+        if: "contains(matrix.db, 'Postgres9.6')"
+        uses: harmon758/postgresql-action@v1
+        with:
+          postgresql version: '9.6'
+          
+      - name: Setup Postgres14
+        if: "contains(matrix.db, 'Postgres14')"
+        uses: harmon758/postgresql-action@v1
+        with:
+          postgresql version: '14'
+          
+      - name: Setup SQLite3
+        if: "contains(matrix.db, 'SQLite3')"
+        run: echo "SQLite"
+          
+      - name: Setup Go ${{ matrix.go }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+        
+        
+      - name: Checkout code
+        uses: actions/checkout@v2   
+        
+      - name: Test
+        run: |
+          echo "It works!"
+          
+
+        
