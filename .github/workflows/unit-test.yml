@@ -38,8 +38,9 @@ jobs:
           if [[ "${GO111MODULE}" = "on" ]]; then export PATH="${GOPATH}/bin:${GOROOT}/bin:${PATH}"; fi
           if [[ "${GO111MODULE}" = "on" ]]; then make tools; fi
 
-      - name: Setup ENV
+      - name: Run Test
         run: |
+          # Run Test
           export GOU_TEST_DSN=$DSN
           export GOU_TEST_API_ROOT="$GITHUB_WORKSPACE/app/apis"
           export GOU_TEST_FLW_ROOT="$GITHUB_WORKSPACE/app/flows"
@@ -47,14 +48,13 @@ jobs:
           export GOU_TEST_PLG_ROOT="$HOME/data/gou-unit/plugins"
           export GOU_TEST_PLG_LOG="$HOME/data/gou-unit/logs"
 
-      - name: Run Test
-        run: |
-          echo $GOU_TEST_DSN
-          echo $GOU_TEST_API_ROOT
-          echo $GOU_TEST_FLW_ROOT
-          echo $GOU_TEST_MOD_ROOT
-          echo $GOU_TEST_PLG_ROOT
-          echo $GOU_TEST_PLG_LOG
+          echo "GOU_TEST_DSN=$GOU_TEST_DSN"
+          echo "GOU_TEST_API_ROOT=$GOU_TEST_API_ROOT"
+          echo "GOU_TEST_FLW_ROOT=$GOU_TEST_FLW_ROOT"
+          echo "GOU_TEST_MOD_ROOT=$GOU_TEST_MOD_ROOT"
+          echo "GOU_TEST_PLG_ROOT=$GOU_TEST_PLG_ROOT"
+          echo "GOU_TEST_PLG_LOG=$GOU_TEST_PLG_LOG"
+
           make vet
           make fmt-check
           make misspell-check

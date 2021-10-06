@@ -12,7 +12,7 @@ startMySQL() {
     sh -c "$docker_run"
 
     DB_DSN="$INPUT_USER:$INPUT_PASSWORD@tcp(127.0.0.1:3306)/$INPUT_DB?charset=utf8mb4&parseTime=True&loc=Local"
-    echo "DSN=$DB_DSN" >> $GITHUB_ENV
+    echo "DSN=\"$DB_DSN\"" >> $GITHUB_ENV
     echo $DB_DSN
 }
 
@@ -26,7 +26,7 @@ startPostgres() {
     docker_run="$docker_run -d -p 5432:5432 postgres:$VERSION"
 
     DB_DSN="postgres://$INPUT_USER:$INPUT_PASSWORD@127.0.0.1/$INPUT_DB?sslmode=disable"
-    echo "DSN=$DB_DSN" >> $GITHUB_ENV
+    echo "DSN=\"$DB_DSN\"" >> $GITHUB_ENV
     echo $DB_DSN
 }
 
