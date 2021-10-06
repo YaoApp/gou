@@ -34,6 +34,10 @@ jobs:
 
       - name: Run Test
         run: |
+          # Install Tools
+          if [[ "${GO111MODULE}" = "on" ]]; then go mod download; fi
+          if [[ "${GO111MODULE}" = "on" ]]; then export PATH="${GOPATH}/bin:${GOROOT}/bin:${PATH}"; fi
+          if [[ "${GO111MODULE}" = "on" ]]; then make tools; fi
           # Setup ENV
           GOU_TEST_DSN=$DSN
           GOU_TEST_API_ROOT="$GITHUB_WORKSPACE/app/apis"
@@ -41,7 +45,6 @@ jobs:
           GOU_TEST_MOD_ROOT="$GITHUB_WORKSPACE/app/models"
           GOU_TEST_PLG_ROOT="$HOME/data/gou-unit/plugins"
           GOU_TEST_PLG_LOG="$HOME/data/gou-unit/logs"
-
           # RUN Test
           make vet
           make fmt-check
