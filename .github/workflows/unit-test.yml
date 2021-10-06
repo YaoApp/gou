@@ -17,6 +17,7 @@ jobs:
       DSN: default
     steps:
       - name: Setup MySQL8.0
+        id: db-setting
         if: "contains(matrix.db, 'MySQL8.0')"
         env:
           DSN: MySQL8.0
@@ -29,9 +30,11 @@ jobs:
           mysql root password: "123456"
           mysql user: "gou"
           mysql password: "123456"
-        run: echo "gou_dsn={{ env.DSN }}" >> $GITHUB_ENV
+        outputs:
+          DSN: ${{ env.DSN }}
 
       - name: Setup MySQL5.7
+        id: db-setting
         if: "contains(matrix.db, 'MySQL5.7')"
         env:
           DSN: MySQL5.7
@@ -44,7 +47,8 @@ jobs:
           mysql root password: "123456"
           mysql user: "gou"
           mysql password: "123456"
-          run: echo "gou_dsn=MySQL5.7" >> $GITHUB_ENV
+        outputs:
+          DSN: "MySQL5.7"
 
       - name: Setup Postgres9.6
         if: "contains(matrix.db, 'Postgres9.6')"
@@ -84,5 +88,5 @@ jobs:
 
       - name: Test
         run: |
-          echo $gou_dsn
+          echo ${{steps.db-setting.outputs.DSN}}
           export
