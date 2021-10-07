@@ -60,11 +60,6 @@ func (column *Column) fliterInCrypt(value interface{}, row maps.MapStrAny) {
 		return
 	}
 
-	// 仅支持 MySQL
-	if column.model.Driver != "mysql" {
-		return
-	}
-
 	// 忽略空值
 	if value == nil {
 		return
@@ -75,6 +70,12 @@ func (column *Column) fliterInCrypt(value interface{}, row maps.MapStrAny) {
 	valuestr, ok := value.(string)
 	if !ok {
 		exception.New(column.Name+"数值格式不是字符型", 400).Throw()
+	}
+
+	// 忽略除 MySQL 之外的 AES 驱动
+	if column.Crypt == "AES" && column.model.Driver != "mysql" {
+		column.Crypt = ""
+		return
 	}
 
 	if column.Crypt == "AES" {
