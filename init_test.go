@@ -28,6 +28,17 @@ func TestMain(m *testing.M) {
 	TestDSN = os.Getenv("GOU_TEST_DSN")
 	TestAESKey = os.Getenv("GOT_TEST_AES_KEY")
 
+	// 数据库连接
+	switch TestDriver {
+	case "sqlite3":
+		capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
+		break
+	default:
+		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
+		break
+	}
+	SetModelLogger(os.Stdout, logger.LevelDebug)
+
 	// 加载模型
 	LoadModel("file://"+path.Join(TestModRoot, "user.json"), "user")
 	LoadModel("file://"+path.Join(TestModRoot, "manu.json"), "manu")
@@ -48,17 +59,6 @@ func TestMain(m *testing.M) {
 	LoadFlow("file://"+path.Join(TestFLWRoot, "latest.flow.json"), "latest").
 		LoadScript("file://"+path.Join(TestFLWRoot, "latest.rank.js"), "rank").
 		LoadScript("file://"+path.Join(TestFLWRoot, "latest.count.js"), "count")
-
-	// 数据库连接
-	switch TestDriver {
-	case "sqlite3":
-		capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
-		break
-	default:
-		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
-		break
-	}
-	SetModelLogger(os.Stdout, logger.LevelDebug)
 
 	// 加密密钥
 	LoadCrypt(fmt.Sprintf(`{"key":"%s"}`, TestAESKey), "AES")

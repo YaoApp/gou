@@ -87,6 +87,7 @@ func LoadModel(source string, name string) *Model {
 	}
 
 	for i, column := range mod.MetaData.Columns {
+		mod.MetaData.Columns[i].model = mod // 链接所属模型
 		columns[column.Name] = &mod.MetaData.Columns[i]
 		columnNames = append(columnNames, column.Name)
 		if strings.ToLower(column.Type) == "id" {
@@ -114,6 +115,8 @@ func LoadModel(source string, name string) *Model {
 	mod.ColumnNames = columnNames
 	mod.PrimaryKey = PrimaryKey
 	mod.UniqueColumns = uniqueColumns
+	mod.Driver = capsule.Schema().MustGetConnection().Config.Driver
+
 	Models[name] = mod
 	return mod
 }

@@ -314,12 +314,14 @@ func (mod *Model) UpdateWhere(param QueryParam, row maps.MapStrAny) (int, error)
 		row.Set("updated_at", dbal.Raw("CURRENT_TIMESTAMP"))
 	}
 
-	// Wrap
-	for name, value := range row {
-		if !strings.Contains(name, ".") {
-			new := fmt.Sprintf("%s.%s", mod.MetaData.Table.Name, name)
-			row.Set(new, value)
-			row.Del(name)
+	// 如果不是 SQLite3 添加字段
+	if mod.Driver != "sqlite3" {
+		for name, value := range row {
+			if !strings.Contains(name, ".") {
+				new := fmt.Sprintf("%s.%s", mod.MetaData.Table.Name, name)
+				row.Set(new, value)
+				row.Del(name)
+			}
 		}
 	}
 
@@ -348,6 +350,12 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 
 	// 软删除
 	if mod.MetaData.Option.SoftDeletes {
+
+		// 兼容 SQLite3
+		if mod.Driver == "sqlite3" {
+			return mod.sqlite3DeleteWhere(param)
+		}
+
 		data := maps.MapStrAny{}
 		columns := []string{}
 		for _, col := range mod.UniqueColumns {
@@ -394,6 +402,24 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 	}
 
 	return mod.DestroyWhere(param)
+}
+
+// sqliteDeleteWhere SQLite
+func (mod *Model) sqlite3DeleteWhere(param QueryParam) (int, error) {
+	data := maps.MapStrAny{}
+	param.Model = mod.Name
+	stack := NewQueryStack(param)
+	qb := stack.FirstQuery()
+
+	// 删除数据
+	// field := fmt.Sprintf("%s.%s", mod.MetaData.Table.Name, "deleted_at")
+	data["deleted_at"] = dbal.Raw("CURRENT_TIMESTAMP")
+	// data[field] = dbal.Raw("CURRENT_TIMESTAMP")
+	effect, err := qb.Update(data)
+	if err != nil {
+		return 0, err
+	}
+	return int(effect), nil
 }
 
 // MustDeleteWhere 批量删除数据, 返回更新行数, 失败跑出异常

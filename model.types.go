@@ -23,6 +23,7 @@ const (
 type Model struct {
 	Name          string
 	Source        string
+	Driver        string // Driver
 	MetaData      MetaData
 	Columns       map[string]*Column // 字段映射表
 	ColumnNames   []interface{}      // 字段名称清单
@@ -64,6 +65,7 @@ type Column struct {
 	Index       bool         `json:"index,omitempty"`
 	Unique      bool         `json:"unique,omitempty"`
 	Primary     bool         `json:"primary,omitempty"`
+	model       *Model
 }
 
 // Validation the field validation struct

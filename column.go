@@ -60,6 +60,11 @@ func (column *Column) fliterInCrypt(value interface{}, row maps.MapStrAny) {
 		return
 	}
 
+	// 仅支持 MySQL
+	if column.model.Driver != "mysql" {
+		return
+	}
+
 	// 忽略空值
 	if value == nil {
 		return

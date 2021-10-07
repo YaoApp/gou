@@ -17,3 +17,5 @@
 *.dev.sh
 app/plugins/dist
 app/plugins/logs
+app/db/*.db
+env.*.sh
