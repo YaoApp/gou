@@ -16,12 +16,13 @@ import (
 
 func TestLoadAPI(t *testing.T) {
 	user := LoadAPI("file://"+path.Join(TestAPIRoot, "user.http.json"), "user")
-	user.Reload()
+	assert.Equal(t, user.Name, "user")
 }
 
 func TestSelectAPI(t *testing.T) {
 	user := SelectAPI("user")
 	user.Reload()
+	assert.Equal(t, user.Name, "user")
 }
 
 func TestServeHTTP(t *testing.T) {

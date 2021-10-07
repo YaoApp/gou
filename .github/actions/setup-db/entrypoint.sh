@@ -34,7 +34,7 @@ startPostgres() {
 
 startSQLite3() {
     echo "Start SQLite3"
-    echo "DSN=file:$INPUT_DB.db?cache=shared&mode=memory" >> $GITHUB_ENV
+    echo "DSN=file:$INPUT_DB.db?cache=shared" >> $GITHUB_ENV
     echo "DB_DRIVER=sqlite3" >> $GITHUB_ENV
 }
 
