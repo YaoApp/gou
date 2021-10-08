@@ -140,7 +140,7 @@ func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 	withParam := with.Query
 	withParam.Model = rel.Model
 	withParam.Table = withModel.MetaData.Table.Name
-	withParam.Alias = withParam.Table
+	withParam.Alias = "rel__" + withParam.Table
 	if param.Alias != "" {
 		withParam.Alias = param.Alias + "_" + withParam.Alias
 	}
