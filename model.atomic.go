@@ -171,7 +171,7 @@ func (mod *Model) Save(row maps.MapStrAny) (int, error) {
 			return 0, err
 		}
 
-		return any.Of(id).Int(), nil
+		return any.Of(id).CInt(), nil
 	}
 
 	// 创建

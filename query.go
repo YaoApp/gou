@@ -1,6 +1,7 @@
 package gou
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/yaoapp/xun/capsule"
@@ -134,13 +135,13 @@ func (param QueryParam) withHasOneThrough(stack *QueryStack, rel Relation, with 
 	}
 }
 
-// withHasOne hasOne 关联查询
+// withHasOne hasOne 关联查询 临时BUG修复，这里整个逻辑需要优化
 func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 	withModel := Select(rel.Model)
 	withParam := with.Query
 	withParam.Model = rel.Model
 	withParam.Table = withModel.MetaData.Table.Name
-	withParam.Alias = "rel__" + withParam.Table
+	withParam.Alias = withParam.Table + "__rel__" // 临时BUG修复，这里整个逻辑需要优化
 	if param.Alias != "" {
 		withParam.Alias = param.Alias + "_" + withParam.Alias
 	}
@@ -152,7 +153,18 @@ func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 
 	foreign := param.Alias + "." + rel.Foreign
 	if strings.Contains(rel.Foreign, ".") {
+
 		foreign = rel.Foreign
+
+		// 临时BUG修复，这里整个逻辑需要优化
+		foreignArr := strings.Split(rel.Foreign, ".")
+		foreignLen := len(foreignArr)
+		tab := strings.Join(foreignArr[0:foreignLen-1], ".")
+		field := foreignArr[foreignLen-1]
+		if tab != param.Table {
+			foreign = tab + "__rel__" + "." + field
+		}
+		fmt.Println(tab, param.Table, rel.Foreign, foreign)
 	}
 
 	if len(withParam.Wheres) == 0 && len(rel.Query.Wheres) > 0 {
@@ -239,7 +251,7 @@ func (param QueryParam) Order(order QueryOrder, qb query.Query, mod *Model) {
 				return
 			}
 
-			alias = strings.ReplaceAll(order.Rel, ".", "_")
+			alias = strings.ReplaceAll(order.Rel, ".", "_") + "__rel__" //  这里逻辑需要重构
 			if param.Alias != "" {
 				alias = param.Alias + "_" + alias
 			}
@@ -251,7 +263,7 @@ func (param QueryParam) Order(order QueryOrder, qb query.Query, mod *Model) {
 				return
 			}
 
-			alias = order.Rel
+			alias = order.Rel + "__rel__" //  这里逻辑需要重构
 			if param.Alias != "" {
 				alias = param.Alias + "_" + alias
 			}
@@ -297,7 +309,7 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 				return
 			}
 
-			alias = strings.ReplaceAll(where.Rel, ".", "_")
+			alias = strings.ReplaceAll(where.Rel, ".", "_") + "__rel__" //  这里逻辑需要重构
 			if param.Alias != "" {
 				alias = param.Alias + "_" + alias
 			}
@@ -309,7 +321,7 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 				return
 			}
 
-			alias = where.Rel
+			alias = where.Rel + "__rel__" //  这里逻辑需要重构
 			if param.Alias != "" {
 				alias = param.Alias + "_" + alias
 			}

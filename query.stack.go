@@ -214,10 +214,7 @@ func (stack *QueryStack) run(res *[][]maps.MapStrAny, builder QueryStackBuilder,
 		for key, value := range row {
 			if cmap, has := builder.ColumnMap[key]; has {
 				fmtRow[cmap.Export] = value
-				utils.Dump(cmap.Export)
-				utils.Dump(fmtRow)
 				cmap.Column.FliterOut(value, fmtRow, cmap.Export)
-
 				continue
 			}
 			fmtRow[key] = value
