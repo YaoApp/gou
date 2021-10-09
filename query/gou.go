@@ -1,6 +1,7 @@
 package query
 
 import (
+	"bufio"
 	"io"
 	"os"
 
@@ -45,11 +46,12 @@ func GouReader(reader io.Reader) *Query {
 
 // GouFile 创建 Gou Query DSL (文件)
 func GouFile(filename string) *Query {
-	bytes, err := os.ReadFile(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		exception.New("读取文件失败 %s", 500, err.Error()).Throw()
 	}
-	return Gou(bytes)
+	defer file.Close()
+	return GouReader(bufio.NewReader(file))
 }
 
 // With 关联查询器
