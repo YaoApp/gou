@@ -19,5 +19,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-// replace github.com/yaoapp/kun => ../kun
-// replace github.com/yaoapp/xun => ../xun
+replace github.com/yaoapp/kun => ../kun
+replace github.com/yaoapp/xun => ../xun

@@ -17,6 +17,25 @@ jobs:
         go: [1.13, 1.17]
         db: [MySQL8.0, SQLite3]
     steps:
+      - name: Checkout Kun
+        uses: actions/checkout@v2
+        with:
+          repository: yaoapp/kun
+          path: kun
+
+      - name: Checkout Xun
+        uses: actions/checkout@v2
+        with:
+          repository: yaoapp/xun
+          path: xun
+
+      - name: Move Kun, Xun
+        run: |
+          mv kun ../
+          mv xun ../
+          ls -l .
+          ls -l ../
+
       - name: Checkout code
         uses: actions/checkout@v2
 

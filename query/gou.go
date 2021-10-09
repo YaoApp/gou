@@ -1,7 +1,12 @@
 package query
 
+import "github.com/yaoapp/xun/dbal/query"
+
 // Gou Query DSL
-type Gou GouQueryDSL
+type Gou struct {
+	GouQueryDSL
+	qb query.Query
+}
 
 // Run 执行查询根据查询条件返回结果
 func (gou Gou) Run() interface{} {

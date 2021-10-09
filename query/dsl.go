@@ -1,6 +1,9 @@
 package query
 
-import "github.com/yaoapp/kun/maps"
+import (
+	"github.com/yaoapp/kun/maps"
+	"github.com/yaoapp/xun/dbal/query"
+)
 
 // DSL QueryDSL Interface
 type DSL interface {
@@ -25,7 +28,7 @@ type Paginate struct {
 }
 
 // MakeGou 创建 Gou Query DSL
-func MakeGou(input []byte) DSL {
+func MakeGou(input []byte, qb query.Query) DSL {
 	return Gou{}
 }
 
