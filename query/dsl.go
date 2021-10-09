@@ -2,7 +2,6 @@ package query
 
 import (
 	"github.com/yaoapp/kun/maps"
-	"github.com/yaoapp/xun/dbal/query"
 )
 
 // DSL QueryDSL Interface
@@ -25,14 +24,4 @@ type Paginate struct {
 	Page      int      `json:"page"`     // 当前页码
 	PageSize  int      `json:"pagesize"` // 每页记录数量
 	PageCount int      `json:"pagecnt"`  // 总页数
-}
-
-// MakeGou 创建 Gou Query DSL
-func MakeGou(input []byte, qb query.Query) DSL {
-	return Gou{}
-}
-
-// MakeTai 创建 Tai Query DSL
-func MakeTai(input []byte) DSL {
-	return Tai{}
 }

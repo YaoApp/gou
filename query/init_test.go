@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/yaoapp/xun/capsule"
+	"github.com/yaoapp/xun/dbal/query"
 )
 
 // TestAPIRoot
@@ -12,9 +13,12 @@ var TestAPIRoot = "/data/apis"
 var TestFLWRoot = "/data/flows"
 var TestPLGRoot = "/data/plugins"
 var TestModRoot = "/data/models"
+var TestQueryRoot = "/data/querys"
 var TestDriver = "mysql"
 var TestDSN = "root:123456@tcp(127.0.0.1:3306)/gou?charset=utf8mb4&parseTime=True&loc=Local"
 var TestAESKey = "123456"
+
+var qb query.Query
 
 func TestMain(m *testing.M) {
 
@@ -22,6 +26,7 @@ func TestMain(m *testing.M) {
 	TestFLWRoot = os.Getenv("GOU_TEST_FLW_ROOT")
 	TestModRoot = os.Getenv("GOU_TEST_MOD_ROOT")
 	TestPLGRoot = os.Getenv("GOU_TEST_PLG_ROOT")
+	TestQueryRoot = os.Getenv("GOU_TEST_QUERY_ROOT")
 	TestDriver = os.Getenv("GOU_TEST_DB_DRIVER")
 	TestDSN = os.Getenv("GOU_TEST_DSN")
 	TestAESKey = os.Getenv("GOT_TEST_AES_KEY")
@@ -35,6 +40,8 @@ func TestMain(m *testing.M) {
 		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
 		break
 	}
+
+	qb = capsule.Query()
 
 	// Run test suites
 	exitVal := m.Run()

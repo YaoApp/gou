@@ -1,0 +1,6 @@
+{
+  "select": ["name", "value"],
+  "from": "user",
+  "wheres": [{ "field": "manu_id", "value": 1 }],
+  "orders": [{ "field": "id", "sort": "desc" }]
+}

@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/gin-gonic/gin v1.7.4
+	github.com/go-errors/errors v1.4.1 // indirect
 	github.com/go-playground/validator/v10 v10.9.0 // indirect
 	github.com/hashicorp/go-hclog v0.16.2
 	github.com/hashicorp/go-plugin v1.4.2
@@ -20,4 +21,5 @@ require (
 )
 
 replace github.com/yaoapp/kun => ../kun
+
 replace github.com/yaoapp/xun => ../xun

@@ -1,7 +1,9 @@
 package query
 
+import "github.com/yaoapp/gou/query/tai"
+
 // Tai Query DSL
-type Tai TaiQueryDSL
+type Tai tai.QueryDSL
 
 // Run 执行查询根据查询条件返回结果
 func (tai Tai) Run() interface{} {
