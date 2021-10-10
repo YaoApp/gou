@@ -73,7 +73,22 @@ func (gou QueryDSL) ValidateOrders() []error {
 	return errs
 }
 
-// ToMap 转换为 map[string]interface{}
+// Validate 校验数据
+func (orders Orders) Validate() []error {
+	errs := []error{}
+	for i, order := range orders {
+		if order.Field == nil {
+			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 order 排序条件, 缺少 field", i+1))
+		}
+
+		if order.Sort != "desc" && order.Sort != "asc" {
+			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 order 排序条件, 排序方式(%s)不合法", i+1, order.Sort))
+		}
+	}
+	return errs
+}
+
+// ToMap Order 转换为 map[string]interface{}
 func (order Order) ToMap() map[string]interface{} {
 	return map[string]interface{}{
 		"field": order.Field.ToString(),

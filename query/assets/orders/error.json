@@ -1,0 +1,6 @@
+[
+  [{ "sort": "asc" }],
+  [{ "fields": "type", "sorts": "desc" }, { "sort": "asc" }],
+  "id error",
+  "id desc, name error  "
+]

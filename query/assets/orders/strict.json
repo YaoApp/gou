@@ -1,0 +1,10 @@
+[
+  [{ "field": "id" }],
+  [{ "field": "id", "sort": "desc" }],
+  [{ "field": "type" }, { "field": "created_at", "sort": "asc" }],
+  [
+    { "field": "type", "sort": "desc" },
+    { "field": "created_at", "sort": "asc" }
+  ],
+  [{ "field": "type", "sort": "desc" }, { "field": "created_at" }]
+]
