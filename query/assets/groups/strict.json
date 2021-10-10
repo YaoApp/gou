@@ -1,0 +1,14 @@
+[
+  [{ "field": "kind" }],
+  [{ "field": "city", "rollup": "所有城市" }],
+  [{ "field": "@industries" }],
+  [{ "field": "kind" }, { "field": "city" }],
+  [
+    { "field": "kind", "rollup": "所有类型", "comment": "按类型统计" },
+    { "field": "city", "comment": "按城市统计" }
+  ],
+  [
+    { "field": "kind", "rollup": "所有类型", "comment": "按类型统计" },
+    { "field": "city", "rollup": "所有城市", "comment": "按城市统计" }
+  ]
+]

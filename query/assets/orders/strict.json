@@ -4,7 +4,7 @@
   [{ "field": "type" }, { "field": "created_at", "sort": "asc" }],
   [
     { "field": "type", "sort": "desc" },
-    { "field": "created_at", "sort": "asc" }
+    { "field": "created_at", "sort": "asc", "comment": "unit-test" }
   ],
   [{ "field": "type", "sort": "desc" }, { "field": "created_at" }]
 ]

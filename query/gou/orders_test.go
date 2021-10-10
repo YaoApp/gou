@@ -7,6 +7,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestOrderToMap(t *testing.T) {
+	order := Order{Field: NewExpression("id"), Sort: "asc"}
+	assert.Equal(t, map[string]interface{}{"field": "id"}, order.ToMap())
+
+	order = Order{Field: NewExpression("type"), Sort: "desc"}
+	assert.Equal(t, map[string]interface{}{"field": "type", "sort": "desc"}, order.ToMap())
+
+	order = Order{Field: NewExpression("type"), Sort: "desc", Comment: "按类型"}
+	assert.Equal(t, map[string]interface{}{"field": "type", "sort": "desc", "comment": "按类型"}, order.ToMap())
+}
+
 func TestOrdersStrict(t *testing.T) {
 	var stricts []Orders
 	bytes := ReadFile("orders/strict.json")
@@ -29,11 +40,12 @@ func TestOrdersStrict(t *testing.T) {
 	assert.Equal(t, "created_at", stricts[2][1].Field.ToString())
 	assert.Equal(t, "asc", stricts[2][1].Sort)
 
-	// [{ "field": "type", "sort": "desc" }, { "field": "created_at", "sort": "asc" }],
+	// [{ "field": "type", "sort": "desc" }, { { "field": "created_at", "sort": "asc", "comment": "unit-test" }}],
 	assert.Equal(t, "type", stricts[3][0].Field.ToString())
 	assert.Equal(t, "desc", stricts[3][0].Sort)
 	assert.Equal(t, "created_at", stricts[3][1].Field.ToString())
 	assert.Equal(t, "asc", stricts[3][1].Sort)
+	assert.Equal(t, "unit-test", stricts[3][1].Comment)
 
 	// [{ "field": "type", "sort": "desc" }, { "field": "created_at" }]
 	assert.Equal(t, "type", stricts[4][0].Field.ToString())
@@ -160,22 +172,16 @@ func TestOrdersValidate(t *testing.T) {
 
 	orders := Orders{
 		{Sort: "asc"},
+		{Field: NewExpression("Unit Test"), Sort: "desc"},
 	}
 	res = orders.Validate()
-	assert.Equal(t, 1, len(res))
+	assert.Equal(t, 2, len(res))
 	assert.Contains(t, res[0].Error(), "field")
 	assert.Contains(t, res[0].Error(), "1")
+	assert.Contains(t, res[1].Error(), "Unit Test")
+	assert.Contains(t, res[1].Error(), "2")
 
 }
-
-func TestOrderToMap(t *testing.T) {
-	order := Order{Field: NewExpression("id"), Sort: "asc"}
-	assert.Equal(t, map[string]interface{}{"field": "id", "sort": "asc"}, order.ToMap())
-
-	order = Order{Field: NewExpression("type"), Sort: "desc"}
-	assert.Equal(t, map[string]interface{}{"field": "type", "sort": "desc"}, order.ToMap())
-}
-
 func TestOrdersUnmarshalJSONError(t *testing.T) {
 	var orders Orders
 	err := jsoniter.Unmarshal([]byte(`{1}`), &orders)
@@ -187,7 +193,14 @@ func TestOrdersMarshalJSON(t *testing.T) {
 	bytes, err := jsoniter.Marshal(order)
 	assert.Nil(t, err)
 	assert.Contains(t, string(bytes), `"field":"id"`)
-	assert.Contains(t, string(bytes), `"sort":"asc"`)
+	assert.NotContains(t, string(bytes), `"sort":"asc"`)
+
+	order = Order{Field: NewExpression("id"), Sort: "desc", Comment: "Unit-Test"}
+	bytes, err = jsoniter.Marshal(order)
+	assert.Nil(t, err)
+	assert.Contains(t, string(bytes), `"field":"id"`)
+	assert.Contains(t, string(bytes), `"sort":"desc"`)
+	assert.Contains(t, string(bytes), `"comment":"Unit-Test"`)
 
 	orders := Orders{
 		{Field: NewExpression("id"), Sort: "asc"},
@@ -196,7 +209,7 @@ func TestOrdersMarshalJSON(t *testing.T) {
 	bytes, err = jsoniter.Marshal(orders)
 	assert.Nil(t, err)
 	assert.Contains(t, string(bytes), `"field":"id"`)
-	assert.Contains(t, string(bytes), `"sort":"asc"`)
+	assert.NotContains(t, string(bytes), `"sort":"asc"`)
 	assert.Contains(t, string(bytes), `"field":"type"`)
 	assert.Contains(t, string(bytes), `"sort":"desc"`)
 }

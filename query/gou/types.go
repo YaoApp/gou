@@ -6,7 +6,7 @@ type QueryDSL struct {
 	From     *Table       `json:"from,omitempty"`      // 查询数据表名称或数据模型
 	Wheres   []Where      `json:"wheres,omitempty"`    // 数据查询条件
 	Orders   Orders       `json:"orders,omitempty"`    // 排序条件
-	Groups   []Group      `json:"groups,omitempty"`    // 聚合条件
+	Groups   *Groups      `json:"groups,omitempty"`    // 聚合条件
 	Havings  []Having     `json:"havings,omitempty"`   // 聚合查询结果筛选条件
 	Limit    int          `json:"limit,omitempty"`     // 限定读取记录的数量
 	Offset   int          `json:"offset,omitempty"`    // 记录开始位置
@@ -57,6 +57,9 @@ type Order struct {
 	Sort    string      `json:"sort,omitempty"`    // 排序方式
 	Comment string      `json:"comment,omitempty"` // 查询条件注释
 }
+
+// Groups 聚合条件集合
+type Groups []Group
 
 // Group 聚合条件
 type Group struct {

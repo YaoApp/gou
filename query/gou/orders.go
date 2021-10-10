@@ -15,10 +15,19 @@ func (order Order) MarshalJSON() ([]byte, error) {
 
 // ToMap Order 转换为 map[string]interface{}
 func (order Order) ToMap() map[string]interface{} {
-	return map[string]interface{}{
+	res := map[string]interface{}{
 		"field": order.Field.ToString(),
-		"sort":  order.Sort,
 	}
+
+	if order.Sort != "asc" {
+		res["sort"] = order.Sort
+	}
+
+	if order.Comment != "" {
+		res["comment"] = order.Comment
+	}
+
+	return res
 }
 
 // UnmarshalJSON for json marshalJSON
@@ -63,6 +72,8 @@ func (orders Orders) Validate() []error {
 	for i, order := range orders {
 		if order.Field == nil {
 			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 order 排序条件, 缺少 field", i+1))
+		} else if err := order.Field.Validate(); err != nil {
+			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 order 排序条件, Field %s", i+1, err.Error()))
 		}
 
 		if order.Sort != "desc" && order.Sort != "asc" {
@@ -90,11 +101,17 @@ func (orders *Orders) PushMap(order map[string]interface{}) error {
 		sort = "asc"
 	}
 
-	orders.Push(Order{
+	o := Order{
 		Field: NewExpression(strings.TrimSpace(field)),
 		Sort:  sort,
-	})
+	}
 
+	comment, ok := order["comment"].(string)
+	if ok && comment != "" {
+		o.Comment = comment
+	}
+
+	orders.Push(o)
 	return nil
 }
 

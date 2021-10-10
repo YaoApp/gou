@@ -1,0 +1,12 @@
+[
+  "kind",
+  "city rollup 所有城市",
+  "@industries",
+  "kind,city",
+  "kind rollup 所有类型, city",
+  "kind ROLlup 所有类型, city rollup 所有城市",
+  ["city"],
+  ["kind", "city"],
+  ["kind", { "field": "city", "rollup": "所有类型", "comment": "按类型统计" }],
+  [{ "field": "@industries", "rollup": "所有行业", "comment": "按行业统计" }]
+]
