@@ -37,11 +37,11 @@
   { "field": "name", "in": ["张三", "李四"] },
   { ":name": "姓名", "in": ["张三", "李四"] },
 
-  { "field": "name", "op": "null", "comment": "姓名" },
-  { ":name": "姓名", "is null": true },
-  { ":name": "is null" },
+  { "field": "name", "op": "is", "value": "null", "comment": "姓名" },
+  { "field": "name", "is": "null" },
+  { ":name": "姓名", "is": "null" },
 
-  { "field": "name", "op": "notnull", "comment": "姓名" },
-  { ":name": "姓名", "is notnull": true },
-  { ":name": "is notnull" }
+  { "field": "name", "op": "is", "value": "not null", "comment": "姓名" },
+  { "field": "name", "is": "not null" },
+  { ":name": "姓名", "is": "not null" }
 ]
