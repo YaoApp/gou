@@ -31,6 +31,15 @@ func (gou QueryDSL) ValidateSelect() []error {
 	return errs
 }
 
+// ValidateOrders 校验 orders
+func (gou QueryDSL) ValidateOrders() []error {
+	errs := []error{}
+	if gou.Orders == nil {
+		return errs
+	}
+	return gou.Orders.Validate()
+}
+
 // ValidateSQL 校验 sql
 func (gou QueryDSL) ValidateSQL() []error {
 	errs := []error{}

@@ -8,6 +8,19 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
+// MarshalJSON for json marshalJSON
+func (order Order) MarshalJSON() ([]byte, error) {
+	return jsoniter.Marshal(order.ToMap())
+}
+
+// ToMap Order 转换为 map[string]interface{}
+func (order Order) ToMap() map[string]interface{} {
+	return map[string]interface{}{
+		"field": order.Field.ToString(),
+		"sort":  order.Sort,
+	}
+}
+
 // UnmarshalJSON for json marshalJSON
 func (orders *Orders) UnmarshalJSON(data []byte) error {
 
@@ -44,35 +57,6 @@ func (orders *Orders) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON for json marshalJSON
-func (orders Orders) MarshalJSON() ([]byte, error) {
-	res := []map[string]interface{}{}
-	for _, order := range orders {
-		res = append(res, order.ToMap())
-	}
-	return jsoniter.Marshal(res)
-}
-
-// ValidateOrders 校验 orders
-func (gou QueryDSL) ValidateOrders() []error {
-	errs := []error{}
-	if gou.Orders == nil {
-		return errs
-	}
-
-	for i, order := range gou.Orders {
-		if order.Field == nil {
-			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 order 排序条件, 缺少 field", i+1))
-		}
-
-		if order.Sort != "desc" && order.Sort != "asc" {
-			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 order 排序条件, 排序方式(%s)不合法", i+1, order.Sort))
-		}
-	}
-
-	return errs
-}
-
 // Validate 校验数据
 func (orders Orders) Validate() []error {
 	errs := []error{}
@@ -86,14 +70,6 @@ func (orders Orders) Validate() []error {
 		}
 	}
 	return errs
-}
-
-// ToMap Order 转换为 map[string]interface{}
-func (order Order) ToMap() map[string]interface{} {
-	return map[string]interface{}{
-		"field": order.Field.ToString(),
-		"sort":  order.Sort,
-	}
 }
 
 // Push 添加一个排序条件 Order
@@ -126,7 +102,7 @@ func (orders *Orders) PushMap(order map[string]interface{}) error {
 func (orders *Orders) PushString(order string) error {
 	order = strings.TrimSpace(order)
 	arr := regexp.MustCompile("[ ]+").Split(order, -1)
-	if len(arr) >= 2 {
+	if len(arr) == 2 {
 		sort := strings.TrimSpace(arr[1])
 		orders.Push(Order{
 			Field: NewExpression(strings.TrimSpace(arr[0])),

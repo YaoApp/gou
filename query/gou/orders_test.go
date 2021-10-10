@@ -141,11 +141,6 @@ func TestOrdersValidate(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(errs))
 
-	// [{ "sort": "asc" }],
-	// [{ "fields": "type", "sorts": "desc" }, { "sort": "asc" }],
-	// "id error",
-	// "id desc, name error  "
-
 	// [{ "sort": "asc" }]
 	assert.Nil(t, errs[0])
 
@@ -163,4 +158,52 @@ func TestOrdersValidate(t *testing.T) {
 	assert.Contains(t, res[0].Error(), "(error)")
 	assert.Contains(t, res[0].Error(), "2")
 
+	orders := Orders{
+		{Sort: "asc"},
+	}
+	res = orders.Validate()
+	assert.Equal(t, 1, len(res))
+	assert.Contains(t, res[0].Error(), "field")
+	assert.Contains(t, res[0].Error(), "1")
+
+}
+
+func TestOrderToMap(t *testing.T) {
+	order := Order{Field: NewExpression("id"), Sort: "asc"}
+	assert.Equal(t, map[string]interface{}{"field": "id", "sort": "asc"}, order.ToMap())
+
+	order = Order{Field: NewExpression("type"), Sort: "desc"}
+	assert.Equal(t, map[string]interface{}{"field": "type", "sort": "desc"}, order.ToMap())
+}
+
+func TestOrdersUnmarshalJSONError(t *testing.T) {
+	var order Order
+	err := jsoniter.Unmarshal([]byte(`{1}`), &order)
+	assert.NotNil(t, err)
+}
+
+func TestOrdersMarshalJSON(t *testing.T) {
+	order := Order{Field: NewExpression("id"), Sort: "asc"}
+	bytes, err := jsoniter.Marshal(order)
+	assert.Nil(t, err)
+	assert.Contains(t, string(bytes), `"field":"id"`)
+	assert.Contains(t, string(bytes), `"sort":"asc"`)
+
+	orders := Orders{
+		{Field: NewExpression("id"), Sort: "asc"},
+		{Field: NewExpression("type"), Sort: "desc"},
+	}
+	bytes, err = jsoniter.Marshal(orders)
+	assert.Nil(t, err)
+	assert.Contains(t, string(bytes), `"field":"id"`)
+	assert.Contains(t, string(bytes), `"sort":"asc"`)
+	assert.Contains(t, string(bytes), `"field":"type"`)
+	assert.Contains(t, string(bytes), `"sort":"desc"`)
+}
+
+func TestOrdersPushStringError(t *testing.T) {
+	orders := Orders{}
+	err := orders.PushString("a b c")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), `a b c`)
 }
