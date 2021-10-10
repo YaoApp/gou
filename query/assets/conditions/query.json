@@ -1,0 +1,22 @@
+[
+  {
+    "comment": "北京地区的厂商: 超过平均值的成绩单",
+    "field": "score",
+    "op": ">",
+    "query": {
+      "select": [":avg(score)"],
+      "from": "user",
+      "wheres": [{ "field": "area", "value": "北京" }]
+    }
+  },
+  {
+    "comment": "北京地区厂商的成绩单",
+    "field": "score_id",
+    "op": "in",
+    "query": {
+      "select": ["id"],
+      "from": "manu",
+      "wheres": [{ "field": "area", "value": "北京" }]
+    }
+  }
+]

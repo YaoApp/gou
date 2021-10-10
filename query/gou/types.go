@@ -37,15 +37,23 @@ type Table struct {
 	Name  string // 名称
 }
 
-// Where 查询条件
-type Where struct {
+// Cond 查询条件别名
+type Cond Condition
+
+// Condition 查询条件
+type Condition struct {
 	Field   *Expression `json:"field"`             // 查询字段
 	Value   interface{} `json:"value,omitempty"`   // 匹配数值
 	OP      string      `json:"op,omitempty"`      // 匹配关系运算符
 	OR      bool        `json:"or,omitempty"`      // true 查询条件逻辑关系为 or, 默认为 false 查询条件逻辑关系为 and
-	Wheres  []Where     `json:"wheres,omitempty"`  // 分组查询。用于 condition 1 and ( condition 2 OR condition 3) 的场景
 	Query   *QueryDSL   `json:"query,omitempty"`   // 子查询, 如设定 query 则忽略 value 数值。
 	Comment string      `json:"comment,omitempty"` // 查询条件注释
+}
+
+// Where 查询条件
+type Where struct {
+	Condition
+	Wheres []Where `json:"wheres,omitempty"` // 分组查询。用于 condition 1 and ( condition 2 OR condition 3) 的场景
 }
 
 // Orders 排序条件集合
@@ -70,13 +78,8 @@ type Group struct {
 
 // Having 聚合结果筛选条件
 type Having struct {
-	Field   *Expression `json:"field"`             // 查询字段
-	Value   interface{} `json:"value,omitempty"`   // 匹配数值
-	OP      string      `json:"op,omitempty"`      // 匹配关系运算符
-	OR      bool        `json:"or,omitempty"`      // true 查询条件逻辑关系为 or, 默认为 false 查询条件逻辑关系为 and
-	Havings []Where     `json:"havings,omitempty"` // 分组查询。用于 condition 1 and ( condition 2 OR condition 3) 的场景
-	Query   QueryDSL    `json:"query,omitempty"`   // 子查询, 如设定 query 则忽略 value 数值。
-	Comment string      `json:"comment,omitempty"` // 查询条件注释
+	Condition
+	Havings []Having `json:"havings,omitempty"` // 分组查询。用于 condition 1 and ( condition 2 OR condition 3) 的场景
 }
 
 // Join 数据表连接

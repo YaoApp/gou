@@ -1,0 +1,8 @@
+[
+  { "field": "id", "value": 20 },
+  { "field": "name", "value": "张三" },
+  { "field": "id", "value": "{20}" },
+  { "field": "name", "value": "{'张三'}" },
+  { "field": "name", "value": "{short_name}" },
+  { "or": true, "field": "name", "value": "{short_name}" }
+]
