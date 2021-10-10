@@ -177,8 +177,8 @@ func TestOrderToMap(t *testing.T) {
 }
 
 func TestOrdersUnmarshalJSONError(t *testing.T) {
-	var order Order
-	err := jsoniter.Unmarshal([]byte(`{1}`), &order)
+	var orders Orders
+	err := jsoniter.Unmarshal([]byte(`{1}`), &orders)
 	assert.NotNil(t, err)
 }
 
