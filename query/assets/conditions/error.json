@@ -7,5 +7,6 @@
   { "field": "score hello", "op": "=", "value": "{hello world}" },
   { "field": "score", "op": "=" },
   { "field": "score", "op": "is", "value": "error" },
-  { "field": "score", "op": "is" }
+  { "field": "score", "op": "is" },
+  { "field": "score", "op": "is", "value": "null" }
 ]

@@ -145,7 +145,7 @@ func TestConditionValidate(t *testing.T) {
 
 	err := jsoniter.Unmarshal(bytes, &errs)
 	assert.Nil(t, err)
-	assert.Equal(t, 9, len(errs))
+	assert.Equal(t, 10, len(errs))
 
 	// { ":score": "分数" },
 	res := errs[0].Validate()
@@ -199,6 +199,10 @@ func TestConditionValidate(t *testing.T) {
 	assert.Equal(t, 1, len(res))
 	assert.Contains(t, res[0].Error(), "value")
 	assert.Contains(t, res[0].Error(), "query")
+
+	// { "field": "score", "op": "is", "value": "null" }
+	res = errs[9].Validate()
+	assert.Equal(t, 0, len(res))
 
 }
 
