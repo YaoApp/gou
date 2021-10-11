@@ -1,6 +1,9 @@
 {
   "select": ["name", "value"],
   "from": "user",
-  "wheres": [{ "field": "manu_id", "value": 1 }],
+  "wheres": [
+    { "field": "manu_id", "=": 1 },
+    { ":short_name": "简称", "match": "腾讯" }
+  ],
   "orders": [{ "field": "id", "sort": "desc" }]
 }

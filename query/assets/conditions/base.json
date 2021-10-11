@@ -1,9 +1,7 @@
 [
   { "field": "score", "value": 20, "op": "=", "comment": "分数" },
-  { "field": "score", "value": 20 },
   { "field": "score", "=": 20 },
   { ":score": "分数", "=": 10 },
-  { ":score": 10 },
 
   { "field": "score", "value": 20, "op": "<", "comment": "分数" },
   { "field": "score", "<": 20 },
@@ -43,5 +41,24 @@
 
   { "field": "name", "op": "is", "value": "not null", "comment": "姓名" },
   { "field": "name", "is": "not null" },
-  { ":name": "姓名", "is": "not null" }
+  { ":name": "姓名", "is": "not null" },
+
+  { "or": true, "field": "name", "op": "match", "value": "李" },
+  { "or": true, "field": "name", "match": "李" },
+  { "or :name": "或姓名", "match": "李" },
+
+  { "or": true, "field": "name", "op": "is", "value": "notnull" },
+  { "or": true, "field": "name", "is": "notnull" },
+  { "or :name": "或姓名", "is": "notnull" },
+
+  { "or": false, "field": "name", "op": "is", "value": "notnull" },
+  { "or": false, "field": "name", "is": "notnull" },
+  { ":name": "姓名", "is": "notnull" },
+
+  { "field": "id", "value": 20, "op": "=" },
+  { "field": "name", "value": "张三", "op": "=" },
+  { "field": "id", "value": "{20}", "op": "=" },
+  { "field": "name", "value": "{'张三'}", "op": "=" },
+  { "field": "name", "value": "{short_name}", "op": "=" },
+  { "or": true, "field": "name", "value": "{short_name}", "op": "=" }
 ]

@@ -37,17 +37,15 @@ type Table struct {
 	Name  string // 名称
 }
 
-// Cond 查询条件别名
-type Cond Condition
-
 // Condition 查询条件
 type Condition struct {
-	Field   *Expression `json:"field"`             // 查询字段
-	Value   interface{} `json:"value,omitempty"`   // 匹配数值
-	OP      string      `json:"op,omitempty"`      // 匹配关系运算符
-	OR      bool        `json:"or,omitempty"`      // true 查询条件逻辑关系为 or, 默认为 false 查询条件逻辑关系为 and
-	Query   *QueryDSL   `json:"query,omitempty"`   // 子查询, 如设定 query 则忽略 value 数值。
-	Comment string      `json:"comment,omitempty"` // 查询条件注释
+	Field           *Expression `json:"field"`             // 查询字段
+	Value           interface{} `json:"value,omitempty"`   // 匹配数值
+	ValueExpression *Expression `json:"-"`                 // 数值表达式
+	OP              string      `json:"op"`                // 匹配关系运算符
+	OR              bool        `json:"or,omitempty"`      // true 查询条件逻辑关系为 or, 默认为 false 查询条件逻辑关系为 and
+	Query           *QueryDSL   `json:"query,omitempty"`   // 子查询, 如设定 query 则忽略 value 数值。
+	Comment         string      `json:"comment,omitempty"` // 查询条件注释
 }
 
 // Where 查询条件
