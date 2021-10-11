@@ -47,13 +47,13 @@
   { "or": true, "field": "name", "match": "李" },
   { "or :name": "或姓名", "match": "李" },
 
-  { "or": true, "field": "name", "op": "is", "value": "notnull" },
-  { "or": true, "field": "name", "is": "notnull" },
-  { "or :name": "或姓名", "is": "notnull" },
+  { "or": true, "field": "name", "op": "is", "value": "not null" },
+  { "or": true, "field": "name", "is": "not null" },
+  { "or :name": "或姓名", "is": "not null" },
 
-  { "or": false, "field": "name", "op": "is", "value": "notnull" },
-  { "or": false, "field": "name", "is": "notnull" },
-  { ":name": "姓名", "is": "notnull" },
+  { "or": false, "field": "name", "op": "is", "value": "not null" },
+  { "or": false, "field": "name", "is": "not null" },
+  { ":name": "姓名", "is": "not null" },
 
   { "field": "id", "value": 20, "op": "=" },
   { "field": "name", "value": "张三", "op": "=" },

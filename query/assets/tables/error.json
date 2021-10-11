@@ -1,0 +1,7 @@
+[
+  "name.d",
+  "$name中文",
+  "name as ,",
+  "$model.user as |",
+  "$model.user as foo bar"
+]

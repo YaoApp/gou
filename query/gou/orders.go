@@ -30,6 +30,20 @@ func (order Order) ToMap() map[string]interface{} {
 	return res
 }
 
+// Validate 校验 order
+func (order Order) Validate() error {
+	if order.Field == nil {
+		return errors.Errorf("缺少 field")
+	} else if err := order.Field.Validate(); err != nil {
+		return errors.Errorf("Field %s", err.Error())
+	}
+
+	if order.Sort != "desc" && order.Sort != "asc" {
+		return errors.Errorf("排序方式(%s)不合法", order.Sort)
+	}
+	return nil
+}
+
 // UnmarshalJSON for json marshalJSON
 func (orders *Orders) UnmarshalJSON(data []byte) error {
 
@@ -70,14 +84,8 @@ func (orders *Orders) UnmarshalJSON(data []byte) error {
 func (orders Orders) Validate() []error {
 	errs := []error{}
 	for i, order := range orders {
-		if order.Field == nil {
-			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 order 排序条件, 缺少 field", i+1))
-		} else if err := order.Field.Validate(); err != nil {
-			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 order 排序条件, Field %s", i+1, err.Error()))
-		}
-
-		if order.Sort != "desc" && order.Sort != "asc" {
-			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 order 排序条件, 排序方式(%s)不合法", i+1, order.Sort))
+		if err := order.Validate(); err != nil {
+			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 order 排序条件, %s", i+1, err.Error()))
 		}
 	}
 	return errs

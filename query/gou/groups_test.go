@@ -30,6 +30,11 @@ func TestGroupsStrict(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 6, len(stricts))
 
+	// 格式正确
+	for _, groups := range stricts {
+		assert.Equal(t, 0, len(groups.Validate()))
+	}
+
 	// [{ "field": "kind" }]
 	assert.Equal(t, "kind", stricts[0][0].Field.ToString())
 	assert.Equal(t, "", stricts[0][0].Rollup)
@@ -79,6 +84,11 @@ func TestGroupsSugar(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 6, len(sugars))
 
+	// 格式正确
+	for _, groups := range sugars {
+		assert.Equal(t, 0, len(groups.Validate()))
+	}
+
 	// "kind",
 	assert.Equal(t, "kind", sugars[0][0].Field.ToString())
 	assert.Equal(t, "", sugars[0][0].Rollup)
@@ -117,6 +127,11 @@ func TestGroupsMix(t *testing.T) {
 	err := jsoniter.Unmarshal(bytes, &mixes)
 	assert.Nil(t, err)
 	assert.Equal(t, 10, len(mixes))
+
+	// 格式正确
+	for _, groups := range mixes {
+		assert.Equal(t, 0, len(groups.Validate()))
+	}
 
 	// "kind",
 	assert.Equal(t, "kind", mixes[0][0].Field.ToString())

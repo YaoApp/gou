@@ -1,0 +1,9 @@
+[
+  "name",
+  "$user",
+  "name as n",
+  "$user as u",
+  "name   as   bar",
+  "$user  as    foo",
+  "$xiang.user as 用户_表"
+]

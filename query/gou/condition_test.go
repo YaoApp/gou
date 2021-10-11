@@ -21,6 +21,11 @@ func TestConditionBase(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 48, len(conds))
 
+	// 格式正确
+	for _, cond := range conds {
+		assert.Equal(t, 0, len(cond.Validate()))
+	}
+
 	// { "field": "score", "value": 20, "op": "=", "comment": "分数" },
 	should(t, conds[0].ToMap(), M{"field": "score", "value": F(20), "op": "=", "comment": "分数"})
 	// { "field": "score", "=": 20 },
@@ -105,19 +110,19 @@ func TestConditionBase(t *testing.T) {
 	// { "or :name": "或姓名", "match": "李" },
 	should(t, conds[35].ToMap(), M{"field": "name", "value": "李", "op": "match", "or": true, "comment": "或姓名"})
 
-	// { "or": true, "field": "name", "op": "is", "value": "notnull" },
-	should(t, conds[36].ToMap(), M{"field": "name", "value": "notnull", "op": "is", "or": true})
-	// { "or": true, "field": "name", "is": "notnull" },
-	should(t, conds[37].ToMap(), M{"field": "name", "value": "notnull", "op": "is", "or": true})
-	// { "or :name": "或姓名", "is": "notnull" },
-	should(t, conds[38].ToMap(), M{"field": "name", "value": "notnull", "op": "is", "or": true, "comment": "或姓名"})
+	// { "or": true, "field": "name", "op": "is", "value": "not null" },
+	should(t, conds[36].ToMap(), M{"field": "name", "value": "not null", "op": "is", "or": true})
+	// { "or": true, "field": "name", "is": "not null" },
+	should(t, conds[37].ToMap(), M{"field": "name", "value": "not null", "op": "is", "or": true})
+	// { "or :name": "或姓名", "is": "not null" },
+	should(t, conds[38].ToMap(), M{"field": "name", "value": "not null", "op": "is", "or": true, "comment": "或姓名"})
 
-	// { "or": false, "field": "name", "op": "is", "value": "notnull" },
-	should(t, conds[39].ToMap(), M{"field": "name", "value": "notnull", "op": "is"})
-	// { "or": false, "field": "name", "is": "notnull" },
-	should(t, conds[40].ToMap(), M{"field": "name", "value": "notnull", "op": "is"})
-	// { ":name": "姓名", "is": "notnull" },
-	should(t, conds[41].ToMap(), M{"field": "name", "value": "notnull", "op": "is", "comment": "姓名"})
+	// { "or": false, "field": "name", "op": "is", "value": "not null" },
+	should(t, conds[39].ToMap(), M{"field": "name", "value": "not null", "op": "is"})
+	// { "or": false, "field": "name", "is": "not null" },
+	should(t, conds[40].ToMap(), M{"field": "name", "value": "not null", "op": "is"})
+	// { ":name": "姓名", "is": "not null" },
+	should(t, conds[41].ToMap(), M{"field": "name", "value": "not null", "op": "is", "comment": "姓名"})
 
 	// { "field": "id", "value": 20, "op": "=" },
 	should(t, conds[42].ToMap(), M{"field": "id", "value": F(20), "op": "="})

@@ -33,8 +33,9 @@ type Expression struct{ string }
 
 // Table 数据表名称或数据模型
 type Table struct {
-	Alias string // 别名
-	Name  string // 名称
+	Alias   string // 别名
+	Name    string // 名称
+	IsModel bool   // 是否为数据模型
 }
 
 // Condition 查询条件
@@ -82,15 +83,17 @@ type Having struct {
 
 // Join 数据表连接
 type Join struct {
-	From    Table       `json:"from"`            // 查询数据表名称或数据模型
-	Key     *Expression `json:"key"`             // 关联连接表字段名称
-	Foreign *Expression `json:"foreign"`         // 关联目标表字段名称(需指定表名或别名)
-	Left    bool        `json:"left,omitempty"`  // true 连接方式为 LEFT JOIN, 默认为 false 连接方式为 JOIN
-	Right   bool        `json:"right,omitempty"` // true 连接方式为 RIGHT JOIN, 默认为 false 连接方式为 JOIN
+	From    *Table      `json:"from"`              // 查询数据表名称或数据模型
+	Key     *Expression `json:"key"`               // 关联连接表字段名称
+	Foreign *Expression `json:"foreign"`           // 关联目标表字段名称(需指定表名或别名)
+	Left    bool        `json:"left,omitempty"`    // true 连接方式为 LEFT JOIN, 默认为 false 连接方式为 JOIN
+	Right   bool        `json:"right,omitempty"`   // true 连接方式为 RIGHT JOIN, 默认为 false 连接方式为 JOIN
+	Comment string      `json:"comment,omitempty"` // 关联条件注释
 }
 
 // SQL 语句
 type SQL struct {
-	STMT string        `json:"stmt,omitempty"` // SQL 语句
-	Args []interface{} `json:"args,omitempty"` // 绑定参数表
+	STMT    string        `json:"stmt,omitempty"`    // SQL 语句
+	Args    []interface{} `json:"args,omitempty"`    // 绑定参数表
+	Comment string        `json:"comment,omitempty"` // SQL语句注释
 }

@@ -26,6 +26,11 @@ func TestOrdersStrict(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 5, len(stricts))
 
+	// 格式正确
+	for _, orders := range stricts {
+		assert.Equal(t, 0, len(orders.Validate()))
+	}
+
 	// [{ "field": "id" }]
 	assert.Equal(t, "id", stricts[0][0].Field.ToString())
 	assert.Equal(t, "asc", stricts[0][0].Sort)
@@ -61,6 +66,11 @@ func TestOrdersSugar(t *testing.T) {
 	err := jsoniter.Unmarshal(bytes, &sugars)
 	assert.Nil(t, err)
 	assert.Equal(t, 6, len(sugars))
+
+	// 格式正确
+	for _, orders := range sugars {
+		assert.Equal(t, 0, len(orders.Validate()))
+	}
 
 	// "id",
 	assert.Equal(t, "id", sugars[0][0].Field.ToString())
@@ -100,6 +110,11 @@ func TestOrdersMix(t *testing.T) {
 	err := jsoniter.Unmarshal(bytes, &mixes)
 	assert.Nil(t, err)
 	assert.Equal(t, 8, len(mixes))
+
+	// 格式正确
+	for _, orders := range mixes {
+		assert.Equal(t, 0, len(orders.Validate()))
+	}
 
 	// "id",
 	assert.Equal(t, "id", mixes[0][0].Field.ToString())
