@@ -39,7 +39,7 @@ func (tab *Table) UnmarshalJSON(data []byte) error {
 
 // MarshalJSON for json marshalJSON
 func (tab Table) MarshalJSON() ([]byte, error) {
-	return []byte(tab.ToString()), nil
+	return []byte(fmt.Sprintf("\"%s\"", tab.ToString())), nil
 }
 
 // ToString for json marshalJSON
@@ -54,7 +54,8 @@ func (tab Table) ToString() string {
 	if tab.Alias != "" {
 		name = name + " as " + tab.Alias
 	}
-	return fmt.Sprintf("\"%s\"", name)
+
+	return name
 }
 
 // Validate 校验表达式格式

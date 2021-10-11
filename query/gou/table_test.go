@@ -80,3 +80,30 @@ func TestTableValidate(t *testing.T) {
 	// "$model.user as foo bar"
 	assert.Error(t, errs[4].Validate())
 }
+
+func TestTableUnmarshalJSONError(t *testing.T) {
+	var tab Table
+	err := jsoniter.Unmarshal([]byte(`{1}`), &tab)
+	assert.NotNil(t, err)
+
+	err = jsoniter.Unmarshal([]byte(`"table as a as b"`), &tab)
+	assert.NotNil(t, err)
+}
+
+func TestTableMarshalJSON(t *testing.T) {
+
+	tab := Table{Name: "user"}
+	bytes, err := jsoniter.Marshal(tab)
+	assert.Nil(t, err)
+	assert.Equal(t, `"user"`, string(bytes))
+
+	tab = Table{Name: "user", IsModel: true}
+	bytes, err = jsoniter.Marshal(tab)
+	assert.Nil(t, err)
+	assert.Equal(t, `"$user"`, string(bytes))
+
+	tab = Table{Name: "user", IsModel: true, Alias: "u"}
+	bytes, err = jsoniter.Marshal(tab)
+	assert.Nil(t, err)
+	assert.Equal(t, `"$user as u"`, string(bytes))
+}
