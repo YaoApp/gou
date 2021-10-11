@@ -1,7 +1,7 @@
 package query
 
 import (
-	"bufio"
+	"bytes"
 	"io"
 	"os"
 
@@ -36,12 +36,12 @@ func Gou(input []byte) *Query {
 
 // GouReader 创建 Gou Query DSL (输入接口)
 func GouReader(reader io.Reader) *Query {
-	var bytes []byte
-	_, err := reader.Read(bytes)
+	buf := bytes.NewBuffer(nil)
+	_, err := io.Copy(buf, reader)
 	if err != nil {
 		exception.New("读取数据失败 %s", 500, err.Error()).Throw()
 	}
-	return Gou(bytes)
+	return Gou(buf.Bytes())
 }
 
 // GouFile 创建 Gou Query DSL (文件)
@@ -51,7 +51,8 @@ func GouFile(filename string) *Query {
 		exception.New("读取文件失败 %s", 500, err.Error()).Throw()
 	}
 	defer file.Close()
-	return GouReader(bufio.NewReader(file))
+	var reader io.Reader = file
+	return GouReader(reader)
 }
 
 // With 关联查询器

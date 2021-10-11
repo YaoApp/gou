@@ -1,0 +1,10 @@
+[
+  { ":score": "分数" },
+  { "=": 10 },
+  { ":score": "分数", "op": "gt", "value": 20 },
+  { ":score": "分数", "op": "=", "value": "{hello world}" },
+  { "field": "score hello", "op": "=", "value": "hello" },
+  { "field": "score hello", "op": "=", "value": "{hello world}" },
+  { "field": "score", "op": "=" },
+  { "field": "score", "op": "is", "value": "error" }
+]

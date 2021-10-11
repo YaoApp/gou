@@ -31,6 +31,23 @@ func (gou QueryDSL) ValidateSelect() []error {
 	return errs
 }
 
+// ValidateWheres 校验 wheres
+func (gou QueryDSL) ValidateWheres() []error {
+	errs := []error{}
+	if gou.Wheres == nil {
+		return errs
+	}
+
+	for i, where := range gou.Wheres {
+		errs := where.Condition.Validate()
+		for _, err := range errs {
+			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 where 查询条件,  %s", i+1, err.Error()))
+		}
+	}
+
+	return errs
+}
+
 // ValidateOrders 校验 orders
 func (gou QueryDSL) ValidateOrders() []error {
 	errs := []error{}

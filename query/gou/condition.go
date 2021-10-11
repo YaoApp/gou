@@ -7,19 +7,28 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-func condShouldHaveValue(i int, cond Condition) error {
+func condShouldHaveValue(cond Condition) error {
 	if cond.Value == nil && cond.Query == nil {
 		return errors.Errorf("缺少 value 或 query")
 	}
 	return nil
 }
 
-func condIgnoreValue(i int, cond Condition) error {
+func condShouldHaveNull(cond Condition) error {
+	if cond.Value == nil && cond.Query == nil {
+		return errors.Errorf("缺少 value 或 query")
+	}
+
+	value, ok := cond.Value.(string)
+	if !ok || (value != "null" && value != "not null") {
+		return errors.Errorf("%s 应该为 null 或 not null", value)
+	}
+
 	return nil
 }
 
 // OPs 可用的操作符
-var OPs = map[string]func(i int, where Condition) error{
+var OPs = map[string]func(cond Condition) error{
 	"=":     condShouldHaveValue,
 	">":     condShouldHaveValue,
 	">=":    condShouldHaveValue,
@@ -28,7 +37,7 @@ var OPs = map[string]func(i int, where Condition) error{
 	"like":  condShouldHaveValue,
 	"match": condShouldHaveValue,
 	"in":    condShouldHaveValue,
-	"is":    condShouldHaveValue,
+	"is":    condShouldHaveNull,
 }
 
 // UnmarshalJSON for json marshalJSON
@@ -157,34 +166,42 @@ func (cond *Condition) SetValue(v interface{}) {
 	}
 }
 
-// ValidateWheres 校验 wheres
-func (gou QueryDSL) ValidateWheres() []error {
+// Validate 校验数据
+func (cond Condition) Validate() []error {
+
 	errs := []error{}
-	if gou.Wheres == nil {
-		return errs
+	if cond.Field == nil {
+		errs = append(errs, errors.Errorf("缺少 field"))
+	} else if err := cond.Field.Validate(); err != nil {
+		errs = append(errs, errors.Errorf("field %s", err.Error()))
 	}
 
-	for i, where := range gou.Wheres {
-		if where.Field == nil {
-			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 where 查询条件, 缺少 field", i+1))
-		}
-
-		// 验证条件
-		if where.OP == "" {
-			where.OP = "="
-		}
-
-		check, has := OPs[where.OP]
-		if !has {
-			errs = append(errs, errors.Errorf("参数错误: 第 %d 个 where 查询条件,  匹配关系运算符(%s)不合法", i+1, where.OP))
-		} else {
-			err := check(i, where.Condition)
-			if err != nil {
-				errs = append(errs, err)
-			}
-		}
-
+	if cond.OP == "" {
+		errs = append(errs, errors.Errorf("缺少 op"))
+	} else if _, has := OPs[cond.OP]; !has {
+		errs = append(errs, errors.Errorf("%s 操作符暂不支持", cond.OP))
 	}
+
+	if cond.ValueExpression != nil {
+		if err := cond.ValueExpression.Validate(); err != nil {
+			errs = append(errs, errors.Errorf("value %s", err.Error()))
+		}
+	}
+
+	if valueValidate, ok := OPs[cond.OP]; ok {
+		err := valueValidate(cond)
+		if err != nil {
+			errs = append(errs, errors.Errorf("value %s", err.Error()))
+		}
+	}
+
+	// if cond.Query != nil {
+	// 	if suberrs := cond.Query.Validate(); len(suberrs) > 0 {
+	// 		for _, err := range suberrs {
+	// 			errs = append(errs, errors.Errorf("query %s", err.Error()))
+	// 		}
+	// 	}
+	// }
 
 	return errs
 }

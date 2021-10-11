@@ -138,3 +138,106 @@ func TestConditionBase(t *testing.T) {
 	should(t, conds[47].ToMap(), M{"field": "name", "value": "{short_name}", "op": "=", "or": true})
 	should(t, conds[47].ValueExpression.ToString(), "short_name")
 }
+
+func TestConditionValidate(t *testing.T) {
+	var errs []Condition
+	bytes := ReadFile("conditions/error.json")
+
+	err := jsoniter.Unmarshal(bytes, &errs)
+	assert.Nil(t, err)
+	assert.Equal(t, 8, len(errs))
+
+	// { ":score": "分数" },
+	res := errs[0].Validate()
+	assert.Equal(t, 1, len(res))
+	assert.Contains(t, res[0].Error(), "op")
+
+	// { "=": 10 },
+	res = errs[1].Validate()
+	assert.Equal(t, 1, len(res))
+	assert.Contains(t, res[0].Error(), "field")
+
+	// { ":score": "分数", "op": "gt", "value": 20 },
+	res = errs[2].Validate()
+	assert.Equal(t, 1, len(res))
+	assert.Contains(t, res[0].Error(), "gt")
+
+	// { ":score": "分数", "op": "=", "value": "{hello world}" },
+	res = errs[3].Validate()
+	assert.Equal(t, 1, len(res))
+	assert.Contains(t, res[0].Error(), "value")
+	assert.Contains(t, res[0].Error(), "hello world")
+
+	// { "field": "score hello", "op": "=", "value": "hello" },
+	res = errs[4].Validate()
+	assert.Equal(t, 1, len(res))
+	assert.Contains(t, res[0].Error(), "field")
+	assert.Contains(t, res[0].Error(), "score hello")
+
+	// { "field": "score hello", "op": "=", "value": "{hello world}" }
+	res = errs[5].Validate()
+	assert.Equal(t, 2, len(res))
+	assert.Contains(t, res[0].Error(), "field")
+	assert.Contains(t, res[0].Error(), "score hello")
+	assert.Contains(t, res[1].Error(), "value")
+	assert.Contains(t, res[1].Error(), "hello world")
+
+	// { "field": "score", "op": "=" },
+	res = errs[6].Validate()
+	assert.Equal(t, 1, len(res))
+	assert.Contains(t, res[0].Error(), "value")
+	assert.Contains(t, res[0].Error(), "query")
+
+	// { "field": "score", "op": "is", "value": "error" }
+	res = errs[7].Validate()
+	assert.Equal(t, 1, len(res))
+	assert.Contains(t, res[0].Error(), "null")
+	assert.Contains(t, res[0].Error(), "not null")
+
+}
+
+func TestConditionUnmarshalJSONError(t *testing.T) {
+	var cond Condition
+	err := jsoniter.Unmarshal([]byte(`{1}`), &cond)
+	assert.NotNil(t, err)
+}
+
+func TestConditionMarshalJSON(t *testing.T) {
+
+	cond := Condition{Field: NewExpression("id"), OP: "=", Value: 1}
+	bytes, err := jsoniter.Marshal(cond)
+	assert.Nil(t, err)
+	assert.Contains(t, string(bytes), `"field":"id"`)
+	assert.Contains(t, string(bytes), `"op":"="`)
+	assert.Contains(t, string(bytes), `"value":1`)
+	assert.NotContains(t, string(bytes), `"or"`)
+	assert.NotContains(t, string(bytes), `"comment"`)
+
+	cond = Condition{Field: NewExpression("id"), OP: "=", Value: 1, OR: true}
+	bytes, err = jsoniter.Marshal(cond)
+	assert.Nil(t, err)
+	assert.Contains(t, string(bytes), `"field":"id"`)
+	assert.Contains(t, string(bytes), `"op":"="`)
+	assert.Contains(t, string(bytes), `"or":true`)
+	assert.Contains(t, string(bytes), `"value":1`)
+	assert.NotContains(t, string(bytes), `"comment"`)
+
+	cond = Condition{Field: NewExpression("id"), OP: "=", Value: 1, OR: false}
+	bytes, err = jsoniter.Marshal(cond)
+	assert.Nil(t, err)
+	assert.Contains(t, string(bytes), `"field":"id"`)
+	assert.Contains(t, string(bytes), `"op":"="`)
+	assert.Contains(t, string(bytes), `"value":1`)
+	assert.NotContains(t, string(bytes), `"or"`)
+	assert.NotContains(t, string(bytes), `"comment"`)
+
+	cond = Condition{Field: NewExpression("id"), OP: "=", Value: 1, OR: true, Comment: "Unit-Test"}
+	bytes, err = jsoniter.Marshal(cond)
+	assert.Nil(t, err)
+	assert.Contains(t, string(bytes), `"field":"id"`)
+	assert.Contains(t, string(bytes), `"op":"="`)
+	assert.Contains(t, string(bytes), `"or":true`)
+	assert.Contains(t, string(bytes), `"value":1`)
+	assert.Contains(t, string(bytes), `"comment":"Unit-Test"`)
+
+}
