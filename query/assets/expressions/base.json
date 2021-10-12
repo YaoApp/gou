@@ -1,1 +1,32 @@
-["name", "table.name", "$model.name", "name as 中文"]
+[
+  "name as n",
+  "name as 名称",
+
+  "table.name as n",
+  "table.name as 名称",
+
+  "table.object$.foo as foo",
+
+  "table.object$.arr[0] as arr",
+  "table.object$.arr[*] as arr",
+
+  "table.object$.arr[0].foo as arr",
+  "table.object$.arr[*].bar as arr",
+
+  "table.array[0].foo as foo",
+  "table.array[*].foo as foo",
+
+  "$model.name as n",
+  "$model.name as 中文",
+
+  "$model.object$.foo as foo",
+
+  "$model.object$.arr[0] as arr",
+  "$model.object$.arr[*] as arr",
+
+  "$model.object$.arr[0].foo as arr",
+  "$model.object$.arr[*].bar as arr",
+
+  "$model.array@[0].foo as foo",
+  "$model.array@[*].foo as foo"
+]
