@@ -6,7 +6,6 @@ import (
 	"github.com/go-errors/errors"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/kun/exception"
-	"github.com/yaoapp/kun/utils"
 )
 
 func condShouldHaveValue(cond Condition) error {
@@ -149,9 +148,8 @@ func (cond Condition) ToMap() map[string]interface{} {
 // SetQuery 设定子查询
 func (cond *Condition) SetQuery(v interface{}) {
 
-	if query, ok := v.(*QueryDSL); ok {
-		utils.Dump("SetQuery+")
-		cond.Query = query
+	if query, ok := v.(QueryDSL); ok {
+		cond.Query = &query
 		return
 	}
 

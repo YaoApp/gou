@@ -136,6 +136,10 @@ func TestConditionBase(t *testing.T) {
 	// { "or": true, "field": "name", "value": "{short_name}", "op": "=" }
 	should(t, conds[47].ToMap(), M{"field": "name", "value": "{short_name}", "op": "=", "or": true})
 	should(t, conds[47].ValueExpression.ToString(), "short_name")
+
+	conds[47].SetValue(nil)
+	should(t, conds[47].ValueExpression.ToString(), "short_name")
+
 }
 
 func TestConditionQuery(t *testing.T) {
@@ -165,6 +169,15 @@ func TestConditionQuery(t *testing.T) {
 	assert.Equal(t, "id", c2.Get("query.select.0"))
 	assert.Equal(t, "area", c2.Get("query.wheres.0.field"))
 	assert.Equal(t, "北京", c2.Get("query.wheres.0.value"))
+
+	conds[0].SetQuery(QueryDSL{
+		Select: []Expression{*NewExpression(":PLUS(1,1)")},
+	})
+	c3 := maps.MapStr(conds[0].ToMap()).Dot()
+	assert.Equal(t, ":PLUS(1,1)", c3.Get("query.select.0"))
+	assert.Panics(t, func() {
+		conds[0].SetQuery("19b5")
+	})
 }
 
 func TestConditionValidate(t *testing.T) {
