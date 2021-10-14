@@ -137,6 +137,25 @@ func TestConditionBase(t *testing.T) {
 	should(t, conds[47].ValueExpression.ToString(), "short_name")
 }
 
+func TestConditionQuery(t *testing.T) {
+	var conds []Condition
+	bytes := ReadFile("conditions/query.json")
+	err := jsoniter.Unmarshal(bytes, &conds)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(conds))
+
+	// 验证数据
+	assert.NotNil(t, conds[0].Query)
+	assert.Equal(t, ":avg(score)", conds[0].Query.Select[0].ToString())
+	assert.Equal(t, "area", conds[0].Query.Wheres[0].Field.ToString())
+	assert.Equal(t, "北京", conds[0].Query.Wheres[0].Value)
+
+	assert.NotNil(t, conds[1].Query)
+	assert.Equal(t, "id", conds[1].Query.Select[0].ToString())
+	assert.Equal(t, "area", conds[1].Query.Wheres[0].Field.ToString())
+	assert.Equal(t, "北京", conds[1].Query.Wheres[0].Value)
+}
+
 func TestConditionValidate(t *testing.T) {
 	var errs []Condition
 	bytes := ReadFile("conditions/error.json")

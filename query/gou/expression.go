@@ -264,7 +264,7 @@ func (exp Expression) ToString() string {
 		for _, arg := range exp.FunArgs {
 			args = append(args, arg.ToString())
 		}
-		return fmt.Sprintf("%s(%s)%s", exp.FunName, strings.Join(args, ","), alias)
+		return fmt.Sprintf(":%s(%s)%s", exp.FunName, strings.Join(args, ","), alias)
 	}
 
 	return fmt.Sprintf("%s%s%s", output, exp.Field, alias)

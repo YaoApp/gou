@@ -1,6 +1,9 @@
 package gou
 
-import "github.com/go-errors/errors"
+import (
+	"github.com/go-errors/errors"
+	jsoniter "github.com/json-iterator/go"
+)
 
 // Validate 校验DSL格式
 func (gou QueryDSL) Validate() []error {
@@ -22,6 +25,56 @@ func (gou QueryDSL) Validate() []error {
 	errs = append(errs, gou.ValidateSQL()...)     // sql
 
 	return errs
+}
+
+// MarshalJSON for json marshalJSON
+func (gou QueryDSL) MarshalJSON() ([]byte, error) {
+	return jsoniter.Marshal(gou.ToMap())
+}
+
+// ToMap  QueryDSL 转换为 map[string]interface{}
+func (gou QueryDSL) ToMap() map[string]interface{} {
+	res := map[string]interface{}{}
+	if gou.Select != nil {
+		fields := []string{}
+		for _, field := range gou.Select {
+			fields = append(fields, field.ToString())
+		}
+		res["select"] = fields
+	}
+
+	if gou.Wheres != nil {
+		res["wheres"] = gou.Wheres
+	}
+
+	if gou.Orders != nil {
+		res["orders"] = gou.Orders
+	}
+
+	if gou.Groups != nil {
+		res["groups"] = gou.Groups
+	}
+
+	if gou.Havings != nil {
+		res["havings"] = gou.Havings
+	}
+
+	if gou.Unions != nil {
+		res["unions"] = gou.Unions
+	}
+
+	if gou.Joins != nil {
+		res["joins"] = gou.Joins
+	}
+
+	if gou.SQL != nil {
+		res["sql"] = gou.SQL
+	}
+
+	if gou.Query != nil {
+		res["query"] = gou.Query.ToMap()
+	}
+	return res
 }
 
 // ValidateSelect 校验 select

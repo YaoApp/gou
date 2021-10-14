@@ -5,6 +5,8 @@ import (
 
 	"github.com/go-errors/errors"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/utils"
 )
 
 func condShouldHaveValue(cond Condition) error {
@@ -115,7 +117,7 @@ func (cond Condition) MarshalJSON() ([]byte, error) {
 	return jsoniter.Marshal(cond.ToMap())
 }
 
-// ToMap Order 转换为 map[string]interface{}
+// ToMap Condition 转换为 map[string]interface{}
 func (cond Condition) ToMap() map[string]interface{} {
 
 	res := map[string]interface{}{}
@@ -141,11 +143,34 @@ func (cond Condition) ToMap() map[string]interface{} {
 		res["comment"] = cond.Comment
 	}
 
+	if cond.Query != nil {
+		res["query"] = cond.Query
+	}
+
 	return res
 }
 
 // SetQuery 设定子查询
 func (cond *Condition) SetQuery(v interface{}) {
+
+	if query, ok := v.(*QueryDSL); ok {
+		utils.Dump("SetQuery+")
+		cond.Query = query
+		return
+	}
+
+	data, err := jsoniter.Marshal(v)
+	if err != nil {
+		exception.New("设定子查询错误(%s)", 400, err.Error()).Throw()
+	}
+
+	var dsl QueryDSL
+	err = jsoniter.Unmarshal(data, &dsl)
+	if err != nil {
+		exception.New("设定子查询错误(%s)", 400, err.Error()).Throw()
+	}
+
+	cond.Query = &dsl
 }
 
 // SetValue 设定数值
