@@ -77,6 +77,20 @@ func (exp *Expression) parseExpField(s string) error {
 		return nil
 	}
 
+	// 数字常量
+	if RegIsNumber.MatchString(exp.Field) {
+		exp.parseExpNumber()
+		return nil
+	}
+
+	// 字符串常量
+	if strings.HasPrefix(exp.Field, "'") && strings.HasSuffix(exp.Field, "'") {
+		exp.Value = strings.Trim(exp.Field, "'")
+		exp.Field = ""
+		exp.IsString = true
+		return nil
+	}
+
 	// 表格、模型
 	exp.parseExpTable()
 
@@ -98,20 +112,6 @@ func (exp *Expression) parseExpField(s string) error {
 	if strings.HasSuffix(exp.Field, "*") {
 		exp.Field = strings.TrimSuffix(exp.Field, "*")
 		exp.IsAES = true
-		return nil
-	}
-
-	// 数字常量
-	if RegIsNumber.MatchString(exp.Field) {
-		exp.parseExpNumber()
-		return nil
-	}
-
-	// 字符串常量
-	if strings.HasPrefix(exp.Field, "'") && strings.HasSuffix(exp.Field, "'") {
-		exp.Value = strings.Trim(exp.Field, "'")
-		exp.Field = ""
-		exp.IsString = true
 		return nil
 	}
 
