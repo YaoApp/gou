@@ -72,8 +72,9 @@ func (gou QueryDSL) ToMap() map[string]interface{} {
 	}
 
 	if gou.Query != nil {
-		res["query"] = gou.Query.ToMap()
+		res["query"] = gou.Query
 	}
+
 	return res
 }
 

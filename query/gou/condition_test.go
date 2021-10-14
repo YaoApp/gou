@@ -5,6 +5,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/kun/maps"
 )
 
 func TestConditionBase(t *testing.T) {
@@ -154,6 +155,16 @@ func TestConditionQuery(t *testing.T) {
 	assert.Equal(t, "id", conds[1].Query.Select[0].ToString())
 	assert.Equal(t, "area", conds[1].Query.Wheres[0].Field.ToString())
 	assert.Equal(t, "北京", conds[1].Query.Wheres[0].Value)
+
+	c1 := maps.MapStr(conds[0].ToMap()).Dot()
+	assert.Equal(t, ":avg(score)", c1.Get("query.select.0"))
+	assert.Equal(t, "area", c1.Get("query.wheres.0.field"))
+	assert.Equal(t, "北京", c1.Get("query.wheres.0.value"))
+
+	c2 := maps.MapStr(conds[1].ToMap()).Dot()
+	assert.Equal(t, "id", c2.Get("query.select.0"))
+	assert.Equal(t, "area", c2.Get("query.wheres.0.field"))
+	assert.Equal(t, "北京", c2.Get("query.wheres.0.value"))
 }
 
 func TestConditionValidate(t *testing.T) {

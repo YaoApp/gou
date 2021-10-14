@@ -143,10 +143,6 @@ func (cond Condition) ToMap() map[string]interface{} {
 		res["comment"] = cond.Comment
 	}
 
-	if cond.Query != nil {
-		res["query"] = cond.Query
-	}
-
 	return res
 }
 
