@@ -13,6 +13,9 @@ func TestNewExpressionBase(t *testing.T) {
 	err := jsoniter.Unmarshal(bytes, &exps)
 	assert.Nil(t, err)
 	// utils.Dump(exps)
+	// for _, exp := range exps {
+	// 	utils.Dump(exp.ToString())
+	// }
 }
 
 func TestNewExpressionField(t *testing.T) {
@@ -20,4 +23,7 @@ func TestNewExpressionField(t *testing.T) {
 	bytes := ReadFile("expressions/fields.json")
 	err := jsoniter.Unmarshal(bytes, &exps)
 	assert.Nil(t, err)
+	// for _, exp := range exps {
+	// 	utils.Dump(exp.ToString())
+	// }
 }

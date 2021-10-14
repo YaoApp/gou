@@ -83,6 +83,8 @@ type Expression struct {
 	IsModel       bool         // 数据表是否为模型 $model.name
 	IsFun         bool         // 是否为函数  :max(name)
 	IsConst       bool         // 是否为常量  1,0.618, 'foo'
+	IsNumber      bool         // 是否为数字常量
+	IsString      bool         // 是否为字符串常量
 	IsArray       bool         // 是否为数组  array@, array[0], array[*]
 	IsObject      bool         // 是否为对象  object$.foo
 	IsAES         bool         // 是否为加密字段  name*

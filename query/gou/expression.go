@@ -1,6 +1,7 @@
 package gou
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/go-errors/errors"
@@ -20,10 +21,10 @@ func (exp *Expression) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// // MarshalJSON for json marshalJSON
-// func (exp *Expression) MarshalJSON() ([]byte, error) {
-// 	return []byte(exp.string), nil
-// }
+// MarshalJSON for json marshalJSON
+func (exp *Expression) MarshalJSON() ([]byte, error) {
+	return []byte(exp.ToString()), nil
+}
 
 // NewExpression 创建一个表达式
 func NewExpression(s string) *Expression {
@@ -110,6 +111,7 @@ func (exp *Expression) parseExpField(s string) error {
 	if strings.HasPrefix(exp.Field, "'") && strings.HasSuffix(exp.Field, "'") {
 		exp.Value = strings.Trim(exp.Field, "'")
 		exp.Field = ""
+		exp.IsString = true
 		return nil
 	}
 
@@ -130,6 +132,7 @@ func (exp *Expression) parseExpTable() error {
 // parseExpNumber 解析字段, 数字常量
 func (exp *Expression) parseExpNumber() error {
 	v := any.Of(exp.Field)
+	exp.IsNumber = true
 	exp.Field = ""
 	if strings.Contains(exp.Field, ".") {
 		exp.Value = v.CFloat64()
@@ -180,6 +183,7 @@ func (exp *Expression) parseExpFunc() error {
 	}
 	exp.FunName = matches[1]
 	exp.FunArgs = []Expression{}
+	exp.IsFun = true
 	args := strings.Split(matches[2], ",")
 	for _, arg := range args {
 		argexp, err := MakeExpression(arg)
@@ -199,9 +203,70 @@ func (exp *Expression) parseExpBindings() error {
 	return nil
 }
 
-// ToString for json marshalJSON
+// ToString 还原为字符串
 func (exp Expression) ToString() string {
-	return exp.Field
+	output := exp.Table
+	alias := exp.Alias
+
+	if alias != "" {
+		alias = fmt.Sprintf(" AS %s", alias)
+	}
+
+	if exp.Table != "" {
+		output = fmt.Sprintf("%s.", exp.Table)
+	}
+
+	if exp.IsModel {
+		output = fmt.Sprintf("$%s", output)
+	}
+
+	if exp.IsString {
+		return fmt.Sprintf("%s'%s'%s", output, exp.Value, alias)
+	}
+
+	if exp.IsNumber {
+		return fmt.Sprintf("%s%v%s", output, exp.Value, alias)
+	}
+
+	if exp.IsAES {
+		return fmt.Sprintf("%s%s*%s", output, exp.Field, alias)
+	}
+
+	if exp.IsBinding {
+		return fmt.Sprintf("?:%s%s", exp.Field, alias)
+	}
+
+	if exp.IsObject {
+		key := exp.Key
+		if key != "" {
+			key = fmt.Sprintf(".%s", key)
+		}
+		return fmt.Sprintf("%s%s$%s%s", output, exp.Field, key, alias)
+	}
+
+	if exp.IsArray {
+		if exp.Index == Star {
+			output = fmt.Sprintf("%s%s[*]", output, exp.Field)
+		} else {
+			output = fmt.Sprintf("%s%s[%d]", output, exp.Field, exp.Index)
+		}
+
+		key := exp.Key
+		if key != "" {
+			key = fmt.Sprintf(".%s", key)
+		}
+		return fmt.Sprintf("%s%s%s", output, key, alias)
+	}
+
+	if exp.IsFun {
+		args := []string{}
+		for _, arg := range exp.FunArgs {
+			args = append(args, arg.ToString())
+		}
+		return fmt.Sprintf("%s(%s)%s", exp.FunName, strings.Join(args, ","), alias)
+	}
+
+	return fmt.Sprintf("%s%s%s", output, exp.Field, alias)
 }
 
 // Validate 校验表达式格式
