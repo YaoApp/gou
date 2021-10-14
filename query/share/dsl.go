@@ -1,4 +1,4 @@
-package query
+package share
 
 import (
 	"github.com/yaoapp/kun/maps"
