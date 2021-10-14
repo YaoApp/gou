@@ -133,12 +133,13 @@ func (exp *Expression) parseExpTable() error {
 func (exp *Expression) parseExpNumber() error {
 	v := any.Of(exp.Field)
 	exp.IsNumber = true
-	exp.Field = ""
 	if strings.Contains(exp.Field, ".") {
 		exp.Value = v.CFloat64()
+		exp.Field = ""
 		return nil
 	}
 	exp.Value = v.CInt()
+	exp.Field = ""
 	return nil
 }
 
