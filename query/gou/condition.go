@@ -214,13 +214,13 @@ func (cond Condition) Validate() []error {
 		}
 	}
 
-	// if cond.Query != nil {
-	// 	if suberrs := cond.Query.Validate(); len(suberrs) > 0 {
-	// 		for _, err := range suberrs {
-	// 			errs = append(errs, errors.Errorf("query %s", err.Error()))
-	// 		}
-	// 	}
-	// }
+	if cond.Query != nil {
+		if suberrs := cond.Query.Validate(); len(suberrs) > 0 {
+			for _, err := range suberrs {
+				errs = append(errs, errors.Errorf("query %s", err.Error()))
+			}
+		}
+	}
 
 	return errs
 }

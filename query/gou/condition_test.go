@@ -175,8 +175,13 @@ func TestConditionQuery(t *testing.T) {
 	})
 	c3 := maps.MapStr(conds[0].ToMap()).Dot()
 	assert.Equal(t, ":PLUS(1,1)", c3.Get("query.select.0"))
+
 	assert.Panics(t, func() {
 		conds[0].SetQuery("19b5")
+	})
+
+	assert.Panics(t, func() {
+		conds[0].SetQuery(make(chan int))
 	})
 }
 
@@ -244,6 +249,15 @@ func TestConditionValidate(t *testing.T) {
 	// { "field": "score", "op": "is", "value": "null" }
 	res = errs[9].Validate()
 	assert.Equal(t, 0, len(res))
+
+	qb := QueryDSL{
+		From:   &Table{Name: "t1"},
+		Wheres: []Where{{}},
+	}
+	errs[9].SetQuery(qb)
+	res = errs[9].Validate()
+	assert.Equal(t, 1, len(res))
+	assert.Contains(t, res[0].Error(), "query")
 
 }
 

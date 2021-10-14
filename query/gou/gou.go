@@ -194,7 +194,7 @@ func (gou QueryDSL) ValidateJoins() []error {
 // ValidateSQL 校验 sql
 func (gou QueryDSL) ValidateSQL() []error {
 	errs := []error{}
-	if gou.SQL.STMT == "" {
+	if gou.SQL != nil && gou.SQL.STMT == "" {
 		errs = append(errs, errors.Errorf("参数错误: sql.stmt 必须填写"))
 	}
 	return errs
