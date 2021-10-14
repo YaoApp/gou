@@ -2,6 +2,12 @@
   "name as n",
   "name as 名称",
 
+  "0.618 as 黄金分割",
+  "1 as 数字",
+
+  "'0.618' as 黄金分割字符",
+  "'1' as 字符串",
+
   "table.name as n",
   "table.name as 名称",
 
@@ -28,5 +34,15 @@
   "$model.object$.arr[*].bar as arr",
 
   "$model.array@[0].foo as foo",
-  "$model.array@[*].foo as foo"
+  "$model.array@[*].foo as foo",
+
+  ":MAX(table.id)",
+  ":MAX(table.object$.arr[*])",
+  ":MAX($model.object$.arr[*])",
+  ":MAX(中文)",
+
+  "?:name as name",
+  "?:姓名 as 姓名",
+  "?:extra.score[*] as 数组",
+  "?:extra.group[0].name as name"
 ]

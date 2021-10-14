@@ -17,7 +17,7 @@ func (tab *Table) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	array := regexp.MustCompile("[ ]+[Aa][Ss][ ]+").Split(input, -1)
+	array := RegAlias.Split(input, -1)
 
 	if len(array) == 1 {
 		tab.Name = strings.TrimSpace(array[0])

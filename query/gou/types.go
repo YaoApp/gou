@@ -1,5 +1,46 @@
 package gou
 
+import "regexp"
+
+// Star 数组索引 *
+const Star = -1
+
+// RegIsNumber 字段表达式字段是否为数字
+var RegIsNumber = regexp.MustCompile("^[0-9]{1}[\\.]*[0-9]*$")
+
+// RegArrayIndex 字段表达式数组下标
+var RegArrayIndex = regexp.MustCompile("\\[([0-9\\*]+)\\]")
+
+// RegAlias 别名正则表达式
+var RegAlias = regexp.MustCompile("[ ]+[Aa][Ss][ ]+")
+
+// RegTable Table 正则表达式
+var RegTable = regexp.MustCompile("^[A-Za-z0-9_\u4e00-\u9fa5]+$")
+
+// RegFieldTable 字段表达式字段中的指定的数据表
+var RegFieldTable = regexp.MustCompile("^[$]*([A-Za-z0-9_\u4e00-\u9fa5]+)\\.")
+
+// RegField 字段表达式字段为数据表字段
+var RegField = regexp.MustCompile("^[A-Za-z0-9_\u4e00-\u9fa5]+$")
+
+// RegFieldFun 字段表达式为函数
+var RegFieldFun = regexp.MustCompile("^\\:([A-Za-z0-9_]+)\\((.*)\\)$")
+
+// RegFieldIsArrayObject 字段表达式字段是否为数组
+var RegFieldIsArrayObject = regexp.MustCompile("\\.[A-Za-z0-9_\u4e00-\u9fa5]+")
+
+// RegFieldIsArray 字段表达式字段是否为数组
+var RegFieldIsArray = regexp.MustCompile("^([A-Za-z0-9_\u4e00-\u9fa5]+)([@\\[]{1})")
+
+// M map[string]interface{} 别名
+type M = map[string]interface{}
+
+// F float64 别名
+type F = float64
+
+// Any interface{} 别名
+type Any = interface{}
+
 // QueryDSL Gou Query Domain Specific Language
 type QueryDSL struct {
 	Select   []Expression `json:"select"`              // 查询字段列表
@@ -29,7 +70,25 @@ type QueryDSLSugar struct {
 }
 
 // Expression 字段表达式
-type Expression struct{ string }
+type Expression struct {
+	Origin        string       // 原始数据
+	Table         string       // 数据表名称
+	Field         string       // 字段名称
+	Value         interface{}  // 常量数值
+	FunName       string       // 函数名称
+	FunArgs       []Expression // 函数参数表
+	Alias         string       // 字段别名
+	Index         int          // 数组字段索引 const Star -1 全部, 0 ~ n 数组
+	Key           string       // 对象字段键名
+	IsModel       bool         // 数据表是否为模型 $model.name
+	IsFun         bool         // 是否为函数  :max(name)
+	IsConst       bool         // 是否为常量  1,0.618, 'foo'
+	IsArray       bool         // 是否为数组  array@, array[0], array[*]
+	IsObject      bool         // 是否为对象  object$.foo
+	IsAES         bool         // 是否为加密字段  name*
+	IsArrayObject bool         // 是否为对象数组  array@.foo.bar
+	IsBinding     bool         // 是否为绑定参数  ?:name
+}
 
 // Table 数据表名称或数据模型
 type Table struct {

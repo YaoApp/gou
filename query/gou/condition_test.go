@@ -10,13 +10,6 @@ import (
 func TestConditionBase(t *testing.T) {
 	var conds []Condition
 	bytes := ReadFile("conditions/base.json")
-	type M = map[string]interface{}
-	type F = float64
-	type Any = interface{}
-	should := func(t assert.TestingT, actual, expected interface{}, msgAndArgs ...interface{}) bool {
-		return assert.Equal(t, expected, actual, msgAndArgs...)
-	}
-
 	err := jsoniter.Unmarshal(bytes, &conds)
 	assert.Nil(t, err)
 	assert.Equal(t, 48, len(conds))
