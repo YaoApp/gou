@@ -7,19 +7,6 @@ import (
 	"github.com/yaoapp/xun/dbal"
 )
 
-// QuerySelect select 查询
-func (gou *Query) runSelect() *Query {
-	fields := []interface{}{}
-	for _, exp := range gou.Select {
-		sql := gou.sqlSelect(exp)
-		if sql != nil {
-			fields = append(fields, sql)
-		}
-	}
-	gou.Query.Select(fields...)
-	return gou
-}
-
 // sqlSelect Select 转换为SQL (MySQL8.0)
 func (gou Query) sqlSelect(exp Expression) interface{} {
 
