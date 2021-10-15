@@ -63,8 +63,7 @@ func Open(filename string) *Query {
 
 // With 关联查询器
 func (gou *Query) With(qb query.Query, getTableName ...GetTableName) *Query {
-
-	gou.Query = qb
+	gou.Query = qb.New()
 	if len(getTableName) > 0 {
 		return gou.TableName(getTableName[0])
 	}

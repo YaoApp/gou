@@ -20,7 +20,7 @@ func (gou *Query) runSelect() *Query {
 	return gou
 }
 
-// sqlSelect 转换为SQL (MySQL8.0)
+// sqlSelect Select 转换为SQL (MySQL8.0)
 func (gou Query) sqlSelect(exp Expression) interface{} {
 
 	table := exp.Table

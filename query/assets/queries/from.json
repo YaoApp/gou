@@ -1,0 +1,4 @@
+{
+  "select": ["*"],
+  "from": "table as name"
+}

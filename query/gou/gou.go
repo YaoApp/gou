@@ -15,6 +15,7 @@ func (gou QueryDSL) Validate() []error {
 	}
 
 	errs = append(errs, gou.ValidateSelect()...)  // select
+	errs = append(errs, gou.ValidateFrom()...)    // from
 	errs = append(errs, gou.ValidateWheres()...)  // wheres
 	errs = append(errs, gou.ValidateOrders()...)  // orders
 	errs = append(errs, gou.ValidateGroups()...)  // groups
@@ -84,9 +85,20 @@ func (gou QueryDSL) ValidateSelect() []error {
 	if gou.Select == nil {
 		errs = append(errs, errors.Errorf("参数错误: select 和 sql 必须填写一项"))
 	}
+	return errs
+}
 
+// ValidateFrom 校验 from
+func (gou QueryDSL) ValidateFrom() []error {
+	errs := []error{}
 	if gou.Query == nil && gou.From == nil {
 		errs = append(errs, errors.Errorf("参数错误: from 和 query 必须填写一项"))
+	}
+
+	if gou.From != nil {
+		if err := gou.From.Validate(); err != nil {
+			errs = append(errs, errors.Errorf("参数错误: from %s", err.Error()))
+		}
 	}
 
 	return errs

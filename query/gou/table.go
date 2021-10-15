@@ -9,6 +9,24 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
+// QuerySelect runFrom 查询
+func (gou *Query) runFrom() *Query {
+	if gou.From != nil {
+		table := gou.From.Name
+		if gou.From.IsModel {
+			table = gou.GetTableName(table)
+		}
+
+		if gou.From.Alias != "" {
+			gou.Query.From(fmt.Sprintf("%s AS %s", table, gou.From.Alias))
+			return gou
+		}
+
+		gou.Query.From(table)
+	}
+	return gou
+}
+
 // UnmarshalJSON for json marshalJSON
 func (tab *Table) UnmarshalJSON(data []byte) error {
 	var input string
