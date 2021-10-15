@@ -22,6 +22,7 @@ func (gou *Query) Build() {
 	gou.buildSelect()
 	gou.buildFrom()
 	gou.buildWheres()
+	gou.buildOrders()
 }
 
 // buildSelect Select
@@ -83,4 +84,15 @@ func (gou *Query) buildWhere(where Where) {
 		gou.setWhere(args.OR, args.Field)
 		break
 	}
+}
+
+// buildOrders Orders
+func (gou *Query) buildOrders() *Query {
+	for _, order := range gou.Orders {
+		sql := gou.sqlExpression(*order.Field)
+		if sql != nil {
+			gou.Query.OrderBy(sql, order.Sort)
+		}
+	}
+	return gou
 }

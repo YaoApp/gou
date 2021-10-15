@@ -1,0 +1,11 @@
+{
+  "select": ["*"],
+  "from": "table as name",
+  "orders": [
+    "id desc",
+    ":MAX(id) desc",
+    "$table.pin",
+    "array@.id",
+    "object$.arr[0].id"
+  ]
+}
