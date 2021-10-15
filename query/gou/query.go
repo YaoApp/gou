@@ -15,8 +15,13 @@ import (
 type Query struct {
 	QueryDSL
 	Query        query.Query
-	GetTableName func(string) string
+	GetTableName GetTableName
+	Bindings     map[string]interface{}
+	AESKey       string
 }
+
+// GetTableName 读取表格名称
+type GetTableName = func(string) string
 
 // Make 创建 Gou Query share.DSL
 func Make(input []byte) *Query {
@@ -57,15 +62,47 @@ func Open(filename string) *Query {
 }
 
 // With 关联查询器
-func (gou *Query) With(qb query.Query) share.DSL {
+func (gou *Query) With(qb query.Query, getTableName ...GetTableName) *Query {
+
 	gou.Query = qb
+	if len(getTableName) > 0 {
+		return gou.TableName(getTableName[0])
+	}
 	return gou
 }
 
-// Bind 绑定数据模型
-func (gou *Query) Bind(getTableName func(string) string) share.DSL {
+// Bind 绑定动态数据
+func (gou *Query) Bind(data map[string]interface{}) *Query {
+	gou.Bindings = data
+	return gou
+}
+
+// SetAESKey 设定 AES KEY
+func (gou *Query) SetAESKey(key string) *Query {
+	gou.AESKey = key
+	return gou
+}
+
+// TableName 绑定数据模型数据表读取方式
+func (gou *Query) TableName(getTableName GetTableName) *Query {
 	gou.GetTableName = getTableName
 	return gou
+}
+
+// ToSQL 返回查询语句
+func (gou Query) ToSQL() string {
+	if gou.Query == nil {
+		exception.New("未绑定数据连接", 500).Throw()
+	}
+	return gou.Query.ToSQL()
+}
+
+// GetBindings 返回SQL绑定数据
+func (gou Query) GetBindings() []interface{} {
+	if gou.Query == nil {
+		exception.New("未绑定数据连接", 500).Throw()
+	}
+	return gou.Query.GetBindings()
 }
 
 // ==================================================

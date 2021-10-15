@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,6 +29,16 @@ func should(t assert.TestingT, actual, expected interface{}, msgAndArgs ...inter
 }
 
 var qb query.Query
+
+// GetFileName
+func GetFileName(name string) string {
+	return path.Join(TestQueryRoot, name)
+}
+
+// TableName
+func TableName(name string) string {
+	return strings.TrimPrefix(name, "$")
+}
 
 // ReadFile
 func ReadFile(name string) []byte {
