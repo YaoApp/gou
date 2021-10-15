@@ -82,6 +82,12 @@ func (gou *Query) SetAESKey(key string) *Query {
 	return gou
 }
 
+// New 克隆对象
+func New() *Query {
+	var new Query = Query{}
+	return &new
+}
+
 // TableName 绑定数据模型数据表读取方式
 func (gou *Query) TableName(getTableName GetTableName) *Query {
 	gou.GetTableName = getTableName

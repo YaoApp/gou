@@ -44,6 +44,10 @@ func (gou QueryDSL) ToMap() map[string]interface{} {
 		res["select"] = fields
 	}
 
+	if gou.From != nil {
+		res["from"] = gou.From
+	}
+
 	if gou.Wheres != nil {
 		res["wheres"] = gou.Wheres
 	}

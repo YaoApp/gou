@@ -8,10 +8,14 @@ import (
 )
 
 // sqlSelect Select 转换为SQL (MySQL8.0)
-func (gou Query) sqlSelect(exp Expression) interface{} {
+func (gou Query) sqlExpression(exp Expression, withDefaultAlias ...bool) interface{} {
 
 	table := exp.Table
 	alias := exp.Alias
+	defaultAlias := false
+	if len(withDefaultAlias) > 0 && withDefaultAlias[0] {
+		defaultAlias = true
+	}
 
 	if alias != "" {
 		alias = fmt.Sprintf(" AS `%s`", alias)
@@ -44,10 +48,20 @@ func (gou Query) sqlSelect(exp Expression) interface{} {
 	}
 
 	if exp.IsAES { // MySQL Only()
+
+		if defaultAlias && alias == "" {
+			alias = fmt.Sprintf(" AS %s", exp.Field)
+		}
+
 		return dbal.Raw(fmt.Sprintf("AES_DECRYPT(UNHEX(%s%s), '%s')%s", table, exp.Field, gou.AESKey, alias))
 	}
 
 	if exp.IsObject { // MySQL Only()
+
+		if defaultAlias && alias == "" {
+			alias = fmt.Sprintf(" AS %s", exp.Field)
+		}
+
 		key := exp.Key
 		if key != "" {
 			key = strings.ReplaceAll(key, "'", `\'`) // 防注入安全过滤
@@ -57,6 +71,11 @@ func (gou Query) sqlSelect(exp Expression) interface{} {
 	}
 
 	if exp.IsArray { // MySQL Only()
+
+		if defaultAlias && alias == "" {
+			alias = fmt.Sprintf(" AS %s", exp.Field)
+		}
+
 		index := ""
 		if exp.Index != Star {
 			index = fmt.Sprintf("[%d]", exp.Index)
@@ -78,7 +97,7 @@ func (gou Query) sqlSelect(exp Expression) interface{} {
 	if exp.IsFun { // MySQL Only()
 		args := []string{}
 		for _, arg := range exp.FunArgs {
-			exp := gou.sqlSelect(arg)
+			exp := gou.sqlExpression(arg)
 			if argstr, ok := exp.(string); ok {
 				args = append(args, argstr)
 			} else if argraw, ok := exp.(dbal.Expression); ok {

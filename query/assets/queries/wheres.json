@@ -1,0 +1,25 @@
+{
+  "select": ["*"],
+  "from": "user as u",
+  "wheres": [
+    { "field": "score", "<": 100 },
+    { "field": "score", ">": 0 },
+    { "field": "id", "in": [0, 100] },
+    {
+      "wheres": [
+        { ":name": "姓名", "match": "李" },
+        { "or :name": "或姓名", "match": "李" }
+      ]
+    },
+    {
+      "field": "manu_id",
+      "op": "in",
+      "query": {
+        "select": ["manu_id as id"],
+        "from": "manu",
+        "wheres": [{ "field": "status", "=": "enabled" }],
+        "limit": 10
+      }
+    }
+  ]
+}

@@ -8,6 +8,19 @@ import (
 	"github.com/yaoapp/kun/exception"
 )
 
+// OPs 可用的操作符
+var OPs = map[string]func(cond Condition) error{
+	"=":     condShouldHaveValue,
+	">":     condShouldHaveValue,
+	">=":    condShouldHaveValue,
+	"<":     condShouldHaveValue,
+	"<=":    condShouldHaveValue,
+	"like":  condShouldHaveValue,
+	"match": condShouldHaveValue,
+	"in":    condShouldHaveValue,
+	"is":    condShouldHaveNull,
+}
+
 func condShouldHaveValue(cond Condition) error {
 	if cond.Value == nil && cond.Query == nil {
 		return errors.Errorf("缺少 value 或 query")
@@ -28,19 +41,6 @@ func condShouldHaveNull(cond Condition) error {
 	return nil
 }
 
-// OPs 可用的操作符
-var OPs = map[string]func(cond Condition) error{
-	"=":     condShouldHaveValue,
-	">":     condShouldHaveValue,
-	">=":    condShouldHaveValue,
-	"<":     condShouldHaveValue,
-	"<=":    condShouldHaveValue,
-	"like":  condShouldHaveValue,
-	"match": condShouldHaveValue,
-	"in":    condShouldHaveValue,
-	"is":    condShouldHaveNull,
-}
-
 // UnmarshalJSON for json marshalJSON
 func (cond *Condition) UnmarshalJSON(data []byte) error {
 	origin := map[string]interface{}{}
@@ -48,8 +48,19 @@ func (cond *Condition) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	*cond = ConditionOf(origin)
+	return nil
+}
 
-	for key, val := range origin {
+// MarshalJSON for json marshalJSON
+func (cond Condition) MarshalJSON() ([]byte, error) {
+	return jsoniter.Marshal(cond.ToMap())
+}
+
+// ConditionOf 从 map[string]interface{}
+func ConditionOf(input map[string]interface{}) Condition {
+	cond := Condition{}
+	for key, val := range input {
 
 		key = strings.TrimSpace(key)
 
@@ -107,13 +118,7 @@ func (cond *Condition) UnmarshalJSON(data []byte) error {
 		}
 
 	}
-
-	return nil
-}
-
-// MarshalJSON for json marshalJSON
-func (cond Condition) MarshalJSON() ([]byte, error) {
-	return jsoniter.Marshal(cond.ToMap())
+	return cond
 }
 
 // ToMap Condition 转换为 map[string]interface{}

@@ -109,7 +109,7 @@ func (exp *Expression) parseExpField(s string) error {
 	}
 
 	// 加密字段
-	if strings.HasSuffix(exp.Field, "*") {
+	if len(exp.Field) > 1 && strings.HasSuffix(exp.Field, "*") {
 		exp.Field = strings.TrimSuffix(exp.Field, "*")
 		exp.IsAES = true
 		return nil
