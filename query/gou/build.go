@@ -23,6 +23,7 @@ func (gou *Query) Build() {
 	gou.buildFrom()
 	gou.buildWheres()
 	gou.buildOrders()
+	gou.buildGroups()
 }
 
 // buildSelect Select
@@ -58,6 +59,11 @@ func (gou *Query) buildFrom() *Query {
 
 // buildWheres Wheres
 func (gou *Query) buildWheres() *Query {
+
+	if gou.Wheres == nil {
+		return gou
+	}
+
 	for _, where := range gou.Wheres {
 		gou.buildWhere(where)
 	}
@@ -88,11 +94,54 @@ func (gou *Query) buildWhere(where Where) {
 
 // buildOrders Orders
 func (gou *Query) buildOrders() *Query {
+	if gou.Orders == nil {
+		return gou
+	}
+
 	for _, order := range gou.Orders {
 		sql := gou.sqlExpression(*order.Field)
 		if sql != nil {
 			gou.Query.OrderBy(sql, order.Sort)
 		}
 	}
+	return gou
+}
+
+// buildGroups Groups
+func (gou *Query) buildGroups() *Query {
+	if gou.Groups == nil {
+		return gou
+	}
+
+	// 构建选择字段映射表
+	selectFieldMap := map[string]Expression{}
+	for i, exp := range gou.Select {
+		if exp.Field == "" {
+			continue
+		}
+		fieldID := fmt.Sprintf("%s.%s", exp.Table, exp.Field)
+		selectFieldMap[fieldID] = gou.Select[i]
+		if exp.Alias != "" {
+			selectFieldMap[exp.Alias] = gou.Select[i]
+		}
+	}
+
+	fields := []interface{}{}
+	for _, group := range *gou.Groups {
+		field := gou.sqlGroupBy(selectFieldMap, *group.Field, group.Rollup)
+		fields = append(fields, field)
+	}
+
+	// 重置选择字段
+	for i, exp := range gou.Select {
+		fieldID := fmt.Sprintf("%s.%s", exp.Table, exp.Field)
+		if new, has := selectFieldMap[fieldID]; has {
+			gou.Select[i] = new
+		}
+	}
+
+	gou.buildSelect()
+	gou.Query.GroupBy(fields...)
+
 	return gou
 }

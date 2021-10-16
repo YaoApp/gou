@@ -7,7 +7,37 @@ import (
 	"github.com/yaoapp/xun/dbal"
 )
 
-// sqlSelect Select 转换为SQL (MySQL8.0)
+// sqlGroup 字段表达式转换为 SQL (MySQL8.0)
+func (gou Query) sqlGroupBy(selects map[string]Expression, exp Expression, rollup string) interface{} {
+	table := exp.Table
+	field := exp.Field
+	groupBy := fmt.Sprintf("`%s`", exp.Field)
+
+	if exp.Table != "" {
+		if exp.IsModel {
+			table = gou.GetTableName(exp.Table)
+		}
+		field = fmt.Sprintf("%s.%s", table, exp.Field)
+		groupBy = fmt.Sprintf("`%s`.`%s`", table, exp.Field)
+	}
+
+	// ROLLUP 更新已选字段, 添加 WITH ROLLUP
+	if rollup != "" {
+		fieldID := fmt.Sprintf("%s.%s", exp.Table, exp.Field)
+		if selectField, has := selects[fieldID]; has {
+			selectFieldAlias := fmt.Sprintf(" AS %s ", selectField.Field)
+			if selectField.Alias != "" {
+				selectFieldAlias = fmt.Sprintf(" AS %s", selectField.Alias)
+			}
+			selects[fieldID] = *NewExpression(fmt.Sprintf(":IF(GROUPING(%s), '%s', %s)%s", field, rollup, field, selectFieldAlias))
+		}
+		groupBy = fmt.Sprintf("%s WITH ROLLUP", groupBy)
+	}
+
+	return dbal.Raw(groupBy)
+}
+
+// sqlExpression 字段表达式转换为 SQL (MySQL8.0)
 func (gou Query) sqlExpression(exp Expression, withDefaultAlias ...bool) interface{} {
 
 	table := exp.Table

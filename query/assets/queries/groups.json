@@ -1,0 +1,5 @@
+{
+  "select": [":max(score) as 最高分", "city as 城市", "id"],
+  "from": "table as name",
+  "groups": "kind, city rollup 所有城市, id rollup ID"
+}

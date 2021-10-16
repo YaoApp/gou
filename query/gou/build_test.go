@@ -41,3 +41,12 @@ func TestBuildOrders(t *testing.T) {
 	sql := gou.ToSQL()
 	assert.Equal(t, "select `*` from `table` as `name` order by `id` desc, MAX(`id`) desc, `table`.`pin` asc, JSON_EXTRACT(`array`, '$[0].id') asc, JSON_EXTRACT(`object`, '$.arr[0].id') asc", sql)
 }
+
+func TestBuildGroups(t *testing.T) {
+	gou := Open(GetFileName("queries/groups.json")).
+		With(qb, TableName).
+		SetAESKey(TestAESKey)
+	gou.Build()
+	sql := gou.ToSQL()
+	assert.Equal(t, "select max(`score`) AS `最高分`, IF(`GROUPING(city)`,'所有城市',`city`) AS `城市`, IF(`GROUPING(id)`,'ID',`id`) AS `id` from `table` as `name` group by `kind`, `city` WITH ROLLUP, `id` WITH ROLLUP", sql)
+}
