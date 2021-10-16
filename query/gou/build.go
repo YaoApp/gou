@@ -116,11 +116,12 @@ func (gou *Query) buildGroups() *Query {
 	// 构建选择字段映射表
 	selectFieldMap := map[string]Expression{}
 	for i, exp := range gou.Select {
-		if exp.Field == "" {
-			continue
+
+		if exp.Field != "" {
+			fieldID := fmt.Sprintf("%s.%s.%d.%s", exp.Table, exp.Field, exp.Index, exp.Key)
+			selectFieldMap[fieldID] = gou.Select[i]
 		}
-		fieldID := fmt.Sprintf("%s.%s", exp.Table, exp.Field)
-		selectFieldMap[fieldID] = gou.Select[i]
+
 		if exp.Alias != "" {
 			selectFieldMap[exp.Alias] = gou.Select[i]
 		}
@@ -134,7 +135,7 @@ func (gou *Query) buildGroups() *Query {
 
 	// 重置选择字段
 	for i, exp := range gou.Select {
-		fieldID := fmt.Sprintf("%s.%s", exp.Table, exp.Field)
+		fieldID := fmt.Sprintf("%s.%s.%d.%s", exp.Table, exp.Field, exp.Index, exp.Key)
 		if new, has := selectFieldMap[fieldID]; has {
 			gou.Select[i] = new
 		}

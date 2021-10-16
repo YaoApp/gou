@@ -7,6 +7,12 @@ import (
 // Star 数组索引 *
 const Star = -1
 
+// RegSpaces 连续空格
+var RegSpaces = regexp.MustCompile("[ ]+")
+
+// RegCommaSpaces 连续空格 + 逗号+连续空格 "  ,  " | "," | ", " | " ,"
+var RegCommaSpaces = regexp.MustCompile("[ ]*,[ ]*")
+
 // RegIsNumber 字段表达式字段是否为数字
 var RegIsNumber = regexp.MustCompile("^[0-9]{1}[\\.]*[0-9]*$")
 
@@ -27,6 +33,9 @@ var RegField = regexp.MustCompile("^[A-Za-z0-9_\u4e00-\u9fa5]+$")
 
 // RegFieldFun 字段表达式为函数
 var RegFieldFun = regexp.MustCompile("^\\:([A-Za-z0-9_]+)\\((.*)\\)$")
+
+// RegFieldType 字段表达式的类型声明
+var RegFieldType = regexp.MustCompile("\\([ ]*([a-zA-Z0-9, ]+)[ ]*\\)[ ]*$")
 
 // RegFieldIsArrayObject 字段表达式字段是否为数组
 var RegFieldIsArrayObject = regexp.MustCompile("\\.[A-Za-z0-9_\u4e00-\u9fa5]+")
@@ -72,6 +81,7 @@ type Expression struct {
 	FunName       string       // 函数名称
 	FunArgs       []Expression // 函数参数表
 	Alias         string       // 字段别名
+	Type          *FieldType   // 字段类型(用于自动转换和JSON Table)
 	Index         int          // 数组字段索引 const Star -1 全部, 0 ~ n 数组
 	Key           string       // 对象字段键名
 	IsModel       bool         // 数据表是否为模型 $model.name
@@ -84,6 +94,14 @@ type Expression struct {
 	IsAES         bool         // 是否为加密字段  name*
 	IsArrayObject bool         // 是否为对象数组  array@.foo.bar
 	IsBinding     bool         // 是否为绑定参数  ?:name
+}
+
+// FieldType 字段类型(用于自动转换和JSON Table)
+type FieldType struct {
+	Name      string `json:"name,omitempty"`      // JSON数组字段类型(用于生成 JSON Table)
+	Length    int    `json:"length,omitempty"`    // 字段长度，对 string 等类型字段有效
+	Precision int    `json:"precision,omitempty"` // 字段位数(含小数位)，对 float、decimal 等类型字段有效
+	Scale     int    `json:"scale,omitempty"`     // 字段小数位位数，对 float、decimal 等类型字段有效
 }
 
 // Table 数据表名称或数据模型

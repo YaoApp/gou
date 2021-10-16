@@ -23,7 +23,7 @@ func (gou Query) sqlGroupBy(selects map[string]Expression, exp Expression, rollu
 
 	// ROLLUP 更新已选字段, 添加 WITH ROLLUP
 	if rollup != "" {
-		fieldID := fmt.Sprintf("%s.%s", exp.Table, exp.Field)
+		fieldID := fmt.Sprintf("%s.%s.%d.%s", exp.Table, exp.Field, exp.Index, exp.Key)
 		if selectField, has := selects[fieldID]; has {
 			selectFieldAlias := fmt.Sprintf(" AS %s ", selectField.Field)
 			if selectField.Alias != "" {
@@ -107,13 +107,18 @@ func (gou Query) sqlExpression(exp Expression, withDefaultAlias ...bool) interfa
 		}
 
 		index := ""
-		if exp.Index != Star {
+		if exp.Index > Star {
 			index = fmt.Sprintf("[%d]", exp.Index)
+		} else if exp.Index == Star && exp.Key != "" {
+			index = "[*]"
 		}
 
 		key := exp.Key
 		if !strings.HasPrefix(key, "[") {
 			key = strings.ReplaceAll(key, "'", `\'`) // 防注入安全过滤
+		}
+
+		if key != "" {
 			key = "." + key
 		}
 

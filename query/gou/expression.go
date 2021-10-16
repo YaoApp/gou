@@ -91,6 +91,25 @@ func (exp *Expression) parseExpField(s string) error {
 		return nil
 	}
 
+	// 字段类型
+	if matched := RegFieldType.FindStringSubmatch(exp.Field); matched != nil {
+		exp.Field = strings.TrimSuffix(exp.Field, matched[0])
+		args := RegSpaces.Split(matched[1], -1)
+		argslen := len(args)
+		if argslen == 1 {
+			exp.Type = &FieldType{Name: args[0]}
+		} else if len(args) == 2 {
+			exp.Type = &FieldType{Name: args[0]}
+			opts := strings.Split(args[1], ",")
+			if len(opts) == 1 {
+				exp.Type.Length = any.Of(opts[0]).CInt()
+			} else if len(opts) == 2 {
+				exp.Type.Precision = any.Of(opts[0]).CInt()
+				exp.Type.Scale = any.Of(opts[1]).CInt()
+			}
+		}
+	}
+
 	// 表格、模型
 	exp.parseExpTable()
 
@@ -159,12 +178,11 @@ func (exp *Expression) parseExpArray() error {
 	names := strings.Split(exp.Field, ".")
 	exp.Field = strings.ReplaceAll(names[0], "@", "")
 	exp.IsArray = true
+	exp.Index = Star
 
 	if matches := RegArrayIndex.FindStringSubmatch(exp.Field); matches != nil {
 		exp.Field = strings.TrimSpace(strings.ReplaceAll(exp.Field, matches[0], ""))
-		if matches[1] == "*" {
-			exp.Index = Star
-		} else {
+		if matches[1] != "*" {
 			exp.Index = any.Of(matches[1]).CInt()
 		}
 	}
@@ -237,12 +255,24 @@ func (exp Expression) ToString() string {
 		return fmt.Sprintf("?:%s%s", exp.Field, alias)
 	}
 
+	// 数据处理
+	fieldType := ""
+	if exp.Type != nil {
+		if exp.Type.Length > 0 {
+			fieldType = fmt.Sprintf("(%s %d)", exp.Type.Name, exp.Type.Length)
+		} else if exp.Type.Precision > 0 && exp.Type.Scale > 0 {
+			fieldType = fmt.Sprintf("(%s %d,%d)", exp.Type.Name, exp.Type.Precision, exp.Type.Scale)
+		} else {
+			fieldType = fmt.Sprintf("(%s)", exp.Type.Name)
+		}
+	}
+
 	if exp.IsObject {
 		key := exp.Key
 		if key != "" {
 			key = fmt.Sprintf(".%s", key)
 		}
-		return fmt.Sprintf("%s%s$%s%s", output, exp.Field, key, alias)
+		return fmt.Sprintf("%s%s$%s%s%s", output, exp.Field, key, fieldType, alias)
 	}
 
 	if exp.IsArray {
@@ -256,7 +286,7 @@ func (exp Expression) ToString() string {
 		if key != "" {
 			key = fmt.Sprintf(".%s", key)
 		}
-		return fmt.Sprintf("%s%s%s", output, key, alias)
+		return fmt.Sprintf("%s%s%s%s", output, key, fieldType, alias)
 	}
 
 	if exp.IsFun {
@@ -267,7 +297,8 @@ func (exp Expression) ToString() string {
 		return fmt.Sprintf(":%s(%s)%s", exp.FunName, strings.Join(args, ","), alias)
 	}
 
-	return fmt.Sprintf("%s%s%s", output, exp.Field, alias)
+	// 普通字段
+	return fmt.Sprintf("%s%s%s%s", output, exp.Field, fieldType, alias)
 }
 
 // Validate 校验表达式格式

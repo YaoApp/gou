@@ -1,0 +1,18 @@
+{
+  "select": [
+    ":max(score) as 最高分",
+    "city@ as 城市",
+    "industries@",
+    "towns[*]",
+    "goods.sku[*].price",
+    "goods.sku[*].gid"
+  ],
+  "from": "table as name",
+  "groups": [
+    "industries@",
+    "citys@ rollup 所有城市",
+    "towns@ rollup 所有行政区",
+    "goods.sku[*].price rollup 合计",
+    "goods.sku[*].gid"
+  ]
+}

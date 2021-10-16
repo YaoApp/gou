@@ -1,0 +1,9 @@
+[
+  "area.city@(string 20)",
+  "area.city@(string   20)",
+  "area.city@(string)",
+  "area.city@.code(integer)",
+  "price[*](float 10,2)",
+  "price[*](decimal 10,2)",
+  "result$.kind[*]"
+]

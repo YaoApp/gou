@@ -1,0 +1,10 @@
+[
+  { "field": "area.city@(string 20)", "rollup": "全部城市" },
+  "area.city@(string 20) rollup 全部城市",
+  { "field": "area.city@.code(integer)", "rollup": "全部代码" },
+  "area.city@.code(integer) rollup 全部代码",
+  { "field": "price[*](float 10,2)", "rollup": "全部定价" },
+  "price[*](float 10,2) rollup 全部定价",
+  { "field": "result$.kind[*](string)", "rollup": "全部类型" },
+  "result$.kind[*] rollup 全部类型"
+]
