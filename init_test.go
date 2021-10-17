@@ -6,6 +6,8 @@ import (
 	"path"
 	"testing"
 
+	"github.com/yaoapp/gou/query/gou"
+	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/xun/capsule"
 	"github.com/yaoapp/xun/logger"
 )
@@ -60,9 +62,24 @@ func TestMain(m *testing.M) {
 		LoadScript("file://"+path.Join(TestFLWRoot, "latest.rank.js"), "rank").
 		LoadScript("file://"+path.Join(TestFLWRoot, "latest.count.js"), "count")
 
+	LoadFlow("file://"+path.Join(TestFLWRoot, "stat.flow.json"), "stat")
+
 	// 加密密钥
 	LoadCrypt(fmt.Sprintf(`{"key":"%s"}`, TestAESKey), "AES")
 	LoadCrypt(`{}`, "PASSWORD")
+
+	// 数据分析器
+	RegisterEngine("test-db", &gou.Query{
+		Query: capsule.Query(),
+		GetTableName: func(s string) string {
+			if mod, has := Models[s]; has {
+				return mod.MetaData.Table.Name
+			}
+			exception.New("%s 数据模型尚未加载", 404).Throw()
+			return s
+		},
+		AESKey: TestAESKey,
+	})
 
 	// Run test suites
 	exitVal := m.Run()

@@ -81,19 +81,19 @@ func (gou QueryDSL) ToMap() map[string]interface{} {
 	}
 
 	if gou.Limit != nil {
-		res["limit"] = *gou.Limit
+		res["limit"] = gou.Limit
 	}
 
 	if gou.Offset != nil {
-		res["offset"] = *gou.Offset
+		res["offset"] = gou.Offset
 	}
 
 	if gou.Page != nil {
-		res["page"] = *gou.Page
+		res["page"] = gou.Page
 	}
 
 	if gou.PageSize != nil {
-		res["pagesize"] = *gou.PageSize
+		res["pagesize"] = gou.PageSize
 	}
 
 	res["data-only"] = gou.DataOnly

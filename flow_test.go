@@ -36,3 +36,8 @@ func TestFlowExec(t *testing.T) {
 	// assert.Equal(t, res.Dot().Get("data.manus.1.id"), int64(3))
 	assert.Equal(t, res.Dot().Get("data.count.plugin"), "github")
 }
+
+func TestFlowExecQuery(t *testing.T) {
+	flow := SelectFlow("stat")
+	flow.Exec("2000-01-02", "2050-12-31", 1)
+}

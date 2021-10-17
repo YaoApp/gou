@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/robertkrimen/otto"
+	"github.com/yaoapp/gou/query/share"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
 )
@@ -49,15 +50,36 @@ func (flow *Flow) FormatResult(ctx *FlowContext) interface{} {
 	}
 
 	var data = maps.Map{"$in": ctx.In, "$res": ctx.Res}.Dot()
-	return Bind(flow.Output, data)
+	return share.Bind(flow.Output, data)
 }
 
 // ExecNode 运行节点
 func (flow *Flow) ExecNode(node *FlowNode, ctx *FlowContext, vm *FlowVM, prev int) []interface{} {
 	var data = maps.Map{"$in": ctx.In, "$res": ctx.Res}.Dot()
-	resp, outs := flow.RunProcess(node, ctx, data)
+	var outs = []interface{}{}
+	var resp interface{}
+
+	if node.Query != nil {
+		resp, outs = flow.RunQuery(node, ctx, data)
+	} else {
+		resp, outs = flow.RunProcess(node, ctx, data)
+	}
+
 	_, outs = flow.RunScript(vm, node, ctx, data, resp, outs)
 	return outs
+}
+
+// RunQuery 运行 Query DSL 查询
+func (flow *Flow) RunQuery(node *FlowNode, ctx *FlowContext, data maps.Map) (resp interface{}, outs []interface{}) {
+
+	engine, has := Engines[node.Engine]
+	if !has {
+		exception.New("%s 数据分析引擎尚未注册", 404, node.Engine).Throw()
+	}
+
+	engine.Load(node.Query).Run(data)
+
+	return resp, outs
 }
 
 // RunProcess 运行处理器
@@ -66,7 +88,7 @@ func (flow *Flow) RunProcess(node *FlowNode, ctx *FlowContext, data maps.Map) (i
 	var resp, res interface{}
 
 	for i := range node.Args {
-		node.Args[i] = Bind(node.Args[i], data)
+		node.Args[i] = share.Bind(node.Args[i], data)
 	}
 
 	if node.Process != "" {
@@ -80,7 +102,7 @@ func (flow *Flow) RunProcess(node *FlowNode, ctx *FlowContext, data maps.Map) (i
 		data["$out"] = resp
 		data = data.Dot()
 		for _, value := range node.Outs {
-			outs = append(outs, Bind(value, data))
+			outs = append(outs, share.Bind(value, data))
 		}
 		res = outs
 	}
@@ -129,7 +151,7 @@ func (flow *Flow) RunScript(vm *FlowVM, node *FlowNode, ctx *FlowContext, data m
 		data["$out"] = resp
 		data = data.Dot()
 		for _, value := range node.Outs {
-			outs = append(outs, Bind(value, data))
+			outs = append(outs, share.Bind(value, data))
 		}
 		res = outs
 		processOuts = outs

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/xun/dbal/query"
 )
@@ -258,11 +259,11 @@ func (gou *Query) buildJoin(join Join) *Query {
 func (gou *Query) buildLimit() *Query {
 
 	if gou.Limit != nil {
-		gou.Query.Limit(*gou.Limit)
+		gou.Query.Limit(any.Of(gou.Limit).CInt())
 	}
 
 	if gou.Offset != nil {
-		gou.Query.Offset(*gou.Offset)
+		gou.Query.Offset(any.Of(gou.Offset).CInt())
 	}
 
 	return gou

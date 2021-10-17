@@ -8,8 +8,12 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/query/share"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/xun/dbal/query"
 )
+
+// cache 查询器解析缓存
+var cache = map[interface{}]*Query{}
 
 // Query Query share.DSL
 type Query struct {
@@ -114,8 +118,49 @@ func (gou Query) GetBindings() []interface{} {
 // share.DSL Interface
 // ==================================================
 
+// Load 加载查询条件
+func (gou *Query) Load(data interface{}) share.DSL {
+	// if query, has := cache[data]; has {
+	// 	query.Query = gou.Query.New()
+	// 	query.Bindings = map[string]interface{}{}
+	// 	return query
+	// }
+
+	input, err := jsoniter.Marshal(data)
+	if err != nil {
+		exception.New("加载失败%s", 500, err.Error()).Throw()
+	}
+
+	query := Make(input)
+	query.Query = gou.Query.New()
+	query.AESKey = gou.AESKey
+	query.GetTableName = gou.GetTableName
+	errs := query.Validate()
+	if len(errs) > 0 {
+		exception.New("查询条件错误", 500).Ctx(errs).Throw()
+	}
+	query.Build()
+
+	// cache[data] = query
+	return query
+}
+
 // Run 执行查询根据查询条件返回结果
-func (gou Query) Run() interface{} {
+func (gou Query) Run(data maps.Map) interface{} {
+
+	bindings := gou.GetBindings()
+	sql := gou.ToSQL()
+
+	for i := range bindings {
+		bindings[i] = share.Bind(bindings[i], data)
+	}
+
+	qb := gou.Query.New()
+	qb.SQL(sql, bindings...).MustGet()
+
+	// utils.Dump(rows)
+	// fmt.Println("----", "\n", gou.ToSQL())
+	// utils.Dump(bindings)
 	return []share.Record{}
 }
 

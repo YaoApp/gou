@@ -2,14 +2,9 @@ package gou
 
 import (
 	"context"
-	"regexp"
 
 	"github.com/robertkrimen/otto"
 )
-
-var reVar = regexp.MustCompile("{{[ ]*([^\\s]+)[ ]*}}")                     // {{in.2}}
-var reFun = regexp.MustCompile("{{[ ]*([0-9a-zA-Z_]+)[ ]*\\((.*)\\)[ ]*}}") // {{pluck($res.users, 'id')}}
-var reFunArg = regexp.MustCompile("([^\\s,]+)")                             // $res.users, 'id'
 
 // Flow  工作流
 type Flow struct {
@@ -28,6 +23,8 @@ type Flow struct {
 type FlowNode struct {
 	Name    string        `json:"name,omitempty"`
 	Process string        `json:"process,omitempty"`
+	Engine  string        `json:"engine,omitempty"` // 数据分析引擎名称
+	Query   interface{}   `json:"query,omitempty"`  // 数据分析语言 Query DSL
 	Script  string        `json:"script,omitempty"`
 	Args    []interface{} `json:"args,omitempty"`
 	Outs    []interface{} `json:"outs,omitempty"`
@@ -45,6 +42,3 @@ type FlowContext struct {
 type FlowVM struct {
 	*otto.Otto
 }
-
-// Helper 转换器
-type Helper func(...interface{}) interface{}
