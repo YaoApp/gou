@@ -1,0 +1,26 @@
+{
+  "select": ["id", "name", "t2.name2", "t3.name3", "t4.name4"],
+  "from": "t1",
+  "joins": [
+    {
+      "select": ["name2"],
+      "from": "table2 as t2",
+      "key": "t2.id",
+      "foreign": "t1.t2_id",
+      "left": true
+    },
+    {
+      "select": ["name3"],
+      "from": "table3 as t3",
+      "key": "t3.id",
+      "foreign": "t2.t3_id",
+      "right": true
+    },
+    {
+      "select": ["name4"],
+      "from": "table4 as t4",
+      "key": "t4.id",
+      "foreign": "t2.t4_id"
+    }
+  ]
+}

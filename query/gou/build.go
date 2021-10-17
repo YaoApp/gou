@@ -22,6 +22,7 @@ func (gou *Query) Build() {
 	gou.buildHavings()
 	gou.buildUnions()
 	gou.buildSubQuery()
+	gou.buildJoins()
 }
 
 // buildSelect Select
@@ -217,6 +218,36 @@ func (gou *Query) buildSubQuery() *Query {
 		gouSubQuery.Build()
 	}, fmt.Sprintf("`%s`", alias))
 
+	return gou
+}
+
+// buildJoins Joins
+func (gou *Query) buildJoins() *Query {
+	if gou.Joins == nil {
+		return gou
+	}
+	for _, join := range gou.Joins {
+		gou.buildJoin(join)
+	}
+	return gou
+}
+
+// buildJoin Join
+func (gou *Query) buildJoin(join Join) *Query {
+
+	joinFun := gou.Query.Join
+
+	if join.Left {
+		joinFun = gou.Query.LeftJoin
+	} else if join.Right {
+		joinFun = gou.Query.RightJoin
+	}
+
+	joinFun(
+		join.From.ToString(),
+		gou.sqlExpression(*join.Key),
+		gou.sqlExpression(*join.Foreign),
+	)
 	return gou
 }
 
