@@ -23,6 +23,7 @@ func (gou *Query) Build() {
 	gou.buildUnions()
 	gou.buildSubQuery()
 	gou.buildJoins()
+	gou.buildSQL()
 }
 
 // buildSelect Select
@@ -248,6 +249,15 @@ func (gou *Query) buildJoin(join Join) *Query {
 		gou.sqlExpression(*join.Key),
 		gou.sqlExpression(*join.Foreign),
 	)
+	return gou
+}
+
+// buildSQL SQL
+func (gou *Query) buildSQL() *Query {
+	if gou.SQL == nil {
+		return gou
+	}
+	gou.Query.SQL(gou.SQL.STMT, gou.SQL.Args...)
 	return gou
 }
 

@@ -1,0 +1,7 @@
+{
+  "sql": {
+    "comment": "查询张三",
+    "stmt": "SELECT * FROM user WHERE name = ? AND type = ?",
+    "args": ["张三", 20]
+  }
+}

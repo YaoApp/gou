@@ -117,3 +117,14 @@ func TestBuildJoins(t *testing.T) {
 	// fmt.Println(sql)
 	assert.Equal(t, "select `id`, `name`, `t2`.`name2`, `t3`.`name3`, `t4`.`name4` from `t1` left join `table2` as `t2` on `t2`.`id` = `t1`.`t2_id` right join `table3` as `t3` on `t3`.`id` = `t2`.`t3_id` inner join `table4` as `t4` on `t4`.`id` = `t2`.`t4_id`", sql)
 }
+
+func TestBuildSQL(t *testing.T) {
+	gou := Open(GetFileName("queries/sql.json")).
+		With(qb, TableName).
+		SetAESKey(TestAESKey)
+	gou.Build()
+	sql := gou.ToSQL()
+	bindings := gou.GetBindings()
+	assert.Equal(t, "SELECT * FROM user WHERE name = ? AND type = ?", sql)
+	assert.Equal(t, []Any{"张三", F(20)}, bindings)
+}
