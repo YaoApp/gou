@@ -174,7 +174,6 @@ func (gou *Query) ID(exp Expression) string {
 
 // NameOf 字段名称
 func (gou *Query) NameOf(exp Expression) string {
-
 	if exp.Table != "" {
 		table := exp.Table
 		if exp.IsModel {

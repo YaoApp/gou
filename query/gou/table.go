@@ -34,6 +34,10 @@ func (tab *Table) UnmarshalJSON(data []byte) error {
 		tab.IsModel = true
 	}
 
+	// 过滤 "`"
+	tab.Name = strings.ReplaceAll(tab.Name, "`", "")
+	tab.Alias = strings.ReplaceAll(tab.Alias, "`", "")
+
 	return nil
 }
 

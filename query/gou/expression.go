@@ -134,6 +134,8 @@ func (exp *Expression) parseExpField(s string) error {
 		return nil
 	}
 
+	// 过滤 "`"
+	exp.Field = strings.ReplaceAll(exp.Field, "`", "")
 	return nil
 }
 
