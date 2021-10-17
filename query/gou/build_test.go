@@ -77,3 +77,13 @@ func TestBuildHavings(t *testing.T) {
 	// utils.Dump(sql)
 	assert.Equal(t, "select max(`score`) AS `最高分`, IF(GROUPING(`city`),'所有城市',`city`) AS `城市`, IF(GROUPING(`id`),'ID',`id`) AS `id`, `kind` from `table` as `name` group by `kind`, `city` WITH ROLLUP, `id` WITH ROLLUP having `城市` = ? or `kind` = ?", sql)
 }
+
+func TestBuildUnions(t *testing.T) {
+	gou := Open(GetFileName("queries/unions.json")).
+		With(qb, TableName).
+		SetAESKey(TestAESKey)
+	gou.Build()
+	sql := gou.ToSQL()
+	// utils.Dump(sql)
+	assert.Contains(t, sql, "union all")
+}

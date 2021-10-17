@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/xun/dbal/query"
 )
 
 // Build 设定查询条件
@@ -19,6 +20,7 @@ func (gou *Query) Build() {
 	gou.buildOrders()
 	gou.buildGroups()
 	gou.buildHavings()
+	gou.buildUnions()
 }
 
 // buildSelect Select
@@ -87,42 +89,6 @@ func (gou *Query) buildWhere(where Where) {
 	}
 }
 
-// buildHavings Havings
-func (gou *Query) buildHavings() *Query {
-
-	if gou.Havings == nil {
-		return gou
-	}
-
-	for _, having := range gou.Havings {
-		gou.buildHaving(having)
-	}
-	return gou
-}
-
-// buildWheres where
-func (gou *Query) buildHaving(having Having) {
-	args := gou.parseHavingArgs(having)
-	switch args.Method {
-	case "having":
-		gou.setHaving(args.OR, args.Field, args.Args...)
-		break
-	// case "whereIn":
-	// 	gou.setWhereIn(args.OR, args.Field, args.Args[1])
-	// 	break
-	// case "whereNull":
-	// 	gou.setWhereNull(args.OR, args.Field)
-	// 	break
-	// case "whereNotNull":
-	// 	gou.setWhereNotNull(args.OR, args.Field)
-	// 	break
-	case "havings":
-		exception.New("havings 分组查询暂不支持", 400).Throw()
-		gou.setHaving(args.OR, args.Field)
-		break
-	}
-}
-
 // buildOrders Orders
 func (gou *Query) buildOrders() *Query {
 	if gou.Orders == nil {
@@ -169,6 +135,63 @@ func (gou *Query) buildGroups() *Query {
 	// Groupby
 	gou.Query.GroupByRaw(strings.Join(fields, ", "))
 
+	return gou
+}
+
+// buildHavings Havings
+func (gou *Query) buildHavings() *Query {
+
+	if gou.Havings == nil {
+		return gou
+	}
+
+	for _, having := range gou.Havings {
+		gou.buildHaving(having)
+	}
+	return gou
+}
+
+// buildHaving having
+func (gou *Query) buildHaving(having Having) {
+	args := gou.parseHavingArgs(having)
+	switch args.Method {
+	case "having":
+		gou.setHaving(args.OR, args.Field, args.Args...)
+		break
+	// case "havingIn":
+	// 	gou.setHavingIn(args.OR, args.Field, args.Args[1])
+	// 	break
+	// case "havingNull":
+	// 	gou.setHavingNull(args.OR, args.Field)
+	// 	break
+	// case "havingNotNull":
+	// 	gou.setHavingNotNull(args.OR, args.Field)
+	// 	break
+	case "havings":
+		exception.New("havings 分组查询暂不支持", 400).Throw()
+		gou.setHaving(args.OR, args.Field)
+		break
+	}
+}
+
+// buildUnions Unions
+func (gou *Query) buildUnions() *Query {
+	if gou.Unions == nil {
+		return gou
+	}
+	for _, union := range gou.Unions {
+		gou.buildUnion(union)
+	}
+	return gou
+}
+
+func (gou *Query) buildUnion(union QueryDSL) *Query {
+	gouUnion := New()
+	gouUnion.QueryDSL = union
+	gou.Query.UnionAll(func(qb query.Query) {
+		gouUnion.Query = qb
+		gouUnion.Build()
+	})
 	return gou
 }
 

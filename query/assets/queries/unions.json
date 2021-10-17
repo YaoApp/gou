@@ -1,0 +1,14 @@
+{
+  "select": ["id", "name"],
+  "from": "t1",
+  "unions": [
+    {
+      "select": ["id", "name"],
+      "from": "t2"
+    },
+    {
+      "select": ["id", "name"],
+      "from": "t3"
+    }
+  ]
+}
