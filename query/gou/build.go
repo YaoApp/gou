@@ -14,6 +14,7 @@ func (gou *Query) Build() {
 	if len(errs) > 0 {
 		exception.New("查询条件错误", 400).Ctx(errs).Throw()
 	}
+
 	gou.buildSelect()
 	gou.buildFrom()
 	gou.buildWheres()
@@ -23,6 +24,7 @@ func (gou *Query) Build() {
 	gou.buildUnions()
 	gou.buildSubQuery()
 	gou.buildJoins()
+	gou.buildLimit()
 	gou.buildSQL()
 }
 
@@ -249,6 +251,20 @@ func (gou *Query) buildJoin(join Join) *Query {
 		gou.sqlExpression(*join.Key),
 		gou.sqlExpression(*join.Foreign),
 	)
+	return gou
+}
+
+// buildLimit limit
+func (gou *Query) buildLimit() *Query {
+
+	if gou.Limit != nil {
+		gou.Query.Limit(*gou.Limit)
+	}
+
+	if gou.Offset != nil {
+		gou.Query.Offset(*gou.Offset)
+	}
+
 	return gou
 }
 

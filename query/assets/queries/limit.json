@@ -1,0 +1,6 @@
+{
+  "select": ["*"],
+  "from": "table as name",
+  "limit": 20,
+  "offset": 10
+}

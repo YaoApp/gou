@@ -80,6 +80,24 @@ func (gou QueryDSL) ToMap() map[string]interface{} {
 		res["query"] = gou.SubQuery
 	}
 
+	if gou.Limit != nil {
+		res["limit"] = *gou.Limit
+	}
+
+	if gou.Offset != nil {
+		res["offset"] = *gou.Offset
+	}
+
+	if gou.Page != nil {
+		res["page"] = *gou.Page
+	}
+
+	if gou.PageSize != nil {
+		res["pagesize"] = *gou.PageSize
+	}
+
+	res["data-only"] = gou.DataOnly
+
 	return res
 }
 

@@ -30,7 +30,7 @@ func TestBuildWheres(t *testing.T) {
 		SetAESKey(TestAESKey)
 	gou.Build()
 	sql := gou.ToSQL()
-	assert.Equal(t, "select `*` from `user` as `u` where `score` < ? and `score` > ? and `id` in (?,?) and (`name` like ? and `name` like ?) and `manu_id` in (select `manu_id` as `id` from `manu` where `status` = ?)", sql)
+	assert.Equal(t, "select `*` from `user` as `u` where `score` < ? and `score` > ? and `id` in (?,?) and (`name` like ? and `name` like ?) and `manu_id` in (select `manu_id` as `id` from `manu` where `status` = ? limit 10)", sql)
 }
 
 func TestBuildOrders(t *testing.T) {
@@ -116,6 +116,15 @@ func TestBuildJoins(t *testing.T) {
 	sql := gou.ToSQL()
 	// fmt.Println(sql)
 	assert.Equal(t, "select `id`, `name`, `t2`.`name2`, `t3`.`name3`, `t4`.`name4` from `t1` left join `table2` as `t2` on `t2`.`id` = `t1`.`t2_id` right join `table3` as `t3` on `t3`.`id` = `t2`.`t3_id` inner join `table4` as `t4` on `t4`.`id` = `t2`.`t4_id`", sql)
+}
+
+func TestBuildLimit(t *testing.T) {
+	gou := Open(GetFileName("queries/limit.json")).
+		With(qb, TableName).
+		SetAESKey(TestAESKey)
+	gou.Build()
+	sql := gou.ToSQL()
+	assert.Equal(t, "select `*` from `table` as `name` limit 20 offset 10", sql)
 }
 
 func TestBuildSQL(t *testing.T) {
