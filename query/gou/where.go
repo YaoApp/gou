@@ -5,6 +5,13 @@ import (
 	"github.com/yaoapp/xun/dbal/query"
 )
 
+type whereArgs struct {
+	Method string
+	OR     bool
+	Field  interface{}
+	Args   []interface{}
+}
+
 // UnmarshalJSON for json marshalJSON
 func (where *Where) UnmarshalJSON(data []byte) error {
 	origin := map[string]interface{}{}

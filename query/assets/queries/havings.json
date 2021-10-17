@@ -1,0 +1,9 @@
+{
+  "select": [":max(score) as 最高分", "city as 城市", "id", "kind"],
+  "from": "table as name",
+  "groups": "kind, city rollup 所有城市, id rollup ID",
+  "havings": [
+    { "field": "城市", "=": "北京" },
+    { "or :kind": "类型", "=": "云存储" }
+  ]
+}

@@ -7,13 +7,6 @@ import (
 	"github.com/yaoapp/kun/exception"
 )
 
-type whereArgs struct {
-	Method string
-	OR     bool
-	Field  interface{}
-	Args   []interface{}
-}
-
 // Build 设定查询条件
 func (gou *Query) Build() {
 	errs := gou.Validate()
@@ -25,6 +18,7 @@ func (gou *Query) Build() {
 	gou.buildWheres()
 	gou.buildOrders()
 	gou.buildGroups()
+	gou.buildHavings()
 }
 
 // buildSelect Select
@@ -89,6 +83,42 @@ func (gou *Query) buildWhere(where Where) {
 		break
 	case "wheres":
 		gou.setWhere(args.OR, args.Field)
+		break
+	}
+}
+
+// buildHavings Havings
+func (gou *Query) buildHavings() *Query {
+
+	if gou.Havings == nil {
+		return gou
+	}
+
+	for _, having := range gou.Havings {
+		gou.buildHaving(having)
+	}
+	return gou
+}
+
+// buildWheres where
+func (gou *Query) buildHaving(having Having) {
+	args := gou.parseHavingArgs(having)
+	switch args.Method {
+	case "having":
+		gou.setHaving(args.OR, args.Field, args.Args...)
+		break
+	// case "whereIn":
+	// 	gou.setWhereIn(args.OR, args.Field, args.Args[1])
+	// 	break
+	// case "whereNull":
+	// 	gou.setWhereNull(args.OR, args.Field)
+	// 	break
+	// case "whereNotNull":
+	// 	gou.setWhereNotNull(args.OR, args.Field)
+	// 	break
+	case "havings":
+		exception.New("havings 分组查询暂不支持", 400).Throw()
+		gou.setHaving(args.OR, args.Field)
 		break
 	}
 }
