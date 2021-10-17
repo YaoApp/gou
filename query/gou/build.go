@@ -2,6 +2,7 @@ package gou
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/yaoapp/kun/exception"
 )
@@ -109,40 +110,90 @@ func (gou *Query) buildOrders() *Query {
 
 // buildGroups Groups
 func (gou *Query) buildGroups() *Query {
+
 	if gou.Groups == nil {
 		return gou
 	}
 
-	// 构建选择字段映射表
-	selectFieldMap := map[string]Expression{}
-	for i, exp := range gou.Select {
-
-		if exp.Field != "" {
-			fieldID := fmt.Sprintf("%s.%s.%d.%s", exp.Table, exp.Field, exp.Index, exp.Key)
-			selectFieldMap[fieldID] = gou.Select[i]
-		}
-
-		if exp.Alias != "" {
-			selectFieldMap[exp.Alias] = gou.Select[i]
-		}
-	}
-
-	fields := []interface{}{}
+	selects := gou.mapOfSelect()
+	fields := []string{}
+	jsonTables := []string{}
 	for _, group := range *gou.Groups {
-		field := gou.sqlGroupBy(selectFieldMap, *group.Field, group.Rollup)
+		field, joins, updates := gou.sqlGroup(group, selects)
 		fields = append(fields, field)
-	}
-
-	// 重置选择字段
-	for i, exp := range gou.Select {
-		fieldID := fmt.Sprintf("%s.%s.%d.%s", exp.Table, exp.Field, exp.Index, exp.Key)
-		if new, has := selectFieldMap[fieldID]; has {
-			gou.Select[i] = new
+		jsonTables = append(jsonTables, joins...)
+		// 更新已选字段
+		for i, exp := range updates {
+			gou.Select[i] = exp
 		}
 	}
 
+	// Joins
+	for _, table := range jsonTables {
+		gou.Query.JoinRaw(fmt.Sprintf("JOIN %s", table))
+	}
+
+	// Update Select
 	gou.buildSelect()
-	gou.Query.GroupBy(fields...)
+
+	// Groupby
+	gou.Query.GroupByRaw(strings.Join(fields, ", "))
 
 	return gou
+}
+
+// selectMap 读取 Select 字段映射表
+func (gou *Query) mapOfSelect() map[string]FieldNode {
+	res := map[string]FieldNode{}
+	for i, exp := range gou.Select {
+		if exp.Field != "" {
+			res[gou.ID(exp)] = FieldNode{
+				Index: i,
+				Field: &gou.Select[i],
+			}
+		}
+		if exp.Alias != "" {
+			res[exp.Alias] = FieldNode{
+				Index: i,
+				Field: &gou.Select[i],
+			}
+		}
+	}
+	return res
+}
+
+// ID 字段唯一标识
+func (gou *Query) ID(exp Expression) string {
+	table := exp.Table
+	if exp.IsModel {
+		table = gou.GetTableName(table)
+	}
+	id := fmt.Sprintf("%s.%s.%s", table, exp.Field, exp.FullPath())
+	return id
+}
+
+// NameOf 字段名称
+func (gou *Query) NameOf(exp Expression) string {
+
+	if exp.Table != "" {
+		table := exp.Table
+		if exp.IsModel {
+			table = gou.GetTableName(table)
+		}
+		return fmt.Sprintf("%s.%s", table, exp.Field)
+	}
+	return exp.Field
+}
+
+// WrapNameOf 字段名称
+func (gou *Query) WrapNameOf(exp Expression) string {
+	if exp.Table != "" {
+		table := exp.Table
+		if exp.IsModel {
+			table = gou.GetTableName(table)
+		}
+		return fmt.Sprintf("`%s`.`%s`", exp.Table, exp.Field)
+	}
+
+	return fmt.Sprintf("`%s`", exp.Field)
 }

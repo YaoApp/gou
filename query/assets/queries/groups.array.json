@@ -1,15 +1,17 @@
 {
   "select": [
     ":max(score) as 最高分",
-    "city@ as 城市",
-    "industries@",
-    "towns[*]",
-    "goods.sku[*].price",
-    "goods.sku[*].gid"
+    "citys@(string 50) as 城市",
+    "industries@(string 100) as 行业",
+    "towns[*](string 100)",
+    "goods.sku[*].price(decimal 11,2)",
+    "goods.sku[*].gid(integer)",
+    "option$.ids[*](integer) as ID"
   ],
   "from": "table as name",
   "groups": [
-    "industries@",
+    "行业",
+    "ID",
     "citys@ rollup 所有城市",
     "towns@ rollup 所有行政区",
     "goods.sku[*].price rollup 合计",

@@ -104,6 +104,12 @@ type FieldType struct {
 	Scale     int    `json:"scale,omitempty"`     // 字段小数位位数，对 float、decimal 等类型字段有效
 }
 
+// FieldNode 字段表达式节点
+type FieldNode struct {
+	Index int
+	Field *Expression
+}
+
 // Table 数据表名称或数据模型
 type Table struct {
 	Alias   string // 别名

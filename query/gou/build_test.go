@@ -47,8 +47,12 @@ func TestBuildGroups(t *testing.T) {
 		With(qb, TableName).
 		SetAESKey(TestAESKey)
 	gou.Build()
-	// sql := gou.ToSQL()
-	// assert.Equal(t, "select max(`score`) AS `最高分`, IF(`GROUPING(city)`,'所有城市',`city`) AS `城市`, IF(`GROUPING(id)`,'ID',`id`) AS `id` from `table` as `name` group by `kind`, `city` WITH ROLLUP, `id` WITH ROLLUP", sql)
+	sql := gou.ToSQL()
+	// utils.Dump(sql)
+	assert.Equal(t,
+		"select max(`score`) AS `最高分`, IF(GROUPING(`city`),'所有城市',`city`) AS `城市`, IF(GROUPING(`id`),'ID',`id`) AS `id`, `kind` from `table` as `name` group by `kind`, `city` WITH ROLLUP, `id` WITH ROLLUP",
+		sql,
+	)
 }
 
 func TestBuildGroupsArray(t *testing.T) {
@@ -56,7 +60,10 @@ func TestBuildGroupsArray(t *testing.T) {
 		With(qb, TableName).
 		SetAESKey(TestAESKey)
 	gou.Build()
-	// sql := gou.ToSQL()
+	sql := gou.ToSQL()
 	// utils.Dump(sql)
-	// assert.Equal(t, "select max(`score`) AS `最高分`, IF(`GROUPING(city)`,'所有城市',`city`) AS `城市`, IF(`GROUPING(id)`,'ID',`id`) AS `id` from `table` as `name` group by `kind`, `city` WITH ROLLUP, `id` WITH ROLLUP", sql)
+	assert.Equal(t,
+		"select max(`score`) AS `最高分`, IF(GROUPING(`__JSON_T1`.`F1`),'所有城市',`__JSON_T1`.`F1`) AS `citys[*]`, `__JSON_T2`.`f2` as `行业`, IF(GROUPING(`__JSON_T3`.`F3`),'所有行政区',`__JSON_T3`.`F3`) AS `towns[*]`, IF(GROUPING(`__JSON_T4`.`F4`),'合计',`__JSON_T4`.`F4`) AS `goods.sku[*].price`, `__JSON_T5`.`f5` as `goods`, JSON_EXTRACT(`option`, '$.ids[*]') AS `ID` from `table` as `name` JOIN JSON_TABLE(`industries`, '$[*]' columns (`F2` VARCHAR(100) path '$') ) AS `__JSON_T2` JOIN JSON_TABLE(`citys`, '$[*]' columns (`F1` VARCHAR(50) path '$') ) AS `__JSON_T1` JOIN JSON_TABLE(`towns`, '$[*]' columns (`F3` VARCHAR(100) path '$') ) AS `__JSON_T3` JOIN JSON_TABLE(`goods`.`sku`, '$[*]' columns (`F4` DECIMAL(11,2) path '$.price') ) AS `__JSON_T4` JOIN JSON_TABLE(`goods`.`sku`, '$[*]' columns (`F5` INT path '$.gid') ) AS `__JSON_T5` group by `行业`, `ID`, `citys[*]` WITH ROLLUP, `towns[*]` WITH ROLLUP, `goods.sku[*].price` WITH ROLLUP, `goods.sku[*].gid`",
+		sql,
+	)
 }

@@ -222,6 +222,58 @@ func (exp *Expression) parseExpBindings() error {
 	return nil
 }
 
+// FullPath JSON 完整字段路径带  $
+func (exp Expression) FullPath() string {
+	path := exp.Path()
+	if path == "" && exp.IsObject {
+		return "$"
+	} else if path == "" && exp.IsArray {
+		return "$[*]"
+	}
+	return fmt.Sprintf("$%s", path)
+}
+
+// Path JSON 字段路径
+func (exp Expression) Path() string {
+	if exp.IsArray {
+		return exp.arrayKey()
+	} else if exp.IsObject {
+		return exp.objectKey()
+	}
+	return ""
+}
+
+// arrayKey .foo .foo.[*][0] .foo[*][0].foo.bar
+func (exp Expression) objectKey() string {
+	if !exp.IsObject {
+		return ""
+	}
+	if exp.Key != "" {
+		return fmt.Sprintf(".%s", exp.Key)
+	}
+	return ""
+}
+
+// arrayKey [*].foo [*][0] [*][0].foo.bar
+func (exp Expression) arrayKey() string {
+	if !exp.IsArray {
+		return ""
+	}
+
+	index := "*"
+	if exp.Index != Star {
+		index = fmt.Sprintf("%d", exp.Index)
+	}
+
+	if strings.HasPrefix(exp.Key, "[") {
+		return fmt.Sprintf("[%s]%s", index, exp.Key)
+	} else if exp.Key != "" {
+		return fmt.Sprintf("[%s].%s", index, exp.Key)
+	}
+
+	return fmt.Sprintf("[%s]", index)
+}
+
 // ToString 还原为字符串
 func (exp Expression) ToString() string {
 	output := exp.Table
@@ -268,11 +320,7 @@ func (exp Expression) ToString() string {
 	}
 
 	if exp.IsObject {
-		key := exp.Key
-		if key != "" {
-			key = fmt.Sprintf(".%s", key)
-		}
-		return fmt.Sprintf("%s%s$%s%s%s", output, exp.Field, key, fieldType, alias)
+		return fmt.Sprintf("%s%s$%s%s%s", output, exp.Field, exp.objectKey(), fieldType, alias)
 	}
 
 	if exp.IsArray {

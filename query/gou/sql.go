@@ -4,37 +4,70 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/xun/dbal"
 )
 
-// sqlGroup 字段表达式转换为 SQL (MySQL8.0)
-func (gou Query) sqlGroupBy(selects map[string]Expression, exp Expression, rollup string) interface{} {
-	table := exp.Table
-	field := exp.Field
-	groupBy := fmt.Sprintf("`%s`", exp.Field)
+func (gou Query) sqlGroup(group Group, selects map[string]FieldNode) (string, []string, map[int]Expression) {
 
-	if exp.Table != "" {
-		if exp.IsModel {
-			table = gou.GetTableName(exp.Table)
-		}
-		field = fmt.Sprintf("%s.%s", table, exp.Field)
-		groupBy = fmt.Sprintf("`%s`.`%s`", table, exp.Field)
+	var node *FieldNode = nil          // 关联 Select 字段节点
+	var field *Expression = nil        // 关联 Select 字段信息
+	fieldGroup := group.Field          // GroupBy 字段表达式
+	nameGroup := fieldGroup.ToString() // GroupBy 字段名称
+	id := gou.ID(*fieldGroup)
+
+	// 是否为别名
+	if n, has := selects[nameGroup]; has {
+		node = &n
+	} else if n, has := selects[id]; has {
+		node = &n
 	}
 
-	// ROLLUP 更新已选字段, 添加 WITH ROLLUP
-	if rollup != "" {
-		fieldID := fmt.Sprintf("%s.%s.%d.%s", exp.Table, exp.Field, exp.Index, exp.Key)
-		if selectField, has := selects[fieldID]; has {
-			selectFieldAlias := fmt.Sprintf(" AS %s ", selectField.Field)
-			if selectField.Alias != "" {
-				selectFieldAlias = fmt.Sprintf(" AS %s", selectField.Alias)
-			}
-			selects[fieldID] = *NewExpression(fmt.Sprintf(":IF(GROUPING(%s), '%s', %s)%s", field, rollup, field, selectFieldAlias))
-		}
-		groupBy = fmt.Sprintf("%s WITH ROLLUP", groupBy)
+	if node == nil {
+		exception.New("%s 不在 SELECT 列表中", 400, nameGroup).Throw()
 	}
 
-	return dbal.Raw(groupBy)
+	field = node.Field
+	update := map[int]Expression{}
+
+	// 是否为 JSON Array 字段
+	joins := []string{}
+	if field.IsArray {
+		table := fmt.Sprintf("__JSON_T%d", node.Index)
+		name := fmt.Sprintf("F%d", node.Index)
+		typ := gou.sqlTypeOf(*field)
+		path := strings.TrimPrefix(field.FullPath(), "$[*]")
+
+		join := fmt.Sprintf(
+			"JSON_TABLE(%s, '$[*]' columns (`%s` %s path '$%s') ) AS `%s`",
+			gou.WrapNameOf(*field), name, typ, path, table,
+		)
+		joins = append(joins, join)
+
+		// 更新 SELECT 字段
+		field = NewExpression(fmt.Sprintf("%s.%s AS %s", table, name, nameGroup))
+		update[node.Index] = *field
+	}
+
+	// 是否为 roll up
+	rollup := ""
+	if group.Rollup != "" {
+		fieldName := gou.NameOf(*field)
+		alias := fmt.Sprintf(" AS %s", fieldName)
+		if field.Alias != "" {
+			alias = fmt.Sprintf(" AS %s", field.Alias)
+		}
+
+		// 更新 SELECT 字段
+		field = NewExpression(fmt.Sprintf(
+			":IF(:GROUPING(%s), '%s', %s)%s",
+			fieldName, group.Rollup, fieldName, alias,
+		))
+		update[node.Index] = *field
+		rollup = " WITH ROLLUP"
+	}
+
+	return fmt.Sprintf("`%s`%s", nameGroup, rollup), joins, update
 }
 
 // sqlExpression 字段表达式转换为 SQL (MySQL8.0)
@@ -86,6 +119,19 @@ func (gou Query) sqlExpression(exp Expression, withDefaultAlias ...bool) interfa
 		return dbal.Raw(fmt.Sprintf("AES_DECRYPT(UNHEX(%s%s), '%s')%s", table, exp.Field, gou.AESKey, alias))
 	}
 
+	if exp.IsFun { // MySQL Only()
+		args := []string{}
+		for _, arg := range exp.FunArgs {
+			exp := gou.sqlExpression(arg)
+			if argstr, ok := exp.(string); ok {
+				args = append(args, argstr)
+			} else if argraw, ok := exp.(dbal.Expression); ok {
+				args = append(args, argraw.GetValue())
+			}
+		}
+		return dbal.Raw(fmt.Sprintf("%s(%s)%s", exp.FunName, strings.Join(args, ","), alias))
+	}
+
 	if exp.IsObject { // MySQL Only()
 
 		if defaultAlias && alias == "" {
@@ -129,18 +175,60 @@ func (gou Query) sqlExpression(exp Expression, withDefaultAlias ...bool) interfa
 		return dbal.Raw(fmt.Sprintf("JSON_EXTRACT(%s`%s`, '$%s%s')%s", table, exp.Field, index, key, alias))
 	}
 
-	if exp.IsFun { // MySQL Only()
-		args := []string{}
-		for _, arg := range exp.FunArgs {
-			exp := gou.sqlExpression(arg)
-			if argstr, ok := exp.(string); ok {
-				args = append(args, argstr)
-			} else if argraw, ok := exp.(dbal.Expression); ok {
-				args = append(args, argraw.GetValue())
-			}
-		}
-		return dbal.Raw(fmt.Sprintf("%s(%s)%s", exp.FunName, strings.Join(args, ","), alias))
+	return fmt.Sprintf("%s`%s`%s", table, exp.Field, alias)
+}
+
+// sqlTypeOf 字段类型
+func (gou *Query) sqlTypeOf(exp Expression) string {
+	if exp.Type == nil {
+		return "VARCHAR(255)"
 	}
 
-	return fmt.Sprintf("%s`%s`%s", table, exp.Field, alias)
+	name := strings.ToLower(exp.Type.Name)
+	switch name {
+	case "string", "char":
+		if exp.Type.Length > 0 {
+			return fmt.Sprintf("VARCHAR(%d)", exp.Type.Length)
+		}
+		return "VARCHAR(255)"
+
+	case "integer":
+		return "INT"
+
+	case "boolean":
+		return "BOOLEAN"
+
+	case "date":
+		return "DATE"
+
+	case "time":
+		return "TIME"
+
+	case "datetime":
+		return "DATETIME"
+
+	case "timestamp":
+		return "TIMESTAMP"
+
+	case "double":
+		if exp.Type.Precision > 0 {
+			return fmt.Sprintf("DOUBLE(%d,%d)", exp.Type.Precision, exp.Type.Scale)
+		}
+		return "DOUBLE(10,2)"
+
+	case "float":
+		if exp.Type.Precision > 0 {
+			return fmt.Sprintf("FLOAT(%d,%d)", exp.Type.Precision, exp.Type.Scale)
+		}
+		return "FLOAT(10,2)"
+
+	case "decimal":
+		if exp.Type.Precision > 0 {
+			return fmt.Sprintf("DECIMAL(%d,%d)", exp.Type.Precision, exp.Type.Scale)
+		}
+		return "DECIMAL(10,2)"
+	}
+
+	exception.New("暂不支持 %s 类型转换", 400, exp.Type.Name).Throw()
+	return ""
 }
