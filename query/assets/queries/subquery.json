@@ -1,0 +1,7 @@
+{
+  "select": ["id", "_SUB_.name"],
+  "query": {
+    "select": ["id", "name"],
+    "from": "manu"
+  }
+}

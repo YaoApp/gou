@@ -1,0 +1,8 @@
+{
+  "select": ["id", "厂商.name"],
+  "query": {
+    "name": "厂商",
+    "select": ["id", "name"],
+    "from": "manu"
+  }
+}

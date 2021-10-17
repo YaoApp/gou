@@ -87,3 +87,23 @@ func TestBuildUnions(t *testing.T) {
 	// utils.Dump(sql)
 	assert.Contains(t, sql, "union all")
 }
+
+func TestBuildSubQueryName(t *testing.T) {
+	gou := Open(GetFileName("queries/subquery.name.json")).
+		With(qb, TableName).
+		SetAESKey(TestAESKey)
+	gou.Build()
+	sql := gou.ToSQL()
+	// utils.Dump(sql)
+	assert.Equal(t, "select `id`, `厂商`.`name` from (select `id`, `name` from `manu`) as `厂商`", sql)
+}
+
+func TestBuildSubQuery(t *testing.T) {
+	gou := Open(GetFileName("queries/subquery.json")).
+		With(qb, TableName).
+		SetAESKey(TestAESKey)
+	gou.Build()
+	sql := gou.ToSQL()
+	// utils.Dump(sql)
+	assert.Equal(t, "select `id`, `_SUB_`.`name` from (select `id`, `name` from `manu`) as `_SUB_`", sql)
+}

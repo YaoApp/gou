@@ -66,7 +66,8 @@ type QueryDSL struct {
 	PageSize int          `json:"pagesize,omitempty"`  // 每页读取记录的数量
 	DataOnly bool         `json:"data-only,omitempty"` // 设定为 true, 查询结果为 []Record; 设定为 false, 查询结果为 Paginate
 	Unions   []QueryDSL   `json:"unions,omitempty"`    // 联合查询
-	Query    *QueryDSL    `json:"query,omitempty"`     // 子查询
+	SubQuery *QueryDSL    `json:"query,omitempty"`     // 子查询
+	Alias    string       `json:"name,omitempty"`      // 子查询别名
 	Joins    []Join       `json:"joins,omitempty"`     // 表连接
 	SQL      *SQL         `json:"sql,omitempty"`       // SQL语句
 	Comment  string       `json:"comment,omitempty"`   // 查询条件注释

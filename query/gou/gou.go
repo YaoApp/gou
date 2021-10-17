@@ -76,8 +76,8 @@ func (gou QueryDSL) ToMap() map[string]interface{} {
 		res["sql"] = gou.SQL
 	}
 
-	if gou.Query != nil {
-		res["query"] = gou.Query
+	if gou.SubQuery != nil {
+		res["query"] = gou.SubQuery
 	}
 
 	return res
@@ -95,7 +95,7 @@ func (gou QueryDSL) ValidateSelect() []error {
 // ValidateFrom 校验 from
 func (gou QueryDSL) ValidateFrom() []error {
 	errs := []error{}
-	if gou.Query == nil && gou.From == nil {
+	if gou.SubQuery == nil && gou.From == nil {
 		errs = append(errs, errors.Errorf("参数错误: from 和 query 必须填写一项"))
 	}
 
@@ -175,10 +175,10 @@ func (gou QueryDSL) ValidateUnions() []error {
 
 // ValidateQuery 校验 query
 func (gou QueryDSL) ValidateQuery() []error {
-	if gou.Query == nil {
+	if gou.SubQuery == nil {
 		return []error{}
 	}
-	return gou.Query.Validate()
+	return gou.SubQuery.Validate()
 }
 
 // ValidateJoins 校验 joins

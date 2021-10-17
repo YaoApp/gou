@@ -21,6 +21,7 @@ func (gou *Query) Build() {
 	gou.buildGroups()
 	gou.buildHavings()
 	gou.buildUnions()
+	gou.buildSubQuery()
 }
 
 // buildSelect Select
@@ -185,6 +186,7 @@ func (gou *Query) buildUnions() *Query {
 	return gou
 }
 
+// buildUnion Union
 func (gou *Query) buildUnion(union QueryDSL) *Query {
 	gouUnion := New()
 	gouUnion.QueryDSL = union
@@ -192,6 +194,29 @@ func (gou *Query) buildUnion(union QueryDSL) *Query {
 		gouUnion.Query = qb
 		gouUnion.Build()
 	})
+	return gou
+}
+
+// buildSubQuery SubQuery
+func (gou *Query) buildSubQuery() *Query {
+	if gou.SubQuery == nil {
+		return gou
+	}
+
+	// Alias
+	alias := gou.SubQuery.Alias
+	if alias == "" {
+		alias = "_SUB_"
+	}
+	alias = strings.ReplaceAll(alias, "`", "")
+
+	gouSubQuery := New()
+	gouSubQuery.QueryDSL = *gou.SubQuery
+	gou.Query.FromSub(func(qb query.Query) {
+		gouSubQuery.Query = qb
+		gouSubQuery.Build()
+	}, fmt.Sprintf("`%s`", alias))
+
 	return gou
 }
 
