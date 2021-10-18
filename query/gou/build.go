@@ -258,11 +258,11 @@ func (gou *Query) buildJoin(join Join) *Query {
 // buildLimit limit
 func (gou *Query) buildLimit() *Query {
 
-	if gou.Limit != nil {
+	if gou.Limit != nil && any.Of(gou.Limit).IsNumber() {
 		gou.Query.Limit(any.Of(gou.Limit).CInt())
 	}
 
-	if gou.Offset != nil {
+	if gou.Offset != nil && any.Of(gou.Offset).IsNumber() {
 		gou.Query.Offset(any.Of(gou.Offset).CInt())
 	}
 
@@ -287,6 +287,7 @@ func (gou *Query) mapOfSelect() map[string]FieldNode {
 				Index: i,
 				Field: &gou.Select[i],
 			}
+			res[exp.Field] = res[gou.ID(exp)]
 		}
 		if exp.Alias != "" {
 			res[exp.Alias] = FieldNode{

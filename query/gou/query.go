@@ -5,23 +5,26 @@ import (
 	"io"
 	"os"
 
+	"github.com/go-errors/errors"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/query/share"
+	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
+	"github.com/yaoapp/kun/utils"
+	"github.com/yaoapp/xun"
 	"github.com/yaoapp/xun/dbal/query"
 )
-
-// cache 查询器解析缓存
-var cache = map[interface{}]*Query{}
 
 // Query Query share.DSL
 type Query struct {
 	QueryDSL
 	Query        query.Query
 	GetTableName GetTableName
-	Bindings     map[string]interface{}
+	Bindings     []interface{}
+	Selects      map[string]FieldNode
 	AESKey       string
+	STMT         string
 }
 
 // GetTableName 读取表格名称
@@ -75,10 +78,10 @@ func (gou *Query) With(qb query.Query, getTableName ...GetTableName) *Query {
 }
 
 // Bind 绑定动态数据
-func (gou *Query) Bind(data map[string]interface{}) *Query {
-	gou.Bindings = data
-	return gou
-}
+// func (gou *Query) Bind(data []interface{}) *Query {
+// 	gou.Bindings = data
+// 	return gou
+// }
 
 // SetAESKey 设定 AES KEY
 func (gou *Query) SetAESKey(key string) *Query {
@@ -119,62 +122,164 @@ func (gou Query) GetBindings() []interface{} {
 // ==================================================
 
 // Load 加载查询条件
-func (gou *Query) Load(data interface{}) share.DSL {
-	// if query, has := cache[data]; has {
-	// 	query.Query = gou.Query.New()
-	// 	query.Bindings = map[string]interface{}{}
-	// 	return query
-	// }
+func (gou *Query) Load(data interface{}) (share.DSL, error) {
 
 	input, err := jsoniter.Marshal(data)
 	if err != nil {
-		exception.New("加载失败%s", 500, err.Error()).Throw()
+		return nil, errors.Errorf("加载失败 %s", err.Error())
 	}
 
 	query := Make(input)
 	query.Query = gou.Query.New()
 	query.AESKey = gou.AESKey
 	query.GetTableName = gou.GetTableName
+
 	errs := query.Validate()
 	if len(errs) > 0 {
-		exception.New("查询条件错误", 500).Ctx(errs).Throw()
+		return nil, errors.Errorf("查询条件错误 %#v", errs)
 	}
-	query.Build()
 
-	// cache[data] = query
-	return query
+	query.Build()
+	query.STMT = query.ToSQL()
+	query.Bindings = query.GetBindings()
+	query.Selects = query.mapOfSelect()
+	return query, nil
 }
 
 // Run 执行查询根据查询条件返回结果
 func (gou Query) Run(data maps.Map) interface{} {
 
-	bindings := gou.GetBindings()
-	sql := gou.ToSQL()
+	if gou.Page != nil || gou.PageSize != nil {
+		return gou.Paginate(data)
+	} else if gou.Limit != nil {
+		return gou.Get(data)
+	} else if gou.QueryDSL.First != nil {
+		return gou.First(data)
+	}
 
+	sql, bindings := gou.prepare(data)
+	qb := gou.Query.New()
+	qb.SQL(sql, bindings...)
+	res, err := qb.DB().Exec(sql, bindings...)
+	if err != nil {
+		exception.New("数据查询错误 %s", 500, err.Error()).Throw()
+	}
+	return res
+}
+
+// Get 执行查询并返回数据记录集合
+func (gou Query) Get(data maps.Map) []share.Record {
+
+	res := []share.Record{}
+	sql, bindings := gou.prepare(data)
+	limit := 1000
+	if gou.Limit != nil && any.Of(gou.Limit).IsNumber() {
+		limit = any.Of(gou.Limit).CInt()
+	}
+
+	qb := gou.Query.New()
+	qb.Limit(limit)
+	qb.SQL(sql, bindings...)
+	rows := qb.MustGet()
+
+	// 处理数据
+	for _, row := range rows {
+		res = append(res, gou.format(row))
+	}
+
+	return res
+}
+
+// Paginate 执行查询并返回带分页信息的数据记录数组
+func (gou Query) Paginate(data maps.Map) share.Paginate {
+	res := share.Paginate{}
+	sql, bindings := gou.prepare(data)
+	page := 1
+	pageSize := 20
+	if gou.Page != nil && any.Of(gou.Page).IsNumber() {
+		page = any.Of(gou.Page).CInt()
+	}
+	if gou.PageSize != nil && any.Of(gou.PageSize).IsNumber() {
+		pageSize = any.Of(gou.PageSize).CInt()
+	}
+
+	limit := pageSize
+	offset := (page - 1) * pageSize
+	res.Page = page
+	res.PageSize = pageSize
+	res.Prev = page - 1
+	res.Next = page + 1
+	res.Items = []share.Record{}
+
+	qb := gou.Query.New()
+	qb.Limit(limit).Offset(offset)
+	qb.SQL(sql, bindings...)
+	rows := qb.MustGet()
+
+	// 处理数据
+	for _, row := range rows {
+		res.Items = append(res.Items, gou.format(row))
+	}
+
+	utils.Dump(res)
+	return res
+}
+
+// First 执行查询并返回一条数据记录
+func (gou Query) First(data maps.Map) share.Record {
+	return share.Record{}
+}
+
+// format 格式化输出
+func (gou Query) format(row xun.R) share.Record {
+	res := share.Record{}
+	for key, col := range row {
+		field, has := gou.Selects[key]
+		val := col
+		if has {
+			if field.Field.IsObject {
+				val = share.Record{}
+				col, ok := col.(string)
+				if ok && col != "" {
+					err := jsoniter.Unmarshal([]byte(col), &val)
+					if err != nil {
+						exception.New("%s %s 数据解析错误 %s", 500, key, col, err.Error()).Throw()
+					}
+				}
+			} else if field.Field.IsArray {
+				val = []share.Record{}
+				col, ok := col.(string)
+				if ok && col != "" {
+					err := jsoniter.Unmarshal([]byte(col), &val)
+					if err != nil {
+						exception.New("%s %s 数据解析错误 %s", 500, key, col, err.Error()).Throw()
+					}
+				}
+			}
+		}
+		res[key] = val
+	}
+	return res
+}
+
+// prepare 与查询准备
+func (gou *Query) prepare(data maps.Map) (sql string, bindings []interface{}) {
+
+	if gou.STMT == "" {
+		exception.New("查询条件尚未加载", 404).Throw()
+	}
+
+	// 替换参数变量
+	bindings = gou.Bindings
+	sql = gou.STMT
 	for i := range bindings {
 		bindings[i] = share.Bind(bindings[i], data)
 	}
 
-	qb := gou.Query.New()
-	qb.SQL(sql, bindings...).MustGet()
-
-	// utils.Dump(rows)
-	// fmt.Println("----", "\n", gou.ToSQL())
-	// utils.Dump(bindings)
-	return []share.Record{}
-}
-
-// Get 执行查询并返回数据记录集合
-func (gou Query) Get() []share.Record {
-	return []share.Record{}
-}
-
-// Paginate 执行查询并返回带分页信息的数据记录数组
-func (gou Query) Paginate() share.Paginate {
-	return share.Paginate{}
-}
-
-// First 执行查询并返回一条数据记录
-func (gou Query) First() share.Record {
-	return share.Record{}
+	gou.Offset = share.Bind(gou.Offset, data)
+	gou.Limit = share.Bind(gou.Limit, data)
+	gou.Page = share.Bind(gou.Page, data)
+	gou.PageSize = share.Bind(gou.PageSize, data)
+	gou.DataOnly = share.Bind(gou.DataOnly, data)
+	return sql, bindings
 }

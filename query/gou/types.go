@@ -60,11 +60,12 @@ type QueryDSL struct {
 	Orders   Orders       `json:"orders,omitempty"`    // 排序条件
 	Groups   *Groups      `json:"groups,omitempty"`    // 聚合条件
 	Havings  []Having     `json:"havings,omitempty"`   // 聚合查询结果筛选条件
+	First    interface{}  `json:"first,omitempty"`     // 限定读取单条数据
 	Limit    interface{}  `json:"limit,omitempty"`     // 限定读取记录的数量
 	Offset   interface{}  `json:"offset,omitempty"`    // 记录开始位置
 	Page     interface{}  `json:"page,omitempty"`      // 分页查询当前页面页码
 	PageSize interface{}  `json:"pagesize,omitempty"`  // 每页读取记录的数量
-	DataOnly bool         `json:"data-only,omitempty"` // 设定为 true, 查询结果为 []Record; 设定为 false, 查询结果为 Paginate
+	DataOnly interface{}  `json:"data-only,omitempty"` // 设定为 true, 查询结果为 []Record; 设定为 false, 查询结果为 Paginate
 	Unions   []QueryDSL   `json:"unions,omitempty"`    // 联合查询
 	SubQuery *QueryDSL    `json:"query,omitempty"`     // 子查询
 	Alias    string       `json:"name,omitempty"`      // 子查询别名

@@ -14,7 +14,7 @@
           { ":created_at": "创建时间", ">": "?:$in.0" },
           { ":created_at": "创建时间", "<": "?:$in.1" }
         ],
-        "limit": 10
+        "limit": "?:$in.3"
       },
       "outs": ["{{$out}}"]
     },
@@ -22,7 +22,7 @@
       "name": "users",
       "engine": "test-db",
       "query": {
-        "select": ["id", "name", "extra", "resume"],
+        "select": ["id", "name", "extra$", "resume"],
         "from": "$user",
         "orders": "created_at desc",
         "wheres": [
@@ -31,7 +31,7 @@
           { ":created_at": "创建时间", "<": "?:$in.1" }
         ],
         "page": "?:$in.2",
-        "pagesize": 20
+        "pagesize": "?:$in.3"
       },
       "outs": ["{{$out}}"]
     }

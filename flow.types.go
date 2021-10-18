@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/robertkrimen/otto"
+	"github.com/yaoapp/gou/query/share"
 )
 
 // Flow  工作流
@@ -24,7 +25,8 @@ type FlowNode struct {
 	Name    string        `json:"name,omitempty"`
 	Process string        `json:"process,omitempty"`
 	Engine  string        `json:"engine,omitempty"` // 数据分析引擎名称
-	Query   interface{}   `json:"query,omitempty"`  // 数据分析语言 Query DSL
+	Query   interface{}   `json:"query,omitempty"`  // 数据分析语言 Query Source
+	DSL     share.DSL     `json:"-"`                // 数据分析语言 Query DSL
 	Script  string        `json:"script,omitempty"`
 	Args    []interface{} `json:"args,omitempty"`
 	Outs    []interface{} `json:"outs,omitempty"`

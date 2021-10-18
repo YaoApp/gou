@@ -6,11 +6,11 @@ import (
 
 // DSL QueryDSL Interface
 type DSL interface {
-	Load(interface{}) DSL          // 查询条件预载入
-	Run(data maps.Map) interface{} // 执行查询根据查询条件返回结果
-	Get() []Record                 // 执行查询并返回数据记录集合
-	Paginate() Paginate            // 执行查询并返回带分页信息的数据记录数组
-	First() Record                 // 执行查询并返回一条数据记录
+	Load(interface{}) (DSL, error)   // 查询条件预载入
+	Run(data maps.Map) interface{}   // 执行查询根据查询条件返回结果
+	Get(data maps.Map) []Record      // 执行查询并返回数据记录集合
+	Paginate(data maps.Map) Paginate // 执行查询并返回带分页信息的数据记录数组
+	First(data maps.Map) Record      // 执行查询并返回一条数据记录
 }
 
 // Record 数据记录

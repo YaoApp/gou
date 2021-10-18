@@ -39,5 +39,5 @@ func TestFlowExec(t *testing.T) {
 
 func TestFlowExecQuery(t *testing.T) {
 	flow := SelectFlow("stat")
-	flow.Exec("2000-01-02", "2050-12-31", 1)
+	flow.Exec("2000-01-02", "2050-12-31", 1, 2)
 }

@@ -41,6 +41,19 @@ func TestMain(m *testing.M) {
 	}
 	SetModelLogger(os.Stdout, logger.LevelDebug)
 
+	// 注册数据分析引擎
+	RegisterEngine("test-db", &gou.Query{
+		Query: capsule.Query(),
+		GetTableName: func(s string) string {
+			if mod, has := Models[s]; has {
+				return mod.MetaData.Table.Name
+			}
+			exception.New("%s 数据模型尚未加载", 404).Throw()
+			return s
+		},
+		AESKey: TestAESKey,
+	})
+
 	// 加载模型
 	LoadModel("file://"+path.Join(TestModRoot, "user.json"), "user")
 	LoadModel("file://"+path.Join(TestModRoot, "manu.json"), "manu")
@@ -67,19 +80,6 @@ func TestMain(m *testing.M) {
 	// 加密密钥
 	LoadCrypt(fmt.Sprintf(`{"key":"%s"}`, TestAESKey), "AES")
 	LoadCrypt(`{}`, "PASSWORD")
-
-	// 数据分析器
-	RegisterEngine("test-db", &gou.Query{
-		Query: capsule.Query(),
-		GetTableName: func(s string) string {
-			if mod, has := Models[s]; has {
-				return mod.MetaData.Table.Name
-			}
-			exception.New("%s 数据模型尚未加载", 404).Throw()
-			return s
-		},
-		AESKey: TestAESKey,
-	})
 
 	// Run test suites
 	exitVal := m.Run()

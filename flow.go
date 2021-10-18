@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 
@@ -38,6 +39,22 @@ func LoadFlow(source string, name string) *Flow {
 	err := helper.UnmarshalFile(input, &flow)
 	if err != nil {
 		exception.Err(err, 400).Throw()
+	}
+
+	// 预加载 Query DSL
+	for i, node := range flow.Nodes {
+		if node.Query == nil {
+			continue
+		}
+		if engine, has := Engines[node.Engine]; has {
+			flow.Nodes[i].DSL, err = engine.Load(node.Query)
+			if err != nil {
+				log.Printf("%s 数据分析查询解析错误", node.Engine)
+				log.Println(node.Query)
+			}
+			continue
+		}
+		log.Printf("%s 数据分析引擎尚未注册", node.Engine)
 	}
 
 	Flows[name] = &flow

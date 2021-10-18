@@ -59,7 +59,7 @@ func (flow *Flow) ExecNode(node *FlowNode, ctx *FlowContext, vm *FlowVM, prev in
 	var outs = []interface{}{}
 	var resp interface{}
 
-	if node.Query != nil {
+	if node.DSL != nil {
 		resp, outs = flow.RunQuery(node, ctx, data)
 	} else {
 		resp, outs = flow.RunProcess(node, ctx, data)
@@ -71,14 +71,7 @@ func (flow *Flow) ExecNode(node *FlowNode, ctx *FlowContext, vm *FlowVM, prev in
 
 // RunQuery 运行 Query DSL 查询
 func (flow *Flow) RunQuery(node *FlowNode, ctx *FlowContext, data maps.Map) (resp interface{}, outs []interface{}) {
-
-	engine, has := Engines[node.Engine]
-	if !has {
-		exception.New("%s 数据分析引擎尚未注册", 404, node.Engine).Throw()
-	}
-
-	engine.Load(node.Query).Run(data)
-
+	node.DSL.Run(data)
 	return resp, outs
 }
 

@@ -104,10 +104,11 @@ func (gou Query) sqlExpression(exp Expression, withDefaultAlias ...bool) interfa
 	}
 
 	if exp.IsBinding {
-		if value, has := gou.Bindings[exp.Field]; has {
-			return value
-		}
-		return nil
+		return exp.Field
+		// if value, has := gou.Bindings[exp.Field]; has {
+		// 	return value
+		// }
+		// return nil
 	}
 
 	if exp.IsAES { // MySQL Only()
