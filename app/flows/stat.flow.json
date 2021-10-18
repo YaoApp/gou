@@ -34,13 +34,29 @@
         "pagesize": "?:$in.3"
       },
       "outs": ["{{$out}}"]
+    },
+    {
+      "name": "address",
+      "engine": "test-db",
+      "query": {
+        "select": ["province", "city", "id"],
+        "from": "$address",
+        "orders": "created_at desc",
+        "wheres": [
+          { ":status": "状态", "=": "enabled" },
+          { ":created_at": "创建时间", ">": "?:$in.0" },
+          { ":created_at": "创建时间", "<": "?:$in.1" }
+        ],
+        "first": true
+      }
     }
   ],
   "output": {
     "params": "{{$in}}",
     "data": {
       "manus": "{{$res.manus.0}}",
-      "users": "{{$res.users.0}}"
+      "users": "{{$res.users.0}}",
+      "address": "{{$res.address}}"
     }
   }
 }

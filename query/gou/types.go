@@ -43,6 +43,9 @@ var RegFieldIsArrayObject = regexp.MustCompile("\\.[A-Za-z0-9_\u4e00-\u9fa5]+")
 // RegFieldIsArray 字段表达式字段是否为数组
 var RegFieldIsArray = regexp.MustCompile("^([A-Za-z0-9_\u4e00-\u9fa5]+)([@\\[]{1})")
 
+// RegSelectSTMT SQL语句中的 Select 语句
+var RegSelectSTMT = regexp.MustCompile("^select(.+)from")
+
 // M map[string]interface{} 别名
 type M = map[string]interface{}
 

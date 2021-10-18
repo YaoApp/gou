@@ -71,15 +71,29 @@ func (flow *Flow) ExecNode(node *FlowNode, ctx *FlowContext, vm *FlowVM, prev in
 
 // RunQuery 运行 Query DSL 查询
 func (flow *Flow) RunQuery(node *FlowNode, ctx *FlowContext, data maps.Map) (resp interface{}, outs []interface{}) {
-	node.DSL.Run(data)
+	var res interface{}
+	resp = node.DSL.Run(data)
+	if node.Outs == nil || len(node.Outs) == 0 {
+		res = resp
+	} else {
+		data["$out"] = resp
+		data = data.Dot()
+		for _, value := range node.Outs {
+			outs = append(outs, share.Bind(value, data))
+		}
+		res = outs
+	}
+
+	if node.Name != "" {
+		ctx.Res[node.Name] = res
+	}
 	return resp, outs
 }
 
 // RunProcess 运行处理器
-func (flow *Flow) RunProcess(node *FlowNode, ctx *FlowContext, data maps.Map) (interface{}, []interface{}) {
-	var outs = []interface{}{}
-	var resp, res interface{}
+func (flow *Flow) RunProcess(node *FlowNode, ctx *FlowContext, data maps.Map) (resp interface{}, outs []interface{}) {
 
+	var res interface{}
 	for i := range node.Args {
 		node.Args[i] = share.Bind(node.Args[i], data)
 	}

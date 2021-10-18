@@ -3,7 +3,9 @@ package gou
 import (
 	"bytes"
 	"io"
+	"math"
 	"os"
+	"strings"
 
 	"github.com/go-errors/errors"
 	jsoniter "github.com/json-iterator/go"
@@ -11,7 +13,6 @@ import (
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
-	"github.com/yaoapp/kun/utils"
 	"github.com/yaoapp/xun"
 	"github.com/yaoapp/xun/dbal/query"
 )
@@ -198,19 +199,40 @@ func (gou Query) Paginate(data maps.Map) share.Paginate {
 	pageSize := 20
 	if gou.Page != nil && any.Of(gou.Page).IsNumber() {
 		page = any.Of(gou.Page).CInt()
+		if page < 1 {
+			page = 1
+		}
 	}
 	if gou.PageSize != nil && any.Of(gou.PageSize).IsNumber() {
 		pageSize = any.Of(gou.PageSize).CInt()
+		if pageSize < 1 {
+			pageSize = 1
+		}
 	}
 
-	limit := pageSize
-	offset := (page - 1) * pageSize
 	res.Page = page
 	res.PageSize = pageSize
 	res.Prev = page - 1
 	res.Next = page + 1
 	res.Items = []share.Record{}
 
+	total := gou.total(sql, bindings)
+	res.Total = total
+	res.PageCount = -1
+	if total > 0 && pageSize > 0 {
+		res.PageCount = int(math.Ceil(float64(total) / float64(pageSize)))
+	}
+
+	if res.Prev == 0 {
+		res.Prev = -1
+	}
+
+	if res.PageCount > 0 && res.Next > res.PageCount {
+		res.Next = -1
+	}
+
+	limit := pageSize
+	offset := (page - 1) * pageSize
 	qb := gou.Query.New()
 	qb.Limit(limit).Offset(offset)
 	qb.SQL(sql, bindings...)
@@ -221,13 +243,30 @@ func (gou Query) Paginate(data maps.Map) share.Paginate {
 		res.Items = append(res.Items, gou.format(row))
 	}
 
-	utils.Dump(res)
 	return res
+}
+
+// total 计算分页 (应该在载入时准备)
+func (gou Query) total(sql string, bindings []interface{}) int {
+	matches := RegSelectSTMT.FindStringSubmatch(sql)
+	total := -1
+	if len(matches) > 0 {
+		sql = strings.ReplaceAll(sql, matches[1], " COUNT(*) as `total` ")
+		qb := gou.Query.New().SQL(sql, bindings...)
+		row := qb.MustFirst()
+		total = row.GetInt("total")
+	}
+	return total
 }
 
 // First 执行查询并返回一条数据记录
 func (gou Query) First(data maps.Map) share.Record {
-	return share.Record{}
+	gou.Limit = 1
+	records := gou.Get(data)
+	if len(records) > 0 {
+		return records[0]
+	}
+	return nil
 }
 
 // format 格式化输出

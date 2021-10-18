@@ -39,5 +39,12 @@ func TestFlowExec(t *testing.T) {
 
 func TestFlowExecQuery(t *testing.T) {
 	flow := SelectFlow("stat")
-	flow.Exec("2000-01-02", "2050-12-31", 1, 2)
+	res := maps.Of(flow.Exec("2000-01-02", "2050-12-31", 1, 2).(map[string]interface{}))
+	assert.Equal(t, res.Dot().Get("data.manus.0.id"), int64(1))
+	assert.Equal(t, res.Dot().Get("data.manus.0.short_name"), "云道天成")
+	assert.Equal(t, res.Dot().Get("data.manus.0.type"), "服务商")
+	assert.Equal(t, res.Dot().Get("data.manus.1.id"), int64(2))
+	assert.Equal(t, res.Dot().Get("data.users.total"), 3)
+	assert.Equal(t, res.Dot().Get("data.address.city"), "丰台区")
+	assert.Equal(t, res.Dot().Get("params.0"), "2000-01-02")
 }
