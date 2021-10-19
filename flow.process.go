@@ -43,19 +43,36 @@ func (flow *Flow) Exec(args ...interface{}) interface{} {
 	return flow.FormatResult(flowCtx)
 }
 
+// ExtendIn 展开 in 参数
+func (ctx *FlowContext) ExtendIn(data maps.Map) maps.Map {
+	if len(ctx.In) < 1 {
+		return data
+	}
+
+	item, ok := ctx.In[0].(map[string]interface{})
+	if !ok {
+		return data
+	}
+	for key, value := range item {
+		data["$"+key] = value
+	}
+	return data
+}
+
 // FormatResult 结果集格式化输出
 func (flow *Flow) FormatResult(ctx *FlowContext) interface{} {
 	if flow.Output == nil {
 		return ctx.Res
 	}
-
-	var data = maps.Map{"$in": ctx.In, "$res": ctx.Res}.Dot()
+	data := maps.Map{"$in": ctx.In, "$res": ctx.Res}
+	data = ctx.ExtendIn(data).Dot()
 	return share.Bind(flow.Output, data)
 }
 
 // ExecNode 运行节点
 func (flow *Flow) ExecNode(node *FlowNode, ctx *FlowContext, vm *FlowVM, prev int) []interface{} {
-	var data = maps.Map{"$in": ctx.In, "$res": ctx.Res}.Dot()
+	data := maps.Map{"$in": ctx.In, "$res": ctx.Res}
+	data = ctx.ExtendIn(data).Dot()
 	var outs = []interface{}{}
 	var resp interface{}
 

@@ -140,11 +140,23 @@ func (process *Process) ArgsMap(i int, defaults ...maps.MapStrAny) maps.MapStrAn
 		return value
 	}
 
-	value, ok = process.Args[i].(maps.Map)
-	if !ok {
-		value = any.Of(process.Args[i]).Map().MapStrAny
+	if values, ok := process.Args[i].(url.Values); ok {
+		res := maps.Map{}
+		for key, val := range values {
+			if len(val) <= 1 {
+				res[key] = values.Get(key)
+				continue
+			}
+			res[key] = val
+		}
+		return res
 	}
-	return value
+
+	if value, ok = process.Args[i].(maps.Map); ok {
+		return value
+	}
+
+	return any.Of(process.Args[i]).Map().MapStrAny
 }
 
 // ArgsBool 读取参数 String
