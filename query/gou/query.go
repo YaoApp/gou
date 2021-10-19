@@ -2,6 +2,7 @@ package gou
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"math"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
+	"github.com/yaoapp/kun/utils"
 	"github.com/yaoapp/xun"
 	"github.com/yaoapp/xun/dbal/query"
 )
@@ -77,12 +79,6 @@ func (gou *Query) With(qb query.Query, getTableName ...GetTableName) *Query {
 	}
 	return gou
 }
-
-// Bind 绑定动态数据
-// func (gou *Query) Bind(data []interface{}) *Query {
-// 	gou.Bindings = data
-// 	return gou
-// }
 
 // SetAESKey 设定 AES KEY
 func (gou *Query) SetAESKey(key string) *Query {
@@ -161,6 +157,13 @@ func (gou Query) Run(data maps.Map) interface{} {
 	sql, bindings := gou.prepare(data)
 	qb := gou.Query.New()
 	qb.SQL(sql, bindings...)
+
+	// Debug模式 打印查询信息
+	if gou.Debug {
+		fmt.Println(sql)
+		utils.Dump(bindings)
+	}
+
 	res, err := qb.DB().Exec(sql, bindings...)
 	if err != nil {
 		exception.New("数据查询错误 %s", 500, err.Error()).Throw()
@@ -181,6 +184,13 @@ func (gou Query) Get(data maps.Map) []share.Record {
 	qb := gou.Query.New()
 	qb.Limit(limit)
 	qb.SQL(sql, bindings...)
+
+	// Debug模式 打印查询信息
+	if gou.Debug {
+		fmt.Println(sql)
+		utils.Dump(bindings)
+	}
+
 	rows := qb.MustGet()
 
 	// 处理数据
@@ -236,6 +246,13 @@ func (gou Query) Paginate(data maps.Map) share.Paginate {
 	qb := gou.Query.New()
 	qb.Limit(limit).Offset(offset)
 	qb.SQL(sql, bindings...)
+
+	// Debug模式 打印查询信息
+	if gou.Debug {
+		fmt.Println(sql)
+		utils.Dump(bindings)
+	}
+
 	rows := qb.MustGet()
 
 	// 处理数据
@@ -253,6 +270,11 @@ func (gou Query) total(sql string, bindings []interface{}) int {
 	if len(matches) > 0 {
 		sql = strings.ReplaceAll(sql, matches[1], " COUNT(*) as `total` ")
 		qb := gou.Query.New().SQL(sql, bindings...)
+		// Debug模式 打印查询信息
+		if gou.Debug {
+			fmt.Println(sql)
+			utils.Dump(bindings)
+		}
 		row := qb.MustFirst()
 		total = row.GetInt("total")
 	}

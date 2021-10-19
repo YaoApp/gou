@@ -75,6 +75,7 @@ type QueryDSL struct {
 	Joins    []Join       `json:"joins,omitempty"`     // 表连接
 	SQL      *SQL         `json:"sql,omitempty"`       // SQL语句
 	Comment  string       `json:"comment,omitempty"`   // 查询条件注释
+	Debug    bool         `json:"debug,omitempty"`     // 是否开启调试(开启后计入查询日志)
 }
 
 // Expression 字段表达式
