@@ -67,7 +67,7 @@ func (flow *Flow) Prepare() {
 			}
 			continue
 		}
-		log.Printf("Node %s: %s 数据分析引擎尚未注册", node.Engine)
+		log.Printf("Node %s: %s 数据分析引擎尚未注册", node.Name, node.Engine)
 	}
 }
 
