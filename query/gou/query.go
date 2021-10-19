@@ -324,15 +324,18 @@ func (gou Query) format(row xun.R) share.Record {
 }
 
 // prepare 与查询准备
-func (gou *Query) prepare(data maps.Map) (sql string, bindings []interface{}) {
+func (gou *Query) prepare(data maps.Map) (string, []interface{}) {
 
 	if gou.STMT == "" {
 		exception.New("查询条件尚未加载", 404).Throw()
 	}
 
 	// 替换参数变量
-	bindings = gou.Bindings
-	sql = gou.STMT
+	bindings := []interface{}{}
+	for _, v := range gou.Bindings {
+		bindings = append(bindings, v)
+	}
+	sql := gou.STMT
 	for i := range bindings {
 		bindings[i] = share.Bind(bindings[i], data)
 	}
