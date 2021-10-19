@@ -41,24 +41,34 @@ func LoadFlow(source string, name string) *Flow {
 		exception.Err(err, 400).Throw()
 	}
 
-	// 预加载 Query DSL
+	flow.Prepare()
+	Flows[name] = &flow
+	return Flows[name]
+}
+
+// Prepare 预加载 Query DSL
+func (flow *Flow) Prepare() {
 	for i, node := range flow.Nodes {
 		if node.Query == nil {
 			continue
 		}
+
+		if node.Engine == "" {
+			log.Printf("Node %s: 未指定数据查询分析引擎", node.Name)
+			continue
+		}
+
 		if engine, has := Engines[node.Engine]; has {
+			var err error
 			flow.Nodes[i].DSL, err = engine.Load(node.Query)
 			if err != nil {
-				log.Printf("%s 数据分析查询解析错误", node.Engine)
+				log.Printf("Node %s: %s 数据分析查询解析错误", node.Name, node.Engine)
 				log.Println(node.Query)
 			}
 			continue
 		}
-		log.Printf("%s 数据分析引擎尚未注册", node.Engine)
+		log.Printf("Node %s: %s 数据分析引擎尚未注册", node.Engine)
 	}
-
-	Flows[name] = &flow
-	return Flows[name]
 }
 
 // LoadScript 载入脚本
