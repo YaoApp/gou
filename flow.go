@@ -48,6 +48,15 @@ func LoadFlow(source string, name string) *Flow {
 
 // Prepare 预加载 Query DSL
 func (flow *Flow) Prepare() {
+
+	if flow.Scripts == nil {
+		flow.Scripts = map[string]string{}
+	}
+
+	if flow.ScriptSource == nil {
+		flow.ScriptSource = map[string]string{}
+	}
+
 	for i, node := range flow.Nodes {
 		if node.Query == nil {
 			continue

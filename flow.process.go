@@ -150,8 +150,17 @@ func (flow *Flow) RunScript(vm *FlowVM, node *FlowNode, ctx *FlowContext, data m
 	}
 
 	filename := flow.Name + "." + node.Script + ".js"
-	vm.Set("args", ctx.In)
-	vm.Set("res", ctx.Res)
+	in := []interface{}{}
+	last := map[string]interface{}{}
+	for key, value := range ctx.Res {
+		last[key] = value
+	}
+
+	for _, value := range ctx.In {
+		in = append(in, value)
+	}
+	vm.Set("args", in)
+	vm.Set("res", last)
 	vm.Set("out", processResp)
 	script, err := vm.Compile(filename, source+"\nmain(args, out, res);")
 	if err != nil {
