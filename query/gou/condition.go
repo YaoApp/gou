@@ -15,6 +15,7 @@ var OPs = map[string]func(cond Condition) error{
 	">=":    condShouldHaveValue,
 	"<":     condShouldHaveValue,
 	"<=":    condShouldHaveValue,
+	"<>":    condShouldHaveValue,
 	"like":  condShouldHaveValue,
 	"match": condShouldHaveValue,
 	"in":    condShouldHaveValue,
