@@ -30,7 +30,7 @@ func TestBuildWheres(t *testing.T) {
 		SetAESKey(TestAESKey)
 	gou.Build()
 	sql := gou.ToSQL()
-	assert.Equal(t, "select `*` from `user` as `u` where `score` < ? and `score` > ? and `id` in (?,?) and (`name` like ? and `name` like ?) and `manu_id` in (select `manu_id` as `id` from `manu` where `status` = ? limit 10)", sql)
+	assert.Equal(t, "select `*` from `user` as `u` where `score` < ? and `score` > ? and `id` in (?,?) and (`name` like ? and `name` like ?) and `manu_id` in (select `manu_id` as `id` from `manu` where `status` = ?)", sql)
 }
 
 func TestBuildOrders(t *testing.T) {
@@ -124,7 +124,7 @@ func TestBuildLimit(t *testing.T) {
 		SetAESKey(TestAESKey)
 	gou.Build()
 	sql := gou.ToSQL()
-	assert.Equal(t, "select `*` from `table` as `name` limit 20 offset 10", sql)
+	assert.Equal(t, "select `*` from `table` as `name`", sql)
 }
 
 func TestBuildSQL(t *testing.T) {

@@ -171,18 +171,86 @@ func (gou Query) Run(data maps.Map) interface{} {
 	return res
 }
 
+// GetPage get Page
+func (gou Query) GetPage(data maps.Map) int {
+	if gou.Page == nil {
+		return 1
+	}
+	switch gou.Page.(type) {
+	case float64, float32, int, int64, int32:
+		return any.Of(gou.Page).CInt()
+		break
+	case string:
+		page := share.Bind(gou.Page, data)
+		return any.Of(page).CInt()
+		break
+	}
+	return 1
+}
+
+// GetPageSize get Page Size
+func (gou Query) GetPageSize(data maps.Map) int {
+	if gou.PageSize == nil {
+		return 20
+	}
+	switch gou.PageSize.(type) {
+	case float64, float32, int, int64, int32:
+		return any.Of(gou.PageSize).CInt()
+		break
+	case string:
+		pagesize := share.Bind(gou.PageSize, data)
+		return any.Of(pagesize).CInt()
+		break
+	}
+	return 20
+}
+
+// SetOffset set Offset
+func (gou Query) SetOffset(qb query.Query, data maps.Map) {
+	if gou.Offset == nil {
+		return
+	}
+	switch gou.Offset.(type) {
+	case float64, float32, int, int64, int32:
+		qb.Offset(any.Of(gou.Offset).CInt())
+		break
+	case string:
+		offset := share.Bind(gou.Offset, data)
+		qb.Offset(any.Of(offset).CInt())
+		break
+	}
+}
+
+// SetLimit set Limit
+func (gou Query) SetLimit(qb query.Query, data maps.Map) {
+	if gou.Limit == nil {
+		qb.Limit(100)
+		return
+	}
+	switch gou.Limit.(type) {
+	case float64, float32, int, int64, int32:
+		qb.Limit(any.Of(gou.Limit).CInt())
+		return
+		break
+	case string:
+		limit := share.Bind(gou.Limit, data)
+		qb.Limit(any.Of(limit).CInt())
+		return
+		break
+	}
+
+	qb.Limit(100)
+}
+
 // Get 执行查询并返回数据记录集合
 func (gou Query) Get(data maps.Map) []share.Record {
 
 	res := []share.Record{}
 	sql, bindings := gou.prepare(data)
-	limit := 1000
-	if gou.Limit != nil && any.Of(gou.Limit).IsNumber() {
-		limit = any.Of(gou.Limit).CInt()
-	}
-
 	qb := gou.Query.New()
-	qb.Limit(limit)
+	gou.SetOffset(qb, data)
+	gou.SetLimit(qb, data)
+
 	qb.SQL(sql, bindings...)
 
 	// Debug模式 打印查询信息
@@ -205,19 +273,13 @@ func (gou Query) Get(data maps.Map) []share.Record {
 func (gou Query) Paginate(data maps.Map) share.Paginate {
 	res := share.Paginate{}
 	sql, bindings := gou.prepare(data)
-	page := 1
-	pageSize := 20
-	if gou.Page != nil && any.Of(gou.Page).IsNumber() {
-		page = any.Of(gou.Page).CInt()
-		if page < 1 {
-			page = 1
-		}
+	page := gou.GetPage(data)
+	pageSize := gou.GetPageSize(data)
+	if page < 1 {
+		page = 1
 	}
-	if gou.PageSize != nil && any.Of(gou.PageSize).IsNumber() {
-		pageSize = any.Of(gou.PageSize).CInt()
-		if pageSize < 1 {
-			pageSize = 1
-		}
+	if pageSize < 1 {
+		pageSize = 20
 	}
 
 	res.Page = page
@@ -340,10 +402,6 @@ func (gou *Query) prepare(data maps.Map) (string, []interface{}) {
 		bindings[i] = share.Bind(bindings[i], data)
 	}
 
-	gou.Offset = share.Bind(gou.Offset, data)
-	gou.Limit = share.Bind(gou.Limit, data)
-	gou.Page = share.Bind(gou.Page, data)
-	gou.PageSize = share.Bind(gou.PageSize, data)
 	gou.DataOnly = share.Bind(gou.DataOnly, data)
 	return sql, bindings
 }

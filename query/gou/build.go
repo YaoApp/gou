@@ -25,7 +25,7 @@ func (gou *Query) Build() {
 	gou.buildUnions()
 	gou.buildSubQuery()
 	gou.buildJoins()
-	gou.buildLimit()
+	// gou.buildLimit()
 	gou.buildSQL()
 }
 
