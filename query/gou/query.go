@@ -148,10 +148,10 @@ func (gou Query) Run(data maps.Map) interface{} {
 
 	if gou.Page != nil || gou.PageSize != nil {
 		return gou.Paginate(data)
-	} else if gou.Limit != nil {
-		return gou.Get(data)
 	} else if gou.QueryDSL.First != nil {
 		return gou.First(data)
+	} else {
+		return gou.Get(data)
 	}
 
 	sql, bindings := gou.prepare(data)
