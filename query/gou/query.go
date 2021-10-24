@@ -179,11 +179,9 @@ func (gou Query) GetPage(data maps.Map) int {
 	switch gou.Page.(type) {
 	case float64, float32, int, int64, int32:
 		return any.Of(gou.Page).CInt()
-		break
 	case string:
 		page := share.Bind(gou.Page, data)
 		return any.Of(page).CInt()
-		break
 	}
 	return 1
 }
@@ -196,11 +194,10 @@ func (gou Query) GetPageSize(data maps.Map) int {
 	switch gou.PageSize.(type) {
 	case float64, float32, int, int64, int32:
 		return any.Of(gou.PageSize).CInt()
-		break
+
 	case string:
 		pagesize := share.Bind(gou.PageSize, data)
 		return any.Of(pagesize).CInt()
-		break
 	}
 	return 20
 }
@@ -231,12 +228,10 @@ func (gou Query) SetLimit(qb query.Query, data maps.Map) {
 	case float64, float32, int, int64, int32:
 		qb.Limit(any.Of(gou.Limit).CInt())
 		return
-		break
 	case string:
 		limit := share.Bind(gou.Limit, data)
 		qb.Limit(any.Of(limit).CInt())
 		return
-		break
 	}
 
 	qb.Limit(100)

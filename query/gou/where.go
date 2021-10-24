@@ -102,14 +102,7 @@ func (gou *Query) parseWhereArgs(where Where) whereArgs {
 	// 分组查询
 	if where.Wheres != nil {
 		mehtod = "wheres"
-		wheres := [][]interface{}{}
-		for i := range where.Wheres {
-			w := gou.parseWhereArgs(where.Wheres[i])
-			args := []interface{}{w.Field}
-			args = append(args, w.Args...)
-			wheres = append(wheres, args)
-		}
-		field = wheres
+		field = where.Wheres
 	}
 
 	return whereArgs{
@@ -118,6 +111,28 @@ func (gou *Query) parseWhereArgs(where Where) whereArgs {
 		Field:  field,
 		Args:   []interface{}{where.OP, value},
 	}
+}
+
+func (gou *Query) setWheres(or bool, wheres []Where) {
+	if wheres == nil {
+		return
+	}
+
+	var whereFun = func(qb query.Query) {
+		gouWheres := New()
+		gouWheres.Query = qb
+		for _, where := range wheres {
+			gouWheres.buildWhere(where)
+		}
+	}
+
+	if or {
+		gou.Query.OrWhere(whereFun)
+		return
+	}
+
+	gou.Query.Where(whereFun)
+
 }
 
 func (gou *Query) setWhere(or bool, field interface{}, args ...interface{}) {

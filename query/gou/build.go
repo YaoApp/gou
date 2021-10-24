@@ -90,7 +90,9 @@ func (gou *Query) buildWhere(where Where) {
 		gou.setWhereNotNull(args.OR, args.Field)
 		break
 	case "wheres":
-		gou.setWhere(args.OR, args.Field)
+		if wheres, ok := args.Field.([]Where); ok {
+			gou.setWheres(args.OR, wheres)
+		}
 		break
 	}
 }
@@ -100,7 +102,6 @@ func (gou *Query) buildOrders() *Query {
 	if gou.Orders == nil {
 		return gou
 	}
-
 	for _, order := range gou.Orders {
 		sql := gou.sqlExpression(*order.Field)
 		if sql != nil {
