@@ -16,7 +16,11 @@ var reFun = regexp.MustCompile("{{[ ]*([0-9a-zA-Z_]+)[ ]*\\((.*)\\)[ ]*}}") // {
 var reFunArg = regexp.MustCompile("([^\\s,]+)")                             // $res.users, 'id'
 
 // Bind 绑定数据
-func Bind(v interface{}, data maps.Map) interface{} {
+func Bind(v interface{}, data maps.Map, vars ...*regexp.Regexp) interface{} {
+
+	if len(vars) == 0 {
+		vars = []*regexp.Regexp{reVar, reVarStyle2}
+	}
 
 	var res interface{} = v
 	value := reflect.ValueOf(v)
@@ -43,37 +47,52 @@ func Bind(v interface{}, data maps.Map) interface{} {
 	} else if valueKind == reflect.String { // 绑定数据
 		input := value.Interface().(string)
 
+		// 替换变量
+		for _, reVar := range vars {
+			matches := reVar.FindAllStringSubmatch(input, -1)
+			length := len(matches)
+			if length == 1 { // "{{in.0}}"
+				name := matches[0][1]
+				res = data[name]
+			} else if length > 1 {
+				for _, match := range matches {
+					val := fmt.Sprintf("%s", data[match[1]])
+					input = strings.ReplaceAll(input, match[0], val)
+				}
+			}
+		}
+
 		// ReplaceVar
-		matches := reVar.FindAllStringSubmatch(input, -1)
-		length := len(matches)
+		// matches := reVar.FindAllStringSubmatch(input, -1)
+		// length := len(matches)
 
-		if length == 0 { // ?:
-			matches = reVarStyle2.FindAllStringSubmatch(input, -1)
-			length = len(matches)
-		}
+		// if length == 0 { // ?:
+		// 	matches = reVarStyle2.FindAllStringSubmatch(input, -1)
+		// 	length = len(matches)
+		// }
 
-		if length == 1 { // "{{in.0}}"
-			name := matches[0][1]
-			res = data[name]
-		} else if length > 1 {
-			for _, match := range matches {
-				val := fmt.Sprintf("%s", data[match[1]])
-				input = strings.ReplaceAll(input, match[0], val)
-			}
-		}
+		// if length == 1 { // "{{in.0}}"
+		// 	name := matches[0][1]
+		// 	res = data[name]
+		// } else if length > 1 {
+		// 	for _, match := range matches {
+		// 		val := fmt.Sprintf("%s", data[match[1]])
+		// 		input = strings.ReplaceAll(input, match[0], val)
+		// 	}
+		// }
 
-		// ReplaceFilters
-		matches = reFun.FindAllStringSubmatch(input, -1)
-		length = len(matches)
-		if length == 1 {
-			name := matches[0][1]
-			if method, has := Filters[name]; has {
-				args := extraFunArgs(matches[0][2], data)
-				res = method(args...)
-			} else {
-				res = nil
-			}
-		}
+		// ReplaceFilters( 即将废弃)
+		// matches = reFun.FindAllStringSubmatch(input, -1)
+		// length = len(matches)
+		// if length == 1 {
+		// 	name := matches[0][1]
+		// 	if method, has := Filters[name]; has {
+		// 		args := extraFunArgs(matches[0][2], data)
+		// 		res = method(args...)
+		// 	} else {
+		// 		res = nil
+		// 	}
+		// }
 	}
 	return res
 }

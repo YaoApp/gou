@@ -220,7 +220,7 @@ func (gou Query) SetOffset(qb query.Query, data maps.Map) {
 
 // SetLimit set Limit
 func (gou Query) SetLimit(qb query.Query, data maps.Map) {
-	if gou.Limit == nil {
+	if gou.Limit == nil && gou.SQL == nil {
 		qb.Limit(100)
 		return
 	}
@@ -234,7 +234,9 @@ func (gou Query) SetLimit(qb query.Query, data maps.Map) {
 		return
 	}
 
-	qb.Limit(100)
+	if gou.SQL == nil {
+		qb.Limit(100)
+	}
 }
 
 // Get 执行查询并返回数据记录集合
