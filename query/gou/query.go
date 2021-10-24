@@ -150,7 +150,7 @@ func (gou Query) Run(data maps.Map) interface{} {
 		return gou.Paginate(data)
 	} else if gou.QueryDSL.First != nil {
 		return gou.First(data)
-	} else {
+	} else if gou.SQL == nil {
 		return gou.Get(data)
 	}
 

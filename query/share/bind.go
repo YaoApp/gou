@@ -22,7 +22,7 @@ func Bind(v interface{}, data maps.Map, vars ...*regexp.Regexp) interface{} {
 		vars = []*regexp.Regexp{reVar, reVarStyle2}
 	}
 
-	var res interface{} = v
+	var res interface{}
 	value := reflect.ValueOf(v)
 	value = reflect.Indirect(value)
 	valueKind := value.Kind()
@@ -44,7 +44,7 @@ func Bind(v interface{}, data maps.Map, vars ...*regexp.Regexp) interface{} {
 			val[k] = Bind(value.MapIndex(key).Interface(), data)
 		}
 		res = val
-	} else if valueKind == reflect.String { // 绑定数据
+	} else if valueKind == reflect.String { // String
 		input := value.Interface().(string)
 
 		// 替换变量
@@ -54,46 +54,22 @@ func Bind(v interface{}, data maps.Map, vars ...*regexp.Regexp) interface{} {
 			if length == 1 { // "{{in.0}}"
 				name := matches[0][1]
 				res = data[name]
+				break
 			} else if length > 1 {
 				for _, match := range matches {
 					val := fmt.Sprintf("%s", data[match[1]])
 					input = strings.ReplaceAll(input, match[0], val)
 				}
+				res = input
+				break
+			} else {
+				res = input
 			}
 		}
-
-		// ReplaceVar
-		// matches := reVar.FindAllStringSubmatch(input, -1)
-		// length := len(matches)
-
-		// if length == 0 { // ?:
-		// 	matches = reVarStyle2.FindAllStringSubmatch(input, -1)
-		// 	length = len(matches)
-		// }
-
-		// if length == 1 { // "{{in.0}}"
-		// 	name := matches[0][1]
-		// 	res = data[name]
-		// } else if length > 1 {
-		// 	for _, match := range matches {
-		// 		val := fmt.Sprintf("%s", data[match[1]])
-		// 		input = strings.ReplaceAll(input, match[0], val)
-		// 	}
-		// }
-
-		// ReplaceFilters( 即将废弃)
-		// matches = reFun.FindAllStringSubmatch(input, -1)
-		// length = len(matches)
-		// if length == 1 {
-		// 	name := matches[0][1]
-		// 	if method, has := Filters[name]; has {
-		// 		args := extraFunArgs(matches[0][2], data)
-		// 		res = method(args...)
-		// 	} else {
-		// 		res = nil
-		// 	}
-		// }
+	} else {
+		res = v
 	}
+
 	return res
 }
 

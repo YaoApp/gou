@@ -87,9 +87,12 @@ func (flow *Flow) ExecNode(node *FlowNode, ctx *FlowContext, vm *FlowVM, prev in
 }
 
 // RunQuery 运行 Query DSL 查询
-func (flow *Flow) RunQuery(node *FlowNode, ctx *FlowContext, data maps.Map) (resp interface{}, outs []interface{}) {
+func (flow *Flow) RunQuery(node *FlowNode, ctx *FlowContext, data maps.Map) (interface{}, []interface{}) {
+
 	var res interface{}
-	resp = node.DSL.Run(data)
+	outs := []interface{}{}
+	resp := node.DSL.Run(data)
+
 	if node.Outs == nil || len(node.Outs) == 0 {
 		res = resp
 	} else {
@@ -108,15 +111,18 @@ func (flow *Flow) RunQuery(node *FlowNode, ctx *FlowContext, data maps.Map) (res
 }
 
 // RunProcess 运行处理器
-func (flow *Flow) RunProcess(node *FlowNode, ctx *FlowContext, data maps.Map) (resp interface{}, outs []interface{}) {
+func (flow *Flow) RunProcess(node *FlowNode, ctx *FlowContext, data maps.Map) (interface{}, []interface{}) {
 
+	args := []interface{}{}
+	outs := []interface{}{}
+	var resp interface{}
 	var res interface{}
-	for i := range node.Args {
-		node.Args[i] = share.Bind(node.Args[i], data)
+	for _, arg := range node.Args {
+		args = append(args, share.Bind(arg, data))
 	}
 
 	if node.Process != "" {
-		process := NewProcess(node.Process, node.Args...)
+		process := NewProcess(node.Process, args...)
 		resp = process.Run()
 	}
 
