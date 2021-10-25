@@ -91,7 +91,7 @@ func (gou *Query) parseWhereArgs(where Where) whereArgs {
 
 	// 子查询
 	if where.Query != nil {
-		gouSub := New()
+		gouSub := gou.Clone()
 		gouSub.QueryDSL = *where.Query
 		value = func(qb query.Query) {
 			gouSub.Query = qb
