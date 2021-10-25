@@ -101,6 +101,12 @@ func (process *Process) ArgsInt(i int, defaults ...int) int {
 		return value
 	}
 
+	// 空值返回
+	v, ok := process.Args[i].(string)
+	if ok && v == "" {
+		return value
+	}
+
 	value, ok = process.Args[i].(int)
 	if !ok {
 		value = any.Of(process.Args[i]).CInt()
