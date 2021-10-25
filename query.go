@@ -355,7 +355,15 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 		case "notnull":
 			qb.WhereNotNull(column)
 			break
+		case "match":
+			if value, ok := where.Value.(string); ok {
+				qb.Where(column, "like", "%"+value+"%")
+			}
+			break
 		case "in":
+			if value, ok := where.Value.(string); ok {
+				where.Value = strings.Split(value, ",")
+			}
 			qb.WhereIn(column, where.Value)
 			break
 		default:
@@ -374,7 +382,15 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 		case "notnull":
 			qb.OrWhereNotNull(column)
 			break
+		case "match":
+			if value, ok := where.Value.(string); ok {
+				qb.Where(column, "like", "%"+value+"%")
+			}
+			break
 		case "in":
+			if value, ok := where.Value.(string); ok {
+				where.Value = strings.Split(value, ",")
+			}
 			qb.OrWhereIn(column, where.Value)
 		default:
 			op, has := opmap[where.OP]
