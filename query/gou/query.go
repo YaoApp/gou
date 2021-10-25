@@ -86,6 +86,14 @@ func (gou *Query) SetAESKey(key string) *Query {
 	return gou
 }
 
+// Clone 克隆对象
+func (gou *Query) Clone() *Query {
+	var new Query = Query{}
+	new.GetTableName = gou.GetTableName
+	new.AESKey = gou.AESKey
+	return &new
+}
+
 // New 克隆对象
 func New() *Query {
 	var new Query = Query{}

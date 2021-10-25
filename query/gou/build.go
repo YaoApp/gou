@@ -216,7 +216,7 @@ func (gou *Query) buildSubQuery() *Query {
 	}
 	alias = strings.ReplaceAll(alias, "`", "")
 
-	gouSubQuery := New()
+	gouSubQuery := gou.Clone()
 	gouSubQuery.QueryDSL = *gou.SubQuery
 	gou.Query.FromSub(func(qb query.Query) {
 		gouSubQuery.Query = qb
