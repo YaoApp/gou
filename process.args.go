@@ -3,7 +3,9 @@ package gou
 import (
 	"fmt"
 	"net/url"
+	"reflect"
 
+	"github.com/yaoapp/gou/query/share"
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
@@ -182,4 +184,59 @@ func (process *Process) ArgsBool(i int, defaults ...bool) bool {
 		value = any.Of(process.Args[i]).CBool()
 	}
 	return value
+}
+
+// ArgsRecords 读取 []map[string]interface{} 参数值
+func (process *Process) ArgsRecords(index int) []map[string]interface{} {
+	process.ValidateArgNums(index + 1)
+	records := []map[string]interface{}{}
+	args := process.Args[index]
+	switch args.(type) {
+	case []interface{}:
+		for _, v := range args.([]interface{}) {
+			value, ok := v.(map[string]interface{})
+			if ok {
+				records = append(records, value)
+				continue
+			}
+			exception.New("参数错误: 第%d个参数不是数组", 400, index+1).Ctx(fmt.Sprintf("%#v", process.Args[index])).Throw()
+		}
+		break
+	case []share.Record:
+		for _, v := range args.([]share.Record) {
+			records = append(records, v)
+		}
+		break
+	case []map[string]interface{}:
+		records = args.([]map[string]interface{})
+		break
+	default:
+		fmt.Printf("%#v %s\n", args, reflect.TypeOf(args).Kind())
+		exception.New("参数错误: 第%d个参数不是数组", 400, index+1).Ctx(fmt.Sprintf("%#v", process.Args[index])).Throw()
+		break
+	}
+	return records
+}
+
+// ArgsStrings 读取 []string 参数值
+func (process *Process) ArgsStrings(index int) []string {
+	process.ValidateArgNums(index + 1)
+	columnsAny := process.Args[0]
+	columns := []string{}
+	switch columnsAny.(type) {
+	case []interface{}:
+		for _, v := range columnsAny.([]interface{}) {
+			value, ok := v.(string)
+			if ok {
+				columns = append(columns, value)
+				continue
+			}
+			exception.New("参数错误: 第%d个参数不是字符串数组", 400, index+1).Ctx(process.Args[index]).Throw()
+		}
+	case []string:
+	default:
+		exception.New("参数错误: 第%d个参数不是字符串数组", 400, index+1).Ctx(process.Args[index]).Throw()
+		break
+	}
+	return columns
 }
