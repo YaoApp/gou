@@ -50,12 +50,11 @@ func URLToQueryParam(values url.Values) QueryParam {
 			param.setOrder(name, values.Get(name))
 			continue
 		} else if reURLWhere.MatchString(name) {
-			param.setWhere(name, values.Get(name))
+			param.setWhere(name, getURLValue(values, name))
 			continue
 		} else if strings.HasPrefix(name, "group.") {
-			param.setGroupWhere(whereGroups, name, values.Get(name))
+			param.setGroupWhere(whereGroups, name, getURLValue(values, name))
 			continue
-
 		} else if name == "with" {
 			param.setWith(values.Get(name))
 			continue
@@ -74,6 +73,17 @@ func URLToQueryParam(values url.Values) QueryParam {
 	return param
 }
 
+// getURLValue 读取URLvalues 数值 return []string | string
+func getURLValue(values url.Values, name string) interface{} {
+	if value, has := values[name]; has {
+		if len(value) == 1 {
+			return value[0]
+		}
+		return value
+	}
+	return ""
+}
+
 // "select", "name,secret,status,type" -> []interface{"name","secret"...}
 func (param *QueryParam) setSelect(value string) {
 	selects := []interface{}{}
@@ -85,7 +95,7 @@ func (param *QueryParam) setSelect(value string) {
 }
 
 // "group.types.where.type.eq", "admin"
-func (param *QueryParam) setGroupWhere(groups map[string][]QueryWhere, name string, value string) {
+func (param *QueryParam) setGroupWhere(groups map[string][]QueryWhere, name string, value interface{}) {
 
 	matches := reURLGroupWhere.FindStringSubmatch(name)
 	group := matches[1]
@@ -113,7 +123,7 @@ func (param *QueryParam) setGroupWhere(groups map[string][]QueryWhere, name stri
 }
 
 // "where.status.eq" , "enabled" -> []Wheres{...}
-func (param *QueryParam) setWhere(name string, value string) {
+func (param *QueryParam) setWhere(name string, value interface{}) {
 	matches := reURLWhere.FindStringSubmatch(name)
 	method := matches[1]
 	colinfo := strings.Split(matches[2], ".")
