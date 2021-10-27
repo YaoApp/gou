@@ -199,7 +199,6 @@ func (exp *Expression) parseExpArray() error {
 // parseFunc 解析函数
 func (exp *Expression) parseExpFunc() error {
 
-	fmt.Println("parseExpField", exp.Field)
 	matches := RegFieldFun.FindStringSubmatch(exp.Field)
 	if matches == nil {
 		return errors.Errorf("字段表达式函数格式不正确(%s)", exp.Field)
