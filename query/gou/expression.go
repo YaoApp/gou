@@ -198,15 +198,22 @@ func (exp *Expression) parseExpArray() error {
 
 // parseFunc 解析函数
 func (exp *Expression) parseExpFunc() error {
+
+	fmt.Println("parseExpField", exp.Field)
 	matches := RegFieldFun.FindStringSubmatch(exp.Field)
 	if matches == nil {
 		return errors.Errorf("字段表达式函数格式不正确(%s)", exp.Field)
 	}
+
 	exp.FunName = matches[1]
 	exp.FunArgs = []Expression{}
 	exp.IsFun = true
 	args := strings.Split(matches[2], ",")
 	for _, arg := range args {
+		arg = strings.TrimSpace(arg)
+		if arg == "" {
+			continue
+		}
 		argexp, err := MakeExpression(arg)
 		if err != nil {
 			return errors.Errorf(" %s 参数错误: %s", exp.Field, err.Error())
