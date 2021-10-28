@@ -1,9 +1,11 @@
 package gou
 
 import (
+	"fmt"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/kun/day"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/kun/str"
@@ -15,6 +17,7 @@ import (
 func (column *Column) FliterIn(value interface{}, row maps.MapStrAny) {
 	column.fliterInCrypt(value, row)
 	column.fliterInJSON(value, row)
+	column.fliterInDateTime(value, row)
 }
 
 // FliterOut 输出过滤器
@@ -93,6 +96,18 @@ func (column *Column) fliterInCrypt(value interface{}, row maps.MapStrAny) {
 	}
 
 	row.Set(column.Name, valuehash)
+}
+
+// fliterInDate 日期字段处理
+func (column *Column) fliterInDateTime(value interface{}, row maps.MapStrAny) {
+	typ := strings.ToLower(column.Type)
+	switch typ {
+	case "datetime", "date", "datetimeTz", "timestamp", "timestampTz", "time", "timeTz":
+		if _, ok := value.(dbal.Expression); !ok {
+			fmt.Printf("fliterInDateTime: %#v", value)
+			row.Set(column.Name, day.Of(value).Format("2006-01-02 15:04:05"))
+		}
+	}
 }
 
 // fliterInJSON JSON字段处理
