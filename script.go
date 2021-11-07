@@ -12,20 +12,29 @@ import (
 // Scripts 已加载脚本
 var Scripts = map[string]*Script{}
 
-// NewJS 创建JS脚本
-func NewJS() ScriptVM {
+// NewVM 创建脚本运行环境
+func NewVM() ScriptVM {
 	return &JavaScript{Otto: otto.New()}
+}
+
+// NewScript 创建 Script
+func NewScript(file string, source string, namespace string) (*Script, error) {
+	program, err := parser.ParseFile(nil, file, source, 0)
+	if err != nil {
+		return nil, err
+	}
+	script := Script{File: file, Source: source, Functions: map[string]Function{}}
+	ast.Walk(script, program)
+	return &script, nil
 }
 
 // LoadScript 加载数据处理脚本
 func LoadScript(file string, source string, namespace string) error {
-	program, err := parser.ParseFile(nil, file, source, 0)
+	script, err := NewScript(file, source, namespace)
 	if err != nil {
 		return err
 	}
-	script := Script{File: file, Source: source, Functions: map[string]Function{}}
-	ast.Walk(script, program)
-	Scripts[namespace] = &script
+	Scripts[namespace] = script
 	return nil
 }
 

@@ -43,7 +43,7 @@ func TestJavaScriptCompile(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	vm := NewJS()
+	vm := NewVM()
 	test := Scripts["test"]
 	err = vm.Compile(test)
 	if err != nil {
@@ -59,7 +59,7 @@ func TestJavaScriptRun(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	vm := NewJS()
+	vm := NewVM()
 	test := Scripts["test"]
 	err = vm.Compile(test)
 	if err != nil {
@@ -91,7 +91,7 @@ func TestJavaScriptRunWithProcess(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	vm := NewJS()
+	vm := NewVM()
 	test := Scripts["test"]
 	err = vm.Compile(test)
 	if err != nil {
