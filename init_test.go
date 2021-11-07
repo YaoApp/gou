@@ -73,7 +73,7 @@ func TestMain(m *testing.M) {
 	LoadAPI("file://"+path.Join(TestAPIRoot, "manu.http.json"), "manu")
 
 	// 加载 Flow
-	JavaScriptVM.Load(path.Join(TestScriptRoot, "test.js"), "scripts.test") // 加载全局脚本
+	JavaScriptVM.Load(path.Join(TestScriptRoot, "test.js"), "app.test") // 加载全局脚本
 
 	LoadFlow("file://"+path.Join(TestFLWRoot, "latest.flow.json"), "latest").
 		LoadScript("file://"+path.Join(TestFLWRoot, "latest.rank.js"), "rank").

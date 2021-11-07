@@ -11,7 +11,6 @@ import (
 
 // NewProcess 创建运行器
 func NewProcess(name string, args ...interface{}) *Process {
-	name = strings.ToLower(name)
 	process := &Process{Name: name, Args: args}
 	process.extraProcess()
 	return process
@@ -50,11 +49,17 @@ func (process *Process) extraProcess() {
 	}
 
 	if process.Type == "plugins" { // Plugin
-		process.Handler = processExec
+		process.Handler = processPlugin
 		return
 
 	} else if process.Type == "flows" { // Flow
 		process.Handler = processFlow
+		return
+
+	} else if process.Type == "scripts" { // scripts
+		process.Class = strings.ToLower(strings.Join(namer[1:last], "."))
+		process.Method = namer[last]
+		process.Handler = processScript
 		return
 
 	} else if process.Type == "models" { // Model
@@ -77,10 +82,10 @@ func (process *Process) extraProcess() {
 	exception.New("%s 未找到处理器", 404, process.Name).Throw()
 }
 
-// processExec 运行插件中的方法
-func processExec(process *Process) interface{} {
-	mod := SelectPluginModel(process.Class)
-	res, err := mod.Exec(process.Method, process.Args...)
+// processPlugin 运行插件中的方法
+func processPlugin(process *Process) interface{} {
+	plugin := SelectPluginModel(process.Class)
+	res, err := plugin.Exec(process.Method, process.Args...)
 	if err != nil {
 		exception.Err(err, 500).Throw()
 	}
@@ -92,6 +97,17 @@ func processFlow(process *Process) interface{} {
 	name := strings.TrimPrefix(process.Name, "flows.")
 	flow := SelectFlow(name)
 	return flow.Exec(process.Args...)
+}
+
+// processScript 运行脚本中定义的处理器
+func processScript(process *Process) interface{} {
+	res, err := JavaScriptVM.
+		WithProcess("*").
+		Run(process.Class, process.Method, process.Args...)
+	if err != nil {
+		exception.New("脚本执行失败: %s", 500, err.Error()).Throw()
+	}
+	return res
 }
 
 // processFind 运行模型 MustFind

@@ -105,6 +105,8 @@ func (vm *JavaScript) LoadSource(filename string, input io.Reader, name string) 
 	if err != nil {
 		return err
 	}
+
+	name = strings.ToLower(name)
 	vm.Scripts[name] = script
 	return nil
 }

@@ -13,7 +13,7 @@
     },
     {
       "name": "全局脚本",
-      "script": "scripts.test"
+      "script": "app.test"
     }
   ],
   "output": "{{$res}}"

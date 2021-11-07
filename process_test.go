@@ -10,7 +10,7 @@ import (
 	"github.com/yaoapp/xun/capsule"
 )
 
-func TestProcessExec(t *testing.T) {
+func TestProcessPlugin(t *testing.T) {
 	defer SelectPlugin("user").Client.Kill()
 	res := NewProcess("plugins.user.Login", 1).Run().(maps.Map)
 	res2 := NewProcess("plugins.user.Login", 2).Run().(maps.Map)
@@ -18,6 +18,20 @@ func TestProcessExec(t *testing.T) {
 	assert.Equal(t, "login", res2.Get("name"))
 	assert.Equal(t, 1, any.Of(res.Dot().Get("args.0")).CInt())
 	assert.Equal(t, 2, any.Of(res2.Dot().Get("args.0")).CInt())
+}
+
+func TestProcessScript(t *testing.T) {
+	res := NewProcess("scripts.app.test.hello", "world").Run()
+	assert.Equal(t, "hello:world", res)
+
+	res = NewProcess("scripts.app.test.helloProcess", "Max").Run()
+	resdot := any.MapOf(res).MapStrAny.Dot()
+	assert.Equal(t, "Max", resdot.Get("name"))
+	assert.Equal(t, "login", resdot.Get("out.name"))
+	assert.Equal(t, float64(1024), resdot.Get("out.args.1"))
+
+	res = NewProcess("scripts.flows.script.rank.hello").Run()
+	assert.Equal(t, "rank hello", res)
 }
 
 func TestProcessFlow(t *testing.T) {
