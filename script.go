@@ -38,7 +38,6 @@ func (script Script) Enter(n ast.Node) ast.Visitor {
 		line := len(lines)
 		script.Functions[name] = Function{
 			Name:      name,
-			Source:    v.Function.Source,
 			Line:      line,
 			NumOfArgs: len(v.Function.ParameterList.List),
 		}
@@ -74,7 +73,7 @@ func (vm JavaScript) Run(script *Script, method string, args ...interface{}) (in
 
 	f, has := script.Functions[method]
 	if !has {
-		return nil, fmt.Errorf("function  %s does not existed! ", method)
+		return nil, fmt.Errorf("function %s does not existed! ", method)
 	}
 
 	if f.Compiled == nil {

@@ -5,7 +5,6 @@ import "github.com/robertkrimen/otto"
 // Function 脚本函数
 type Function struct {
 	Name      string
-	Source    string
 	NumOfArgs int
 	Line      int
 	Compiled  interface{}
