@@ -162,7 +162,10 @@ func (flow *Flow) RunScript(node *FlowNode, ctx *FlowContext, data maps.Map, pro
 		in = append(in, value)
 	}
 
-	resp, err := JavaScriptVM.Run(name, "main", in, processResp, last)
+	resp, err := JavaScriptVM.
+		WithProcess("*").
+		Run(name, "main", in, processResp, last)
+
 	if err != nil {
 		exception.New("%s 脚本错误: %s", 500, node.Script, err.Error()).Ctx(map[string]interface{}{
 			"$in":  in,

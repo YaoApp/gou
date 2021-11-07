@@ -5,9 +5,14 @@ function main(args, out, res) {
     out: out,
     res: res,
     hello: hello(),
+    user: user(),
   };
 }
 
 function hello() {
   return "rank hello";
+}
+
+function user() {
+  return Process("plugins.user.Login", 1024);
 }

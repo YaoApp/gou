@@ -59,4 +59,7 @@ func TestFlowExecScript(t *testing.T) {
 	assert.Equal(t, "sort", res.Dot().Get("Flow完整引用.name"))
 	assert.Equal(t, "rank hello", res.Dot().Get("Flow脚本.hello"))
 	assert.Equal(t, "sort hello", res.Dot().Get("Flow完整引用.hello"))
+
+	assert.Equal(t, "login", res.Dot().Get("Flow脚本.user.name"))
+	assert.Equal(t, float64(1024), res.Dot().Get("Flow脚本.user.args.1"))
 }
