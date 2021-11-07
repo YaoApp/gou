@@ -118,6 +118,12 @@ func (vm *JavaScript) Get(name string) (*Script, error) {
 	return script, nil
 }
 
+// Has 检测脚本是否已加载
+func (vm *JavaScript) Has(name string) bool {
+	_, has := vm.Scripts[name]
+	return has
+}
+
 // Run 运行指定已加载脚本
 func (vm *JavaScript) Run(name string, method string, args ...interface{}) (interface{}, error) {
 	script, has := vm.Scripts[name]

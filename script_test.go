@@ -15,6 +15,8 @@ func TestLoadScript(t *testing.T) {
 	assert.True(t, test.Has("functions.lastYear"))
 	assert.True(t, test.Has("functions.now"))
 	assert.True(t, test.Has("functions.main"))
+	assert.True(t, vm.Has("test"))
+	assert.False(t, vm.Has("test.x"))
 }
 
 func TestJavaScriptCompile(t *testing.T) {

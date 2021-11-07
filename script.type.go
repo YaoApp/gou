@@ -13,6 +13,7 @@ type ScriptVM interface {
 	Run(name string, method string, args ...interface{}) (interface{}, error)
 	RunScript(script *Script, method string, args ...interface{}) (interface{}, error)
 	Load(filename string, name string) error
+	Has(name string) bool
 	MustLoad(filename string, name string) ScriptVM
 	LoadSource(filename string, input io.Reader, name string) error
 	MustLoadSource(filename string, input io.Reader, name string) ScriptVM
