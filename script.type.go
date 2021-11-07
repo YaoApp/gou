@@ -26,6 +26,5 @@ type Function struct {
 
 // JavaScript 脚本程序运行器
 type JavaScript struct {
-	Process string // 当前运行的处理器 | 防止递归调用
 	*otto.Otto
 }
