@@ -85,3 +85,27 @@ func TestJavaScriptRun(t *testing.T) {
 	assert.True(t, resdot.Has("lastYear"))
 	assert.True(t, resdot.Has("now"))
 }
+
+func TestJavaScriptRunWithProcess(t *testing.T) {
+	err := LoadScript("test.js", getSource(), "test")
+	if err != nil {
+		panic(err)
+	}
+	vm := NewJS()
+	test := Scripts["test"]
+	err = vm.Compile(test)
+	if err != nil {
+		panic(err)
+	}
+	res, err := vm.WithProcess("*").Run(test, "helloProcess", "foo")
+	if err != nil {
+		panic(err)
+	}
+
+	resdot := any.MapOf(res).MapStrAny.Dot()
+	assert.Equal(t, "foo", resdot.Get("name"))
+	assert.Equal(t, "plugins.user.Login", resdot.Get("out.args.0"))
+	assert.Equal(t, float64(1024), resdot.Get("out.args.1"))
+	assert.Equal(t, "foo", resdot.Get("out.args.2"))
+	assert.Equal(t, "login", resdot.Get("out.name"))
+}

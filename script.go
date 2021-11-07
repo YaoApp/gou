@@ -14,7 +14,7 @@ var Scripts = map[string]*Script{}
 
 // NewJS 创建JS脚本
 func NewJS() ScriptVM {
-	return JavaScript{Otto: otto.New()}
+	return &JavaScript{Otto: otto.New()}
 }
 
 // LoadScript 加载数据处理脚本
@@ -49,7 +49,7 @@ func (script Script) Enter(n ast.Node) ast.Visitor {
 func (script Script) Exit(n ast.Node) {}
 
 // Compile 脚本预编译
-func (vm JavaScript) Compile(script *Script) error {
+func (vm *JavaScript) Compile(script *Script) error {
 	// source := ""
 	for name, f := range script.Functions {
 		numOfArgs := f.NumOfArgs
@@ -69,7 +69,7 @@ func (vm JavaScript) Compile(script *Script) error {
 }
 
 // Run 运行 JavaScript 函数
-func (vm JavaScript) Run(script *Script, method string, args ...interface{}) (interface{}, error) {
+func (vm *JavaScript) Run(script *Script, method string, args ...interface{}) (interface{}, error) {
 
 	f, has := script.Functions[method]
 	if !has {
@@ -80,13 +80,13 @@ func (vm JavaScript) Run(script *Script, method string, args ...interface{}) (in
 		return nil, fmt.Errorf("function %s does not compiled! ", method)
 	}
 
-	otto := vm.Copy()
+	newVM := vm.Copy()
 	for i, v := range args {
 		argName := fmt.Sprintf("arg%d", i)
-		otto.Set(argName, v)
+		newVM.Set(argName, v)
 	}
 
-	value, err := otto.Run(f.Compiled)
+	value, err := newVM.Run(f.Compiled)
 	if err != nil {
 		return nil, err
 	}
@@ -97,4 +97,37 @@ func (vm JavaScript) Run(script *Script, method string, args ...interface{}) (in
 	}
 
 	return resp, nil
+}
+
+// WithProcess 支持 Processd 调用
+func (vm *JavaScript) WithProcess(allow ...string) ScriptVM {
+	vm.Set("Process", func(call otto.FunctionCall) otto.Value {
+		name := call.Argument(0).String()
+		if name == "" {
+			res, _ := vm.ToValue(map[string]interface{}{"code": 400, "message": "缺少处理器名称"})
+			return res
+		}
+
+		for i := range allow {
+			if allow[i] == "*" {
+				break
+			}
+			if name != allow[i] {
+				res, _ := vm.ToValue(map[string]interface{}{"code": 400, "message": fmt.Sprintf("%s 禁止调用", name)})
+				return res
+			}
+		}
+
+		args := []interface{}{}
+		for _, in := range call.ArgumentList {
+			arg, _ := in.Export()
+			args = append(args, arg)
+		}
+
+		// 运行处理器
+		p := NewProcess(name, args...)
+		res, _ := vm.ToValue(p.Run())
+		return res
+	})
+	return vm
 }

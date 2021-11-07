@@ -20,3 +20,11 @@ function lastYear() {
 function hello(name) {
   return "hello:" + name;
 }
+
+function helloProcess(name) {
+  out = Process("plugins.user.Login", 1024, name);
+  return {
+    out: out,
+    name: name,
+  };
+}
