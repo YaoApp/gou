@@ -81,12 +81,13 @@ func (vm JavaScript) Run(script *Script, method string, args ...interface{}) (in
 		return nil, fmt.Errorf("function %s does not compiled! ", method)
 	}
 
+	otto := vm.Copy()
 	for i, v := range args {
 		argName := fmt.Sprintf("arg%d", i)
-		vm.Set(argName, v)
+		otto.Set(argName, v)
 	}
 
-	value, err := vm.Otto.Run(f.Compiled)
+	value, err := otto.Run(f.Compiled)
 	if err != nil {
 		return nil, err
 	}
