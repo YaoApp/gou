@@ -147,7 +147,11 @@ func (flow *Flow) RunScript(node *FlowNode, ctx *FlowContext, data maps.Map, pro
 		return processResp, processOuts
 	}
 
-	name := fmt.Sprintf("flows.%s.%s", flow.Name, node.Script)
+	name := node.Script // 全局脚本引用
+	if !JavaScriptVM.Has(name) {
+		name = fmt.Sprintf("flows.%s.%s", flow.Name, node.Script) // Node 脚本(兼容旧版)
+	}
+
 	in := []interface{}{}
 	last := map[string]interface{}{}
 	for key, value := range ctx.Res {

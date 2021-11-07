@@ -49,3 +49,14 @@ func TestFlowExecQuery(t *testing.T) {
 	assert.Equal(t, res.Dot().Get("data.address.city"), "丰台区")
 	assert.Equal(t, res.Dot().Get("params.0"), "2000-01-02")
 }
+
+func TestFlowExecScript(t *testing.T) {
+	flow := SelectFlow("script")
+	res := maps.Of(flow.Exec("world").(map[string]interface{}))
+	assert.Equal(t, "world", res.Dot().Get("全局脚本.args.0"))
+	assert.Equal(t, "hello:world", res.Dot().Get("全局脚本.hello"))
+	assert.Equal(t, "rank", res.Dot().Get("Flow脚本.name"))
+	assert.Equal(t, "sort", res.Dot().Get("Flow完整引用.name"))
+	assert.Equal(t, "rank hello", res.Dot().Get("Flow脚本.hello"))
+	assert.Equal(t, "sort hello", res.Dot().Get("Flow完整引用.hello"))
+}

@@ -73,11 +73,15 @@ func TestMain(m *testing.M) {
 	LoadAPI("file://"+path.Join(TestAPIRoot, "manu.http.json"), "manu")
 
 	// 加载 Flow
+	JavaScriptVM.Load(path.Join(TestScriptRoot, "test.js"), "scripts.test") // 加载全局脚本
+
 	LoadFlow("file://"+path.Join(TestFLWRoot, "latest.flow.json"), "latest").
 		LoadScript("file://"+path.Join(TestFLWRoot, "latest.rank.js"), "rank").
 		LoadScript("file://"+path.Join(TestFLWRoot, "latest.count.js"), "count")
-
 	LoadFlow("file://"+path.Join(TestFLWRoot, "stat.flow.json"), "stat")
+	LoadFlow("file://"+path.Join(TestFLWRoot, "script.flow.json"), "script").
+		LoadScript("file://"+path.Join(TestFLWRoot, "script.rank.js"), "rank").
+		LoadScript("file://"+path.Join(TestFLWRoot, "script.sort.js"), "sort")
 
 	// 加密密钥
 	LoadCrypt(fmt.Sprintf(`{"key":"%s"}`, TestAESKey), "AES")
