@@ -2,6 +2,7 @@ package gou
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -11,6 +12,9 @@ import (
 	"github.com/robertkrimen/otto/parser"
 	"github.com/yaoapp/kun/exception"
 )
+
+// JavaScriptVM 全局 JavaScript VM
+var JavaScriptVM = NewJavaScriptVM()
 
 // NewJavaScriptVM 创建脚本运行环境
 func NewJavaScriptVM() ScriptVM {
@@ -56,6 +60,15 @@ func (vm *JavaScript) MustLoad(filename string, name string) ScriptVM {
 	return vm
 }
 
+// MustLoadSource 加载脚本
+func (vm *JavaScript) MustLoadSource(filename string, input io.Reader, name string) ScriptVM {
+	err := vm.LoadSource(filename, input, name)
+	if err != nil {
+		exception.New("加载脚本 %s 失败 %s", 500, filename, err.Error())
+	}
+	return vm
+}
+
 // MustGet 读取加载脚本
 func (vm *JavaScript) MustGet(name string) *Script {
 	script, err := vm.Get(name)
@@ -72,7 +85,13 @@ func (vm *JavaScript) Load(filename string, name string) error {
 		return err
 	}
 	defer file.Close()
-	source, err := ioutil.ReadAll(file)
+	return vm.LoadSource(filename, file, name)
+}
+
+// LoadSource 加载内容
+func (vm *JavaScript) LoadSource(filename string, input io.Reader, name string) error {
+
+	source, err := ioutil.ReadAll(input)
 	if err != nil {
 		return err
 	}
@@ -118,7 +137,7 @@ func (vm *JavaScript) Compile(script *Script) error {
 			argNames = append(argNames, fmt.Sprintf("arg%d", i))
 		}
 		call := fmt.Sprintf("%s(%s)", name, strings.Join(argNames, ","))
-		compiled, err := vm.Otto.Compile("", fmt.Sprintf("%s\n%s;", script.Source, call))
+		compiled, err := vm.Otto.Compile(script.File, fmt.Sprintf("%s\n%s;", script.Source, call))
 		if err != nil {
 			return err
 		}
@@ -148,6 +167,9 @@ func (vm *JavaScript) RunScript(script *Script, method string, args ...interface
 
 	value, err := newVM.Run(f.Compiled)
 	if err != nil {
+		if ottoError, ok := err.(*otto.Error); ok {
+			return nil, fmt.Errorf("%s", ottoError.String())
+		}
 		return nil, err
 	}
 

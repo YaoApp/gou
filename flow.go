@@ -3,7 +3,6 @@ package gou
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -31,10 +30,9 @@ func LoadFlow(source string, name string) *Flow {
 	}
 
 	flow := Flow{
-		Name:         name,
-		Source:       source,
-		Scripts:      map[string]string{},
-		ScriptSource: map[string]string{},
+		Name:    name,
+		Source:  source,
+		Scripts: map[string]string{},
 	}
 	err := helper.UnmarshalFile(input, &flow)
 	if err != nil {
@@ -51,10 +49,6 @@ func (flow *Flow) Prepare() {
 
 	if flow.Scripts == nil {
 		flow.Scripts = map[string]string{}
-	}
-
-	if flow.ScriptSource == nil {
-		flow.ScriptSource = map[string]string{}
 	}
 
 	for i, node := range flow.Nodes {
@@ -83,32 +77,28 @@ func (flow *Flow) Prepare() {
 // LoadScript 载入脚本
 func (flow *Flow) LoadScript(source string, name string) *Flow {
 	var input io.Reader = nil
+	name = fmt.Sprintf("flows.%s.%s", flow.Name, name)
 	if strings.HasPrefix(source, "file://") {
 		filename := strings.TrimPrefix(source, "file://")
-		file, err := os.Open(filename)
+		err := JavaScriptVM.Load(filename, name)
 		if err != nil {
-			exception.Err(err, 400).Throw()
+			log.Printf("加载数据脚本失败 %s: %s", filename, name)
 		}
-		defer file.Close()
-		input = file
 	} else {
 		input = strings.NewReader(source)
+		err := JavaScriptVM.LoadSource("", input, name)
+		if err != nil {
+			log.Printf("加载数据脚本失败 %s", name)
+		}
 	}
-
-	content, err := ioutil.ReadAll(input)
-	if err != nil {
-		exception.Err(err, 400).Throw()
-	}
-
-	flow.Scripts[name] = string(content)
-	flow.ScriptSource[name] = source
+	flow.Scripts[name] = source
 	return flow
 }
 
 // Reload 重新载入API
 func (flow *Flow) Reload() *Flow {
 	new := LoadFlow(flow.Source, flow.Name)
-	for name, source := range flow.ScriptSource {
+	for name, source := range flow.Scripts {
 		new.LoadScript(source, name)
 	}
 	flow = new

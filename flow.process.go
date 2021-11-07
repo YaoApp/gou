@@ -2,9 +2,9 @@ package gou
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
-	"github.com/robertkrimen/otto"
 	"github.com/yaoapp/gou/query/share"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
@@ -13,9 +13,6 @@ import (
 // Exec 运行flow
 func (flow *Flow) Exec(args ...interface{}) interface{} {
 
-	vm := &FlowVM{
-		Otto: otto.New(),
-	}
 	res := map[string]interface{}{} // 结果集
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -36,7 +33,7 @@ func (flow *Flow) Exec(args ...interface{}) interface{} {
 		}
 
 		// 执行解析器
-		flow.ExecNode(&node, flowCtx, vm, i-1)
+		flow.ExecNode(&node, flowCtx, i-1)
 	}
 
 	// 结果集输出处理
@@ -70,7 +67,7 @@ func (flow *Flow) FormatResult(ctx *FlowContext) interface{} {
 }
 
 // ExecNode 运行节点
-func (flow *Flow) ExecNode(node *FlowNode, ctx *FlowContext, vm *FlowVM, prev int) []interface{} {
+func (flow *Flow) ExecNode(node *FlowNode, ctx *FlowContext, prev int) []interface{} {
 	data := maps.Map{"$in": ctx.In, "$res": ctx.Res}
 	data = ctx.ExtendIn(data).Dot()
 	var outs = []interface{}{}
@@ -82,7 +79,7 @@ func (flow *Flow) ExecNode(node *FlowNode, ctx *FlowContext, vm *FlowVM, prev in
 		resp, outs = flow.RunProcess(node, ctx, data)
 	}
 
-	_, outs = flow.RunScript(vm, node, ctx, data, resp, outs)
+	_, outs = flow.RunScript(node, ctx, data, resp, outs)
 	return outs
 }
 
@@ -144,18 +141,13 @@ func (flow *Flow) RunProcess(node *FlowNode, ctx *FlowContext, data maps.Map) (i
 }
 
 // RunScript 运行数据处理脚本
-func (flow *Flow) RunScript(vm *FlowVM, node *FlowNode, ctx *FlowContext, data maps.Map, processResp interface{}, processOuts []interface{}) (interface{}, []interface{}) {
+func (flow *Flow) RunScript(node *FlowNode, ctx *FlowContext, data maps.Map, processResp interface{}, processOuts []interface{}) (interface{}, []interface{}) {
 	var resp, res interface{}
 	if node.Script == "" {
 		return processResp, processOuts
 	}
 
-	source, has := flow.Scripts[node.Script]
-	if !has {
-		return processResp, processOuts
-	}
-
-	filename := flow.Name + "." + node.Script + ".js"
+	name := fmt.Sprintf("flows.%s.%s", flow.Name, node.Script)
 	in := []interface{}{}
 	last := map[string]interface{}{}
 	for key, value := range ctx.Res {
@@ -165,22 +157,14 @@ func (flow *Flow) RunScript(vm *FlowVM, node *FlowNode, ctx *FlowContext, data m
 	for _, value := range ctx.In {
 		in = append(in, value)
 	}
-	vm.Set("args", in)
-	vm.Set("res", last)
-	vm.Set("out", processResp)
-	script, err := vm.Compile(filename, source+"\nmain(args, out, res);")
-	if err != nil {
-		exception.Err(err, 500).Throw()
-	}
 
-	value, err := vm.Run(script)
+	resp, err := JavaScriptVM.Run(name, "main", in, processResp, last)
 	if err != nil {
-		exception.Err(err, 500).Throw()
-	}
-
-	resp, err = value.Export()
-	if err != nil {
-		exception.Err(err, 500).Throw()
+		exception.New("%s 脚本错误: %s", 500, node.Script, err.Error()).Ctx(map[string]interface{}{
+			"$in":  in,
+			"$out": last,
+			"$res": processOuts,
+		}).Throw()
 	}
 
 	if node.Outs == nil || len(node.Outs) == 0 {

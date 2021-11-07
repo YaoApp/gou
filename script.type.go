@@ -1,6 +1,10 @@
 package gou
 
-import "github.com/robertkrimen/otto"
+import (
+	"io"
+
+	"github.com/robertkrimen/otto"
+)
 
 // ScriptVM 脚本接口
 type ScriptVM interface {
@@ -10,6 +14,8 @@ type ScriptVM interface {
 	RunScript(script *Script, method string, args ...interface{}) (interface{}, error)
 	Load(filename string, name string) error
 	MustLoad(filename string, name string) ScriptVM
+	LoadSource(filename string, input io.Reader, name string) error
+	MustLoadSource(filename string, input io.Reader, name string) ScriptVM
 	Get(name string) (*Script, error)
 	MustGet(name string) *Script
 }
