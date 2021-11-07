@@ -29,6 +29,7 @@ func (process *Process) Run() interface{} {
 
 // extraProcess 解析执行方法  name = "models.user.Find", name = "plugins.user.Login"
 // return type=models, name=login, class=user
+// @下一版优化这个函数
 func (process *Process) extraProcess() {
 	namer := strings.Split(process.Name, ".")
 	last := len(namer) - 1
@@ -44,15 +45,17 @@ func (process *Process) extraProcess() {
 		process.Class = strings.ToLower(strings.Join(namer[1:last], "."))
 		process.Method = strings.ToLower(namer[last])
 	} else {
-		process.Class = namer[1]
+		process.Class = strings.ToLower(namer[1])
 		process.Method = ""
 	}
 
 	if process.Type == "plugins" { // Plugin
+		process.Name = strings.ToLower(process.Name)
 		process.Handler = processPlugin
 		return
 
 	} else if process.Type == "flows" { // Flow
+		process.Name = strings.ToLower(process.Name)
 		process.Handler = processFlow
 		return
 
@@ -63,6 +66,7 @@ func (process *Process) extraProcess() {
 		return
 
 	} else if process.Type == "models" { // Model
+		process.Name = strings.ToLower(process.Name)
 		handler, has := ModelHandlers[process.Method]
 		if !has {
 			exception.New("%s 方法不存在", 404, process.Method).Throw()
@@ -71,10 +75,12 @@ func (process *Process) extraProcess() {
 		return
 
 	} else if handler, has := ThirdHandlers[strings.ToLower(process.Name)]; has {
+		process.Name = strings.ToLower(process.Name)
 		process.Handler = handler
 		return
 
 	} else if handler, has := ThirdHandlers[process.Type]; has {
+		process.Name = strings.ToLower(process.Name)
 		process.Handler = handler
 		return
 	}
