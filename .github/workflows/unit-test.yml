@@ -66,6 +66,7 @@ jobs:
           echo "GOU_TEST_FLW_ROOT=$GITHUB_WORKSPACE/app/flows" >> $GITHUB_ENV
           echo "GOU_TEST_MOD_ROOT=$GITHUB_WORKSPACE/app/models" >> $GITHUB_ENV
           echo "GOU_TEST_PLG_ROOT=$HOME/data/gou-unit/plugins" >> $GITHUB_ENV
+          echo "GOU_TEST_SCRIPT_ROOT=$GITHUB_WORKSPACE/app/scripts" >> $GITHUB_ENV
           echo "GOU_TEST_QUERY_ROOT=$GITHUB_WORKSPACE/query/assets" >> $GITHUB_ENV
           echo "GOU_TEST_PLG_LOG=$HOME/data/gou-unit/logs" >> $GITHUB_ENV
 
