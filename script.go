@@ -108,6 +108,11 @@ func (vm *JavaScript) WithProcess(allow ...string) ScriptVM {
 			return res
 		}
 
+		// 更新默认值
+		if len(allow) == 0 {
+			allow = []string{"*"}
+		}
+
 		for i := range allow {
 			if allow[i] == "*" {
 				break
