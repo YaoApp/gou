@@ -5,6 +5,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/session"
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/xun/capsule"
@@ -290,4 +291,19 @@ func TestProcessRegisterProcessHandler(t *testing.T) {
 	assert.Equal(t, "user", res2.Get("class"))
 	assert.Equal(t, "world", res2.Get("method"))
 	assert.Equal(t, []interface{}{"bar", "foo"}, res2.Get("args"))
+}
+
+func TestProcessSession(t *testing.T) {
+	id := session.ID()
+	global := map[string]interface{}{"hello": "world"}
+	process := NewProcess("session.Set", "foo", "bar").WithSID(id).WithGlobal(global)
+	process.Run()
+
+	process = NewProcess("session.Get", "foo").WithSID(id).WithGlobal(global)
+	foo := process.Run()
+	assert.Equal(t, "bar", foo)
+
+	process = NewProcess("session.Dump").WithSID(id).WithGlobal(global)
+	data := process.Run()
+	assert.Equal(t, map[string]interface{}{"foo": "bar"}, data)
 }

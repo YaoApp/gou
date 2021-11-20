@@ -8,7 +8,7 @@ import (
 )
 
 func TestMake(t *testing.T) {
-	s := Use("memory").Make().Expire(3600 * time.Second)
+	s := Use("memory").Make().Expire(3600 * time.Second).AsGlobal()
 	assert.NotNil(t, s.GetID())
 }
 

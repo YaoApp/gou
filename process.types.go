@@ -7,6 +7,8 @@ type Process struct {
 	Class   string
 	Method  string
 	Args    []interface{}
+	Global  map[string]interface{} // 全局变量
+	Sid     string                 // 会话ID
 	Handler ProcessHandler
 }
 
@@ -15,19 +17,3 @@ type ProcessHandler func(process *Process) interface{}
 
 // ThirdHandlers 第三方处理器
 var ThirdHandlers = map[string]ProcessHandler{}
-
-// ModelHandlers 模型运行器
-var ModelHandlers = map[string]ProcessHandler{
-	"find":         processFind,
-	"get":          processGet,
-	"paginate":     processPaginate,
-	"create":       processCreate,
-	"update":       processUpdate,
-	"save":         processSave,
-	"delete":       processDelete,
-	"destroy":      processDestroy,
-	"insert":       processInsert,
-	"updatewhere":  processUpdateWhere,
-	"deletewhere":  processDeleteWhere,
-	"destroywhere": processDestroyWhere,
-}

@@ -1,0 +1,36 @@
+{
+  "label": "会话数据全局数据测试",
+  "version": "1.0.0",
+  "description": "会话数据全局数据测试",
+  "nodes": [
+    {
+      "name": "id",
+      "process": "session.Get",
+      "in": ["id"]
+    },
+    {
+      "name": "user",
+      "engine": "test-db",
+      "query": {
+        "select": ["id", "name", "nickname", "type"],
+        "from": "$user",
+        "wheres": [{ ":id": "用户ID", "=": "?:$res.id" }],
+        "first": true
+      }
+    },
+    {
+      "name": "设定用户类型",
+      "process": "session.Set",
+      "in": ["type", "{{$res.user.type}}"]
+    },
+    {
+      "name": "用户信息",
+      "process": "session.Dump"
+    }
+  ],
+  "output": {
+    "用户信息": "{{$res.用户信息}}",
+    "user": "{{$res.user}}",
+    "global": "{{$global}}"
+  }
+}

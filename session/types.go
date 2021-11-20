@@ -12,7 +12,8 @@ type Manager interface {
 
 // Session 数据结构
 type Session struct {
-	id        string
-	expiredAt time.Duration
-	Manager   Manager
+	id      string
+	name    string
+	timeout time.Duration
+	Manager Manager
 }

@@ -76,7 +76,19 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 			args = append(args, c)
 		}
 
-		var resp interface{} = NewProcess(path.Process, args...).Run()
+		var process = NewProcess(path.Process, args...)
+		if sid, has := c.Get("__sid"); has { // 设定会话ID
+			if sid, ok := sid.(string); ok {
+				process.WithSID(sid)
+			}
+		}
+		if global, has := c.Get("__global"); has { // 设定全局变量
+			if global, ok := global.(map[string]interface{}); ok {
+				process.WithGlobal(global)
+			}
+		}
+
+		var resp interface{} = process.Run()
 		var status int = path.Out.Status
 		var contentType string = path.Out.Type
 

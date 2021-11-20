@@ -30,8 +30,9 @@ type Path struct {
 
 // Out http 输出
 type Out struct {
-	Status int    `json:"status"`
-	Type   string `json:"type,omitempty"`
+	Status  int                    `json:"status"`
+	Type    string                 `json:"type,omitempty"`
+	Headers map[string]interface{} `json:"headers,omitempty"`
 }
 
 // Server API 服务配置

@@ -1,17 +1,15 @@
 package gou
 
 import (
-	"fmt"
 	"strings"
 
-	"github.com/yaoapp/kun/any"
+	"github.com/yaoapp/gou/session"
 	"github.com/yaoapp/kun/exception"
-	"github.com/yaoapp/kun/str"
 )
 
 // NewProcess 创建运行器
 func NewProcess(name string, args ...interface{}) *Process {
-	process := &Process{Name: name, Args: args}
+	process := &Process{Name: name, Args: args, Global: map[string]interface{}{}}
 	process.extraProcess()
 	return process
 }
@@ -20,6 +18,18 @@ func NewProcess(name string, args ...interface{}) *Process {
 func RegisterProcessHandler(name string, handler ProcessHandler) {
 	name = strings.ToLower(name)
 	ThirdHandlers[name] = handler
+}
+
+// WithSID 设定会话ID
+func (process *Process) WithSID(sid string) *Process {
+	process.Sid = sid
+	return process
+}
+
+// WithGlobal 设定全局变量
+func (process *Process) WithGlobal(global map[string]interface{}) *Process {
+	process.Global = global
+	return process
 }
 
 // Run 运行方法
@@ -33,11 +43,8 @@ func (process *Process) Run() interface{} {
 func (process *Process) extraProcess() {
 	namer := strings.Split(process.Name, ".")
 	last := len(namer) - 1
-	if last < 2 && namer[0] != "flows" {
-		exception.New(
-			fmt.Sprintf("Process:%s 格式错误", process.Name),
-			400,
-		).Throw()
+	if last < 2 && namer[0] != "flows" && namer[0] != "session" {
+		exception.New("Process:%s 格式错误", 400, process.Name).Throw()
 	}
 
 	process.Type = strings.ToLower(namer[0])
@@ -49,23 +56,25 @@ func (process *Process) extraProcess() {
 		process.Method = ""
 	}
 
-	if process.Type == "plugins" { // Plugin
+	switch process.Type {
+	case "plugins":
 		process.Name = strings.ToLower(process.Name)
 		process.Handler = processPlugin
 		return
-
-	} else if process.Type == "flows" { // Flow
+	case "flows":
 		process.Name = strings.ToLower(process.Name)
 		process.Handler = processFlow
 		return
-
-	} else if process.Type == "scripts" { // scripts
+	case "scripts":
 		process.Class = strings.ToLower(strings.Join(namer[1:last], "."))
 		process.Method = namer[last]
 		process.Handler = processScript
 		return
-
-	} else if process.Type == "models" { // Model
+	case "session":
+		process.Method = strings.ToLower(namer[last])
+		process.Handler = processSession
+		return
+	case "models":
 		process.Name = strings.ToLower(process.Name)
 		handler, has := ModelHandlers[process.Method]
 		if !has {
@@ -73,16 +82,16 @@ func (process *Process) extraProcess() {
 		}
 		process.Handler = handler
 		return
-
-	} else if handler, has := ThirdHandlers[strings.ToLower(process.Name)]; has {
-		process.Name = strings.ToLower(process.Name)
-		process.Handler = handler
-		return
-
-	} else if handler, has := ThirdHandlers[process.Type]; has {
-		process.Name = strings.ToLower(process.Name)
-		process.Handler = handler
-		return
+	default:
+		if handler, has := ThirdHandlers[strings.ToLower(process.Name)]; has {
+			process.Name = strings.ToLower(process.Name)
+			process.Handler = handler
+			return
+		} else if handler, has := ThirdHandlers[process.Type]; has {
+			process.Name = strings.ToLower(process.Name)
+			process.Handler = handler
+			return
+		}
 	}
 
 	exception.New("%s 未找到处理器", 404, process.Name).Throw()
@@ -116,151 +125,21 @@ func processScript(process *Process) interface{} {
 	return res
 }
 
-// processFind 运行模型 MustFind
-func processFind(process *Process) interface{} {
-	process.ValidateArgNums(2)
-	mod := Select(process.Class)
-	params, ok := process.Args[1].(QueryParam)
-	if !ok {
-		params = QueryParam{}
+// processSession 运行Session函数
+func processSession(process *Process) interface{} {
+	if process.Sid == "" {
+		return nil
 	}
-	return mod.MustFind(process.Args[0], params)
-}
-
-// processGet 运行模型 MustGet
-func processGet(process *Process) interface{} {
-	process.ValidateArgNums(1)
-	mod := Select(process.Class)
-	params, ok := AnyToQueryParam(process.Args[0])
-	if !ok {
-		exception.New("第1个查询参数错误 %v", 400, process.Args[0]).Throw()
+	ss := session.Global().ID(process.Sid)
+	switch process.Method {
+	case "get":
+		return ss.MustGet(process.ArgsString(0))
+	case "set":
+		process.ValidateArgNums(2)
+		ss.MustSet(process.ArgsString(0), process.Args[1])
+		return nil
+	case "dump":
+		return ss.MustDump()
 	}
-	return mod.MustGet(params)
-}
-
-// processPaginate 运行模型 MustPaginate
-func processPaginate(process *Process) interface{} {
-	process.ValidateArgNums(3)
-	mod := Select(process.Class)
-	params, ok := AnyToQueryParam(process.Args[0])
-	if !ok {
-		exception.New("第1个查询参数错误 %v", 400, process.Args[0]).Throw()
-	}
-
-	page := any.Of(process.Args[1]).CInt()
-	pagesize := any.Of(process.Args[2]).CInt()
-	return mod.MustPaginate(params, page, pagesize)
-}
-
-// processCreate 运行模型 MustCreate
-func processCreate(process *Process) interface{} {
-	process.ValidateArgNums(1)
-	mod := Select(process.Class)
-	row := any.Of(process.Args[0]).Map().MapStrAny
-	return mod.MustCreate(row)
-}
-
-// processUpdate 运行模型 MustUpdate
-func processUpdate(process *Process) interface{} {
-	process.ValidateArgNums(2)
-	mod := Select(process.Class)
-	id := process.Args[0]
-	row := any.Of(process.Args[1]).Map().MapStrAny
-	mod.MustUpdate(id, row)
 	return nil
-}
-
-// processSave 运行模型 MustSave
-func processSave(process *Process) interface{} {
-	process.ValidateArgNums(1)
-	mod := Select(process.Class)
-	row := any.Of(process.Args[0]).Map().MapStrAny
-	return mod.MustSave(row)
-}
-
-// processDelete 运行模型 MustDelete
-func processDelete(process *Process) interface{} {
-	process.ValidateArgNums(1)
-	mod := Select(process.Class)
-	mod.MustDelete(process.Args[0])
-	return nil
-}
-
-// processDestroy 运行模型 MustDestroy
-func processDestroy(process *Process) interface{} {
-	process.ValidateArgNums(1)
-	mod := Select(process.Class)
-	mod.MustDestroy(process.Args[0])
-	return nil
-}
-
-// processInsert 运行模型 MustInsert
-func processInsert(process *Process) interface{} {
-	process.ValidateArgNums(2)
-	mod := Select(process.Class)
-	var colums = []string{}
-	colums, ok := process.Args[0].([]string)
-	if !ok {
-		anyColums, ok := process.Args[0].([]interface{})
-		if !ok {
-			exception.New("第1个查询参数错误 %v", 400, process.Args[0]).Throw()
-		}
-		for _, col := range anyColums {
-			colums = append(colums, string(str.Of(col)))
-		}
-	}
-
-	var rows = [][]interface{}{}
-	rows, ok = process.Args[1].([][]interface{})
-	if !ok {
-		anyRows, ok := process.Args[1].([]interface{})
-		if !ok {
-			exception.New("第2个查询参数错误 %v", 400, process.Args[1]).Throw()
-		}
-		for _, anyRow := range anyRows {
-
-			row, ok := anyRow.([]interface{})
-			if !ok {
-				exception.New("第2个查询参数错误 %v", 400, process.Args[1]).Throw()
-			}
-			rows = append(rows, row)
-		}
-	}
-
-	mod.MustInsert(colums, rows)
-	return nil
-}
-
-// processUpdateWhere 运行模型 MustUpdateWhere
-func processUpdateWhere(process *Process) interface{} {
-	process.ValidateArgNums(2)
-	mod := Select(process.Class)
-	params, ok := AnyToQueryParam(process.Args[0])
-	if !ok {
-		exception.New("第1个查询参数错误 %v", 400, process.Args[0]).Throw()
-	}
-	row := any.Of(process.Args[1]).Map().MapStrAny
-	return mod.MustUpdateWhere(params, row)
-}
-
-// processDeleteWhere 运行模型 MustDeleteWhere
-func processDeleteWhere(process *Process) interface{} {
-	process.ValidateArgNums(1)
-	mod := Select(process.Class)
-	params, ok := AnyToQueryParam(process.Args[0])
-	if !ok {
-		params = QueryParam{}
-	}
-	return mod.MustDeleteWhere(params)
-}
-
-// processDestroyWhere 运行模型 MustDestroyWhere
-func processDestroyWhere(process *Process) interface{} {
-	process.ValidateArgNums(1)
-	mod := Select(process.Class)
-	params, ok := AnyToQueryParam(process.Args[0])
-	if !ok {
-		params = QueryParam{}
-	}
-	return mod.MustDestroyWhere(params)
 }

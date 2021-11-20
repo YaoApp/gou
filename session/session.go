@@ -13,6 +13,12 @@ import (
 // Managers 已注册会话管理器
 var Managers = map[string]Manager{}
 
+// Timeout 默认有效时间
+var Timeout time.Duration = 3600 * time.Second
+
+// Name 默认为会话管理器
+var Name string = "memory"
+
 // 注册默认的会话管理器
 func init() {
 	Register("memory", &Memory{})
@@ -24,13 +30,17 @@ func Register(name string, manger Manager) {
 	Managers[name] = manger
 }
 
+// Global 全局会话
+func Global() *Session {
+	return Use(Name).Expire(Timeout)
+}
+
 // Use 选用会话管理器
 func Use(name string) *Session {
-	expiredAt := 3600 * time.Second
 	if manager, has := Managers[name]; has {
-		return &Session{Manager: manager, expiredAt: expiredAt}
+		return &Session{Manager: manager, timeout: Timeout, name: name}
 	}
-	return &Session{Manager: Managers["memory"], expiredAt: expiredAt}
+	return &Session{Manager: Managers["memory"], timeout: Timeout, name: name}
 }
 
 // ID 生成SessionID
@@ -42,9 +52,16 @@ func ID() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
+// AsGlobal 设定为全局
+func (session *Session) AsGlobal() *Session {
+	Timeout = session.timeout
+	Name = session.name
+	return session
+}
+
 // Expire 设定过期时间
 func (session *Session) Expire(expiredAt time.Duration) *Session {
-	session.expiredAt = expiredAt
+	session.timeout = expiredAt
 	return session
 }
 
@@ -67,7 +84,7 @@ func (session *Session) GetID() string {
 
 // Set 设置数值
 func (session *Session) Set(key string, value interface{}) error {
-	return session.Manager.Set(session.id, key, value, session.expiredAt)
+	return session.Manager.Set(session.id, key, value, session.timeout)
 }
 
 // MustSet 设置数值

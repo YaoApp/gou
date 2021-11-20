@@ -17,6 +17,29 @@
       }
     },
     {
+      "path": "/info/session/in",
+      "method": "GET",
+      "process": "models.user.Find",
+      "in": ["$session.id"],
+      "out": {
+        "status": 200,
+        "type": "application/json"
+      }
+    },
+    {
+      "path": "/info/session/flow",
+      "method": "GET",
+      "process": "flows.user.info",
+      "in": [],
+      "out": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "User-Agent": "?:user.id"
+        }
+      }
+    },
+    {
       "path": "/info/:id",
       "method": "GET",
       "process": "models.user.Find",
