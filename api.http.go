@@ -10,6 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/query/share"
+	"github.com/yaoapp/gou/session"
+	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/xun"
@@ -96,6 +99,24 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 			c.Writer.Header().Set("Content-Type", contentType)
 		}
 
+		// Response Headers
+		if len(path.Out.Headers) > 0 {
+			res := any.Of(resp)
+			if res.IsMap() { // 处理变量
+				data := res.Map().MapStrAny.Dot()
+				for name, value := range path.Out.Headers {
+					v := share.Bind(value, data)
+					if v != nil {
+						c.Writer.Header().Set(name, fmt.Sprintf("%v", v))
+					}
+				}
+			} else {
+				for name, value := range path.Out.Headers {
+					c.Writer.Header().Set(name, value)
+				}
+			}
+		}
+
 		if resp == nil {
 			c.Done()
 			return
@@ -106,14 +127,6 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 			c.JSON(status, resp)
 			c.Done()
 			return
-		// case []byte:
-		// 	c.String(status, string(resp.([]byte)))
-		// 	c.Done()
-		// 	return
-		// case string:
-		// 	c.String(status, resp.(string))
-		// 	c.Done()
-		// 	return
 		default:
 			if contentType == "application/json" {
 				c.JSON(status, resp)
@@ -255,11 +268,11 @@ func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
 
 		} else if arg[0] == "$session" {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
-				val, _ := c.Get(arg[1])
-				if val == nil {
-					return ""
+				if sid := c.GetString("__sid"); sid != "" {
+					name := arg[1]
+					return session.Global().ID(sid).MustGet(name)
 				}
-				return val
+				return ""
 			})
 
 		} else if arg[0] == "$file" {

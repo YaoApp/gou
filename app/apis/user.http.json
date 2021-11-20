@@ -6,6 +6,16 @@
   "guard": "bearer-jwt",
   "paths": [
     {
+      "path": "/hello",
+      "method": "GET",
+      "process": "scripts.app.test.hello",
+      "in": ["world"],
+      "out": {
+        "status": 200,
+        "type": "application/json"
+      }
+    },
+    {
       "path": "/login",
       "method": "POST",
       "guard": "-",
@@ -17,17 +27,17 @@
       }
     },
     {
-      "path": "/info/session/in",
+      "path": "/session/in",
       "method": "GET",
       "process": "models.user.Find",
-      "in": ["$session.id"],
+      "in": ["$session.id", ":params"],
       "out": {
         "status": 200,
         "type": "application/json"
       }
     },
     {
-      "path": "/info/session/flow",
+      "path": "/session/flow",
       "method": "GET",
       "process": "flows.user.info",
       "in": [],
@@ -35,7 +45,7 @@
         "status": 200,
         "headers": {
           "Content-Type": "application/json",
-          "User-Agent": "?:user.id"
+          "User-Agent": "?:会话信息.id"
         }
       }
     },
