@@ -33,7 +33,7 @@ func TestMustSetGet(t *testing.T) {
 func TestMustSetWithEx(t *testing.T) {
 	id := ID()
 	ss := Use("memory").ID(id)
-	ss.SetWithEx("foo", "bar", 5000*time.Microsecond)
+	ss.MustSetWithEx("foo", "bar", 5000*time.Microsecond)
 	assert.Equal(t, "bar", ss.MustGet("foo"))
 
 	time.Sleep(5001 * time.Microsecond)
