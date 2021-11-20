@@ -28,3 +28,16 @@ function helloProcess(name) {
     name: name,
   };
 }
+
+function helloGlobal(name, global) {
+  return "hello:" + name + ",global:" + global.hello;
+}
+
+function helloSession(value) {
+  Process("session.Set", "foo", value);
+  out = Process("session.Get", "foo");
+  return {
+    input: value,
+    out: out,
+  };
+}

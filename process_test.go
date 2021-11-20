@@ -29,7 +29,7 @@ func TestProcessScript(t *testing.T) {
 	resdot := any.MapOf(res).MapStrAny.Dot()
 	assert.Equal(t, "Max", resdot.Get("name"))
 	assert.Equal(t, "login", resdot.Get("out.name"))
-	assert.Equal(t, float64(1024), resdot.Get("out.args.1"))
+	assert.Equal(t, float64(1024), resdot.Get("out.args.0"))
 
 	res = NewProcess("scripts.flows.script.rank.hello").Run()
 	assert.Equal(t, "rank hello", res)

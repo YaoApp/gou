@@ -106,6 +106,18 @@ func (flow *Flow) Reload() *Flow {
 	return flow
 }
 
+// WithSID 设定会话ID
+func (flow *Flow) WithSID(sid string) *Flow {
+	flow.Sid = sid
+	return flow
+}
+
+// WithGlobal 设定全局变量
+func (flow *Flow) WithGlobal(global map[string]interface{}) *Flow {
+	flow.Global = global
+	return flow
+}
+
 // SelectFlow 读取已加载Flow
 func SelectFlow(name string) *Flow {
 	flow, has := Flows[name]

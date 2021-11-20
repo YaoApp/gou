@@ -132,6 +132,8 @@ func (vm *JavaScript) Run(name string, method string, args ...interface{}) (inte
 	if !has {
 		return nil, fmt.Errorf("脚本 %s 尚未加载", name)
 	}
+
+	args = append(args, vm.Global) // 添加全局变量
 	return vm.RunScript(script, method, args...)
 }
 
@@ -153,6 +155,18 @@ func (vm *JavaScript) Compile(script *Script) error {
 		script.Functions[name] = f
 	}
 	return nil
+}
+
+// WithSID 设定会话ID
+func (vm *JavaScript) WithSID(sid string) ScriptVM {
+	vm.Sid = sid
+	return vm
+}
+
+// WithGlobal 设定全局变量
+func (vm *JavaScript) WithGlobal(global map[string]interface{}) ScriptVM {
+	vm.Global = global
+	return vm
 }
 
 // RunScript 运行指定Script
@@ -214,14 +228,17 @@ func (vm *JavaScript) WithProcess(allow ...string) ScriptVM {
 		}
 
 		args := []interface{}{}
-		for _, in := range call.ArgumentList {
+		for i, in := range call.ArgumentList {
+			if i == 0 {
+				continue
+			}
 			arg, _ := in.Export()
 			args = append(args, arg)
 		}
-
 		// 运行处理器
-		p := NewProcess(name, args...)
-		res, _ := vm.ToValue(p.Run())
+		p := NewProcess(name, args...).WithGlobal(vm.Global).WithSID(vm.Sid)
+		v := p.Run()
+		res, _ := vm.ToValue(v)
 		return res
 	})
 	return vm

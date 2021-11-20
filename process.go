@@ -110,13 +110,15 @@ func processPlugin(process *Process) interface{} {
 // processFlow 运行工作流
 func processFlow(process *Process) interface{} {
 	name := strings.TrimPrefix(process.Name, "flows.")
-	flow := SelectFlow(name)
+	flow := SelectFlow(name).WithGlobal(process.Global).WithSID(process.Sid)
 	return flow.Exec(process.Args...)
 }
 
 // processScript 运行脚本中定义的处理器
 func processScript(process *Process) interface{} {
 	res, err := JavaScriptVM.
+		WithGlobal(process.Global).
+		WithSID(process.Sid).
 		WithProcess("*").
 		Run(process.Class, process.Method, process.Args...)
 	if err != nil {
@@ -133,6 +135,7 @@ func processSession(process *Process) interface{} {
 	ss := session.Global().ID(process.Sid)
 	switch process.Method {
 	case "get":
+		process.ValidateArgNums(1)
 		return ss.MustGet(process.ArgsString(0))
 	case "set":
 		process.ValidateArgNums(2)

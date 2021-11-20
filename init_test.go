@@ -83,6 +83,9 @@ func TestMain(m *testing.M) {
 		LoadScript("file://"+path.Join(TestFLWRoot, "script.rank.js"), "rank").
 		LoadScript("file://"+path.Join(TestFLWRoot, "script.sort.js"), "sort")
 
+	LoadFlow("file://"+path.Join(TestFLWRoot, "user", "info.flow.json"), "user.info").
+		LoadScript("file://"+path.Join(TestFLWRoot, "user", "info.data.js"), "data")
+
 	// 加密密钥
 	LoadCrypt(fmt.Sprintf(`{"key":"%s"}`, TestAESKey), "AES")
 	LoadCrypt(`{}`, "PASSWORD")

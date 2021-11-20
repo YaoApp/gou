@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/session"
 	"github.com/yaoapp/kun/any"
 )
 
@@ -64,8 +65,30 @@ func TestJavaScriptRunWithProcess(t *testing.T) {
 	}
 	resdot := any.MapOf(res).MapStrAny.Dot()
 	assert.Equal(t, "foo", resdot.Get("name"))
-	assert.Equal(t, "plugins.user.Login", resdot.Get("out.args.0"))
-	assert.Equal(t, float64(1024), resdot.Get("out.args.1"))
-	assert.Equal(t, "foo", resdot.Get("out.args.2"))
+	assert.Equal(t, float64(1024), resdot.Get("out.args.0"))
+	assert.Equal(t, "foo", resdot.Get("out.args.1"))
 	assert.Equal(t, "login", resdot.Get("out.name"))
+}
+
+func TestJavaScriptRunWithGlobal(t *testing.T) {
+	vm := NewJavaScriptVM().MustLoad(path.Join(TestScriptRoot, "test.js"), "test").
+		WithGlobal(map[string]interface{}{"hello": "global"})
+	res, err := vm.WithProcess("*").Run("test", "helloGlobal", "foo")
+	if err != nil {
+		panic(err)
+	}
+
+	assert.Equal(t, "hello:foo,global:global", res)
+}
+
+func TestJavaScriptRunWithSession(t *testing.T) {
+	vm := NewJavaScriptVM().MustLoad(path.Join(TestScriptRoot, "test.js"), "test").
+		WithSID(session.ID())
+	res, err := vm.WithProcess("*").Run("test", "helloSession", "bar")
+	if err != nil {
+		panic(err)
+	}
+	resdot := any.MapOf(res).MapStrAny.Dot()
+	assert.Equal(t, "bar", resdot.Get("out"))
+	assert.Equal(t, "bar", resdot.Get("input"))
 }

@@ -9,14 +9,16 @@ import (
 
 // Flow  工作流
 type Flow struct {
-	Name        string            `json:"-"`
-	Source      string            `json:"-"`
-	Scripts     map[string]string `json:"-"`
-	Label       string            `json:"label"`
-	Version     string            `json:"version"`
-	Description string            `json:"description,omitempty"`
-	Nodes       []FlowNode        `json:"nodes,omitempty"`
-	Output      interface{}       `json:"output,omitempty"`
+	Name        string                 `json:"-"`
+	Source      string                 `json:"-"`
+	Scripts     map[string]string      `json:"-"`
+	Label       string                 `json:"label"`
+	Version     string                 `json:"version"`
+	Description string                 `json:"description,omitempty"`
+	Nodes       []FlowNode             `json:"nodes,omitempty"`
+	Output      interface{}            `json:"output,omitempty"`
+	Global      map[string]interface{} // 全局变量
+	Sid         string                 // 会话ID
 }
 
 // FlowNode 工作流节点

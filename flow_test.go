@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/session"
 	"github.com/yaoapp/kun/maps"
 )
 
@@ -61,5 +62,23 @@ func TestFlowExecScript(t *testing.T) {
 	assert.Equal(t, "sort hello", res.Dot().Get("Flow完整引用.hello"))
 
 	assert.Equal(t, "login", res.Dot().Get("Flow脚本.user.name"))
-	assert.Equal(t, float64(1024), res.Dot().Get("Flow脚本.user.args.1"))
+	assert.Equal(t, float64(1024), res.Dot().Get("Flow脚本.user.args.0"))
+}
+
+func TestFlowExecGlobalSession(t *testing.T) {
+	sid := session.ID()
+	session.Global().ID(sid).Set("id", 1)
+	flow := SelectFlow("user.info").WithSID(sid).WithGlobal(map[string]interface{}{"foo": "bar"})
+	res := maps.Of(flow.Exec().(map[string]interface{})).Dot()
+	assert.Equal(t, 1, res.Get("ID"))
+	assert.Equal(t, 1, res.Get("会话信息.id"))
+	assert.Equal(t, "admin", res.Get("会话信息.type"))
+	assert.Equal(t, "bar", res.Get("全局信息.foo"))
+	assert.Equal(t, "bar", res.Get("全局信息.foo"))
+	assert.Equal(t, int64(1), res.Get("用户数据.id"))
+	assert.Equal(t, "管理员", res.Get("用户数据.name"))
+	assert.Equal(t, "admin", res.Get("用户数据.type"))
+	assert.Equal(t, "bar", res.Get("脚本数据.global.foo"))
+	assert.Equal(t, 1, res.Get("脚本数据.session.id"))
+	assert.Equal(t, "admin", res.Get("脚本数据.session.type"))
 }

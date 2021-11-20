@@ -9,7 +9,9 @@ import (
 // ScriptVM 脚本接口
 type ScriptVM interface {
 	Compile(script *Script) error
-	WithProcess(except ...string) ScriptVM
+	WithSID(sid string) ScriptVM
+	WithGlobal(global map[string]interface{}) ScriptVM
+	WithProcess(allow ...string) ScriptVM
 	Run(name string, method string, args ...interface{}) (interface{}, error)
 	RunScript(script *Script, method string, args ...interface{}) (interface{}, error)
 	Load(filename string, name string) error
@@ -39,5 +41,7 @@ type Function struct {
 // JavaScript 脚本程序运行器
 type JavaScript struct {
 	Scripts map[string]*Script
+	Global  map[string]interface{} // 全局变量
+	Sid     string                 // 会话ID
 	*otto.Otto
 }

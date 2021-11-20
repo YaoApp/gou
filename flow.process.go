@@ -61,14 +61,14 @@ func (flow *Flow) FormatResult(ctx *FlowContext) interface{} {
 	if flow.Output == nil {
 		return ctx.Res
 	}
-	data := maps.Map{"$in": ctx.In, "$res": ctx.Res}
+	data := maps.Map{"$in": ctx.In, "$res": ctx.Res, "$global": flow.Global}
 	data = ctx.ExtendIn(data).Dot()
 	return share.Bind(flow.Output, data)
 }
 
 // ExecNode 运行节点
 func (flow *Flow) ExecNode(node *FlowNode, ctx *FlowContext, prev int) []interface{} {
-	data := maps.Map{"$in": ctx.In, "$res": ctx.Res}
+	data := maps.Map{"$in": ctx.In, "$res": ctx.Res, "$global": flow.Global}
 	data = ctx.ExtendIn(data).Dot()
 	var outs = []interface{}{}
 	var resp interface{}
@@ -119,7 +119,7 @@ func (flow *Flow) RunProcess(node *FlowNode, ctx *FlowContext, data maps.Map) (i
 	}
 
 	if node.Process != "" {
-		process := NewProcess(node.Process, args...)
+		process := NewProcess(node.Process, args...).WithGlobal(flow.Global).WithSID(flow.Sid)
 		resp = process.Run()
 	}
 
@@ -164,13 +164,17 @@ func (flow *Flow) RunScript(node *FlowNode, ctx *FlowContext, data maps.Map, pro
 
 	resp, err := JavaScriptVM.
 		WithProcess("*").
-		Run(name, "main", in, processResp, last)
+		WithGlobal(flow.Global).
+		WithSID(flow.Sid).
+		Run(name, "main", in, processResp, last, flow.Global)
 
 	if err != nil {
 		exception.New("%s 脚本错误: %s", 500, node.Script, err.Error()).Ctx(map[string]interface{}{
-			"$in":  in,
-			"$out": last,
-			"$res": processOuts,
+			"$in":     in,
+			"$out":    last,
+			"$res":    processOuts,
+			"$global": flow.Global,
+			"$sid":    flow.Sid,
 		}).Throw()
 	}
 
