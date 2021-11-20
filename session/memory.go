@@ -78,16 +78,6 @@ func (mem *Memory) Get(id string, key string) (interface{}, error) {
 	return value, err
 }
 
-// Keys 所有键
-func (mem *Memory) Keys(id string) []string {
-	return []string{}
-}
-
-// Values 所有值
-func (mem *Memory) Values(id string) []interface{} {
-	return []interface{}{}
-}
-
 // Dump 导出所有数据
 func (mem *Memory) Dump(id string) (map[string]interface{}, error) {
 	prefix := fmt.Sprintf("%s:", id)
