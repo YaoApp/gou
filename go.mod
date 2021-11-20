@@ -3,6 +3,7 @@ module github.com/yaoapp/gou
 go 1.13
 
 require (
+	github.com/buraksezer/olric v0.4.0 // indirect
 	github.com/gin-gonic/gin v1.7.4
 	github.com/go-errors/errors v1.4.1
 	github.com/go-playground/validator/v10 v10.9.0 // indirect
