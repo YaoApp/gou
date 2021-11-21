@@ -121,6 +121,12 @@ func (flow *Flow) RunProcess(node *FlowNode, ctx *FlowContext, data maps.Map) (i
 	if node.Process != "" {
 		process := NewProcess(node.Process, args...).WithGlobal(flow.Global).WithSID(flow.Sid)
 		resp = process.Run()
+
+		// 当使用 Session start 设置SID时
+		// 设置SID (这个逻辑需要优化)
+		if flow.Sid == "" && process.Sid != "" {
+			flow.WithSID(process.Sid)
+		}
 	}
 
 	if node.Outs == nil || len(node.Outs) == 0 {

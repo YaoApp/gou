@@ -129,11 +129,20 @@ func processScript(process *Process) interface{} {
 
 // processSession 运行Session函数
 func processSession(process *Process) interface{} {
+
+	if process.Method == "start" {
+		process.Sid = session.ID()
+		return process.Sid
+	}
+
 	if process.Sid == "" {
 		return nil
 	}
+
 	ss := session.Global().ID(process.Sid)
 	switch process.Method {
+	case "id":
+		return process.Sid
 	case "get":
 		process.ValidateArgNums(1)
 		return ss.MustGet(process.ArgsString(0))
