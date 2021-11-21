@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"strings"
 	"time"
@@ -32,10 +33,11 @@ func (mem *Memory) Init() {
 // Local 启动服务
 func (mem *Memory) Local() {
 	c := config.New("local")
+	c.Logger.SetOutput(ioutil.Discard) // 暂时关闭日志
 	ctx, cancel := context.WithCancel(context.Background())
 	c.Started = func() {
 		defer cancel()
-		log.Println("[INFO] Olric is ready to accept connections")
+		// log.Println("[INFO] Olric is ready to accept connections")
 	}
 
 	db, err := olric.New(c)
