@@ -96,13 +96,49 @@ func (session *Session) MustSet(key string, value interface{}) {
 }
 
 // SetWithEx 设置数值
-func (session *Session) SetWithEx(key string, value interface{}, expiredAt time.Duration) error {
-	return session.Manager.Set(session.id, key, value, expiredAt)
+func (session *Session) SetWithEx(key string, value interface{}, timeout time.Duration) error {
+	return session.Manager.Set(session.id, key, value, timeout)
 }
 
 // MustSetWithEx 设置数值
-func (session *Session) MustSetWithEx(key string, value interface{}, expiredAt time.Duration) {
-	err := session.SetWithEx(key, value, expiredAt)
+func (session *Session) MustSetWithEx(key string, value interface{}, timeout time.Duration) {
+	err := session.SetWithEx(key, value, timeout)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+}
+
+// SetMany 设置多个数值
+func (session *Session) SetMany(values map[string]interface{}) error {
+	for key, value := range values {
+		if err := session.Manager.Set(session.id, key, value, session.timeout); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// MustSetMany 设置多个数值
+func (session *Session) MustSetMany(values map[string]interface{}) {
+	err := session.SetMany(values)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+}
+
+// SetManyWithEx 设置多个数值
+func (session *Session) SetManyWithEx(values map[string]interface{}, timeout time.Duration) error {
+	for key, value := range values {
+		if err := session.Manager.Set(session.id, key, value, timeout); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// MustSetManyWithEx 设置多个数值
+func (session *Session) MustSetManyWithEx(values map[string]interface{}, timeout time.Duration) {
+	err := session.SetManyWithEx(values, timeout)
 	if err != nil {
 		exception.Err(err, 500).Throw()
 	}

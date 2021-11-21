@@ -141,6 +141,10 @@ func processSession(process *Process) interface{} {
 		process.ValidateArgNums(2)
 		ss.MustSet(process.ArgsString(0), process.Args[1])
 		return nil
+	case "setmany":
+		process.ValidateArgNums(1)
+		ss.MustSetMany(process.ArgsMap(0))
+		return nil
 	case "dump":
 		return ss.MustDump()
 	}

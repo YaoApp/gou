@@ -25,9 +25,14 @@ func TestMustSetGet(t *testing.T) {
 	v := s.MustGet("foo")
 	assert.Equal(t, "bar", v)
 
+	s.MustSetMany(map[string]interface{}{"hello": "world", "hi": "gou"})
+	assert.Equal(t, "world", s.MustGet("hello"))
+	assert.Equal(t, "gou", s.MustGet("hi"))
+
 	time.Sleep(5001 * time.Microsecond)
-	v = s.MustGet("foo")
-	assert.Nil(t, v)
+	assert.Nil(t, s.MustGet("foo"))
+	assert.Nil(t, s.MustGet("hello"))
+	assert.Nil(t, s.MustGet("hi"))
 }
 
 func TestMustSetWithEx(t *testing.T) {
@@ -36,8 +41,14 @@ func TestMustSetWithEx(t *testing.T) {
 	ss.MustSetWithEx("foo", "bar", 5000*time.Microsecond)
 	assert.Equal(t, "bar", ss.MustGet("foo"))
 
+	ss.MustSetManyWithEx(map[string]interface{}{"hello": "world", "hi": "gou"}, 5000*time.Microsecond)
+	assert.Equal(t, "world", ss.MustGet("hello"))
+	assert.Equal(t, "gou", ss.MustGet("hi"))
+
 	time.Sleep(5001 * time.Microsecond)
 	assert.Nil(t, ss.MustGet("foo"))
+	assert.Nil(t, ss.MustGet("hello"))
+	assert.Nil(t, ss.MustGet("hi"))
 }
 
 func TestMustDump(t *testing.T) {
