@@ -175,10 +175,9 @@ func (http HTTP) crossDomain(path string, allows map[string]bool, router gin.IRo
 	})
 }
 
-// parseIn 接口传参解析
+// parseIn 接口传参解析 (这个函数应该重构)
 func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
 	getValues := []func(c *gin.Context) interface{}{}
-
 	for _, v := range in {
 
 		if v == ":body" {
@@ -233,30 +232,22 @@ func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
 		}
 
 		arg := strings.Split(v, ".")
-		if len(arg) == 1 {
-			getValues = append(getValues, func(c *gin.Context) interface{} {
-				return v
-			})
-			continue
-		} else if len(arg) != 2 {
-			continue
-		}
-
-		if arg[0] == "$form" {
+		length := len(arg)
+		if arg[0] == "$form" && length == 2 {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
 				return c.PostForm(arg[1])
 			})
-		} else if arg[0] == "$param" {
+		} else if arg[0] == "$param" && length == 2 {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
 				return c.Param(arg[1])
 			})
 
-		} else if arg[0] == "$query" {
+		} else if arg[0] == "$query" && length == 2 {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
 				return c.Query(arg[1])
 			})
 
-		} else if arg[0] == "$payload" {
+		} else if arg[0] == "$payload" && length == 2 {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
 				if payloads, has := c.Get("__payloads"); has {
 					if value, has := payloads.(map[string]interface{})[arg[1]]; has {
@@ -266,7 +257,7 @@ func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
 				return ""
 			})
 
-		} else if arg[0] == "$session" {
+		} else if arg[0] == "$session" && length == 2 {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
 				if sid := c.GetString("__sid"); sid != "" {
 					name := arg[1]
@@ -275,7 +266,7 @@ func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
 				return ""
 			})
 
-		} else if arg[0] == "$file" {
+		} else if arg[0] == "$file" && length == 2 {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
 
 				file, err := c.FormFile(arg[1])
@@ -306,6 +297,11 @@ func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
 					Size:     file.Size,
 					Header:   file.Header,
 				}
+			})
+		} else { // 原始数值
+			new := v
+			getValues = append(getValues, func(c *gin.Context) interface{} {
+				return new
 			})
 		}
 	}
