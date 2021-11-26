@@ -24,7 +24,7 @@ type With struct {
 // QueryWhere Where 查询条件
 type QueryWhere struct {
 	Rel    string       `json:"rel,omitempty"` // Relation Name
-	Column string       `json:"column,omitempty"`
+	Column interface{}  `json:"column,omitempty"`
 	Value  interface{}  `json:"value,omitempty"`
 	Method string       `json:"method,omitempty"` // where,orwhere, wherein, orwherein...
 	OP     string       `json:"op,omitempty"`     // 操作 eq/gt/lt/ge/le/like...
