@@ -20,12 +20,14 @@ type HTTP struct {
 
 // Path HTTP Path
 type Path struct {
-	Path    string   `json:"path"`
-	Method  string   `json:"method"`
-	Process string   `json:"process"`
-	Guard   string   `json:"guard,omitempty"`
-	In      []string `json:"in,omitempty"`
-	Out     Out      `json:"out,omitempty"`
+	Label       string   `json:"label,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Path        string   `json:"path"`
+	Method      string   `json:"method"`
+	Process     string   `json:"process"`
+	Guard       string   `json:"guard,omitempty"`
+	In          []string `json:"in,omitempty"`
+	Out         Out      `json:"out,omitempty"`
 }
 
 // Out http 输出
