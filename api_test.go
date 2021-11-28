@@ -17,6 +17,9 @@ import (
 	"github.com/yaoapp/kun/maps"
 )
 
+func init() {
+	session.MemoryLocalServer()
+}
 func TestLoadAPI(t *testing.T) {
 	user := LoadAPI("file://"+path.Join(TestAPIRoot, "user.http.json"), "user")
 	assert.Equal(t, user.Name, "user")
