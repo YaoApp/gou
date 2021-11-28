@@ -7,6 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func init() {
+	MemoryLocalServer()
+}
+
 func TestMake(t *testing.T) {
 	s := Use("memory").Make().Expire(3600 * time.Second).AsGlobal()
 	assert.NotNil(t, s.GetID())

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/buraksezer/olric"
+	"github.com/buraksezer/olric/client"
 	"github.com/buraksezer/olric/config"
 	"github.com/buraksezer/olric/query"
 )
@@ -16,22 +17,47 @@ import (
 // Memory 内存
 type Memory struct{}
 
-var dmap *olric.DMap
+// DMap DMap 数据接口
+type DMap interface {
+	Get(key string) (interface{}, error)
+	Put(key string, value interface{}) error
+	PutEx(key string, value interface{}, timeout time.Duration) error
+	Query(q query.M) (Cursor, error)
+}
+
+// Cursor Cursor Interrface
+type Cursor interface {
+	Range(f func(key string, value interface{}) bool) error
+}
+
+// ServerDMap 服务端 DMap
+type ServerDMap struct{ *olric.DMap }
+
+// ClientDMap 客户端 DMap
+type ClientDMap struct{ *client.DMap }
+
+// Query 查询接口
+func (dmap ServerDMap) Query(q query.M) (Cursor, error) {
+	return dmap.DMap.Query(q)
+}
+
+// Query 查询接口
+func (dmap ClientDMap) Query(q query.M) (Cursor, error) {
+	return dmap.DMap.Query(q)
+}
+
+var dmap DMap
 
 // MemoryUse 设置数据源
-func MemoryUse(dm *olric.DMap) {
+func MemoryUse(dm DMap) {
 	dmap = dm
 }
 
 // Init 初始化
-func (mem *Memory) Init() {
-	if dmap == nil {
-		mem.Local()
-	}
-}
+func (mem *Memory) Init() {}
 
-// Local 启动服务
-func (mem *Memory) Local() {
+// MemoryLocalServer 启动服务
+func MemoryLocalServer() {
 	c := config.New("local")
 	c.Logger.SetOutput(ioutil.Discard) // 暂时关闭日志
 	ctx, cancel := context.WithCancel(context.Background())
@@ -58,7 +84,7 @@ func (mem *Memory) Local() {
 		log.Fatalf("olric.NewDMap returned an error: %v", err)
 	}
 
-	MemoryUse(dm)
+	MemoryUse(ServerDMap{DMap: dm})
 }
 
 // Set 设置数值
