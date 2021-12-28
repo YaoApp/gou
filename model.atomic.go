@@ -422,7 +422,7 @@ func (mod *Model) sqlite3DeleteWhere(param QueryParam) (int, error) {
 	return int(effect), nil
 }
 
-// MustDeleteWhere 批量删除数据, 返回更新行数, 失败跑出异常
+// MustDeleteWhere 批量删除数据, 返回更新行数, 失败抛出异常
 func (mod *Model) MustDeleteWhere(param QueryParam) int {
 	effect, err := mod.DeleteWhere(param)
 	if err != nil {
@@ -445,11 +445,50 @@ func (mod *Model) DestroyWhere(param QueryParam) (int, error) {
 	return int(effect), nil
 }
 
-// MustDestroyWhere 批量真删除数据, 返回更新行数, 失败跑出异常
+// MustDestroyWhere 批量真删除数据, 返回更新行数, 失败抛出异常
 func (mod *Model) MustDestroyWhere(param QueryParam) int {
 	effect, err := mod.DestroyWhere(param)
 	if err != nil {
 		exception.Err(err, 500).Throw()
 	}
 	return effect
+}
+
+// EachSave 批量保存数据, 返回数据ID集合
+func (mod *Model) EachSave(rows []map[string]interface{}, eachrow ...maps.MapStrAny) ([]int, error) {
+	messages := []string{}
+	ids := []int{}
+	for i, row := range rows {
+
+		if len(eachrow) > 0 {
+			for k, v := range eachrow[0] {
+				if v == "$index" {
+					row[k] = i
+				} else {
+					row[k] = v
+				}
+			}
+		}
+
+		id, err := mod.Save(row)
+		if err != nil {
+			messages = append(messages, fmt.Sprintf("第 %d 条: %s", i, err.Error()))
+			continue
+		}
+		ids = append(ids, id)
+	}
+
+	if len(messages) > 0 {
+		return ids, fmt.Errorf("%s", messages)
+	}
+	return ids, nil
+}
+
+// MustEachSave 批量保存数据, 返回数据ID集合, 失败抛出异常
+func (mod *Model) MustEachSave(rows []map[string]interface{}, eachrow ...maps.MapStrAny) []int {
+	ids, err := mod.EachSave(rows, eachrow...)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return ids
 }

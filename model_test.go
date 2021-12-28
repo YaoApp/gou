@@ -414,3 +414,68 @@ func TestModelMustDestroyWhere(t *testing.T) {
 	// 清理数据
 	assert.Equal(t, effect, 3)
 }
+
+func TestModelMustEachSave(t *testing.T) {
+	user := Select("user")
+	ids := user.MustEachSave([]map[string]interface{}{
+		{"id": 1, "balance": 200},
+		{
+			"name":     "用户创建",
+			"manu_id":  2,
+			"type":     "user",
+			"idcard":   "23082619820207006X",
+			"mobile":   "13900004444",
+			"password": "qV@uT1DI",
+			"key":      "XZ12MiPp",
+			"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+			"status":   "enabled",
+			"extra":    maps.MapStr{"sex": "女"},
+		},
+	})
+
+	assert.Equal(t, 2, len(ids))
+	row := user.MustFind(1, QueryParam{})
+
+	// 恢复数据
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", 1).Update(maps.MapStr{"balance": 0})
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", ids[1]).Delete()
+	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
+}
+
+func TestModelMustEachSaveWithIndex(t *testing.T) {
+	user := Select("user")
+	ids := user.MustEachSave([]map[string]interface{}{
+		{
+			"name":     "用户创建",
+			"manu_id":  2,
+			"type":     "user",
+			"idcard":   "23082619820207006X",
+			"mobile":   "13900004444",
+			"password": "qV@uT1DI",
+			"key":      "XZ12MiPp",
+			"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+			"status":   "enabled",
+			"extra":    maps.MapStr{"sex": "女"},
+		}, {
+			"name":     "用户创建2",
+			"manu_id":  2,
+			"type":     "user",
+			"idcard":   "23012619820207006X",
+			"mobile":   "13900004443",
+			"password": "qV@uT1DI",
+			"key":      "XZ12MiPM",
+			"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
+			"status":   "enabled",
+			"extra":    maps.MapStr{"sex": "男"},
+		},
+	}, maps.MapStr{"balance": "$index"})
+
+	assert.Equal(t, 2, len(ids))
+	row := user.MustFind(ids[0], QueryParam{})
+	row1 := user.MustFind(ids[1], QueryParam{})
+
+	// 恢复数据
+	capsule.Query().Table(user.MetaData.Table.Name).WhereIn("id", ids).Delete()
+	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 0)
+	assert.Equal(t, any.Of(row1.Get("balance")).CInt(), 1)
+}

@@ -20,6 +20,7 @@ var ModelHandlers = map[string]ProcessHandler{
 	"updatewhere":  processUpdateWhere,
 	"deletewhere":  processDeleteWhere,
 	"destroywhere": processDestroyWhere,
+	"eachsave":     processEachSave,
 }
 
 // processFind 运行模型 MustFind
@@ -169,4 +170,16 @@ func processDestroyWhere(process *Process) interface{} {
 		params = QueryParam{}
 	}
 	return mod.MustDestroyWhere(params)
+}
+
+// processEachSave 运行模型 MustEachSave
+func processEachSave(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	mod := Select(process.Class)
+	rows := process.ArgsRecords(0)
+	eachrow := map[string]interface{}{}
+	if process.NumOfArgsIs(2) {
+		eachrow = process.ArgsMap(1)
+	}
+	return mod.MustEachSave(rows, eachrow)
 }
