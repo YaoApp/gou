@@ -8,19 +8,20 @@ import (
 
 // ModelHandlers 模型运行器
 var ModelHandlers = map[string]ProcessHandler{
-	"find":         processFind,
-	"get":          processGet,
-	"paginate":     processPaginate,
-	"create":       processCreate,
-	"update":       processUpdate,
-	"save":         processSave,
-	"delete":       processDelete,
-	"destroy":      processDestroy,
-	"insert":       processInsert,
-	"updatewhere":  processUpdateWhere,
-	"deletewhere":  processDeleteWhere,
-	"destroywhere": processDestroyWhere,
-	"eachsave":     processEachSave,
+	"find":                processFind,
+	"get":                 processGet,
+	"paginate":            processPaginate,
+	"create":              processCreate,
+	"update":              processUpdate,
+	"save":                processSave,
+	"delete":              processDelete,
+	"destroy":             processDestroy,
+	"insert":              processInsert,
+	"updatewhere":         processUpdateWhere,
+	"deletewhere":         processDeleteWhere,
+	"destroywhere":        processDestroyWhere,
+	"eachsave":            processEachSave,
+	"eachsaveafterdelete": processEachSaveAfterDelete,
 }
 
 // processFind 运行模型 MustFind
@@ -180,6 +181,29 @@ func processEachSave(process *Process) interface{} {
 	eachrow := map[string]interface{}{}
 	if process.NumOfArgsIs(2) {
 		eachrow = process.ArgsMap(1)
+	}
+	return mod.MustEachSave(rows, eachrow)
+}
+
+// processEachSaveAfterDelete 运行模型 MustDeleteWhere 后 MustEachSave
+func processEachSaveAfterDelete(process *Process) interface{} {
+	process.ValidateArgNums(2)
+	mod := Select(process.Class)
+	eachrow := map[string]interface{}{}
+	ids := []int{}
+	if v, ok := process.Args[0].([]int); ok {
+		ids = v
+	} else if v, ok := process.Args[0].([]interface{}); ok {
+		for _, i := range v {
+			ids = append(ids, any.Of(i).CInt())
+		}
+	}
+	rows := process.ArgsRecords(1)
+	if process.NumOfArgsIs(3) {
+		eachrow = process.ArgsMap(2)
+	}
+	if len(ids) > 0 {
+		mod.MustDeleteWhere(QueryParam{Wheres: []QueryWhere{{Column: "id", OP: "in", Value: ids}}})
 	}
 	return mod.MustEachSave(rows, eachrow)
 }
