@@ -191,6 +191,11 @@ func (process *Process) ArgsRecords(index int) []map[string]interface{} {
 	process.ValidateArgNums(index + 1)
 	records := []map[string]interface{}{}
 	args := process.Args[index]
+
+	if args == nil {
+		exception.New("参数错误: 第%d个参数不能为空值", 400, index+1).Ctx(fmt.Sprintf("%#v", process.Args[index])).Throw()
+	}
+
 	switch args.(type) {
 	case []interface{}:
 		for _, v := range args.([]interface{}) {
