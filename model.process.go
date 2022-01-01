@@ -1,8 +1,11 @@
 package gou
 
 import (
+	"fmt"
+
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/kun/str"
 )
 
@@ -11,6 +14,7 @@ var ModelHandlers = map[string]ProcessHandler{
 	"find":                processFind,
 	"get":                 processGet,
 	"paginate":            processPaginate,
+	"selectoption":        processSelectOption,
 	"create":              processCreate,
 	"update":              processUpdate,
 	"save":                processSave,
@@ -206,4 +210,47 @@ func processEachSaveAfterDelete(process *Process) interface{} {
 		mod.MustDeleteWhere(QueryParam{Wheres: []QueryWhere{{Column: "id", OP: "in", Value: ids}}})
 	}
 	return mod.MustEachSave(rows, eachrow)
+}
+
+// processSelectOption 运行模型 MustGet
+func processSelectOption(process *Process) interface{} {
+	mod := Select(process.Class)
+	keyword := "%%"
+	if process.NumOfArgs() > 0 {
+		keyword = fmt.Sprintf("%%%s%%", process.ArgsString(0))
+	}
+	name := "name"
+	if process.NumOfArgs() > 1 {
+		name = process.ArgsString(1, "name")
+	}
+
+	value := "id"
+	if process.NumOfArgs() > 2 {
+		value = process.ArgsString(2, "id")
+	}
+
+	limit := 20
+	if process.NumOfArgs() > 3 {
+		limit = process.ArgsInt(3)
+	}
+
+	query := QueryParam{
+		Select: []interface{}{name, value},
+		Wheres: []QueryWhere{
+			{Column: name, OP: "like", Value: keyword},
+		},
+		Limit: limit,
+	}
+
+	data := mod.MustGet(query)
+	res := []maps.StrAny{}
+	for _, row := range data {
+		new := maps.StrAny{
+			"name": row.Get(name),
+			"id":   row.Get(value),
+		}
+		res = append(res, new)
+	}
+
+	return res
 }

@@ -59,6 +59,35 @@ func TestProcessGet(t *testing.T) {
 	assert.Equal(t, "女", res.Get("data.1.extra.sex"))
 }
 
+func TestProcessSelectOption(t *testing.T) {
+	rows := NewProcess("models.user.SelectOption").Run().([]maps.MapStr)
+	res := maps.Map{"data": rows}.Dot()
+	assert.Equal(t, 3, len(rows))
+	assert.Equal(t, 1, any.Of(res.Get("data.0.id")).CInt())
+	assert.Equal(t, "管理员", res.Get("data.0.name"))
+	assert.Equal(t, 2, any.Of(res.Get("data.1.id")).CInt())
+	assert.Equal(t, "员工", res.Get("data.1.name"))
+	assert.Equal(t, 3, any.Of(res.Get("data.2.id")).CInt())
+	assert.Equal(t, "用户", res.Get("data.2.name"))
+
+	rows = NewProcess("models.user.SelectOption", "用户").Run().([]maps.MapStr)
+	res = maps.Map{"data": rows}.Dot()
+	assert.Equal(t, 1, len(rows))
+	assert.Equal(t, 3, any.Of(res.Get("data.0.id")).CInt())
+	assert.Equal(t, "用户", res.Get("data.0.name"))
+
+	rows = NewProcess("models.user.SelectOption", "", "name", "name").Run().([]maps.MapStr)
+	res = maps.Map{"data": rows}.Dot()
+	assert.Equal(t, 3, len(rows))
+	assert.Equal(t, "管理员", res.Get("data.0.id"))
+	assert.Equal(t, "管理员", res.Get("data.0.name"))
+	assert.Equal(t, "员工", res.Get("data.1.id"))
+	assert.Equal(t, "员工", res.Get("data.1.name"))
+	assert.Equal(t, "用户", res.Get("data.2.id"))
+	assert.Equal(t, "用户", res.Get("data.2.name"))
+
+}
+
 func TestProcessPaginate(t *testing.T) {
 	res := NewProcess("models.user.Paginate", QueryParam{}, 1, 2).Run().(maps.MapStr).Dot()
 	assert.Equal(t, 3, res.Get("total"))
