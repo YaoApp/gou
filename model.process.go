@@ -220,17 +220,17 @@ func processSelectOption(process *Process) interface{} {
 		keyword = fmt.Sprintf("%%%s%%", process.ArgsString(0))
 	}
 	name := "name"
-	if process.NumOfArgs() > 1 {
+	if process.NumOfArgs() > 1 && process.ArgsString(1, "name") != "" {
 		name = process.ArgsString(1, "name")
 	}
 
 	value := "id"
-	if process.NumOfArgs() > 2 {
+	if process.NumOfArgs() > 2 && process.ArgsString(2, "id") != "" {
 		value = process.ArgsString(2, "id")
 	}
 
 	limit := 20
-	if process.NumOfArgs() > 3 {
+	if process.NumOfArgs() > 3 && process.ArgsInt(3, 20) > 0 {
 		limit = process.ArgsInt(3)
 	}
 
