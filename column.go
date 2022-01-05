@@ -1,7 +1,6 @@
 package gou
 
 import (
-	"fmt"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
@@ -104,8 +103,9 @@ func (column *Column) fliterInDateTime(value interface{}, row maps.MapStrAny) {
 	switch typ {
 	case "datetime", "date", "datetimeTz", "timestamp", "timestampTz", "time", "timeTz":
 		if _, ok := value.(dbal.Expression); !ok {
-			fmt.Printf("fliterInDateTime: %#v", value)
-			row.Set(column.Name, day.Of(value).Format("2006-01-02 15:04:05"))
+			if value != nil {
+				row.Set(column.Name, day.Of(value).Format("2006-01-02 15:04:05"))
+			}
 		}
 	}
 }
