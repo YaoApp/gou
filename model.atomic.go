@@ -158,6 +158,7 @@ func (mod *Model) Save(row maps.MapStrAny) (int, error) {
 
 		if mod.MetaData.Option.Timestamps {
 			row.Set("updated_at", dbal.Raw("CURRENT_TIMESTAMP"))
+			row.Del("deleted_at") // 忽略删除字段
 		}
 
 		id := row.Get(mod.PrimaryKey)
@@ -177,6 +178,8 @@ func (mod *Model) Save(row maps.MapStrAny) (int, error) {
 	// 创建
 	if mod.MetaData.Option.Timestamps {
 		row.Set("created_at", dbal.Raw("CURRENT_TIMESTAMP"))
+		row.Del("deleted_at") // 忽略删除字段
+		row.Del("updated_at") // 忽略更新字段
 	}
 
 	id, err := capsule.Query().
