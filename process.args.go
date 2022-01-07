@@ -144,7 +144,7 @@ func (process *Process) ArgsMap(i int, defaults ...maps.MapStrAny) maps.MapStrAn
 		value = defaults[0]
 	}
 
-	if process.Args[i] == nil || len(process.Args) <= i {
+	if len(process.Args) <= i || process.Args[i] == nil {
 		return value
 	}
 
