@@ -32,7 +32,7 @@ var ModelHandlers = map[string]ProcessHandler{
 func processFind(process *Process) interface{} {
 	process.ValidateArgNums(2)
 	mod := Select(process.Class)
-	params, ok := process.Args[1].(QueryParam)
+	params, ok := AnyToQueryParam(process.Args[1])
 	if !ok {
 		params = QueryParam{}
 	}
