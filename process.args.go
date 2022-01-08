@@ -226,7 +226,7 @@ func (process *Process) ArgsRecords(index int) []map[string]interface{} {
 // ArgsStrings 读取 []string 参数值
 func (process *Process) ArgsStrings(index int) []string {
 	process.ValidateArgNums(index + 1)
-	columnsAny := process.Args[0]
+	columnsAny := process.Args[index]
 	columns := []string{}
 	switch columnsAny.(type) {
 	case []interface{}:
@@ -244,4 +244,10 @@ func (process *Process) ArgsStrings(index int) []string {
 		break
 	}
 	return columns
+}
+
+// ArgsArray 读取 []interface{} 参数值
+func (process *Process) ArgsArray(index int) []interface{} {
+	process.ValidateArgNums(index + 1)
+	return any.Of(process.Args[index]).CArray()
 }
