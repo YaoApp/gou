@@ -203,8 +203,16 @@ func (process *Process) ArgsRecords(index int) []map[string]interface{} {
 			if ok {
 				records = append(records, value)
 				continue
+			} else if value, ok := v.(maps.MapStrAny); ok {
+				records = append(records, value)
+				continue
 			}
 			exception.New("参数错误: 第%d个参数不是数组", 400, index+1).Ctx(fmt.Sprintf("%#v", process.Args[index])).Throw()
+		}
+		break
+	case []maps.MapStrAny:
+		for _, v := range args.([]maps.MapStrAny) {
+			records = append(records, v)
 		}
 		break
 	case []share.Record:
