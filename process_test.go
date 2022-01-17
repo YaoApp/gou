@@ -446,3 +446,25 @@ func TestProcessMustEachSaveAfterDelete(t *testing.T) {
 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 0)
 	assert.Equal(t, any.Of(row1.Get("balance")).CInt(), 1)
 }
+
+func TestProcessOf(t *testing.T) {
+	process, err := ProcessOf("models.user.Find", 1, QueryParam{})
+	assert.Nil(t, err)
+	assert.Equal(t, "models.user.find", process.Name)
+
+	process, err = ProcessOf("not exists", 1, QueryParam{})
+	assert.Nil(t, process)
+	assert.Equal(t, "Process:not exists 格式错误", err.Error())
+}
+
+func TestProcessExec(t *testing.T) {
+	value, err := NewProcess("models.user.Find", 1, QueryParam{}).Exec()
+	res := value.(maps.MapStr)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, any.Of(res.Dot().Get("id")).CInt())
+	assert.Equal(t, "男", res.Dot().Get("extra.sex"))
+
+	value, err = NewProcess("models.user.Find", 100, QueryParam{}).Exec()
+	assert.Nil(t, value)
+	assert.Equal(t, "ID=100的数据不存在", err.Error())
+}

@@ -14,6 +14,28 @@ func NewProcess(name string, args ...interface{}) *Process {
 	return process
 }
 
+// Run 运行方法
+func (process *Process) Run() interface{} {
+	return process.Handler(process)
+}
+
+// ProcessOf 创建运行器, 创建成功返回处理器，创建失败返回错误信息
+func ProcessOf(name string, args ...interface{}) (*Process, error) {
+	process := &Process{Name: name, Args: args, Global: map[string]interface{}{}}
+	err := process.make()
+	if err != nil {
+		return nil, err
+	}
+	return process, nil
+}
+
+// Exec 运行方法, 失败返回错误
+func (process *Process) Exec() (value interface{}, err error) {
+	defer func() { err = exception.Catch(recover()) }()
+	value = process.Handler(process)
+	return value, nil
+}
+
 // RegisterProcessHandler 注册 ProcessHandler
 func RegisterProcessHandler(name string, handler ProcessHandler) {
 	name = strings.ToLower(name)
@@ -32,9 +54,11 @@ func (process *Process) WithGlobal(global map[string]interface{}) *Process {
 	return process
 }
 
-// Run 运行方法
-func (process *Process) Run() interface{} {
-	return process.Handler(process)
+// 解析方法
+func (process *Process) make() (err error) {
+	defer func() { err = exception.Catch(recover()) }()
+	process.extraProcess()
+	return nil
 }
 
 // extraProcess 解析执行方法  name = "models.user.Find", name = "plugins.user.Login"
