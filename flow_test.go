@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/session"
 	"github.com/yaoapp/kun/maps"
+	"github.com/yaoapp/kun/utils"
 )
 
 func TestLoadFlow(t *testing.T) {
@@ -63,6 +64,16 @@ func TestFlowExecScript(t *testing.T) {
 
 	assert.Equal(t, "login", res.Dot().Get("Flow脚本.user.name"))
 	assert.Equal(t, float64(1024), res.Dot().Get("Flow脚本.user.args.0"))
+}
+
+func TestFlowExecArraySet(t *testing.T) {
+	args := []map[string]interface{}{
+		{"name": "hello", "value": "world"},
+		{"name": "foo", "value": "bar"},
+	}
+	flow := SelectFlow("arrayset")
+	res := flow.Exec(args)
+	utils.Dump(res)
 }
 
 func TestFlowExecGlobalSession(t *testing.T) {

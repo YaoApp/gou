@@ -78,10 +78,15 @@ func TestMain(m *testing.M) {
 	LoadFlow("file://"+path.Join(TestFLWRoot, "latest.flow.json"), "latest").
 		LoadScript("file://"+path.Join(TestFLWRoot, "latest.rank.js"), "rank").
 		LoadScript("file://"+path.Join(TestFLWRoot, "latest.count.js"), "count")
+
 	LoadFlow("file://"+path.Join(TestFLWRoot, "stat.flow.json"), "stat")
+
 	LoadFlow("file://"+path.Join(TestFLWRoot, "script.flow.json"), "script").
 		LoadScript("file://"+path.Join(TestFLWRoot, "script.rank.js"), "rank").
 		LoadScript("file://"+path.Join(TestFLWRoot, "script.sort.js"), "sort")
+
+	LoadFlow("file://"+path.Join(TestFLWRoot, "arrayset.flow.json"), "arrayset").
+		LoadScript("file://"+path.Join(TestFLWRoot, "arrayset.array.js"), "array")
 
 	LoadFlow("file://"+path.Join(TestFLWRoot, "user", "info.flow.json"), "user.info").
 		LoadScript("file://"+path.Join(TestFLWRoot, "user", "info.data.js"), "data")
