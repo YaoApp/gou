@@ -18,10 +18,11 @@ require (
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/sys v0.0.0-20211105183446-c75c47738b0c // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	rogchap.com/v8go v0.7.0 // indirect
 )
 
 replace github.com/yaoapp/kun => ../kun
 
 replace github.com/yaoapp/xun => ../xun
 
-// replace github.com/robertkrimen/otto => ../../otto
+replace github.com/robertkrimen/otto => ../../otto
