@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"io"
 
 	"github.com/yaoapp/gou/runtime/yao"
 	"github.com/yaoapp/kun/exception"
@@ -21,6 +22,16 @@ func Node() *Runtime {
 // Load load and compile script
 func (runtime *Runtime) Load(filename string, name string) error {
 	return runtime.Engine.Load(filename, name)
+}
+
+// LoadReader load and compile script
+func (runtime *Runtime) LoadReader(reader io.Reader, name string, filename ...string) error {
+	return runtime.Engine.LoadReader(reader, name, filename...)
+}
+
+// Has check the given name of the script is load
+func (runtime *Runtime) Has(name string) bool {
+	return runtime.Engine.Has(name)
 }
 
 // AddFunction add a global JavaScript function

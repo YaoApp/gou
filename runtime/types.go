@@ -1,13 +1,18 @@
 package runtime
 
-import "context"
+import (
+	"context"
+	"io"
+)
 
 // Engine 脚本接口
 type Engine interface {
 	Load(filename string, name string) error
+	LoadReader(reader io.Reader, name string, filename ...string) error
 	AddFunction(name string, fn func(global map[string]interface{}, sid string, args ...interface{}) interface{}) error
 	AddObject(name string, methods map[string]func(global map[string]interface{}, sid string, args ...interface{}) interface{}) error
 
+	Has(name string) bool
 	Call(data map[string]interface{}, name string, method string, args ...interface{}) (interface{}, error)
 }
 

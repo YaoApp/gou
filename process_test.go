@@ -39,7 +39,7 @@ func TestProcessFlow(t *testing.T) {
 	res := maps.Of(NewProcess("flows.latest", "%公司%", "bar").Run().(map[string]interface{}))
 	assert.Equal(t, res.Get("params"), []interface{}{"%公司%", "bar"})
 	assert.Equal(t, len(res.Dot().Get("data.users").([]maps.Map)), 3)
-	assert.Equal(t, len(res.Dot().Get("data.manus").([]maps.Map)), 4)
+	assert.Equal(t, len(res.Dot().Get("data.manus").([]interface{})), 4)
 	assert.Equal(t, res.Dot().Get("data.count.plugin"), "github")
 }
 

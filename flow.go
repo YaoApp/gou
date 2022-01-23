@@ -7,12 +7,49 @@ import (
 	"os"
 	"strings"
 
+	"github.com/yaoapp/gou/runtime"
+
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/utils"
 )
 
 // Flows 已加载工作流列表
 var Flows = map[string]*Flow{}
+
+// Yao JavaScript 运行环境
+var Yao = runtime.Yao()
+
+func init() {
+	Yao.
+		AddFunction("Process", func(global map[string]interface{}, sid string, args ...interface{}) interface{} {
+			if len(args) < 0 {
+				return map[string]interface{}{"code": 400, "message": "缺少处理器名称"}
+			}
+
+			name, ok := args[0].(string)
+			if !ok {
+				return map[string]interface{}{"code": 400, "message": "处理器参数不正确"}
+			}
+
+			in := []interface{}{}
+			if len(args) > 1 {
+				in = args[1:]
+			}
+
+			value, err := NewProcess(name, in...).WithGlobal(global).WithSID(sid).Exec()
+			if err != nil {
+				return map[string]interface{}{"code": 500, "message": err.Error()}
+			}
+			return value
+		}).
+		AddObject("console", map[string]func(global map[string]interface{}, sid string, args ...interface{}) interface{}{
+			"log": func(global map[string]interface{}, sid string, args ...interface{}) interface{} {
+				utils.Dump(args)
+				return nil
+			},
+		})
+}
 
 // LoadFlow 载入数据接口
 func LoadFlow(source string, name string) *Flow {
@@ -80,13 +117,15 @@ func (flow *Flow) LoadScript(source string, name string) *Flow {
 	name = fmt.Sprintf("flows.%s.%s", flow.Name, name)
 	if strings.HasPrefix(source, "file://") {
 		filename := strings.TrimPrefix(source, "file://")
-		err := JavaScriptVM.Load(filename, name)
+		// err := JavaScriptVM.Load(filename, name)
+		err := Yao.Load(filename, name)
 		if err != nil {
 			log.Printf("加载数据脚本失败 %s: %s", filename, name)
 		}
 	} else {
 		input = strings.NewReader(source)
-		err := JavaScriptVM.LoadSource("", input, name)
+		// err := JavaScriptVM.LoadSource("", input, name)
+		err := Yao.LoadReader(input, name)
 		if err != nil {
 			log.Printf("加载数据脚本失败 %s", name)
 		}

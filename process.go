@@ -140,11 +140,10 @@ func processFlow(process *Process) interface{} {
 
 // processScript 运行脚本中定义的处理器
 func processScript(process *Process) interface{} {
-	res, err := JavaScriptVM.
+	res, err := Yao.New(process.Class, process.Method).
 		WithGlobal(process.Global).
-		WithSID(process.Sid).
-		WithProcess("*").
-		Run(process.Class, process.Method, process.Args...)
+		WithSid(process.Sid).
+		Call(process.Args...)
 	if err != nil {
 		exception.New("脚本执行失败: %s", 500, err.Error()).Throw()
 	}

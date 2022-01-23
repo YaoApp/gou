@@ -154,7 +154,7 @@ func (flow *Flow) RunScript(node *FlowNode, ctx *FlowContext, data maps.Map, pro
 	}
 
 	name := node.Script // 全局脚本引用
-	if !JavaScriptVM.Has(name) {
+	if !Yao.Has(name) {
 		name = fmt.Sprintf("flows.%s.%s", flow.Name, node.Script) // Node 脚本(兼容旧版)
 	}
 
@@ -168,11 +168,9 @@ func (flow *Flow) RunScript(node *FlowNode, ctx *FlowContext, data maps.Map, pro
 		in = append(in, value)
 	}
 
-	resp, err := JavaScriptVM.
-		WithProcess("*").
-		WithGlobal(flow.Global).
-		WithSID(flow.Sid).
-		Run(name, "main", in, processResp, last, flow.Global)
+	resp, err := Yao.New(name, "main").
+		WithGlobal(flow.Global).WithSid(flow.Sid).
+		Call(in, processResp, last, flow.Global)
 
 	if err != nil {
 		exception.New("%s 脚本错误: %s", 500, node.Script, err.Error()).Ctx(map[string]interface{}{

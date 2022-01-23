@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/yaoapp/gou/query/gou"
+	"github.com/yaoapp/gou/runtime"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/utils"
 	"github.com/yaoapp/xun/capsule"
 	"github.com/yaoapp/xun/logger"
 )
@@ -21,6 +23,20 @@ var TestScriptRoot = "/data/scripts"
 var TestDriver = "mysql"
 var TestDSN = "root:123456@tcp(127.0.0.1:3306)/gou?charset=utf8mb4&parseTime=True&loc=Local"
 var TestAESKey = "123456"
+var TestYao = runtime.Yao().
+	AddFunction("UnitTestFn", func(global map[string]interface{}, sid string, args ...interface{}) interface{} {
+		utils.Dump(global, sid, args)
+		return args
+	}).
+	AddFunction("Process", func(global map[string]interface{}, sid string, args ...interface{}) interface{} {
+		return map[string]interface{}{"global": global, "sid": sid, "args": args}
+	}).
+	AddObject("console", map[string]func(global map[string]interface{}, sid string, args ...interface{}) interface{}{
+		"log": func(global map[string]interface{}, sid string, args ...interface{}) interface{} {
+			utils.Dump(args)
+			return nil
+		},
+	})
 
 func TestMain(m *testing.M) {
 	TestAPIRoot = os.Getenv("GOU_TEST_API_ROOT")
@@ -73,7 +89,7 @@ func TestMain(m *testing.M) {
 	LoadAPI("file://"+path.Join(TestAPIRoot, "manu.http.json"), "manu")
 
 	// 加载 Flow
-	JavaScriptVM.Load(path.Join(TestScriptRoot, "test.js"), "app.test") // 加载全局脚本
+	Yao.Load(path.Join(TestScriptRoot, "test.js"), "app.test") // 加载全局脚本
 
 	LoadFlow("file://"+path.Join(TestFLWRoot, "latest.flow.json"), "latest").
 		LoadScript("file://"+path.Join(TestFLWRoot, "latest.rank.js"), "rank").

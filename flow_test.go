@@ -31,9 +31,10 @@ func TestSelectFlow(t *testing.T) {
 func TestFlowExec(t *testing.T) {
 	flow := SelectFlow("latest")
 	res := maps.Of(flow.Exec("%公司%", "bar").(map[string]interface{}))
+
 	assert.Equal(t, res.Get("params"), []interface{}{"%公司%", "bar"})
-	assert.Equal(t, len(res.Dot().Get("data.users").([]maps.Map)), 3)
-	assert.Equal(t, len(res.Dot().Get("data.manus").([]maps.Map)), 4)
+	assert.Equal(t, len(res.Dot().Get("data.users").([]maps.MapStrAny)), 3)
+	assert.Equal(t, len(res.Dot().Get("data.manus").([]interface{})), 4)
 	// assert.Equal(t, res.Dot().Get("data.users.0.id"), int64(3))
 	// assert.Equal(t, res.Dot().Get("data.manus.1.id"), int64(3))
 	assert.Equal(t, res.Dot().Get("data.count.plugin"), "github")
@@ -90,6 +91,6 @@ func TestFlowExecGlobalSession(t *testing.T) {
 	assert.Equal(t, "管理员", res.Get("用户数据.name"))
 	assert.Equal(t, "admin", res.Get("用户数据.type"))
 	assert.Equal(t, "bar", res.Get("脚本数据.global.foo"))
-	assert.Equal(t, 1, res.Get("脚本数据.session.id"))
+	assert.Equal(t, float64(1), res.Get("脚本数据.session.id"))
 	assert.Equal(t, "admin", res.Get("脚本数据.session.type"))
 }

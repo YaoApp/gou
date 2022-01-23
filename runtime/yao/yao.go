@@ -145,8 +145,7 @@ func (yao *Yao) goFunTemplate(fn func(global map[string]interface{}, sid string,
 		jsSid, _ := info.Context().Global().Get("__yao_sid")
 		args := valuesToArray(info.Args())
 		res := fn(global, jsSid.String(), args...)
-		value, _ := v8.NewValue(yao.iso, res)
-		return value
+		return interfaceToValue(info.Context(), res)
 	})
 }
 
@@ -198,8 +197,24 @@ func valueToInterface(value *v8.Value) (interface{}, error) {
 }
 
 func interfaceToValuer(ctx *v8.Context, value interface{}) v8.Valuer {
+	var valuer v8.Valuer
+	if value == nil {
+		valuer, _ = v8.NewValue(ctx.Isolate(), value)
+		return valuer
+	}
 	v, _ := jsoniter.Marshal(value)
-	valuer, _ := v8.JSONParse(ctx, string(v))
+	valuer, _ = v8.JSONParse(ctx, string(v))
+	return valuer
+}
+
+func interfaceToValue(ctx *v8.Context, value interface{}) *v8.Value {
+	var valuer *v8.Value
+	if value == nil {
+		valuer, _ = v8.NewValue(ctx.Isolate(), value)
+		return valuer
+	}
+	v, _ := jsoniter.Marshal(value)
+	valuer, _ = v8.JSONParse(ctx, string(v))
 	return valuer
 }
 

@@ -14,5 +14,10 @@ function hello() {
 }
 
 function user() {
+  console.log(
+    "user",
+    "plugins.user.Login",
+    Process("plugins.user.Login", 1024)
+  );
   return Process("plugins.user.Login", 1024);
 }
