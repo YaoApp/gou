@@ -25,4 +25,4 @@ replace github.com/yaoapp/kun => ../kun
 
 replace github.com/yaoapp/xun => ../xun
 
-replace github.com/robertkrimen/otto => ../../otto
+// replace github.com/robertkrimen/otto => ../../otto
