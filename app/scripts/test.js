@@ -41,3 +41,8 @@ function helloSession(value) {
     out: out,
   };
 }
+
+// args
+function getArgs(str, intv, floatv, array, map) {
+  return [str, intv, floatv, array, map];
+}
