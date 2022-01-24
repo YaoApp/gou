@@ -45,7 +45,7 @@ func init() {
 		}).
 		AddObject("console", map[string]func(global map[string]interface{}, sid string, args ...interface{}) interface{}{
 			"log": func(global map[string]interface{}, sid string, args ...interface{}) interface{} {
-				utils.Dump(args)
+				utils.Dump(args...)
 				return nil
 			},
 		})
