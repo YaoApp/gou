@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/yaoapp/gou/query/gou"
@@ -16,6 +17,7 @@ import (
 
 // TestAPIRoot
 var TestAPIRoot = "/data/apis"
+var TestServerRoot = "/data/servers"
 var TestFLWRoot = "/data/flows"
 var TestPLGRoot = "/data/plugins"
 var TestModRoot = "/data/models"
@@ -40,6 +42,8 @@ var TestYao = runtime.Yao().
 
 func TestMain(m *testing.M) {
 	TestAPIRoot = os.Getenv("GOU_TEST_API_ROOT")
+	TestServerRoot = filepath.Join(os.Getenv("GOU_TEST_API_ROOT"), "..", "servers")
+
 	TestFLWRoot = os.Getenv("GOU_TEST_FLW_ROOT")
 	TestModRoot = os.Getenv("GOU_TEST_MOD_ROOT")
 	TestPLGRoot = os.Getenv("GOU_TEST_PLG_ROOT")
@@ -106,6 +110,9 @@ func TestMain(m *testing.M) {
 
 	LoadFlow("file://"+path.Join(TestFLWRoot, "user", "info.flow.json"), "user.info").
 		LoadScript("file://"+path.Join(TestFLWRoot, "user", "info.data.js"), "data")
+
+	LoadFlow("file://"+path.Join(TestFLWRoot, "rfid", "read.flow.json"), "rfid.read").
+		LoadScript("file://"+path.Join(TestFLWRoot, "rfid", "read.print.js"), "print")
 
 	// 加密密钥
 	LoadCrypt(fmt.Sprintf(`{"key":"%s"}`, TestAESKey), "AES")

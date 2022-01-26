@@ -45,3 +45,14 @@ type Server struct {
 	Root   string   `json:"root,omitempty"`   // API 根目录
 	Allows []string `json:"allows,omitempty"` // 许可跨域访问域名
 }
+
+// SocketServer Socket Server 描述数据结构
+type SocketServer struct {
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	Description string `json:"description,omitempty"`
+	Protocol    string `json:"protocol,omitempty"`
+	Host        string `json:"host,omitempty"`
+	Port        string `json:"port,omitempty"`
+	Process     string `json:"process,omitempty"`
+}
