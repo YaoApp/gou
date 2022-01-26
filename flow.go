@@ -23,10 +23,9 @@ var Yao = runtime.Yao()
 func init() {
 	Yao.
 		AddFunction("Process", func(global map[string]interface{}, sid string, args ...interface{}) interface{} {
-			if len(args) < 0 {
+			if len(args) < 1 {
 				return map[string]interface{}{"code": 400, "message": "缺少处理器名称"}
 			}
-
 			name, ok := args[0].(string)
 			if !ok {
 				return map[string]interface{}{"code": 400, "message": "处理器参数不正确"}
