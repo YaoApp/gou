@@ -18,7 +18,7 @@ import (
 var Flows = map[string]*Flow{}
 
 // Yao JavaScript 运行环境
-var Yao = runtime.Yao()
+var Yao = runtime.Yao(16384)
 
 func init() {
 	Yao.
@@ -47,7 +47,8 @@ func init() {
 				utils.Dump(args...)
 				return nil
 			},
-		})
+		}).
+		Init()
 }
 
 // LoadFlow 载入数据接口

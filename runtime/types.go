@@ -11,6 +11,7 @@ type Engine interface {
 	LoadReader(reader io.Reader, name string, filename ...string) error
 	AddFunction(name string, fn func(global map[string]interface{}, sid string, args ...interface{}) interface{}) error
 	AddObject(name string, methods map[string]func(global map[string]interface{}, sid string, args ...interface{}) interface{}) error
+	Init() error
 
 	Has(name string) bool
 	Call(data map[string]interface{}, name string, method string, args ...interface{}) (interface{}, error)

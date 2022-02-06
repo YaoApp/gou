@@ -8,6 +8,8 @@ type Yao struct {
 	iso             *v8go.Isolate
 	template        *v8go.ObjectTemplate
 	objectTemplates map[string]*v8go.ObjectTemplate
+	contexts        *Pool
+	numOfContexts   int
 }
 
 type script struct {
@@ -15,4 +17,11 @@ type script struct {
 	filename string
 	source   string
 	compiled *v8go.UnboundScript
+}
+
+// Pool JS contect pool
+type Pool struct {
+	contexts chan *v8go.Context
+	size     int
+	lock     bool
 }

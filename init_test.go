@@ -25,7 +25,7 @@ var TestScriptRoot = "/data/scripts"
 var TestDriver = "mysql"
 var TestDSN = "root:123456@tcp(127.0.0.1:3306)/gou?charset=utf8mb4&parseTime=True&loc=Local"
 var TestAESKey = "123456"
-var TestYao = runtime.Yao().
+var TestYao = runtime.Yao(1024).
 	AddFunction("UnitTestFn", func(global map[string]interface{}, sid string, args ...interface{}) interface{} {
 		utils.Dump(global, sid, args)
 		return args
@@ -41,6 +41,9 @@ var TestYao = runtime.Yao().
 	})
 
 func TestMain(m *testing.M) {
+
+	TestYao.Init()
+
 	TestAPIRoot = os.Getenv("GOU_TEST_API_ROOT")
 	TestServerRoot = filepath.Join(os.Getenv("GOU_TEST_API_ROOT"), "..", "servers")
 

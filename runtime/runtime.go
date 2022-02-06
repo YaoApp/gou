@@ -9,8 +9,9 @@ import (
 )
 
 // Yao create a pure javascript ES6 javascript runtime
-func Yao() *Runtime {
-	return &Runtime{Name: "yao", Scripts: map[string]Script{}, Engine: yao.New()}
+func Yao(numOfContexts int) *Runtime {
+	engine := yao.New(numOfContexts)
+	return &Runtime{Name: "yao", Scripts: map[string]Script{}, Engine: engine}
 }
 
 // Node create a NodeJS runtime ( not support yet )
@@ -61,6 +62,11 @@ func (runtime *Runtime) New(name string, method string) *Request {
 		global:  map[string]interface{}{},
 		context: context.Background(),
 	}
+}
+
+// Init initialize Engine
+func (runtime *Runtime) Init() error {
+	return runtime.Engine.Init()
 }
 
 // WithGlobal with global data

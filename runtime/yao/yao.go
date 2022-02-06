@@ -14,7 +14,7 @@ import (
 )
 
 // New create a pure ES6 engine (v8)
-func New() *Yao {
+func New(numOfContexts int) *Yao {
 	iso := v8.NewIsolate()
 	global := v8.NewObjectTemplate(iso)
 
@@ -23,10 +23,21 @@ func New() *Yao {
 		template:        global,
 		scripts:         map[string]script{},
 		objectTemplates: map[string]*v8.ObjectTemplate{},
+		numOfContexts:   numOfContexts,
 	}
 
 	yao.template.Set("fetch", v8.NewFunctionTemplate(yao.iso, yao.jsFetch))
 	return yao
+}
+
+// Init initialize
+func (yao *Yao) Init() error {
+	yao.contexts = NewPool(yao.numOfContexts)
+	// for i := 0; i < yao.numOfContexts; i++ {
+	// 	yao.contexts.Push(v8.NewContext(yao.iso, yao.template))
+	// }
+	// go yao.contexts.Prepare(200, func() *v8.Context { return v8.NewContext(yao.iso, yao.template) })
+	return nil
 }
 
 // Load load and compile script
@@ -54,8 +65,6 @@ func (yao *Yao) LoadReader(reader io.Reader, name string, filename ...string) er
 	if len(filename) > 0 {
 		scriptfile = filename[0]
 	}
-	iso := v8.NewIsolate()
-	defer iso.Close()
 
 	// Compile
 	code := string(source)
@@ -80,15 +89,21 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 		return nil, fmt.Errorf("The %s does not loaded (%d)", name, len(yao.scripts))
 	}
 
-	v8ctx := v8.NewContext(yao.iso, yao.template) // new context within the VM
-	defer v8ctx.Close()
+	v8ctx, err := yao.contexts.Make(func() *v8.Context { return v8.NewContext(yao.iso, yao.template) })
+	if err != nil {
+		return nil, err
+	}
+	defer func() { v8ctx.Close() }()
 
-	_, err := script.compiled.Run(v8ctx)
+	_, err = script.compiled.Run(v8ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	global := v8ctx.Global() // get the global object from the context
+	if global == nil {
+		return nil, fmt.Errorf("global is nil")
+	}
 
 	// set global data
 	for key, val := range data {
@@ -101,7 +116,15 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 		global.Set(objectName, object)
 	}
 
-	jsArgs := arrayToValuers(v8ctx, args)
+	if !global.Has(method) {
+		return nil, fmt.Errorf("global %s", method)
+	}
+
+	jsArgs, err := arrayToValuers(v8ctx, args)
+	if err != nil {
+		return nil, fmt.Errorf("function %s.%s %s", name, method, err.Error())
+	}
+
 	value, err := global.MethodCall(method, jsArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("function %s.%s %s", name, method, err.Error())
@@ -180,6 +203,11 @@ func (yao *Yao) jsFetch(info *v8.FunctionCallbackInfo) *v8.Value {
 }
 
 func valueToInterface(value *v8.Value) (interface{}, error) {
+
+	if value == nil {
+		return nil, nil
+	}
+
 	var v interface{} = nil
 	if value.IsNull() || value.IsUndefined() {
 		return nil, nil
@@ -234,12 +262,30 @@ func valuesToArray(values []*v8.Value) []interface{} {
 	return res
 }
 
-func arrayToValuers(ctx *v8.Context, values []interface{}) []v8.Valuer {
+func arrayToValuers(ctx *v8.Context, values []interface{}) ([]v8.Valuer, error) {
 	res := []v8.Valuer{}
+	if ctx == nil {
+		return res, fmt.Errorf("Context is nil")
+	}
+
 	for i := range values {
-		value, _ := jsoniter.Marshal(values[i])
-		valuer, _ := v8.JSONParse(ctx, string(value))
+		// if values[i] == nil {
+		// 	if value, err := v8.NewValue(ctx.Isolate(), values[i]); err != nil {
+		// 		res = append(res, value)
+		// 	}
+		// 	continue
+		// }
+
+		value, err := jsoniter.Marshal(values[i])
+		if err != nil {
+			return nil, err
+		}
+
+		valuer, err := v8.JSONParse(ctx, string(value))
+		if err != nil {
+			return nil, err
+		}
 		res = append(res, valuer)
 	}
-	return res
+	return res, nil
 }
