@@ -18,7 +18,7 @@ import (
 var Flows = map[string]*Flow{}
 
 // Yao JavaScript 运行环境
-var Yao = runtime.Yao(16384)
+var Yao = runtime.Yao(1)
 
 func init() {
 	Yao.

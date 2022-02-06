@@ -33,6 +33,7 @@ func New(numOfContexts int) *Yao {
 // Init initialize
 func (yao *Yao) Init() error {
 	yao.contexts = NewPool(yao.numOfContexts)
+	yao.ctx = v8.NewContext(yao.iso, yao.template)
 	// for i := 0; i < yao.numOfContexts; i++ {
 	// 	yao.contexts.Push(v8.NewContext(yao.iso, yao.template))
 	// }
@@ -90,11 +91,14 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 	}
 
 	v8ctx, err := yao.contexts.Make(func() *v8.Context { return v8.NewContext(yao.iso, yao.template) })
-	if err != nil {
-		return nil, err
-	}
-	defer func() { v8ctx.Close() }()
+	// v8ctx, err := yao.contexts.Make(func() *v8.Context { return v8.NewContext(yao.iso, yao.template) })
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// defer func() { v8ctx.Close() }()
+	// v8ctx := yao.ctx
 
+	// _, err := v8ctx.RunScript(script.source, script.filename)
 	_, err = script.compiled.Run(v8ctx)
 	if err != nil {
 		return nil, err
@@ -231,7 +235,10 @@ func interfaceToValuer(ctx *v8.Context, value interface{}) v8.Valuer {
 		return valuer
 	}
 	v, _ := jsoniter.Marshal(value)
-	valuer, _ = v8.JSONParse(ctx, string(v))
+	valuer, err := v8.JSONParse(ctx, string(v))
+	if err != nil {
+		valuer, _ = v8.NewValue(ctx.Isolate(), nil)
+	}
 	return valuer
 }
 

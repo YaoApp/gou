@@ -6,6 +6,7 @@ import "rogchap.com/v8go"
 type Yao struct {
 	scripts         map[string]script
 	iso             *v8go.Isolate
+	ctx             *v8go.Context
 	template        *v8go.ObjectTemplate
 	objectTemplates map[string]*v8go.ObjectTemplate
 	contexts        *Pool
