@@ -9,15 +9,16 @@ type Yao struct {
 	ctx             *v8go.Context
 	template        *v8go.ObjectTemplate
 	objectTemplates map[string]*v8go.ObjectTemplate
-	contexts        *Pool
-	numOfContexts   int
+	// contexts        *Pool
+	numOfContexts int
 }
 
 type script struct {
 	name     string
 	filename string
 	source   string
-	compiled *v8go.UnboundScript
+	ctx      *v8go.Context
+	// compiled *v8go.UnboundScript
 }
 
 // Pool JS contect pool

@@ -30,10 +30,10 @@ func New(numOfContexts int) *Yao {
 	return yao
 }
 
-// Init initialize
+// Init initialize (for next version )
 func (yao *Yao) Init() error {
-	yao.contexts = NewPool(yao.numOfContexts)
-	yao.ctx = v8.NewContext(yao.iso, yao.template)
+	// yao.contexts = NewPool(yao.numOfContexts)
+	// yao.ctx = v8.NewContext(yao.iso, yao.template)
 	// for i := 0; i < yao.numOfContexts; i++ {
 	// 	yao.contexts.Push(v8.NewContext(yao.iso, yao.template))
 	// }
@@ -69,16 +69,21 @@ func (yao *Yao) LoadReader(reader io.Reader, name string, filename ...string) er
 
 	// Compile
 	code := string(source)
-	compiled, err := yao.iso.CompileUnboundScript(code, scriptfile, v8.CompileOptions{}) // compile script to get cached data
-	if err != nil {
-		return err
-	}
+	// compiled, err := yao.iso.CompileUnboundScript(code, scriptfile, v8.CompileOptions{}) // compile script to get cached data
+	// if err != nil {
+	// 	return err
+	// }
+
+	// opt
+	ctx := v8.NewContext(yao.iso, yao.template)
+	ctx.RunScript(code, scriptfile)
 
 	yao.scripts[name] = script{
 		name:     name,
 		filename: scriptfile,
 		source:   code,
-		compiled: compiled,
+		ctx:      ctx,
+		// compiled: compiled,
 	}
 	return nil
 }
@@ -90,7 +95,8 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 		return nil, fmt.Errorf("The %s does not loaded (%d)", name, len(yao.scripts))
 	}
 
-	v8ctx, err := yao.contexts.Make(func() *v8.Context { return v8.NewContext(yao.iso, yao.template) })
+	var err error
+	v8ctx := script.ctx
 	// v8ctx, err := yao.contexts.Make(func() *v8.Context { return v8.NewContext(yao.iso, yao.template) })
 	// if err != nil {
 	// 	return nil, err
@@ -98,11 +104,11 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 	// defer func() { v8ctx.Close() }()
 	// v8ctx := yao.ctx
 
-	// _, err := v8ctx.RunScript(script.source, script.filename)
-	_, err = script.compiled.Run(v8ctx)
-	if err != nil {
-		return nil, err
-	}
+	// _, err = v8ctx.RunScript(script.source, script.filename)
+	// // _, err = script.compiled.Run(v8ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	global := v8ctx.Global() // get the global object from the context
 	if global == nil {
