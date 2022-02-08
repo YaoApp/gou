@@ -42,6 +42,12 @@ func RegisterProcessHandler(name string, handler ProcessHandler) {
 	ThirdHandlers[name] = handler
 }
 
+// AliasProcess 设置别名
+func AliasProcess(name string, alias string) {
+	name = strings.ToLower(name)
+	ThirdHandlers[alias] = ThirdHandlers[name]
+}
+
 // WithSID 设定会话ID
 func (process *Process) WithSID(sid string) *Process {
 	process.Sid = sid
