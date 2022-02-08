@@ -22,6 +22,13 @@ var pluginLogger = hclog.New(&hclog.LoggerOptions{
 	Level:  hclog.Error,
 })
 
+// LoadPluginReturn 加载插件
+func LoadPluginReturn(cmd string, name string) (plugin *Plugin, err error) {
+	defer func() { err = exception.Catch(recover()) }()
+	plugin = LoadPlugin(cmd, name)
+	return plugin, nil
+}
+
 // LoadPlugin 加载插件
 func LoadPlugin(cmd string, name string) *Plugin {
 

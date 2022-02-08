@@ -52,7 +52,14 @@ func init() {
 		Init()
 }
 
-// LoadFlow 载入数据接口
+// LoadFlowReturn 加载数据流
+func LoadFlowReturn(source string, name string) (flow *Flow, err error) {
+	defer func() { err = exception.Catch(recover()) }()
+	flow = LoadFlow(source, name)
+	return flow, nil
+}
+
+// LoadFlow 加载数据流
 func LoadFlow(source string, name string) *Flow {
 	var input io.Reader = nil
 	if strings.HasPrefix(source, "file://") {

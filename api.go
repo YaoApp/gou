@@ -22,6 +22,13 @@ import (
 // APIs 已加载API列表
 var APIs = map[string]*API{}
 
+// LoadAPIReturn 加载API
+func LoadAPIReturn(source string, name string) (api *API, err error) {
+	defer func() { err = exception.Catch(recover()) }()
+	api = LoadAPI(source, name)
+	return api, nil
+}
+
 // LoadAPI 加载API
 func LoadAPI(source string, name string) *API {
 	var input io.Reader = nil

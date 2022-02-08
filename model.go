@@ -22,6 +22,13 @@ func SetModelLogger(output io.Writer, level log.Level) {
 	log.SetOutput(output)
 }
 
+// LoadModelReturn 加载数据模型
+func LoadModelReturn(source string, name string) (model *Model, err error) {
+	defer func() { err = exception.Catch(recover()) }()
+	model = LoadModel(source, name)
+	return model, nil
+}
+
 // LoadModel 载入数据模型
 func LoadModel(source string, name string) *Model {
 	var input io.Reader = nil
