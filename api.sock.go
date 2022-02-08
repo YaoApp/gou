@@ -4,9 +4,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
+
+	"github.com/yaoapp/kun/log"
 
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/socket"
@@ -57,7 +58,7 @@ func (srv SocketServer) Start() {
 		// fmt.Printf("%#v\n", data)
 		res, err := NewProcess(srv.Process, hex.EncodeToString(data)).Exec()
 		if err != nil {
-			log.Println(err)
+			log.Error(err.Error())
 			return nil
 		}
 		switch res.(type) {

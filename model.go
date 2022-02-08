@@ -8,18 +8,18 @@ import (
 
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/log"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/xun/capsule"
-	"github.com/yaoapp/xun/logger"
 )
 
 // Models 已载入模型
 var Models = map[string]*Model{}
 
 // SetModelLogger 设定模型 Logger
-func SetModelLogger(output io.Writer, level logger.LogLevel) {
-	logger.DefaultLogger.SetLevel(level)
-	logger.DefaultLogger.SetOutput(output)
+func SetModelLogger(output io.Writer, level log.Level) {
+	log.SetLevel(level)
+	log.SetOutput(output)
 }
 
 // LoadModel 载入数据模型

@@ -3,9 +3,10 @@ package gou
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
+
+	"github.com/yaoapp/kun/log"
 
 	"github.com/yaoapp/gou/runtime"
 
@@ -94,7 +95,7 @@ func (flow *Flow) Prepare() {
 		}
 
 		if node.Engine == "" {
-			log.Printf("Node %s: 未指定数据查询分析引擎", node.Name)
+			log.Error("Node %s: 未指定数据查询分析引擎", node.Name)
 			continue
 		}
 
@@ -102,12 +103,11 @@ func (flow *Flow) Prepare() {
 			var err error
 			flow.Nodes[i].DSL, err = engine.Load(node.Query)
 			if err != nil {
-				log.Printf("Node %s: %s 数据分析查询解析错误", node.Name, node.Engine)
-				log.Println(node.Query)
+				log.With(log.F{"query": node.Query}).Error("Node %s: %s 数据分析查询解析错误", node.Name, node.Engine)
 			}
 			continue
 		}
-		log.Printf("Node %s: %s 数据分析引擎尚未注册", node.Name, node.Engine)
+		log.Error("Node %s: %s 数据分析引擎尚未注册", node.Name, node.Engine)
 	}
 }
 
@@ -120,14 +120,14 @@ func (flow *Flow) LoadScript(source string, name string) *Flow {
 		// err := JavaScriptVM.Load(filename, name)
 		err := Yao.Load(filename, name)
 		if err != nil {
-			log.Printf("加载数据脚本失败 %s: %s", filename, name)
+			log.Error("加载数据脚本失败 %s: %s", filename, name)
 		}
 	} else {
 		input = strings.NewReader(source)
 		// err := JavaScriptVM.LoadSource("", input, name)
 		err := Yao.LoadReader(input, name)
 		if err != nil {
-			log.Printf("加载数据脚本失败 %s", name)
+			log.Error("加载数据脚本失败 %s", name)
 		}
 	}
 	flow.Scripts[name] = source

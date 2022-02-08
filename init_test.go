@@ -10,9 +10,9 @@ import (
 	"github.com/yaoapp/gou/query/gou"
 	"github.com/yaoapp/gou/runtime"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/log"
 	"github.com/yaoapp/kun/utils"
 	"github.com/yaoapp/xun/capsule"
-	"github.com/yaoapp/xun/logger"
 )
 
 // TestAPIRoot
@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
 		break
 	}
-	SetModelLogger(os.Stdout, logger.LevelDebug)
+	SetModelLogger(os.Stdout, log.TraceLevel)
 
 	// 注册数据分析引擎
 	RegisterEngine("test-db", &gou.Query{

@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/yaoapp/kun/log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yaoapp/gou/helper"
@@ -91,7 +92,7 @@ func ServeHTTPCustomRouter(router *gin.Engine, server Server, shutdown *chan boo
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			log.Fatal("listen: %s", err)
 		}
 	}()
 
@@ -101,7 +102,7 @@ func ServeHTTPCustomRouter(router *gin.Engine, server Server, shutdown *chan boo
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := srv.Shutdown(ctx); err != nil {
-			log.Fatal("服务关闭失败:", err)
+			log.Fatal("服务关闭失败: %s", err)
 		}
 		KillPlugins()
 		onShutdown(server)

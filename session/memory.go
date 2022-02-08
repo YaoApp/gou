@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"strings"
 	"time"
+
+	"github.com/yaoapp/kun/log"
 
 	"github.com/buraksezer/olric"
 	"github.com/buraksezer/olric/client"
@@ -68,20 +69,20 @@ func MemoryLocalServer() {
 
 	db, err := olric.New(c)
 	if err != nil {
-		log.Fatalf("Failed to create Olric instance: %v", err)
+		log.Fatal("Failed to create Olric instance: %v", err)
 	}
 
 	go func() {
 		err = db.Start() // Call Start at background. It's a blocker call.
 		if err != nil {
-			log.Fatalf("olric.Start returned an error: %v", err)
+			log.Fatal("olric.Start returned an error: %v", err)
 		}
 	}()
 
 	<-ctx.Done()
 	dm, err := db.NewDMap("local-session")
 	if err != nil {
-		log.Fatalf("olric.NewDMap returned an error: %v", err)
+		log.Fatal("olric.NewDMap returned an error: %v", err)
 	}
 
 	MemoryUse(ServerDMap{DMap: dm})
