@@ -73,13 +73,6 @@ func SelectAPI(name string) *API {
 
 // ServeHTTP  启动HTTP服务
 func ServeHTTP(server Server, shutdown *chan bool, onShutdown func(Server), middlewares ...gin.HandlerFunc) {
-
-	if server.Debug {
-		gin.SetMode(gin.DebugMode)
-	} else {
-		gin.SetMode(gin.ReleaseMode)
-	}
-
 	router := gin.Default()
 	ServeHTTPCustomRouter(router, server, shutdown, onShutdown, middlewares...)
 }
