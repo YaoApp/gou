@@ -45,6 +45,7 @@ func RegisterProcessHandler(name string, handler ProcessHandler) {
 // AliasProcess 设置别名
 func AliasProcess(name string, alias string) {
 	name = strings.ToLower(name)
+	alias = strings.ToLower(alias)
 	ThirdHandlers[alias] = ThirdHandlers[name]
 }
 
