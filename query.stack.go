@@ -1,8 +1,8 @@
 package gou
 
 import (
+	"github.com/yaoapp/kun/log"
 	"github.com/yaoapp/kun/maps"
-	"github.com/yaoapp/kun/utils"
 	"github.com/yaoapp/xun"
 	"github.com/yaoapp/xun/dbal/query"
 )
@@ -203,9 +203,11 @@ func (stack *QueryStack) run(res *[][]maps.MapStrAny, builder QueryStackBuilder,
 		limit = param.QueryParam.Limit
 	}
 
-	// 打印调试信息
-	utils.Dump(builder.Query.Limit(limit).ToSQL())
-	utils.Dump(builder.Query.Limit(limit).GetBindings())
+	defer log.
+		With(log.F{
+			"sql":      builder.Query.Limit(limit).ToSQL(),
+			"bindings": builder.Query.Limit(limit).GetBindings()}).
+		Trace("QueryStack run()")
 
 	rows := builder.Query.Limit(limit).MustGet()
 	fmtRows := []maps.MapStr{}
