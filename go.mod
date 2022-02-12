@@ -24,3 +24,5 @@ require (
 replace github.com/yaoapp/kun => ../kun
 
 replace github.com/yaoapp/xun => ../xun
+
+replace rogchap.com/v8go  => ../v8go
