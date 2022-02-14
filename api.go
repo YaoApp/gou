@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/yaoapp/kun/log"
+	"github.com/yaoapp/kun/maps"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yaoapp/gou/helper"
@@ -47,7 +48,7 @@ func LoadAPI(source string, name string) *API {
 	http := HTTP{}
 	err := helper.UnmarshalFile(input, &http)
 	if err != nil {
-		exception.Err(err, 400).Throw()
+		exception.Err(err, 400).Ctx(maps.Map{"name": name}).Throw()
 	}
 
 	APIs[name] = &API{
