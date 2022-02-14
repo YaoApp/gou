@@ -118,6 +118,13 @@ func (flow *Flow) Prepare() {
 	}
 }
 
+// LoadScriptReturn 加载载入脚本
+func (flow *Flow) LoadScriptReturn(source string, name string) (new *Flow, err error) {
+	defer func() { err = exception.Catch(recover()) }()
+	new = flow.LoadScript(source, name)
+	return new, nil
+}
+
 // LoadScript 载入脚本
 func (flow *Flow) LoadScript(source string, name string) *Flow {
 	var input io.Reader = nil

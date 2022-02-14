@@ -51,6 +51,16 @@ func LoadAPI(source string, name string) *API {
 		exception.Err(err, 400).Ctx(maps.Map{"name": name}).Throw()
 	}
 
+	// Validate API
+	uniquePathCheck := map[string]bool{}
+	for _, path := range http.Paths {
+		unique := fmt.Sprintf("%s.%s", path.Method, path.Path)
+		if _, has := uniquePathCheck[unique]; has {
+			exception.New("%s %s %s is already registered", 400, name, path.Method, path.Path).Throw()
+		}
+		uniquePathCheck[unique] = true
+	}
+
 	APIs[name] = &API{
 		Name:   name,
 		Source: source,
