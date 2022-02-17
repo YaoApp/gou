@@ -75,9 +75,9 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 		var args []interface{} = getArgs(c)
 
 		// 如果 path.Guard == "in-process" 在调用中鉴权
-		if path.Guard == "in-process" || (path.Guard == "" && http.Guard == "in-process") {
-			args = append(args, c)
-		}
+		// if path.Guard == "in-process" || (path.Guard == "" && http.Guard == "in-process") {
+		// 	args = append(args, c)
+		// }
 
 		var process = NewProcess(path.Process, args...)
 		if sid, has := c.Get("__sid"); has { // 设定会话ID
@@ -149,7 +149,8 @@ func (http HTTP) guard(handlers *[]gin.HandlerFunc, guard string, defaults strin
 		guard = defaults
 	}
 
-	if guard != "-" && guard != "in-process" {
+	// if guard != "-" && guard != "in-process" {
+	if guard != "-" {
 		guards := strings.Split(guard, ",")
 		for _, name := range guards {
 			name = strings.TrimSpace(name)
