@@ -5,14 +5,15 @@ import (
 )
 
 func TestStart(t *testing.T) {
-	// Start("tcp", "0.0.0.0", "3019", func(data []byte) []byte {
-	// 	for i := range data {
-	// 		fmt.Printf("%x", data[i])
-	// 		if i%2 == 0 {
-	// 			fmt.Print(" ")
-	// 		}
-	// 	}
-	// 	fmt.Println("")
-	// 	return nil
+	// Start("tcp", "0.0.0.0", "3019", 512, -1, func(data []byte, recvLen int, err error) ([]byte, error) {
+	// 	fmt.Printf("%x %d %v\n", data, recvLen, err)
+	// 	return []byte("pong"), nil
+	// })
+}
+
+func TestStartKeepAlive(t *testing.T) {
+	// Start("tcp", "0.0.0.0", "3019", 512, 0, func(data []byte, recvLen int, err error) ([]byte, error) {
+	// 	fmt.Printf("%x %d %v\n", data, recvLen, err)
+	// 	return []byte("pong"), nil
 	// })
 }

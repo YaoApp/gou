@@ -2,68 +2,82 @@ package socket
 
 import (
 	"fmt"
-	"log"
+	"io"
 	"net"
-	"os"
+
+	"github.com/yaoapp/kun/log"
 )
 
-// Socket server (alpha)
+// Socket server (alpha -> will be refactored at a beta version...)
 
-// Start 启动服务
-func Start(proto string, host string, port string, handle func([]byte) []byte) {
+// Start start socket server
+func Start(proto string, host string, port string, bufferSize int, KeepAlive int, handler func([]byte, int, error) ([]byte, error)) {
 	if proto == "tcp" {
-		tcpStart(host, port, handle)
+		tcpStart(host, port, bufferSize, KeepAlive, handler)
 	}
 }
 
-func tcpStart(host string, port string, handle func([]byte) []byte) {
+// tcpStart start socket server with TCP/IP using TCP/IP protocol
+func tcpStart(host string, port string, bufferSize int, KeepAlive int, handler func([]byte, int, error) ([]byte, error)) error {
 	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%s", host, port))
 	if err != nil {
-		fmt.Println("Socket Start error:", err)
-		os.Exit(1)
+		log.Error("Start error: %s", err)
+		return err
 	}
 	defer listen.Close()
-	fmt.Printf("Listening ON: %s:%s\n", host, port)
+	log.With(log.F{"bufferSize": bufferSize, "KeepAlive": KeepAlive}).Info("Listening ON: %s:%s", host, port)
 
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
-			fmt.Println("Error Accepting: ", err)
-			os.Exit(1)
+			log.Error("Received error: %s", err)
+			continue
 		}
-		//logs an incoming message
-		fmt.Printf("Received message %s -> %s \n", conn.RemoteAddr(), conn.LocalAddr())
-		// Handle connections in a new goroutine.
-		go handleRequest(conn, handle)
+		log.With(log.F{"Remote": conn.RemoteAddr()}).Info("Connected")
+		go handleRequest(conn, bufferSize, KeepAlive, handler)
 	}
 }
 
-/**
-100000012021124947278772  152d02f2967138c87bb4  抗金属 纽扣
-100000012021129634062032  152d02f2967250231ed0  抗金属 纽扣 小
-100000012021123642243533  152d02f29670eaff39cd  产品设计
-100000012021128798321101  152d02f296721e52b9cd  易经
-100000012021129634062011  152d02f2967250231ebb  增长黑客
-15 2d 02 f2 96 72 1e 52 b9 cd  易经
-*/
-func handleRequest(conn net.Conn, handle func([]byte) []byte) {
+// handleRequest handel the client request
+func handleRequest(conn net.Conn, bufferSize int, KeepAlive int, handler func([]byte, int, error) ([]byte, error)) {
 	clientAddr := conn.RemoteAddr().String()
 	defer conn.Close()
-	log.Println("Connection success. Client address: ", clientAddr)
+
+	log.Trace("Connection success. Client address: %s", clientAddr)
 	for {
-		buffer := make([]byte, 1024)
+		buffer := make([]byte, bufferSize)
 		recvLen, err := conn.Read(buffer)
-		if err != nil {
-			log.Println("Read error: ", err, clientAddr)
-			return
+		if err != nil && err != io.EOF {
+			log.Error("Read error: %s %s", err.Error(), clientAddr)
+			break
 		}
 
-		res := handle(buffer[:recvLen])
+		if err == io.EOF {
+			log.With(log.F{"Remote": conn.RemoteAddr()}).Info("Connection closed")
+			break
+		}
+
+		log.Trace("Message received from Client %s %x", clientAddr, buffer)
+
+		res, err := handler(buffer[:recvLen], recvLen, err)
+		if err != nil {
+			log.Error("Handler error: %s %s", err, clientAddr)
+			break
+		}
+
+		log.Trace("Handler response %s %x", clientAddr, res)
+
+		// Send Response to Server
 		if res != nil {
 			if _, err := conn.Write(res); err != nil {
-				log.Println("Write error: ", err, clientAddr)
-				return
+				log.Error("Send error: %s %s", err, clientAddr)
+				break
 			}
+		}
+
+		if KeepAlive == -1 {
+			log.With(log.F{"Remote": conn.RemoteAddr()}).Info("Close connection")
+			break
 		}
 	}
 }

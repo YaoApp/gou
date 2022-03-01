@@ -1,0 +1,8 @@
+{
+  "name": "Server for receiving RFID",
+  "description": "Server for receiving RFID",
+  "version": "0.9.2",
+  "restart": "on-failure",
+  "process": "servers.rfid_client",
+  "args": ["192.168.1.192", 6000]
+}

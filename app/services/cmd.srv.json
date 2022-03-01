@@ -1,0 +1,8 @@
+{
+  "name": "Server for receiving RFID",
+  "description": "Server for receiving RFID",
+  "version": "1.0.1",
+  "restart": "on-failure",
+  "command": "yao run servers.rfid_client",
+  "args": ["192.168.1.192", 6000]
+}

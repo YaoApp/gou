@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/yaoapp/kun/log"
 
@@ -14,11 +15,11 @@ import (
 	"github.com/yaoapp/kun/exception"
 )
 
-// Servers 已加载的Socket服务器 (Alpha)
-var Servers = map[string]*SocketServer{}
+// Sockets sockets loaded (Alpha)
+var Sockets = map[string]*Socket{}
 
-// LoadServer 加载服务器配置
-func LoadServer(source string, name string) (*SocketServer, error) {
+// LoadSocket load socket server/client
+func LoadSocket(source string, name string) (*Socket, error) {
 	var input io.Reader = nil
 	if strings.HasPrefix(source, "file://") {
 		filename := strings.TrimPrefix(source, "file://")
@@ -31,45 +32,83 @@ func LoadServer(source string, name string) (*SocketServer, error) {
 	} else {
 		input = strings.NewReader(source)
 	}
-	srv := SocketServer{}
-	err := helper.UnmarshalFile(input, &srv)
+	sock := Socket{}
+	err := helper.UnmarshalFile(input, &sock)
 	if err != nil {
 		return nil, err
 	}
-	Servers[name] = &srv
-	return Servers[name], nil
+	Sockets[name] = &sock
+	return Sockets[name], nil
 }
 
-// SelectServer 读取已加载Socket 服务器
-func SelectServer(name string) *SocketServer {
-	srv, has := Servers[name]
+// SelectSocket Get socket by name
+func SelectSocket(name string) *Socket {
+	sock, has := Sockets[name]
 	if !has {
-		exception.New(
-			fmt.Sprintf("Socket Server:%s; 尚未加载", name),
-			500,
-		).Throw()
+		exception.New("Socket:%s does not load", 500, name).Throw()
 	}
-	return srv
+	return sock
 }
 
-// Start 启动服务
-func (srv SocketServer) Start() {
-	socket.Start(srv.Protocol, srv.Host, srv.Port, func(data []byte) []byte {
-		// fmt.Printf("%#v\n", data)
-		res, err := NewProcess(srv.Process, hex.EncodeToString(data)).Exec()
+// Start Start server
+func (sock Socket) Start(args ...interface{}) {
+	socket.Start(sock.Protocol, sock.Host, sock.Port, sock.BufferSize, sock.KeepAlive, func(data []byte, recvLen int, err error) ([]byte, error) {
+		res, err := NewProcess(sock.Process, hex.EncodeToString(data)).Exec()
 		if err != nil {
 			log.Error(err.Error())
-			return nil
+			return nil, err
 		}
 		switch res.(type) {
 		case []byte:
-			return res.([]byte)
+			return res.([]byte), nil
 		case string:
-			return []byte(res.(string))
+			return []byte(res.(string)), nil
 		case interface{}:
 			v := fmt.Sprintf("%v", res)
-			return []byte(v)
+			return []byte(v), nil
 		}
-		return nil
+		return nil, fmt.Errorf("%s response data type error", sock.Process)
 	})
+}
+
+// Connect Connect to server
+func (sock Socket) Connect(args ...interface{}) error {
+	host := sock.Host
+	port := sock.Port
+	argsLen := len(args)
+	if argsLen > 0 {
+		if inputHost, ok := args[0].(string); ok {
+			host = inputHost
+		}
+	}
+
+	if argsLen > 1 {
+		if inputPort, ok := args[1].(string); ok {
+			port = inputPort
+		}
+	}
+
+	return socket.Connect(
+		sock.Protocol, host, port,
+		time.Duration(sock.Timeout)*time.Second,
+		sock.BufferSize,
+		time.Duration(sock.KeepAlive)*time.Second,
+		func(data []byte, recvLen int, err error) ([]byte, error) {
+			res, err := NewProcess(sock.Process, data).Exec()
+			if err != nil {
+				return nil, err
+			}
+
+			switch res.(type) {
+			case []byte:
+				return res.([]byte), nil
+			case string:
+				return []byte(res.(string)), nil
+			case interface{}:
+				v := fmt.Sprintf("%v", res)
+				return []byte(v), nil
+			}
+
+			return nil, fmt.Errorf("%s response data type error", sock.Process)
+		})
 }
