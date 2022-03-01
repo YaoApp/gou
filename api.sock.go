@@ -94,7 +94,7 @@ func (sock Socket) Connect(args ...interface{}) error {
 		sock.BufferSize,
 		time.Duration(sock.KeepAlive)*time.Second,
 		func(data []byte, recvLen int, err error) ([]byte, error) {
-			res, err := NewProcess(sock.Process, data).Exec()
+			res, err := NewProcess(sock.Process, hex.EncodeToString(data)).Exec()
 			if err != nil {
 				return nil, err
 			}

@@ -254,6 +254,7 @@ func AnyToValue(ctx *v8.Context, value interface{}) (*v8.Value, error) {
 
 	switch value.(type) {
 	case []byte:
+		// Todo: []byte to Uint8Array
 		return v8.NewValue(ctx.Isolate(), string(value.([]byte)))
 	case string, int32, uint32, int64, uint64, bool, float64, *big.Int:
 		return v8.NewValue(ctx.Isolate(), value)
