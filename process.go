@@ -1,6 +1,7 @@
 package gou
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/yaoapp/gou/session"
@@ -151,8 +152,18 @@ func processScript(process *Process) interface{} {
 		WithGlobal(process.Global).
 		WithSid(process.Sid).
 		Call(process.Args...)
+
 	if err != nil {
-		exception.New("脚本执行失败: %s", 500, err.Error()).Throw()
+		message := err.Error()
+		code := 500
+		values := strings.Split(message, "|")
+		if len(values) == 2 {
+			if v, err := strconv.Atoi(values[0]); err == nil {
+				code = v
+			}
+			message = values[0]
+		}
+		exception.New(message, code).Throw()
 	}
 	return res
 }

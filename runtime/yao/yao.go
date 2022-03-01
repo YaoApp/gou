@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/log"
 	"github.com/yaoapp/kun/utils"
 	v8 "rogchap.com/v8go"
 )
@@ -117,7 +120,7 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 
 	// set global data
 	for key, val := range data {
-		global.Set(key, interfaceToValuer(v8ctx, val))
+		global.Set(key, MustAnyToValue(v8ctx, val))
 	}
 
 	// add global object
@@ -130,7 +133,7 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 		return nil, fmt.Errorf("global %s", method)
 	}
 
-	jsArgs, err := arrayToValuers(v8ctx, args)
+	jsArgs, err := ToValuers(v8ctx, args)
 	if err != nil {
 		return nil, fmt.Errorf("function %s.%s %s", name, method, err.Error())
 	}
@@ -151,7 +154,7 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 		value = promise.Result()
 	}
 
-	return valueToInterface(value)
+	return ToInterface(value)
 }
 
 // Has check the given name of the script is load
@@ -171,7 +174,7 @@ func (yao *Yao) goFunTemplate(fn func(global map[string]interface{}, sid string,
 	return v8.NewFunctionTemplate(yao.iso, func(info *v8.FunctionCallbackInfo) *v8.Value {
 		global := map[string]interface{}{}
 		jsGlobal, _ := info.Context().Global().Get("__yao_global")
-		anyGlobal, _ := valueToInterface(jsGlobal)
+		anyGlobal, _ := ToInterface(jsGlobal)
 		if iGlobal, ok := anyGlobal.(map[string]interface{}); ok {
 			global = iGlobal
 		}
@@ -212,7 +215,8 @@ func (yao *Yao) jsFetch(info *v8.FunctionCallbackInfo) *v8.Value {
 	return resolver.GetPromise().Value
 }
 
-func valueToInterface(value *v8.Value) (interface{}, error) {
+// ToInterface Convert *v8.Value to Interface
+func ToInterface(value *v8.Value) (interface{}, error) {
 
 	if value == nil {
 		return nil, nil
@@ -222,6 +226,8 @@ func valueToInterface(value *v8.Value) (interface{}, error) {
 	if value.IsNull() || value.IsUndefined() {
 		return nil, nil
 	}
+
+	// fmt.Println("ToInterface:", value.IsArray())
 
 	content, err := value.MarshalJSON()
 	if err != nil {
@@ -234,18 +240,31 @@ func valueToInterface(value *v8.Value) (interface{}, error) {
 	return v, nil
 }
 
-func interfaceToValuer(ctx *v8.Context, value interface{}) v8.Valuer {
-	var valuer v8.Valuer
-	if value == nil {
-		valuer, _ = v8.NewValue(ctx.Isolate(), value)
-		return valuer
-	}
-	v, _ := jsoniter.Marshal(value)
-	valuer, err := v8.JSONParse(ctx, string(v))
+// MustAnyToValue Convert any to *v8.Value
+func MustAnyToValue(ctx *v8.Context, value interface{}) *v8.Value {
+	v, err := AnyToValue(ctx, value)
 	if err != nil {
-		valuer, _ = v8.NewValue(ctx.Isolate(), nil)
+		exception.Err(err, 500).Throw()
 	}
-	return valuer
+	return v
+}
+
+// AnyToValue Convert data to *v8.Value
+func AnyToValue(ctx *v8.Context, value interface{}) (*v8.Value, error) {
+
+	switch value.(type) {
+	case []byte:
+		return v8.NewValue(ctx.Isolate(), string(value.([]byte)))
+	case string, int32, uint32, int64, uint64, bool, float64, *big.Int:
+		return v8.NewValue(ctx.Isolate(), value)
+	}
+
+	v, err := jsoniter.Marshal(value)
+	if err != nil {
+		log.Error("AnyToValue error: %s", err)
+	}
+
+	return v8.JSONParse(ctx, string(v))
 }
 
 func interfaceToValue(ctx *v8.Context, value interface{}) *v8.Value {
@@ -275,30 +294,20 @@ func valuesToArray(values []*v8.Value) []interface{} {
 	return res
 }
 
-func arrayToValuers(ctx *v8.Context, values []interface{}) ([]v8.Valuer, error) {
+// ToValuers Convert any to []v8.Valuer
+func ToValuers(ctx *v8.Context, values []interface{}) ([]v8.Valuer, error) {
 	res := []v8.Valuer{}
 	if ctx == nil {
 		return res, fmt.Errorf("Context is nil")
 	}
 
 	for i := range values {
-		// if values[i] == nil {
-		// 	if value, err := v8.NewValue(ctx.Isolate(), values[i]); err != nil {
-		// 		res = append(res, value)
-		// 	}
-		// 	continue
-		// }
-
-		value, err := jsoniter.Marshal(values[i])
+		value, err := AnyToValue(ctx, values[i])
 		if err != nil {
-			return nil, err
+			log.Error("AnyToValue error: %s", err)
+			value, _ = v8.NewValue(ctx.Isolate(), nil)
 		}
-
-		valuer, err := v8.JSONParse(ctx, string(value))
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, valuer)
+		res = append(res, value)
 	}
 	return res, nil
 }
