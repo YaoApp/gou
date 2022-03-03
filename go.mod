@@ -6,6 +6,7 @@ require (
 	github.com/buraksezer/olric v0.4.2
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-errors/errors v1.4.2
+	github.com/go-playground/assert/v2 v2.0.1
 	github.com/go-playground/validator/v10 v10.10.0 // indirect
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-plugin v1.4.3
@@ -25,4 +26,4 @@ replace github.com/yaoapp/kun => ../kun
 
 replace github.com/yaoapp/xun => ../xun
 
-replace rogchap.com/v8go  => ../v8go
+replace rogchap.com/v8go => ../v8go
