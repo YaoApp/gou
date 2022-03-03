@@ -1,5 +1,11 @@
 package objects
 
+// on()
+// push()
+// send()
+// close()
+// WebSocket(url, protocols)
+
 // // WebSocket the websocket object
 // type WebSocket struct{}
 

@@ -8,6 +8,7 @@ require (
 	github.com/go-errors/errors v1.4.2
 	github.com/go-playground/assert/v2 v2.0.1
 	github.com/go-playground/validator/v10 v10.10.0 // indirect
+	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-plugin v1.4.3
 	github.com/json-iterator/go v1.1.12
