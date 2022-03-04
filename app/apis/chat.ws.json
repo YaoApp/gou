@@ -5,7 +5,7 @@
   "protocols": ["yao-chat-01"],
   "guard": "bearer-jwt",
   "buffer": { "read": 1024, "write": 1024 },
-  "timeout": { "connect": 5, "read": 5, "write": 10 },
-  "process": "flows.websocket.chat",
-  "keep": 0
+  "limit": { "read-wait": 10, "pong-wait": 20, "max-message": 1024 },
+  "timeout": 5,
+  "process": "flows.websocket.chat"
 }

@@ -169,6 +169,8 @@ func SetHTTPRoutes(router *gin.Engine, server Server, middlewares ...gin.Handler
 	for _, api := range APIs {
 		api.HTTP.Routes(router, server.Root, server.Allows...)
 	}
+
+	//Load WebSocket
 }
 
 // SetHTTPGuards 加载中间件
