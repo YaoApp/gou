@@ -1,40 +1,55 @@
 package objects
 
-// func TestWebsocketSend(t *testing.T) {
-// 	iso := v8go.NewIsolate()
-// 	defer iso.Dispose()
+import (
+	"testing"
+	"time"
 
-// 	ws := NewWebSocket()
-// 	global := v8go.NewObjectTemplate(iso)
-// 	global.Set("WebSocket", ws.ExportFunction(iso))
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/assert/v2"
+	"github.com/yaoapp/gou/websocket"
+	"rogchap.com/v8go"
+)
 
-// 	ctx := v8go.NewContext(iso, global)
-// 	defer ctx.Close()
+func TestWebSocketPush(t *testing.T) {
 
-// 	v, err := ctx.RunScript(`new WebSocket("ws");`, "")
-// 	assert.Nil(t, err)
-// 	utils.Dump(v)
+	serve := serve(t)
+	defer serve.Stop()
 
-// 	v, err = ctx.RunScript(`new WebSocket("wss");`, "")
-// 	assert.Nil(t, err)
-// 	utils.Dump(v)
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
 
-// 	v, err = ctx.RunScript(`var test = ()=>{var xxx = new WebSocket("xxx");  xxx.send();};test();`, "")
-// 	assert.Nil(t, err)
+	ws := &WebSocket{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("WebSocket", ws.ExportFunction(iso))
 
-// 	v, err = ctx.RunScript(`
-// 	var test = ()=>{
-// 		var res = 1
-// 		try {
-// 			res = new WebSocket();
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
 
-// 		} catch(err) {
-// 			res = err
-// 		}
-// 		return res
-// 	}
-// 	test();
-// 	`, "")
-// 	utils.Dump(err)
-// 	utils.Dump(v)
-// }
+	v, err := ctx.RunScript(`
+		var ws = new WebSocket("ws://127.0.0.1:5056/websocket/test", "po")
+		ws.push("Hello World!")
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "Hello World!", v.String())
+}
+
+func serve(t *testing.T) *websocket.Upgrader {
+
+	ws, err := websocket.NewUpgrader("test")
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	router := gin.Default()
+	ws.SetHandler(func(message []byte) ([]byte, error) { return message, nil })
+	ws.SetRouter(router)
+
+	go ws.Start()
+	go router.Run(":5056")
+	time.Sleep(200 * time.Millisecond)
+	return ws
+}

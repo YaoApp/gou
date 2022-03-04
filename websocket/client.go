@@ -1,0 +1,50 @@
+package websocket
+
+import (
+	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/yaoapp/kun/log"
+)
+
+// NewWebSocket create a new websocket connection
+func NewWebSocket(url string, protocals []string) (*websocket.Conn, error) {
+
+	var dialer = websocket.Dialer{
+		Subprotocols:     protocals,
+		ReadBufferSize:   1024,
+		WriteBufferSize:  1024,
+		HandshakeTimeout: 5 * time.Second,
+	}
+
+	conn, _, err := dialer.Dial(url, nil)
+	if err != nil {
+		log.Error("NewWebSocket Dial: %v", err)
+		return nil, err
+	}
+
+	return conn, nil
+}
+
+// Push a message to websocket connection and get the response message
+func Push(conn *websocket.Conn, message string) (string, error) {
+	defer conn.Close()
+	if err := conn.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
+		log.Error("Websocket SetWriteDeadline: %v", err)
+		return "", err
+	}
+	if err := conn.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
+		log.Error("Websocket WriteMessage: %v", err)
+		return "", err
+	}
+	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		log.Error("Websocket SetReadDeadline: %v", err)
+		return "", err
+	}
+	_, response, err := conn.ReadMessage()
+	if err != nil {
+		log.Error("Websocket ReadMessage: %v", err)
+		return "", err
+	}
+	return string(response), nil
+}
