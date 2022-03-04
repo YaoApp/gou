@@ -16,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/gou/websocket"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/xun"
 )
@@ -101,6 +102,21 @@ func ServeHTTPCustomRouter(router *gin.Engine, server Server, shutdown *chan boo
 		Handler: router,
 	}
 
+	// start WebSocket hub
+	for name, upgrader := range websocket.Upgraders {
+		upgrader.SetRouter(router)
+		go upgrader.Start()
+		log.Trace("Websocket %s start", name)
+	}
+
+	// stop WebSocket hub
+	defer func() {
+		for name, upgrader := range websocket.Upgraders {
+			upgrader.Stop()
+			log.Trace("Websocket %s quit", name)
+		}
+	}()
+
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("listen: %s", err)
@@ -116,6 +132,7 @@ func ServeHTTPCustomRouter(router *gin.Engine, server Server, shutdown *chan boo
 			log.Fatal("服务关闭失败: %s", err)
 		}
 		KillPlugins()
+		fmt.Println("stop")
 		onShutdown(server)
 	}()
 
@@ -124,6 +141,7 @@ func ServeHTTPCustomRouter(router *gin.Engine, server Server, shutdown *chan boo
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	<-quit
 	KillPlugins()
+
 }
 
 // SetHTTPRoutes 设定路由
