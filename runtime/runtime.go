@@ -48,7 +48,7 @@ func (runtime *Runtime) AddFunction(name string, fn func(global map[string]inter
 func (runtime *Runtime) AddObject(name string, methods map[string]func(global map[string]interface{}, sid string, args ...interface{}) interface{}) *Runtime {
 	err := runtime.Engine.AddObject(name, methods)
 	if err != nil {
-		exception.New("runtime AddVariable %s: %s", 500, name, err.Error()).Throw()
+		exception.New("runtime AddObject %s: %s", 500, name, err.Error()).Throw()
 	}
 	return runtime
 }

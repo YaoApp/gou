@@ -12,6 +12,11 @@ import (
 // WebSocket Javascript WebSocket
 type WebSocket struct{}
 
+// NewWebSocket create a new WebSocket object
+func NewWebSocket() *WebSocket {
+	return &WebSocket{}
+}
+
 // ExportObject Export as a WebSocket Object
 func (ws *WebSocket) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl := v8go.NewObjectTemplate(iso)

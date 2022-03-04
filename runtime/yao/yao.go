@@ -10,9 +10,11 @@ import (
 	"path/filepath"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/runtime/yao/objects"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
 	"github.com/yaoapp/kun/utils"
+	"rogchap.com/v8go"
 	v8 "rogchap.com/v8go"
 )
 
@@ -30,6 +32,10 @@ func New(numOfContexts int) *Yao {
 	}
 
 	yao.template.Set("fetch", v8.NewFunctionTemplate(yao.iso, yao.jsFetch))
+	yao.AddFunctionTemplates(map[string]*v8.FunctionTemplate{
+		"Exception": objects.NewException().ExportFunction(yao.iso),
+		"WebSocket": objects.NewWebSocket().ExportFunction(yao.iso),
+	})
 	return yao
 }
 
@@ -193,6 +199,14 @@ func (yao *Yao) AddObject(name string, methods map[string]func(global map[string
 		object.Set(method, jsFun)
 	}
 	yao.objectTemplates[name] = object
+	return nil
+}
+
+// AddFunctionTemplates add function templates to global
+func (yao *Yao) AddFunctionTemplates(tmpls map[string]*v8go.FunctionTemplate) error {
+	for name, tmpl := range tmpls {
+		yao.template.Set(name, tmpl)
+	}
 	return nil
 }
 
