@@ -199,14 +199,14 @@ func (c *Client) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		reponse, err := c.upgrader.handler(message)
+		response, err := c.upgrader.handler(message)
 		if err != nil {
 			log.Error("Upgrader: %s [500]%s", c.upgrader.name, err.Error())
 			break
 		}
 
-		if reponse != nil {
-			c.hub.broadcast <- reponse
+		if response != nil {
+			c.hub.broadcast <- response
 		}
 	}
 }
