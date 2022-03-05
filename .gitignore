@@ -19,3 +19,4 @@ app/plugins/dist
 app/plugins/logs
 app/db/*.db
 env.*.sh
+service/db/yao.db

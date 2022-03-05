@@ -14,11 +14,12 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/robertkrimen/otto v0.0.0-20211024170158-b87d35c0b86f
 	github.com/stretchr/testify v1.7.0
+	github.com/takama/daemon v1.0.0
 	github.com/ugorji/go v1.2.6 // indirect
 	github.com/yaoapp/kun v0.9.0
 	github.com/yaoapp/xun v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab
-	golang.org/x/sys v0.0.0-20220207234003-57398862261d // indirect
+	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	rogchap.com/v8go v0.7.0
 )
