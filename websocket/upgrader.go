@@ -114,6 +114,7 @@ func (upgrader *Upgrader) Upgrade(w http.ResponseWriter, r *http.Request, respon
 		return nil, err
 	}
 
+	// Todo: add client id for direct message
 	client := &Client{hub: upgrader.hub, upgrader: upgrader, conn: conn, send: make(chan []byte, 256)}
 	client.hub.register <- client
 
@@ -155,6 +156,7 @@ func (c *Client) writePump() {
 				return
 			}
 			w.Write(message)
+			log.Trace("writePump: %s [200]%s", c.upgrader.name, message)
 
 			// Add queued messages to the current websocket message.
 			n := len(c.send)
@@ -206,6 +208,8 @@ func (c *Client) readPump() {
 		}
 
 		if response != nil {
+			log.Trace("Upgrader Message: %s [200]%s", c.upgrader.name, message)
+			log.Trace("Upgrader Response: %s [200]%s", c.upgrader.name, response)
 			c.hub.broadcast <- response
 		}
 	}

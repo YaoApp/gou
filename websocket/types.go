@@ -77,6 +77,6 @@ type BufferSize struct {
 type Limit struct {
 	WriteWait  int `json:"write-wait,omitempty"`  // Time allowed to write a message to the peer.
 	PongWait   int `json:"pong-wait,omitempty"`   // Time allowed to read the next pong message from the peer.
-	MaxMessage int `json:"max-message,omitempty"` // Maximum message size allowed from peer.
+	MaxMessage int `json:"max-message,omitempty"` // Maximum message size allowed from peer. bytes
 	pingPeriod int `json:"-"`                     // Send pings to peer with this period. Must be less than pongWait. (pongWait * 9) / 10
 }

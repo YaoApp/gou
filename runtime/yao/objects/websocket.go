@@ -123,7 +123,7 @@ func (ws *WebSocket) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			tmpl.SetInternalFieldCount(uint32(len(args) - 1))
 			jsProtocols, _ = tmpl.NewInstance(info.Context())
 			for i, v := range args[1:] {
-				jsProtocols.SetInternalField(uint32(i), v)
+				jsProtocols.SetInternalField(uint32(i), v.String())
 			}
 		}
 		this.Set("protocols", jsProtocols)
