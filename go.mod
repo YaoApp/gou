@@ -11,6 +11,7 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-plugin v1.4.3
+	github.com/hashicorp/golang-lru v0.5.4 
 	github.com/json-iterator/go v1.1.12
 	github.com/robertkrimen/otto v0.0.0-20211024170158-b87d35c0b86f
 	github.com/stretchr/testify v1.7.0
