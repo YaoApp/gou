@@ -195,6 +195,11 @@ func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
 				return c.FullPath()
 			})
 			continue
+		} else if v == ":headers" {
+			getValues = append(getValues, func(c *gin.Context) interface{} {
+				return c.Request.Header
+			})
+			continue
 		} else if v == ":payload" {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
 				value, has := c.Get("__payloads")
