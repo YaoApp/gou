@@ -14,8 +14,8 @@ import (
 type Store struct{}
 
 // NewStore create a new Store object
-func NewStore() *WebSocket {
-	return &WebSocket{}
+func NewStore() *Store {
+	return &Store{}
 }
 
 // ExportObject Export as a Cache Object
