@@ -2,7 +2,7 @@ package gou
 
 import "github.com/yaoapp/kun/log"
 
-// StoreHandlers stores process hanlder
+// StoreHandlers store process handlers
 var StoreHandlers = map[string]ProcessHandler{
 	"get":    processStoreGet,
 	"set":    processStoreSet,
