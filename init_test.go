@@ -19,6 +19,7 @@ import (
 var TestAPIRoot = "/data/apis"
 var TestServerRoot = "/data/servers"
 var TestServiceRoot = "/data/services"
+var TestStoreRoot = "/data/stores"
 var TestFLWRoot = "/data/flows"
 var TestPLGRoot = "/data/plugins"
 var TestModRoot = "/data/models"
@@ -48,6 +49,7 @@ func TestMain(m *testing.M) {
 	TestAPIRoot = os.Getenv("GOU_TEST_API_ROOT")
 	TestServerRoot = filepath.Join(os.Getenv("GOU_TEST_API_ROOT"), "..", "servers")
 	TestServiceRoot = filepath.Join(os.Getenv("GOU_TEST_API_ROOT"), "..", "services")
+	TestStoreRoot = filepath.Join(os.Getenv("GOU_TEST_API_ROOT"), "..", "stores")
 
 	TestFLWRoot = os.Getenv("GOU_TEST_FLW_ROOT")
 	TestModRoot = os.Getenv("GOU_TEST_MOD_ROOT")

@@ -76,7 +76,7 @@ func (process *Process) extraProcess() {
 	namer := strings.Split(process.Name, ".")
 	last := len(namer) - 1
 	if last < 2 && namer[0] != "flows" && namer[0] != "session" {
-		exception.New("Process:%s 格式错误", 400, process.Name).Throw()
+		exception.New("Process:%s format error", 400, process.Name).Throw()
 	}
 
 	process.Type = strings.ToLower(namer[0])
@@ -106,11 +106,19 @@ func (process *Process) extraProcess() {
 		process.Method = strings.ToLower(namer[last])
 		process.Handler = processSession
 		return
+	case "stores":
+		process.Name = strings.ToLower(process.Name)
+		handler, has := StoreHandlers[process.Method]
+		if !has {
+			exception.New("Store: %s %s does not exist", 404, process.Name, process.Method).Throw()
+		}
+		process.Handler = handler
+		return
 	case "models":
 		process.Name = strings.ToLower(process.Name)
 		handler, has := ModelHandlers[process.Method]
 		if !has {
-			exception.New("%s 方法不存在", 404, process.Method).Throw()
+			exception.New("Model: %s %s does not exist", 404, process.Name, process.Method).Throw()
 		}
 		process.Handler = handler
 		return
@@ -126,7 +134,7 @@ func (process *Process) extraProcess() {
 		}
 	}
 
-	exception.New("%s 未找到处理器", 404, process.Name).Throw()
+	exception.New("%s does not found", 404, process.Name).Throw()
 }
 
 // processPlugin 运行插件中的方法

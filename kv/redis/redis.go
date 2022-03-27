@@ -40,14 +40,14 @@ func (cache *Cache) Get(key string) (value interface{}, ok bool) {
 }
 
 // Set adds a value to the cache.
-func (cache *Cache) Set(key string, value interface{}, expiration time.Duration) error {
+func (cache *Cache) Set(key string, value interface{}, ttl time.Duration) error {
 	key = fmt.Sprintf("%s%s", cache.Option.Prefix, key)
 	bytes, err := jsoniter.Marshal(value)
 	if err != nil {
 		return err
 	}
 
-	err = cache.rdb.Set(context.Background(), key, bytes, expiration).Err()
+	err = cache.rdb.Set(context.Background(), key, bytes, ttl).Err()
 	if err != nil {
 		return err
 	}

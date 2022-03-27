@@ -454,7 +454,7 @@ func TestProcessOf(t *testing.T) {
 
 	process, err = ProcessOf("not exists", 1, QueryParam{})
 	assert.Nil(t, process)
-	assert.Equal(t, "Process:not exists 格式错误", err.Error())
+	assert.Equal(t, "Process:not exists format error", err.Error())
 }
 
 func TestProcessExec(t *testing.T) {

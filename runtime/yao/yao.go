@@ -35,6 +35,7 @@ func New(numOfContexts int) *Yao {
 	yao.AddFunctionTemplates(map[string]*v8.FunctionTemplate{
 		"Exception": objects.NewException().ExportFunction(yao.iso),
 		"WebSocket": objects.NewWebSocket().ExportFunction(yao.iso),
+		"Store":     objects.NewStore().ExportFunction(yao.iso),
 	})
 	return yao
 }

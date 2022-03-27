@@ -13,9 +13,9 @@ func TestBasic(t *testing.T) {
 		t.Fatalf("%s", err.Error())
 	}
 
-	kv.Set("key1", "bar")
-	kv.Set("key2", 1024)
-	kv.Set("key3", 0.618)
+	kv.Set("key1", "bar", 0)
+	kv.Set("key2", 1024, 0)
+	kv.Set("key3", 0.618, 0)
 	value, ok := kv.Get("key1")
 	assert.True(t, ok)
 	assert.Equal(t, "bar", value)
@@ -28,7 +28,7 @@ func TestBasic(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, 0.618, value)
 
-	kv.Set("key1", "foo")
+	kv.Set("key1", "foo", 0)
 	value, ok = kv.Get("key1")
 	assert.True(t, ok)
 	assert.Equal(t, "foo", value)
@@ -48,20 +48,20 @@ func TestBasic(t *testing.T) {
 	kv.Clear()
 	assert.Equal(t, 0, kv.Len())
 
-	value, err = kv.GetSet("key1", func(key string) (interface{}, error) {
+	value, err = kv.GetSet("key1", 0, func(key string) (interface{}, error) {
 		return "bar", nil
 	})
 	assert.Nil(t, err)
 	value, ok = kv.Get("key1")
 	assert.Equal(t, "bar", value)
 
-	value, err = kv.GetSet("key1", func(key string) (interface{}, error) {
+	value, err = kv.GetSet("key1", 0, func(key string) (interface{}, error) {
 		return nil, fmt.Errorf("error test")
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, "bar", value)
 
-	value, err = kv.GetSet("key2", func(key string) (interface{}, error) {
+	value, err = kv.GetSet("key2", 0, func(key string) (interface{}, error) {
 		return nil, fmt.Errorf("error test")
 	})
 	assert.Equal(t, "error test", err.Error())
@@ -80,7 +80,7 @@ func TestMulti(t *testing.T) {
 		t.Fatalf("%s", err.Error())
 	}
 
-	kv.SetMulti(map[string]interface{}{"key1": "foo", "key2": 1024, "key3": 0.618})
+	kv.SetMulti(map[string]interface{}{"key1": "foo", "key2": 1024, "key3": 0.618}, 0)
 	assert.Equal(t, 3, kv.Len())
 
 	values := kv.GetMulti([]string{"key1", "key2", "key3", "key4"})
@@ -92,7 +92,7 @@ func TestMulti(t *testing.T) {
 	kv.DelMulti([]string{"key1", "key2", "key3"})
 	assert.Equal(t, 0, kv.Len())
 
-	values = kv.GetSetMulti([]string{"key1", "key2", "key3", "key4"}, func(key string) (interface{}, error) {
+	values = kv.GetSetMulti([]string{"key1", "key2", "key3", "key4"}, 0, func(key string) (interface{}, error) {
 		return key, nil
 	})
 	assert.Equal(t, "key1", values["key1"])
@@ -101,7 +101,7 @@ func TestMulti(t *testing.T) {
 	assert.Equal(t, "key4", values["key4"])
 	kv.Clear()
 
-	values = kv.GetSetMulti([]string{"key1", "key2", "key3", "key4"}, func(key string) (interface{}, error) {
+	values = kv.GetSetMulti([]string{"key1", "key2", "key3", "key4"}, 0, func(key string) (interface{}, error) {
 		switch key {
 		case "key1", "key2":
 			return key, nil

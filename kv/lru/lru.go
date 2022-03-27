@@ -2,6 +2,7 @@ package lru
 
 import (
 	"fmt"
+	"time"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/yaoapp/kun/log"
@@ -24,7 +25,7 @@ func (cache *Cache) Get(key string) (value interface{}, ok bool) {
 }
 
 // Set adds a value to the cache.
-func (cache *Cache) Set(key string, value interface{}) {
+func (cache *Cache) Set(key string, value interface{}, ttl time.Duration) {
 	cache.lru.Add(key, value)
 }
 
@@ -64,7 +65,7 @@ func (cache *Cache) Clear() {
 }
 
 // GetSet looks up a key's value from the cache. if does not exist add to the cache
-func (cache *Cache) GetSet(key string, getValue func(key string) (interface{}, error)) (interface{}, error) {
+func (cache *Cache) GetSet(key string, ttl time.Duration, getValue func(key string) (interface{}, error)) (interface{}, error) {
 	value, ok := cache.lru.Get(key)
 	if !ok {
 		var err error
@@ -72,7 +73,7 @@ func (cache *Cache) GetSet(key string, getValue func(key string) (interface{}, e
 		if err != nil {
 			return nil, err
 		}
-		cache.Set(key, value)
+		cache.Set(key, value, ttl)
 	}
 	return value, nil
 }
@@ -98,7 +99,7 @@ func (cache *Cache) GetMulti(keys []string) map[string]interface{} {
 }
 
 // SetMulti mulit set values
-func (cache *Cache) SetMulti(values map[string]interface{}) {
+func (cache *Cache) SetMulti(values map[string]interface{}, ttl time.Duration) {
 	for key, value := range values {
 		cache.lru.Add(key, value)
 	}
@@ -112,7 +113,7 @@ func (cache *Cache) DelMulti(keys []string) {
 }
 
 // GetSetMulti mulit get values, if does not exist add to the cache
-func (cache *Cache) GetSetMulti(keys []string, getValue func(key string) (interface{}, error)) map[string]interface{} {
+func (cache *Cache) GetSetMulti(keys []string, ttl time.Duration, getValue func(key string) (interface{}, error)) map[string]interface{} {
 	values := map[string]interface{}{}
 	for _, key := range keys {
 		value, ok := cache.lru.Get(key)
