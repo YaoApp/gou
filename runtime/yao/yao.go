@@ -142,18 +142,21 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 
 	jsArgs, err := ToValuers(v8ctx, args)
 	if err != nil {
-		return nil, fmt.Errorf("function %s.%s %s", name, method, err.Error())
+		log.Error("function %s.%s %s", name, method, err.Error())
+		return nil, err
 	}
 
 	value, err := global.MethodCall(method, jsArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("function %s.%s %s", name, method, err.Error())
+		log.Error("function %s.%s %s", name, method, err.Error())
+		return nil, err
 	}
 
 	if value.IsPromise() { // wait for the promise to resolve
 		promise, err := value.AsPromise()
 		if err != nil {
-			return nil, fmt.Errorf("function execute error. %s.%s %s", name, method, err.Error())
+			log.Error("function execute error. %s.%s %s", name, method, err.Error())
+			return nil, err
 		}
 		for promise.State() == v8.Pending {
 			continue

@@ -21,6 +21,43 @@ import (
 // HTTPGuards 支持的中间件
 var HTTPGuards = map[string]gin.HandlerFunc{}
 
+// processGuard guard process
+func processGuard(name string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body interface{}
+		bytes, err := ioutil.ReadAll(c.Request.Body)
+		if err == nil {
+			if strings.HasPrefix(strings.ToLower(c.Request.Header.Get("Content-Type")), "application/json") {
+				jsoniter.Unmarshal(bytes, &body)
+			} else {
+				body = string(bytes)
+			}
+		}
+
+		args := []interface{}{
+			c.FullPath(),          // api path
+			c.Request.URL.Query(), // query string
+			body,                  // payload
+			c.Request.Header,      // Request headers
+		}
+
+		var process = NewProcess(name, args...)
+		if sid, has := c.Get("__sid"); has { // 设定会话ID
+			if sid, ok := sid.(string); ok {
+				process.WithSID(sid)
+			}
+		}
+
+		if global, has := c.Get("__global"); has { // 设定全局变量
+			if global, ok := global.(map[string]interface{}); ok {
+				process.WithGlobal(global)
+			}
+		}
+		process.Run()
+		c.Next()
+	}
+}
+
 // Routes 配置转换为路由
 func (http HTTP) Routes(router *gin.Engine, root string, allows ...string) {
 	var group gin.IRoutes = router
@@ -149,13 +186,14 @@ func (http HTTP) guard(handlers *[]gin.HandlerFunc, guard string, defaults strin
 		guard = defaults
 	}
 
-	// if guard != "-" && guard != "in-process" {
 	if guard != "-" {
 		guards := strings.Split(guard, ",")
 		for _, name := range guards {
 			name = strings.TrimSpace(name)
 			if handler, has := HTTPGuards[name]; has {
 				*handlers = append(*handlers, handler)
+			} else { // run process process
+				*handlers = append(*handlers, processGuard(name))
 			}
 		}
 	}

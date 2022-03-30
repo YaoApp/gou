@@ -16,6 +16,17 @@
       }
     },
     {
+      "path": "/auth",
+      "method": "POST",
+      "guard": "scripts.app.test.Auth",
+      "process": "scripts.app.test.hello",
+      "in": ["world"],
+      "out": {
+        "status": 200,
+        "type": "application/json"
+      }
+    },
+    {
       "path": "/login",
       "method": "POST",
       "guard": "-",

@@ -1,6 +1,8 @@
 package objects
 
 import (
+	"fmt"
+
 	"github.com/yaoapp/gou/runtime/yao/values"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
@@ -26,11 +28,11 @@ func (e *Exception) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	}))
 
 	tmpl.Set("Message", v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
-		code, err := info.This().Get("message")
+		message, err := info.This().Get("message")
 		if err != nil {
 			log.Error("Exception: %s", err.Error())
 		}
-		return code
+		return message
 	}))
 	return tmpl
 }
@@ -75,7 +77,7 @@ func (e *Exception) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 
 			// extend error object
 			obj.Set("code", code)
-			obj.Set("name", "Exception")
+			obj.Set("name", fmt.Sprintf("Exception|%v", code))
 			return obj.Value
 		}
 
@@ -85,7 +87,6 @@ func (e *Exception) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			log.Error("Exception: %s", err.Error())
 			return nil
 		}
-
 		err = this.Set("message", message)
 		if err != nil {
 			log.Error("Exception: %s", err.Error())

@@ -46,3 +46,17 @@ function helloSession(value) {
 function getArgs(str, intv, floatv, array, map) {
   return [str, intv, floatv, array, map];
 }
+
+// Process Guard
+function Auth(path, query, payload, headers) {
+  if (payload.response == "success") {
+    if (query.sid) {
+      var id = Process("session.Get", "id");
+      if (id != 1) {
+        new Exception("failure sid", 403);
+      }
+    }
+    return;
+  }
+  throw new Exception("failure", 403);
+}

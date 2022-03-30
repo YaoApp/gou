@@ -61,7 +61,7 @@ func TestException(t *testing.T) {
 	assert.Equal(t, int32(403), code.Int32())
 	assert.Equal(t, true, isError.Boolean())
 	assert.Equal(t, "hello", message.String())
-	assert.Equal(t, "Exception", name.String())
+	assert.Equal(t, "Exception|403", name.String())
 }
 
 func TestExceptionWithoutCode(t *testing.T) {
@@ -118,7 +118,7 @@ func TestExceptionWithoutCode(t *testing.T) {
 	assert.Equal(t, int32(500), code.Int32())
 	assert.Equal(t, true, isError.Boolean())
 	assert.Equal(t, "hello", message.String())
-	assert.Equal(t, "Exception", name.String())
+	assert.Equal(t, "Exception|500", name.String())
 }
 
 func TestExceptionWithoutThrow(t *testing.T) {

@@ -1,6 +1,7 @@
 package gou
 
 import (
+	"bytes"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 
 func init() {
 	session.MemoryLocalServer()
+	SetHTTPGuards(map[string]gin.HandlerFunc{"bearer-jwt": func(ctx *gin.Context) {}})
 }
 func TestLoadAPI(t *testing.T) {
 	user := LoadAPI("file://"+path.Join(TestAPIRoot, "user.http.json"), "user")
@@ -132,6 +134,46 @@ func TestAPIUserHello(t *testing.T) {
 	req, _ := http.NewRequest("GET", "/user/hello", nil)
 	router.ServeHTTP(response, req)
 	assert.Equal(t, `"hello:world"`, response.Body.String())
+}
+
+func TestAPIUserAuth(t *testing.T) {
+	router := GetTestRouter()
+	response := httptest.NewRecorder()
+	body := []byte(`{"response":"success"}`)
+	req, _ := http.NewRequest("POST", "/user/auth?foo=bar&hello=world", bytes.NewBuffer(body))
+	req.Header.Set("Authorization", "Bearer Token:123456")
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(response, req)
+	assert.Equal(t, `"hello:world"`, response.Body.String())
+}
+
+func TestAPIUserAuthSid(t *testing.T) {
+	router := GetTestRouter(func(c *gin.Context) {
+		c.Set("__sid", c.Query("sid"))
+		c.Set("__global", map[string]interface{}{"hello": "world"})
+	})
+	response := httptest.NewRecorder()
+	id := session.ID()
+	ss := session.Global().ID(id)
+	ss.Set("id", 1)
+
+	body := []byte(`{"response":"success"}`)
+	req, _ := http.NewRequest("POST", "/user/auth?foo=bar&hello=world&sid="+id, bytes.NewBuffer(body))
+	req.Header.Set("Authorization", "Bearer Token:123456")
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(response, req)
+	assert.Equal(t, `"hello:world"`, response.Body.String())
+}
+
+func TestAPIUserAuthFail(t *testing.T) {
+	router := GetTestRouter()
+	response := httptest.NewRecorder()
+	body := []byte(`{"response":"failure"}`)
+	req, _ := http.NewRequest("POST", "/user/auth?foo=bar&hello=world", bytes.NewBuffer(body))
+	req.Header.Set("Authorization", "Bearer Token:123456")
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(response, req)
+	assert.Equal(t, `{"code":403,"message":"failure"}`, response.Body.String())
 }
 
 func TestAPIUserSessionFlow(t *testing.T) {

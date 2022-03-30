@@ -163,6 +163,22 @@ func processScript(process *Process) interface{} {
 
 	if err != nil {
 		message := err.Error()
+
+		// JS Exception
+		if strings.HasPrefix(message, "Exception|") {
+			message = strings.Replace(message, "Exception|", "", -1)
+			values := strings.Split(message, ":")
+			if len(values) == 2 {
+				code := 500
+				if v, err := strconv.Atoi(values[0]); err == nil {
+					code = v
+				}
+				message = strings.TrimSpace(values[1])
+				exception.New(message, code).Throw()
+			}
+		}
+
+		// Other
 		code := 500
 		values := strings.Split(message, "|")
 		if len(values) == 2 {
@@ -171,6 +187,7 @@ func processScript(process *Process) interface{} {
 			}
 			message = values[0]
 		}
+
 		exception.New(message, code).Throw()
 	}
 	return res
