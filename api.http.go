@@ -21,8 +21,8 @@ import (
 // HTTPGuards 支持的中间件
 var HTTPGuards = map[string]gin.HandlerFunc{}
 
-// processGuard guard process
-func processGuard(name string) gin.HandlerFunc {
+// ProcessGuard guard process
+func ProcessGuard(name string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body interface{}
 		bytes, err := ioutil.ReadAll(c.Request.Body)
@@ -193,7 +193,7 @@ func (http HTTP) guard(handlers *[]gin.HandlerFunc, guard string, defaults strin
 			if handler, has := HTTPGuards[name]; has {
 				*handlers = append(*handlers, handler)
 			} else { // run process process
-				*handlers = append(*handlers, processGuard(name))
+				*handlers = append(*handlers, ProcessGuard(name))
 			}
 		}
 	}
