@@ -48,12 +48,16 @@ function getArgs(str, intv, floatv, array, map) {
 }
 
 // Process Guard
-function Auth(path, query, payload, headers) {
+function Auth(path, params, query, payload, headers) {
+  if (params["name"] != "hi") {
+    throw new Exception("failure param", 400);
+  }
+
   if (payload.response == "success") {
     if (query.sid) {
       var id = Process("session.Get", "id");
       if (id != 1) {
-        new Exception("failure sid", 403);
+        throw new Exception("failure sid", 403);
       }
     }
     return;

@@ -33,9 +33,14 @@ func ProcessGuard(name string) gin.HandlerFunc {
 				body = string(bytes)
 			}
 		}
+		params := map[string]string{}
+		for _, param := range c.Params {
+			params[param.Key] = param.Value
+		}
 
 		args := []interface{}{
 			c.FullPath(),          // api path
+			params,                // api params
 			c.Request.URL.Query(), // query string
 			body,                  // payload
 			c.Request.Header,      // Request headers

@@ -16,7 +16,7 @@
       }
     },
     {
-      "path": "/auth",
+      "path": "/auth/:name",
       "method": "POST",
       "guard": "scripts.app.test.Auth",
       "process": "scripts.app.test.hello",
