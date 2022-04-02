@@ -81,12 +81,26 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 	handlers := []gin.HandlerFunc{}
 
 	// 跨域访问
-	if len(allows) > 0 {
+	if allows != nil && len(allows) > 0 {
 		allowsMap := map[string]bool{}
 		for _, allow := range allows {
 			allowsMap[allow] = true
 		}
+
+		// ADD Option
 		http.crossDomain(path.Path, allowsMap, router)
+
+		handlers = append(handlers, func(c *gin.Context) {
+			// if _, has := allowsMap[c.Request.Host]; !has {
+			// 	c.AbortWithStatus(403)
+			// 	return
+			// }
+			c.Writer.Header().Set("Access-Control-Allow-Origin", c.Request.Host)
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+			c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+			c.Next()
+		})
 	}
 
 	// 中间件
