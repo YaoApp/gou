@@ -59,7 +59,6 @@ func ProcessGuard(name string) gin.HandlerFunc {
 			}
 		}
 		process.Run()
-		c.Next()
 	}
 }
 
@@ -87,15 +86,14 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 			allowsMap[allow] = true
 		}
 
-		// ADD Option
+		// // ADD Option
 		http.crossDomain(path.Path, allowsMap, router)
-
 		handlers = append(handlers, func(c *gin.Context) {
 			// if _, has := allowsMap[c.Request.Host]; !has {
 			// 	c.AbortWithStatus(403)
 			// 	return
 			// }
-			c.Writer.Header().Set("Access-Control-Allow-Origin", c.Request.Host)
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 			c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
@@ -225,7 +223,7 @@ func (http HTTP) crossDomain(path string, allows map[string]bool, router gin.IRo
 			c.AbortWithStatus(403)
 			return
 		}
-		c.Writer.Header().Set("Access-Control-Allow-Origin", c.Request.Host)
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
