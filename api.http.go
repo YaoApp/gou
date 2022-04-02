@@ -114,7 +114,7 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 			allowsMap[allow] = true
 		}
 
-		// // ADD Option
+		// Cross domain
 		http.crossDomain(path.Path, allowsMap, router)
 		handlers = append(handlers, func(c *gin.Context) {
 			referer := c.Request.Referer()
@@ -123,6 +123,11 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 					c.AbortWithStatus(403)
 					return
 				}
+
+				// url parse
+				url, _ := url.Parse(referer)
+				referer = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
+				fmt.Println("referer is:", referer)
 				c.Writer.Header().Set("Access-Control-Allow-Origin", referer)
 				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 				c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
@@ -255,6 +260,10 @@ func (http HTTP) crossDomain(path string, allows map[string]bool, router gin.IRo
 				c.AbortWithStatus(403)
 				return
 			}
+
+			// url parse
+			url, _ := url.Parse(referer)
+			referer = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
 			c.Writer.Header().Set("Access-Control-Allow-Origin", referer)
 			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
