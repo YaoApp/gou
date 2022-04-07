@@ -25,14 +25,14 @@ import (
 var APIs = map[string]*API{}
 
 // LoadAPIReturn 加载API
-func LoadAPIReturn(source string, name string) (api *API, err error) {
+func LoadAPIReturn(source string, name string, guard ...string) (api *API, err error) {
 	defer func() { err = exception.Catch(recover()) }()
-	api = LoadAPI(source, name)
+	api = LoadAPI(source, name, guard...)
 	return api, nil
 }
 
 // LoadAPI 加载API
-func LoadAPI(source string, name string) *API {
+func LoadAPI(source string, name string, guard ...string) *API {
 	var input io.Reader = nil
 	if strings.HasPrefix(source, "file://") {
 		filename := strings.TrimPrefix(source, "file://")
@@ -62,12 +62,18 @@ func LoadAPI(source string, name string) *API {
 		uniquePathCheck[unique] = true
 	}
 
+	// Default Guard
+	if http.Guard == "" && len(guard) > 0 {
+		http.Guard = guard[0]
+	}
+
 	APIs[name] = &API{
 		Name:   name,
 		Source: source,
 		HTTP:   http,
 		Type:   "http",
 	}
+
 	return APIs[name]
 }
 

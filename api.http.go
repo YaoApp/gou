@@ -1,6 +1,7 @@
 package gou
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/url"
@@ -26,14 +27,17 @@ var HTTPGuards = map[string]gin.HandlerFunc{}
 func ProcessGuard(name string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body interface{}
-		bytes, err := ioutil.ReadAll(c.Request.Body)
+		bodyBytes, err := ioutil.ReadAll(c.Request.Body)
 		if err == nil {
 			if strings.HasPrefix(strings.ToLower(c.Request.Header.Get("Content-Type")), "application/json") {
-				jsoniter.Unmarshal(bytes, &body)
+				jsoniter.Unmarshal(bodyBytes, &body)
 			} else {
-				body = string(bytes)
+				body = string(bodyBytes)
 			}
 		}
+
+		// Reset body
+		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 		params := map[string]string{}
 		for _, param := range c.Params {
 			params[param.Key] = param.Value
@@ -77,8 +81,8 @@ func IsAllowed(c *gin.Context, allowsMap map[string]bool) bool {
 			port = ""
 		}
 		host := fmt.Sprintf("%s%s", url.Hostname(), port)
-		fmt.Println(url, host, c.Request.Host)
-		fmt.Println(allowsMap)
+		// fmt.Println(url, host, c.Request.Host)
+		// fmt.Println(allowsMap)
 		if host == c.Request.Host {
 			return true
 		}
@@ -127,7 +131,7 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 				// url parse
 				url, _ := url.Parse(referer)
 				referer = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
-				fmt.Println("referer is:", referer)
+				// fmt.Println("referer is:", referer)
 				c.Writer.Header().Set("Access-Control-Allow-Origin", referer)
 				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 				c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
@@ -148,6 +152,8 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 				panic(err)
 			}
 
+			fmt.Println("Body:", string(bytes))
+
 			if bytes == nil || len(bytes) == 0 {
 				c.Set("__payloads", map[string]interface{}{})
 			} else {
@@ -157,6 +163,7 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 					panic(err)
 				}
 				c.Set("__payloads", payloads)
+				fmt.Println("Set __payloads:", payloads)
 			}
 		}
 
