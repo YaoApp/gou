@@ -152,8 +152,6 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 				panic(err)
 			}
 
-			fmt.Println("Body:", string(bytes))
-
 			if bytes == nil || len(bytes) == 0 {
 				c.Set("__payloads", map[string]interface{}{})
 			} else {
@@ -163,7 +161,6 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 					panic(err)
 				}
 				c.Set("__payloads", payloads)
-				fmt.Println("Set __payloads:", payloads)
 			}
 		}
 
