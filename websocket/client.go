@@ -54,7 +54,7 @@ func Push(conn *websocket.Conn, message string) (string, error) {
 	_, response, err := conn.ReadMessage()
 	if err != nil {
 		log.Error("Websocket ReadMessage: %v", err)
-		return "", err
+		return "", nil // Ignore error
 	}
 	return string(response), nil
 }
