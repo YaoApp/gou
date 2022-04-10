@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/assert/v2"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPush(t *testing.T) {
@@ -16,12 +16,11 @@ func TestPush(t *testing.T) {
 	}
 	defer ws.Stop()
 
-	response, err := Push(conn, "Hello World!")
+	err = Push(conn, "Hello World!")
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
-
-	assert.Equal(t, "Hello World!", response)
+	assert.Nil(t, err)
 }
 
 func serve(t *testing.T) *Upgrader {

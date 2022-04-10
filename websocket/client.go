@@ -34,27 +34,29 @@ func NewWebSocket(url string, protocals []string) (*websocket.Conn, error) {
 }
 
 // Push a message to websocket connection and get the response message
-func Push(conn *websocket.Conn, message string) (string, error) {
+func Push(conn *websocket.Conn, message string) error {
 	defer conn.Close()
 	if err := conn.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
 		log.Error("Websocket SetWriteDeadline: %v", err)
-		return "", err
+		return err
 	}
 	if err := conn.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
 		log.Error("Websocket WriteMessage: %v", err)
-		return "", err
+		return err
 	}
 	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
 		log.Error("Websocket SetReadDeadline: %v", err)
-		return "", err
+		return err
 	}
 
-	conn.SetReadLimit(maxMessage)
+	return nil
 
-	_, response, err := conn.ReadMessage()
-	if err != nil {
-		log.Error("Websocket ReadMessage: %v", err)
-		return "", nil // Ignore error
-	}
-	return string(response), nil
+	// conn.SetReadLimit(maxMessage)
+
+	// _, response, err := conn.ReadMessage()
+	// if err != nil {
+	// 	log.Error("Websocket ReadMessage: %v", err)
+	// 	return "", nil // Ignore error
+	// }
+	// return string(response), nil
 }

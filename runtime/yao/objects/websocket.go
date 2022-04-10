@@ -79,21 +79,14 @@ func (ws *WebSocket) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 			return iso.ThrowException(values.Error(info.Context(), msg))
 		}
 
-		response, err := websocket.Push(conn, jsMessage.String())
+		err = websocket.Push(conn, jsMessage.String())
 		if err != nil {
 			msg := fmt.Sprintf("WebSocket push: %s", err.Error())
 			log.Error(msg)
 			return iso.ThrowException(values.Error(info.Context(), msg))
 		}
 
-		jsResponse, err := v8go.NewValue(info.Context().Isolate(), response)
-		if err != nil {
-			msg := fmt.Sprintf("WebSocket response: %s", err.Error())
-			log.Error(msg)
-			return iso.ThrowException(values.Error(info.Context(), msg))
-		}
-
-		return jsResponse
+		return v8go.Undefined(iso)
 	}))
 	return tmpl
 }

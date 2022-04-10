@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/assert/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/websocket"
 	"rogchap.com/v8go"
 )
@@ -34,7 +34,7 @@ func TestWebSocketPush(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, "Hello World!", v.String())
+	assert.True(t, v.IsUndefined())
 }
 
 func serve(t *testing.T) *websocket.Upgrader {
