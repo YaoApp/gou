@@ -3,13 +3,12 @@ module github.com/yaoapp/gou
 go 1.13
 
 require (
-	github.com/buraksezer/olric v0.4.2
+	github.com/buraksezer/olric v0.4.3
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-errors/errors v1.4.2
 	github.com/go-playground/assert/v2 v2.0.1
 	github.com/go-playground/validator/v10 v10.10.0 // indirect
-	github.com/go-redis/redis v6.15.9+incompatible
-	github.com/go-redis/redis/v8 v8.11.4 // indirect
+	github.com/go-redis/redis/v8 v8.11.4
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-plugin v1.4.3
@@ -23,7 +22,6 @@ require (
 	github.com/yaoapp/xun v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab
 	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	rogchap.com/v8go v0.7.0
 )
 
