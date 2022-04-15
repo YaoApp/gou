@@ -87,6 +87,9 @@ func (gou *Query) parseWhereArgs(where Where) whereArgs {
 	// 数值表达式
 	if where.ValueExpression != nil {
 		value = gou.sqlExpression(*where.ValueExpression)
+		if mehtod == "where" {
+			mehtod = "whereColumn"
+		}
 	}
 
 	// 子查询
@@ -145,6 +148,18 @@ func (gou *Query) setWhere(or bool, field interface{}, args ...interface{}) {
 	}
 
 	gou.Query.Where(field, args...)
+}
+
+func (gou *Query) setWhereColumn(or bool, field interface{}, args ...interface{}) {
+	if field == nil {
+		return
+	}
+	if or {
+		gou.Query.OrWhereColumn(field, args...)
+		return
+	}
+
+	gou.Query.WhereColumn(field, args...)
 }
 
 func (gou *Query) setWhereIn(or bool, field interface{}, value interface{}) {

@@ -80,6 +80,9 @@ func (gou *Query) buildWhere(where Where) {
 	case "where":
 		gou.setWhere(args.OR, args.Field, args.Args...)
 		break
+	case "whereColumn":
+		gou.setWhereColumn(args.OR, args.Field, args.Args...)
+		break
 	case "whereIn":
 		gou.setWhereIn(args.OR, args.Field, args.Args[1])
 		break
