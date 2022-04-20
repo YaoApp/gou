@@ -11,6 +11,7 @@ import (
 var opmap map[string]string = map[string]string{
 	"like": "like",
 	"eq":   "=",
+	"ne":   "<>",
 	"gt":   ">",
 	"lt":   "<",
 	"ge":   ">=",
