@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 	TestQueryRoot = os.Getenv("GOU_TEST_QUERY_ROOT")
 	TestDriver = os.Getenv("GOU_TEST_DB_DRIVER")
 	TestDSN = os.Getenv("GOU_TEST_DSN")
-	TestAESKey = os.Getenv("GOT_TEST_AES_KEY")
+	TestAESKey = os.Getenv("GOU_TEST_AES_KEY")
 
 	// 数据库连接
 	switch TestDriver {
