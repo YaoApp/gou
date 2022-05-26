@@ -14,8 +14,7 @@ require (
 	github.com/hashicorp/go-plugin v1.4.3
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/json-iterator/go v1.1.12
-	github.com/miekg/dns v1.1.48 
-	github.com/robertkrimen/otto v0.0.0-20211024170158-b87d35c0b86f
+	github.com/miekg/dns v1.1.48
 	github.com/stretchr/testify v1.7.0
 	github.com/takama/daemon v1.0.0
 	github.com/ugorji/go v1.2.6 // indirect
