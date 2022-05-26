@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [1.17]
+        go: [1.18]
         db: [MySQL8.0, SQLite3]
         redis: [4, 5, 6]
     steps:

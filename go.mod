@@ -1,13 +1,12 @@
 module github.com/yaoapp/gou
 
-go 1.13
+go 1.18
 
 require (
 	github.com/buraksezer/olric v0.4.3
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-errors/errors v1.4.2
 	github.com/go-playground/assert/v2 v2.0.1
-	github.com/go-playground/validator/v10 v10.10.0 // indirect
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.1.0
@@ -17,12 +16,67 @@ require (
 	github.com/miekg/dns v1.1.48
 	github.com/stretchr/testify v1.7.0
 	github.com/takama/daemon v1.0.0
-	github.com/ugorji/go v1.2.6 // indirect
 	github.com/yaoapp/kun v0.9.0
 	github.com/yaoapp/xun v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab
-	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	rogchap.com/v8go v0.7.0
+)
+
+require (
+	github.com/TylerBrock/colorjson v0.0.0-20200706003622-8a50f05110d2 // indirect
+	github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da // indirect
+	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/buraksezer/connpool v0.4.0 // indirect
+	github.com/buraksezer/consistent v0.0.0-20191006190839-693edf70fd72 // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/fatih/color v1.13.0 // indirect
+	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/go-playground/locales v0.13.0 // indirect
+	github.com/go-playground/universal-translator v0.17.0 // indirect
+	github.com/go-playground/validator/v10 v10.4.1 // indirect
+	github.com/go-sql-driver/mysql v1.5.0 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-immutable-radix v1.0.0 // indirect
+	github.com/hashicorp/go-msgpack v0.5.3 // indirect
+	github.com/hashicorp/go-multierror v1.0.0 // indirect
+	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
+	github.com/hashicorp/logutils v1.0.0 // indirect
+	github.com/hashicorp/memberlist v0.1.5 // indirect
+	github.com/hashicorp/yamux v0.0.0-20210707203944-259a57b3608c // indirect
+	github.com/jmoiron/sqlx v1.3.1 // indirect
+	github.com/leodido/go-urn v1.2.0 // indirect
+	github.com/lib/pq v1.9.0 // indirect
+	github.com/mattn/go-colorable v0.1.11 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-sqlite3 v1.14.6 // indirect
+	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/oklog/run v1.1.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/ugorji/go/codec v1.1.7 // indirect
+	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
+	golang.org/x/mod v0.4.2 // indirect
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
+	golang.org/x/sys v0.0.0-20211004093028-2c5d950f24ef // indirect
+	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/tools v0.1.7 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	google.golang.org/appengine v1.4.0 // indirect
+	google.golang.org/genproto v0.0.0-20210821163610-241b8fcbd6c8 // indirect
+	google.golang.org/grpc v1.40.0 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
 replace github.com/yaoapp/kun => ../kun
