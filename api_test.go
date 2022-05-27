@@ -19,7 +19,6 @@ import (
 )
 
 func init() {
-	session.MemoryLocalServer()
 	SetHTTPGuards(map[string]gin.HandlerFunc{"bearer-jwt": func(ctx *gin.Context) {}})
 }
 func TestLoadAPI(t *testing.T) {

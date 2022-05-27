@@ -17,11 +17,12 @@ var Managers = map[string]Manager{}
 var Timeout time.Duration = 3600 * time.Second
 
 // Name 默认为会话管理器
-var Name string = "memory"
+var Name string = "buntdb"
 
 // 注册默认的会话管理器
 func init() {
-	Register("memory", &Memory{})
+	db, _ := NewBuntDB(":memory:")
+	Register("buntdb", db)
 }
 
 // Register 注册会话管理器
