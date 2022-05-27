@@ -8,6 +8,7 @@ import (
 
 	"github.com/yaoapp/kun/log"
 
+	"github.com/yaoapp/gou/query"
 	"github.com/yaoapp/gou/runtime"
 
 	"github.com/yaoapp/gou/helper"
@@ -106,7 +107,7 @@ func (flow *Flow) Prepare() {
 			continue
 		}
 
-		if engine, has := Engines[node.Engine]; has {
+		if engine, has := query.Engines[node.Engine]; has {
 			var err error
 			flow.Nodes[i].DSL, err = engine.Load(node.Query)
 			if err != nil {

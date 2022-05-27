@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"fmt"
 	"math/big"
 
 	jsoniter "github.com/json-iterator/go"
@@ -9,7 +10,7 @@ import (
 	"rogchap.com/v8go"
 )
 
-// ToInterface Convert *v8go.Value to Interface
+// ToInterface JS->GO Convert *v8go.Value to Interface
 func ToInterface(value *v8go.Value) (interface{}, error) {
 
 	if value == nil {
@@ -32,7 +33,7 @@ func ToInterface(value *v8go.Value) (interface{}, error) {
 	return v, nil
 }
 
-// MustAnyToValue Convert any to *v8go.Value
+// MustAnyToValue GO->JS Convert any to *v8go.Value
 func MustAnyToValue(ctx *v8go.Context, value interface{}) *v8go.Value {
 	v, err := AnyToValue(ctx, value)
 	if err != nil {
@@ -41,7 +42,7 @@ func MustAnyToValue(ctx *v8go.Context, value interface{}) *v8go.Value {
 	return v
 }
 
-// AnyToValue Convert data to *v8go.Value
+// AnyToValue JS->GO Convert data to *v8go.Value
 func AnyToValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
 	switch value.(type) {
@@ -58,4 +59,39 @@ func AnyToValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 	}
 
 	return v8go.JSONParse(ctx, string(v))
+}
+
+// ArrayToValuers GO->JS Convert []inteface to []v8.Valuer
+func ArrayToValuers(ctx *v8go.Context, values []interface{}) ([]v8go.Valuer, error) {
+	res := []v8go.Valuer{}
+	if ctx == nil {
+		return res, fmt.Errorf("Context is nil")
+	}
+
+	for i := range values {
+		value, err := AnyToValue(ctx, values[i])
+		if err != nil {
+			log.Error("AnyToValue error: %s", err)
+			value, _ = v8go.NewValue(ctx.Isolate(), nil)
+		}
+		res = append(res, value)
+	}
+	return res, nil
+}
+
+// ValuesToArray JS->GO Convert []*v8go.Value to []interface{}
+func ValuesToArray(values []*v8go.Value) []interface{} {
+	res := []interface{}{}
+	for i := range values {
+		var v interface{} = nil
+		if values[i].IsNull() || values[i].IsUndefined() {
+			res = append(res, nil)
+			continue
+		}
+
+		content, _ := values[i].MarshalJSON()
+		jsoniter.Unmarshal([]byte(content), &v)
+		res = append(res, v)
+	}
+	return res
 }

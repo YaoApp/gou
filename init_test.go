@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/yaoapp/gou/query"
 	"github.com/yaoapp/gou/query/gou"
 	"github.com/yaoapp/gou/runtime"
 	"github.com/yaoapp/kun/exception"
@@ -71,7 +72,7 @@ func TestMain(m *testing.M) {
 	SetModelLogger(os.Stdout, log.TraceLevel)
 
 	// 注册数据分析引擎
-	RegisterEngine("test-db", &gou.Query{
+	query.Register("test-db", &gou.Query{
 		Query: capsule.Query(),
 		GetTableName: func(s string) string {
 			if mod, has := Models[s]; has {
