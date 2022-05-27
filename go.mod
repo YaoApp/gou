@@ -16,6 +16,7 @@ require (
 	github.com/miekg/dns v1.1.48
 	github.com/stretchr/testify v1.7.1
 	github.com/takama/daemon v1.0.0
+	github.com/tidwall/buntdb v1.2.9
 	github.com/yaoapp/kun v0.9.0
 	github.com/yaoapp/xun v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab
@@ -62,6 +63,13 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/tidwall/btree v1.1.0 // indirect
+	github.com/tidwall/gjson v1.12.1 // indirect
+	github.com/tidwall/grect v0.1.4 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
+	github.com/tidwall/rtred v0.1.2 // indirect
+	github.com/tidwall/tinyqueue v0.1.1 // indirect
 	github.com/ugorji/go/codec v1.1.7 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	golang.org/x/mod v0.4.2 // indirect
