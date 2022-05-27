@@ -122,18 +122,20 @@ func TestQueryObject(t *testing.T) {
 
 func initTestEngine() {
 
-	var TestDriver = os.Getenv("GOU_TEST_DB_DRIVER")
-	var TestDSN = os.Getenv("GOU_TEST_DSN")
-	var TestAESKey = os.Getenv("GOU_TEST_AES_KEY")
+	if capsule.Global == nil {
 
-	// Connect DB
-	switch TestDriver {
-	case "sqlite3":
-		capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
-		break
-	default:
-		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
-		break
+		var TestDriver = os.Getenv("GOU_TEST_DB_DRIVER")
+		var TestDSN = os.Getenv("GOU_TEST_DSN")
+
+		// Connect DB
+		switch TestDriver {
+		case "sqlite3":
+			capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
+			break
+		default:
+			capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
+			break
+		}
 	}
 
 	query.Register("query-test", &gou.Query{
@@ -141,6 +143,5 @@ func initTestEngine() {
 		GetTableName: func(s string) string {
 			return s
 		},
-		AESKey: TestAESKey,
 	})
 }

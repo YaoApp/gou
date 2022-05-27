@@ -16,6 +16,11 @@ import (
 // QueryOBJ Javascript API
 type QueryOBJ struct{}
 
+// NewQuery create a new Query Object
+func NewQuery() *QueryOBJ {
+	return &QueryOBJ{}
+}
+
 // ExportObject Export as a Cache Object
 // var query = new Query("engine")
 // query.Get({"select":["id"], "from":"user", "limit":1})
