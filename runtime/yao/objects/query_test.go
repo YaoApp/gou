@@ -9,6 +9,7 @@ import (
 	"github.com/yaoapp/gou/query/gou"
 	"github.com/yaoapp/gou/runtime/yao/bridge"
 	"github.com/yaoapp/xun/capsule"
+	"github.com/yaoapp/xun/dbal/schema"
 	"rogchap.com/v8go"
 )
 
@@ -31,7 +32,7 @@ func TestQueryObject(t *testing.T) {
 		var query = new Query("query-test")
 		var data = query.Get({
 			"select": ["id", "name"],
-			"from": "user"
+			"from": "queryobj_test"
 		})
 		return data
 	}
@@ -54,7 +55,7 @@ func TestQueryObject(t *testing.T) {
 		var query = new Query("query-test")
 		var data = query.Paginate({
 			"select": ["id", "name"],
-			"from": "user"
+			"from": "queryobj_test"
 		})
 		return data
 	}
@@ -77,7 +78,7 @@ func TestQueryObject(t *testing.T) {
 		var query = new Query("query-test")
 		var data = query.First({
 			"select": ["id", "name"],
-			"from": "user"
+			"from": "queryobj_test"
 		})
 		return data
 	}
@@ -92,7 +93,7 @@ func TestQueryObject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, float64(2), res.(map[string]interface{})["id"])
+	assert.Equal(t, float64(1), res.(map[string]interface{})["id"])
 
 	// ===== run
 	v, err = ctx.RunScript(`
@@ -100,7 +101,7 @@ func TestQueryObject(t *testing.T) {
 		var query = new Query("query-test")
 		var data = query.Run({
 			"select": ["id", "name"],
-			"from": "user",
+			"from": "queryobj_test",
 			"limit": 1
 		})
 		return data
@@ -137,6 +138,20 @@ func initTestEngine() {
 			break
 		}
 	}
+
+	sch := capsule.Schema()
+	sch.MustDropTableIfExists("queryobj_test")
+	sch.MustCreateTable("queryobj_test", func(table schema.Blueprint) {
+		table.ID("id")
+		table.String("name", 20)
+	})
+
+	qb := capsule.Query()
+	qb.Table("queryobj_test").MustInsert([][]interface{}{
+		{1, "Lucy"},
+		{2, "Join"},
+		{3, "Lily"},
+	}, []string{"id", "name"})
 
 	query.Register("query-test", &gou.Query{
 		Query: capsule.Query(),
