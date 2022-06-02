@@ -1,6 +1,25 @@
 {
-  "from": "infra.erp.models.user",
-  "delete": ["columns.1", "columns.2"], // 删除 user_sn, user_no 字段
+  "FROM": "@infra.erp.models.user", // inherited from workshop.yaoapps.com/infra/erp/models/user.mod.yao
+  "RUN": {
+    "DELETE": ["columns.1", "columns.2"], // remove user_sn, user_no fields
+    "REPLACE": ["table"], // replace the fields with the new definition
+    "MERGE": [
+      {
+        // merge mobile field add validations
+        "columns.5": {
+          "validations": [
+            {
+              "method": "mobile",
+              "args": [],
+              "message": "{{input}} should be email"
+            }
+          ]
+        }
+      }
+    ], // do not deep merge
+    "APPEND": ["columns", "indexes"] // append the new definition to the fields ( optional , is the default operation )
+  },
+  "table": { "name": "user", "comment": "User" },
   "columns": [
     {
       "label": "Phone",
@@ -17,7 +36,8 @@
           "message": "{{input}} Error"
         }
       ]
-    }
+    },
+    { "COPY": "@yaoapp.demo-wms.cloud.fields.supplier_id" } // copy the supplier supplier_id from github.com/yaoapp/templates/fields.tpl.yao
   ],
   "indexes": [
     {

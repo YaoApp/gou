@@ -1,0 +1,10 @@
+{
+  "supplier_id": {
+    "label": "Supplier",
+    "name": "supplier_id",
+    "type": "bigInteger",
+    "comment": "Supplier",
+    "index": true,
+    "nullable": true
+  }
+}
