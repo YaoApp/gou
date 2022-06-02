@@ -1,0 +1,5 @@
+{
+  "name": "Admin",
+  "table": { "name": "admin", "comment": "Admin" },
+  "columns": [{ "label": "ID", "name": "id", "type": "ID" }]
+}

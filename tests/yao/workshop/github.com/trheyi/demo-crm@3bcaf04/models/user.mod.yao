@@ -1,0 +1,179 @@
+{
+  "name": "User",
+  "table": {
+    "name": "user",
+    "comment": "User",
+    "engine": "InnoDB"
+  },
+  "columns": [
+    { "label": "ID", "name": "id", "type": "ID" },
+    {
+      "label": "UserID",
+      "name": "user_id",
+      "type": "string",
+      "length": 256,
+      "comment": "UserID",
+      "unique": true,
+      "nullable": true
+    },
+    {
+      "label": "OpenID",
+      "name": "open_id",
+      "type": "string",
+      "length": 256,
+      "comment": "OpenID",
+      "unique": true,
+      "nullable": true
+    },
+    {
+      "label": "UnionID",
+      "name": "union_id",
+      "type": "string",
+      "length": 256,
+      "comment": "UnionID",
+      "unique": true,
+      "nullable": true
+    },
+    {
+      "label": "Email",
+      "name": "email",
+      "type": "string",
+      "length": 50,
+      "comment": "Email",
+      "unique": true,
+      "nullable": true,
+      "validations": [
+        {
+          "method": "email",
+          "args": [],
+          "message": "{{input}} should be email"
+        }
+      ]
+    },
+    {
+      "label": "Mobile",
+      "name": "mobile",
+      "type": "string",
+      "length": 50,
+      "comment": "Mobile",
+      "unique": true,
+      "nullable": true,
+      "crypt": "AES"
+    },
+    {
+      "label": "Role",
+      "name": "roles",
+      "type": "json",
+      "comment": "Role",
+      "nullable": true
+    },
+    {
+      "label": "Password",
+      "name": "password",
+      "type": "string",
+      "length": 256,
+      "comment": "Password",
+      "crypt": "PASSWORD",
+      "index": true,
+      "nullable": true,
+      "validations": [
+        {
+          "method": "typeof",
+          "args": ["string"],
+          "message": "{{input}} Error"
+        },
+        {
+          "method": "minLength",
+          "args": [6],
+          "message": "{{label}} Error"
+        },
+        {
+          "method": "maxLength",
+          "args": [18],
+          "message": "{{label}} Error"
+        }
+      ]
+    },
+    {
+      "label": "TwoFactorPassword",
+      "name": "password2nd",
+      "type": "string",
+      "length": 256,
+      "comment": "TwoFactorPassword",
+      "crypt": "PASSWORD",
+      "index": true,
+      "nullable": true,
+      "validations": [
+        {
+          "method": "typeof",
+          "args": ["string"],
+          "message": "{{input}} Error, {{label}}Error"
+        }
+      ]
+    },
+    {
+      "label": "Name",
+      "name": "name",
+      "type": "string",
+      "length": 80,
+      "comment": "Name",
+      "index": true,
+      "nullable": true,
+      "validations": [
+        {
+          "method": "typeof",
+          "args": ["string"],
+          "message": "{{input}} Error"
+        }
+      ]
+    },
+    {
+      "label": "NickName",
+      "name": "nickname",
+      "type": "string",
+      "length": 80,
+      "comment": "NickName",
+      "index": true,
+      "nullable": true,
+      "validations": [
+        {
+          "method": "typeof",
+          "args": ["string"],
+          "message": "{{input}} Error"
+        }
+      ]
+    },
+    {
+      "label": "Extra",
+      "name": "extra",
+      "type": "json",
+      "comment": "Extra",
+      "nullable": true
+    },
+    {
+      "label": "Status",
+      "comment": "Status",
+      "name": "status",
+      "type": "enum",
+      "default": "enabled",
+      "option": ["enabled", "disabled"],
+      "index": true,
+      "validations": [
+        {
+          "method": "typeof",
+          "args": ["string"],
+          "message": "{{input}} Error, {{label}} should be string"
+        },
+        {
+          "method": "enum",
+          "args": ["enabled", "disabled"],
+          "message": "{{input}} Error, {{label}} should be enabled/disabled"
+        }
+      ]
+    }
+  ],
+  "relations": {},
+  "values": [],
+  "indexes": [],
+  "option": { "timestamps": true, "soft_deletes": true }
+}

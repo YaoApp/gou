@@ -1,0 +1,29 @@
+{
+  "from": "infra.erp.models.user",
+  "delete": ["columns.1", "columns.2"], // 删除 user_sn, user_no 字段
+  "columns": [
+    {
+      "label": "Phone",
+      "name": "phone",
+      "type": "string",
+      "length": 50,
+      "comment": "Phone number",
+      "nullable": true,
+      "crypt": "AES",
+      "validations": [
+        {
+          "method": "typeof",
+          "args": ["string"],
+          "message": "{{input}} Error"
+        }
+      ]
+    }
+  ],
+  "indexes": [
+    {
+      "name": "supplier_id_phone_unique",
+      "type": "unique",
+      "columns": ["supplier_id", "phone"]
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "name": "Material",
+  "table": { "name": "material", "comment": "Material" },
+  "columns": [
+    { "label": "ID", "name": "id", "type": "ID" },
+    {
+      "label": "Supplier",
+      "name": "supplier_id",
+      "type": "bigInteger",
+      "comment": "Supplier",
+      "index": true,
+      "nullable": true
+    },
+    {
+      "label": "Name",
+      "name": "name",
+      "type": "string",
+      "length": 200,
+      "unique": true
+    },
+    {
+      "label": "Category",
+      "name": "category_id",
+      "type": "integer",
+      "comment": "Category",
+      "index": true,
+      "nullable": true
+    },
+    { "label": "Icon", "name": "icon", "type": "json", "nullable": true },
+    { "label": "Images", "name": "images", "type": "json", "nullable": true },
+    { "label": "Detail", "name": "detail", "type": "text", "nullable": true }
+  ],
+  "relations": {
+    "category": {
+      "type": "hasOne",
+      "model": "material.category",
+      "key": "id",
+      "foreign": "category_id",
+      "query": {
+        "select": ["id", "name", "parent_id"]
+      }
+    },
+    "supplier": {
+      "type": "hasOne",
+      "model": "supplier",
+      "key": "id",
+      "foreign": "supplier_id",
+      "query": {
+        "select": ["id", "name", "short"]
+      }
+    }
+  },
+  "option": { "timestamps": true, "soft_deletes": true }
+}
