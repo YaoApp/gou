@@ -1,4 +1,4 @@
-package lang
+package dsl
 
 import "github.com/blang/semver/v4"
 
@@ -36,8 +36,24 @@ type Head struct {
 	Delete  []string
 }
 
+// Workshop the required packages
+type Workshop struct {
+	Require []Package         `json:"require,omitempty"`
+	Replace map[string]string `json:"replace,omitempty"` // for multi projects development
+}
+
 // Package the YAO package info
-type Package struct{}
+type Package struct {
+	Name    string
+	Alias   string
+	Domain  string
+	Team    string // Organization
+	Project string
+	Path    string
+	Repo    string
+	Commit  string
+	Version semver.Version
+}
 
 // LocalPackage the YAO local package info
 type LocalPackage struct{}

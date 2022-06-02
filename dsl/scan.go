@@ -1,4 +1,4 @@
-package lang
+package dsl
 
 // Scan the DSL files
 func Scan(path string, exclude ...string) {}

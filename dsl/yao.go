@@ -1,4 +1,4 @@
-package lang
+package dsl
 
 // New create a new YAO DSL
 func New(name string, kind int) (*YAO, error) {
