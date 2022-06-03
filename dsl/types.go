@@ -40,19 +40,24 @@ type Head struct {
 type Workshop struct {
 	Require []Package         `json:"require,omitempty"`
 	Replace map[string]string `json:"replace,omitempty"` // for multi projects development
+	Mapping map[string]Package
 }
 
 // Package the YAO package info
 type Package struct {
-	Name    string
-	Alias   string
-	Domain  string
-	Team    string // Organization
-	Project string
-	Path    string
-	Repo    string
-	Commit  string
-	Version semver.Version
+	URL        string         // github.com/yaoapp/demo-wms/cloud@v0.0.0-20220223010332-e86eab4c8490
+	Repo       string         // github.com/yaoapp/demo-wms
+	Name       string         // demo-wms.yaoapp.cloud
+	Alias      string         // demo-wms.yaoapp.cloud
+	Domain     string         // github.com
+	Team       string         // trheyi
+	Project    string         // demo-wms
+	Path       string         // cloud
+	Version    semver.Version // 0.0.0-20220223010332-e86eab4c8490
+	Commit     string         // e86eab4c8490
+	LocalPath  string         //
+	Downloaded bool           // true
+	Replaced   bool           // false
 }
 
 // LocalPackage the YAO local package info
@@ -112,6 +117,11 @@ const (
 	CHANGE
 	// REMOVE the DSL file remove event
 	REMOVE
+)
+
+const (
+	// RootEnvName the environment variable name of the workshop root path in the local disk
+	RootEnvName = "YAO_PATH"
 )
 
 // TypeExtensions the DSL file extensions

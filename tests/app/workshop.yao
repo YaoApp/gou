@@ -5,13 +5,13 @@
       "trheyi.demo-wms": "github.com/trheyi/demo-wms@v0.0.0-20220223010332-e86eab4c8490"
     },
     "github.com/yaoapp/demo-crm@v0.0.0-20220309050332-3bcaf04ae28f",
-    "github.com/yaoapp/demo-wms@v0.0.0-20220223010332-e86eab4c8490",
+    "github.com/yaoapp/demo-wms/cloud@v0.0.0-20220223010332-e86eab4c8490",
     "workshop.yaoapps.com/infra/crm@0.9.1", // indirect
     "workshop.yaoapps.com/infra/erp@0.1.0",
     "workshop.yaoapps.com/yao/hr@1.0.0",
     "workshop.yaoapps.com/yao/project@1.0.0"
   ],
   "replace": {
-    "github.com/trheyi/demo-crm@3bcaf04": "/data/code/infra"
+    "github.com/yaoapp/demo-wms/cloud": "../../demo-wms/cloud"
   }
 }

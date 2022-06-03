@@ -1,7 +1,10 @@
 package dsl
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/blang/semver/v4"
@@ -22,8 +25,8 @@ func (pkg *Package) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("package should be {\"key\":\"value\"} or \"value\" format, but got: %s", data)
 		}
 
-		for alias, repo := range input {
-			if err := pkg.Set(repo, alias); err != nil {
+		for alias, url := range input {
+			if err := pkg.Set(url, alias); err != nil {
 				return err
 			}
 			break
@@ -44,11 +47,30 @@ func (pkg *Package) UnmarshalJSON(data []byte) error {
 // MarshalJSON for json
 func (pkg Package) MarshalJSON() ([]byte, error) {
 	if pkg.Name == pkg.Alias {
-		return jsoniter.Marshal(fmt.Sprintf("%s@%s", pkg.Repo, pkg.Version.String()))
+		return jsoniter.Marshal(pkg.URL)
 	}
-	repo := map[string]string{}
-	repo[pkg.Alias] = fmt.Sprintf("%s@%s", pkg.Repo, pkg.Version.String())
-	return jsoniter.Marshal(repo)
+	uri := map[string]string{}
+	uri[pkg.Alias] = pkg.URL
+	return jsoniter.Marshal(uri)
+}
+
+// Map package to map[string]interface{}
+func (pkg Package) Map() map[string]interface{} {
+	return map[string]interface{}{
+		"url":        pkg.URL,
+		"repo":       pkg.Repo,
+		"name":       pkg.Name,
+		"alias":      pkg.Alias,
+		"domain":     pkg.Domain,
+		"team":       pkg.Team,
+		"project":    pkg.Project,
+		"path":       pkg.Path,
+		"version":    pkg.Version.String(),
+		"commit":     pkg.Commit,
+		"localpath":  pkg.LocalPath,
+		"downloaded": pkg.Downloaded,
+		"replaced":   pkg.Replaced,
+	}
 }
 
 // Set set repo and alias
@@ -58,7 +80,7 @@ func (pkg *Package) Set(url string, alias string) error {
 		return fmt.Errorf("package url should be \"repo@version\" format, but got: %s", url)
 	}
 
-	err := pkg.SetURL(uri[0])
+	err := pkg.SetRepo(uri[0])
 	if err != nil {
 		return err
 	}
@@ -68,6 +90,12 @@ func (pkg *Package) Set(url string, alias string) error {
 		return err
 	}
 
+	err = pkg.SetLocalPath()
+	if err != nil {
+		return err
+	}
+
+	pkg.URL = url
 	pkg.Alias = alias
 	if alias == "" {
 		pkg.Alias = pkg.Name
@@ -76,31 +104,31 @@ func (pkg *Package) Set(url string, alias string) error {
 	return nil
 }
 
-// SetURL parse and set repo, domain, team, project, path and name
-func (pkg *Package) SetURL(url string) error {
+// SetRepo parse and set repo, domain, team, project, path and name
+func (pkg *Package) SetRepo(url string) error {
 	url = strings.ToLower(url)
 	uri := strings.Split(url, "/")
 	if len(uri) < 3 {
 		return fmt.Errorf("package url should be a git repo. \"domain/org/project/path\", but got: %s", url)
 	}
 
-	pkg.Repo = url
 	pkg.Domain = uri[0]
 	pkg.Team = uri[1]
 	pkg.Project = uri[2]
 	pkg.Path = "/"
 	name := fmt.Sprintf("%s.%s", pkg.Project, pkg.Team)
 	if len(uri) > 3 {
-		pkg.Path = strings.Join(uri[3:], "/")
+		pkg.Path = fmt.Sprintf("/%s", filepath.Join(uri[3:]...))
 		name = fmt.Sprintf("%s.%s", name, strings.Join(uri[3:], "."))
 	}
 	pkg.Name = name
+	pkg.Repo = fmt.Sprintf("%s/%s/%s", pkg.Domain, pkg.Team, pkg.Project)
 	return nil
 }
 
 // SetVersion parse and set version, commit
 func (pkg *Package) SetVersion(ver string) error {
-	ver = strings.ToLower(strings.TrimLeft(ver, "v"))
+	ver = strings.TrimLeft(strings.ToLower(ver), "v")
 	version, err := semver.New(ver)
 	if err != nil {
 		return fmt.Errorf("package version should be Semantic Versioning 2.0.0 format, but got: %s, error: %s", ver, err)
@@ -111,4 +139,41 @@ func (pkg *Package) SetVersion(ver string) error {
 		pkg.Commit = vstr[len(vstr)-1]
 	}
 	return nil
+}
+
+// SetLocalPath get the local root path
+func (pkg *Package) SetLocalPath() error {
+	root, err := WorkshopRoot()
+	if err != nil {
+		return err
+	}
+	paths := strings.Split(pkg.Path, "/")
+	version := pkg.Commit
+	if version == "" {
+		version = pkg.Version.String()
+	}
+	pkg.LocalPath = filepath.Join(
+		root,
+		pkg.Domain, pkg.Team,
+		fmt.Sprintf("%s@%s", pkg.Project, version),
+		filepath.Join(paths...),
+	)
+	return nil
+}
+
+// IsDownload check if the package has been downloaded.
+func (pkg *Package) IsDownload() (bool, error) {
+	pkg.Downloaded = false
+	_, err := os.Stat(pkg.LocalPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	pkg.Downloaded = true
+	return true, nil
+}
+
+// Get the repo from the remote repo
+func (pkg *Package) Get() {
 }
