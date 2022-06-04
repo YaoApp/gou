@@ -96,6 +96,7 @@ jobs:
           echo "YAO_PATH=$GITHUB_WORKSPACE/tests/yao" >> $GITHUB_ENV
           mkdir -p $HOME/.yao
           echo ${{ secrets.GOU_TEST_GITHUB_TOKEN }} > $HOME/.yao/github_token
+          chmod 600 $HOME/.yao/github_token
           ls -l $HOME/.yao/github_token
 
       - name: Run Test
