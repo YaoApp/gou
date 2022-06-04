@@ -41,7 +41,12 @@ type Workshop struct {
 	Require []Package         `json:"require,omitempty"`
 	Replace map[string]string `json:"replace,omitempty"` // for multi projects development
 	Mapping map[string]Package
+	file    string // the workshop.yao file path
+	cfg     WorkshopConfig
 }
+
+// WorkshopConfig the workshop config file
+type WorkshopConfig map[string]map[string]interface{}
 
 // Package the YAO package info
 type Package struct {
@@ -52,12 +57,14 @@ type Package struct {
 	Domain     string         // github.com
 	Owner      string         // trheyi
 	Repo       string         // demo-wms
-	Path       string         // cloud
-	Version    semver.Version // 0.0.0-20220223010332-e86eab4c8490
-	Commit     string         // e86eab4c8490
+	Path       string         // /cloud
+	Version    semver.Version // 0.0.0-e86eab4c8490
+	Rel        string         // e86eab4c8490 ( 0.9.2 / v0.9.1 / master )
 	LocalPath  string         //
 	Downloaded bool           // true
 	Replaced   bool           // false
+	Unique     string         // github.com/yaoapp/demo-wms@e86eab4c8490
+	Indirect   bool           // true
 }
 
 // LocalPackage the YAO local package info

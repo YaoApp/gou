@@ -66,10 +66,11 @@ func (pkg Package) Map() map[string]interface{} {
 		"repo":       pkg.Repo,
 		"path":       pkg.Path,
 		"version":    pkg.Version.String(),
-		"commit":     pkg.Commit,
+		"rel":        pkg.Rel,
 		"localpath":  pkg.LocalPath,
 		"downloaded": pkg.Downloaded,
 		"replaced":   pkg.Replaced,
+		"unique":     pkg.Unique,
 	}
 }
 
@@ -80,12 +81,12 @@ func (pkg *Package) Set(url string, alias string) error {
 		return fmt.Errorf("package url should be \"repo@version\" format, but got: %s", url)
 	}
 
-	err := pkg.SetAddr(uri[0])
+	err := pkg.SetVersion(uri[1])
 	if err != nil {
 		return err
 	}
 
-	err = pkg.SetVersion(uri[1])
+	err = pkg.SetAddr(uri[0])
 	if err != nil {
 		return err
 	}
@@ -95,7 +96,6 @@ func (pkg *Package) Set(url string, alias string) error {
 		return err
 	}
 
-	pkg.URL = url
 	pkg.Alias = alias
 	if alias == "" {
 		pkg.Alias = pkg.Name
@@ -123,21 +123,42 @@ func (pkg *Package) SetAddr(url string) error {
 	}
 	pkg.Name = name
 	pkg.Addr = fmt.Sprintf("%s/%s/%s", pkg.Domain, pkg.Owner, pkg.Repo)
+
+	// Set URL
+	path := pkg.Path
+	if path == "/" {
+		path = ""
+	}
+	pkg.URL = fmt.Sprintf("%s%s@%s", pkg.Addr, path, pkg.Rel)
+	pkg.Unique = fmt.Sprintf("%s@%s", pkg.Addr, pkg.Rel)
 	return nil
 }
 
 // SetVersion parse and set version, commit
 func (pkg *Package) SetVersion(ver string) error {
-	ver = strings.TrimLeft(strings.ToLower(ver), "v")
-	version, err := semver.New(ver)
+
+	version, err := semver.New(strings.TrimLeft(strings.ToLower(ver), "v"))
 	if err != nil {
+
+		if len(ver) == 12 { //Commint
+			pkg.Rel = ver
+			version, _ = semver.New(fmt.Sprintf("0.0.0-%s", ver))
+			pkg.Version = *version
+			pkg.Rel = ver
+
+			return nil
+		}
+
 		return fmt.Errorf("package version should be Semantic Versioning 2.0.0 format, but got: %s, error: %s", ver, err)
 	}
+
 	pkg.Version = *version
+	pkg.Rel = ver
 	if pkg.Version.Pre != nil && pkg.Version.Pre[0].VersionStr != "" {
 		vstr := strings.Split(pkg.Version.Pre[0].VersionStr, "-")
-		pkg.Commit = vstr[len(vstr)-1]
+		pkg.Rel = vstr[len(vstr)-1]
 	}
+
 	return nil
 }
 
@@ -148,14 +169,10 @@ func (pkg *Package) SetLocalPath() error {
 		return err
 	}
 	paths := strings.Split(pkg.Path, "/")
-	version := pkg.Commit
-	if version == "" {
-		version = pkg.Version.String()
-	}
 	pkg.LocalPath = filepath.Join(
 		root,
 		pkg.Domain, pkg.Owner,
-		fmt.Sprintf("%s@%s", pkg.Repo, version),
+		fmt.Sprintf("%s@%s", pkg.Repo, pkg.Rel),
 		filepath.Join(paths...),
 	)
 	return nil
@@ -172,8 +189,4 @@ func (pkg *Package) IsDownload() (bool, error) {
 	}
 	pkg.Downloaded = true
 	return true, nil
-}
-
-// FileContent get the repo file content
-func (pkg *Package) FileContent(file string) {
 }

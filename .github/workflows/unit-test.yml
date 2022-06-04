@@ -94,6 +94,9 @@ jobs:
           echo "GOU_TEST_PLG_LOG=$HOME/data/gou-unit/logs" >> $GITHUB_ENV
           echo "GOU_TEST_APP_ROOT=$GITHUB_WORKSPACE/tests/app" >> $GITHUB_ENV
           echo "YAO_PATH=$GITHUB_WORKSPACE/tests/yao" >> $GITHUB_ENV
+          mkdir -p $HOME/.yao
+          echo ${{ secrets.GOU_TEST_GITHUB_TOKEN }} > $HOME/.yao/github_token
+          ls -l $HOME/.yao/github_token
 
       - name: Run Test
         run: |
