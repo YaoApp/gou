@@ -1,4 +1,5 @@
 {
+  "remote": "github.com/yaoapp/gou/tests/app",
   "require": [
     "github.com/trheyi/demo-crm@v0.0.0-20220309050332-3bcaf04ae28f",
     {

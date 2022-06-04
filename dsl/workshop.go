@@ -16,38 +16,6 @@ func Tidy(root string) error { return nil }
 // Format scan the source and format DSL code
 func Format(root string) error { return nil }
 
-// LocalRoot get the root path in the local disk
-// the default is: ~/yao/
-func LocalRoot() (string, error) {
-	root := os.Getenv(RootEnvName)
-	if root == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		root = filepath.Join(home, "yao")
-	}
-	return root, nil
-}
-
-// WorkshopRoot get the workshop root in the local disk
-func WorkshopRoot() (string, error) {
-	root, err := LocalRoot()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, "workshop"), nil
-}
-
-// ConfigRoot get the workshop root in the local disk
-func ConfigRoot() (string, error) {
-	root, err := LocalRoot()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, "config"), nil
-}
-
 // OpenWorkshop open and parse the workshop dsl
 func OpenWorkshop(root string) (*Workshop, error) {
 
@@ -71,6 +39,22 @@ func OpenWorkshop(root string) (*Workshop, error) {
 	return workshop, nil
 }
 
+// Get the repo from the given remote repo
+func Get(repo, alias string) error {
+
+	// Create a new package
+
+	// Checkout app.yao file
+
+	// Add to the workshop.yao
+
+	// Checkout repo to local path
+
+	// Checkout dependencies
+
+	return nil
+}
+
 // SetMapping mapping alias and package
 func (workshop *Workshop) SetMapping() error {
 
@@ -85,7 +69,7 @@ func (workshop *Workshop) SetMapping() error {
 		}
 
 		// Replace
-		pkgpath := filepath.Join(pkg.Repo, pkg.Path)
+		pkgpath := filepath.Join(pkg.Addr, pkg.Path)
 		if path, has := workshop.Replace[pkgpath]; has {
 
 			localpath, err := filepath.Abs(path)
@@ -136,6 +120,3 @@ func (workshop *Workshop) Add(repo string, alias string) error {
 func (workshop *Workshop) Del(repo string) error {
 	return nil
 }
-
-// Get the repo from the given remote repo
-func Get(repo string) {}

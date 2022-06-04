@@ -58,12 +58,12 @@ func (pkg Package) MarshalJSON() ([]byte, error) {
 func (pkg Package) Map() map[string]interface{} {
 	return map[string]interface{}{
 		"url":        pkg.URL,
-		"repo":       pkg.Repo,
+		"addr":       pkg.Addr,
 		"name":       pkg.Name,
 		"alias":      pkg.Alias,
 		"domain":     pkg.Domain,
-		"team":       pkg.Team,
-		"project":    pkg.Project,
+		"owner":      pkg.Owner,
+		"repo":       pkg.Repo,
 		"path":       pkg.Path,
 		"version":    pkg.Version.String(),
 		"commit":     pkg.Commit,
@@ -80,7 +80,7 @@ func (pkg *Package) Set(url string, alias string) error {
 		return fmt.Errorf("package url should be \"repo@version\" format, but got: %s", url)
 	}
 
-	err := pkg.SetRepo(uri[0])
+	err := pkg.SetAddr(uri[0])
 	if err != nil {
 		return err
 	}
@@ -104,25 +104,25 @@ func (pkg *Package) Set(url string, alias string) error {
 	return nil
 }
 
-// SetRepo parse and set repo, domain, team, project, path and name
-func (pkg *Package) SetRepo(url string) error {
+// SetAddr parse and set repo, domain, owner, repo, path and name
+func (pkg *Package) SetAddr(url string) error {
 	url = strings.ToLower(url)
 	uri := strings.Split(url, "/")
 	if len(uri) < 3 {
-		return fmt.Errorf("package url should be a git repo. \"domain/org/project/path\", but got: %s", url)
+		return fmt.Errorf("package url should be a git repo. \"domain/org/repo/path\", but got: %s", url)
 	}
 
 	pkg.Domain = uri[0]
-	pkg.Team = uri[1]
-	pkg.Project = uri[2]
+	pkg.Owner = uri[1]
+	pkg.Repo = uri[2]
 	pkg.Path = "/"
-	name := fmt.Sprintf("%s.%s", pkg.Project, pkg.Team)
+	name := fmt.Sprintf("%s.%s", pkg.Repo, pkg.Owner)
 	if len(uri) > 3 {
 		pkg.Path = fmt.Sprintf("/%s", filepath.Join(uri[3:]...))
 		name = fmt.Sprintf("%s.%s", name, strings.Join(uri[3:], "."))
 	}
 	pkg.Name = name
-	pkg.Repo = fmt.Sprintf("%s/%s/%s", pkg.Domain, pkg.Team, pkg.Project)
+	pkg.Addr = fmt.Sprintf("%s/%s/%s", pkg.Domain, pkg.Owner, pkg.Repo)
 	return nil
 }
 
@@ -154,8 +154,8 @@ func (pkg *Package) SetLocalPath() error {
 	}
 	pkg.LocalPath = filepath.Join(
 		root,
-		pkg.Domain, pkg.Team,
-		fmt.Sprintf("%s@%s", pkg.Project, version),
+		pkg.Domain, pkg.Owner,
+		fmt.Sprintf("%s@%s", pkg.Repo, version),
 		filepath.Join(paths...),
 	)
 	return nil
@@ -174,6 +174,6 @@ func (pkg *Package) IsDownload() (bool, error) {
 	return true, nil
 }
 
-// Get the repo from the remote repo
-func (pkg *Package) Get() {
+// FileContent get the repo file content
+func (pkg *Package) FileContent(file string) {
 }

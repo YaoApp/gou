@@ -46,12 +46,12 @@ type Workshop struct {
 // Package the YAO package info
 type Package struct {
 	URL        string         // github.com/yaoapp/demo-wms/cloud@v0.0.0-20220223010332-e86eab4c8490
-	Repo       string         // github.com/yaoapp/demo-wms
 	Name       string         // demo-wms.yaoapp.cloud
 	Alias      string         // demo-wms.yaoapp.cloud
+	Addr       string         // github.com/yaoapp/demo-wms
 	Domain     string         // github.com
-	Team       string         // trheyi
-	Project    string         // demo-wms
+	Owner      string         // trheyi
+	Repo       string         // demo-wms
 	Path       string         // cloud
 	Version    semver.Version // 0.0.0-20220223010332-e86eab4c8490
 	Commit     string         // e86eab4c8490
