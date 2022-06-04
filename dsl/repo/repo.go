@@ -45,8 +45,10 @@ func (repo *Repo) Dir(file string) ([]string, error) {
 	return repo.Call.Dir(file)
 }
 
-// Download files in the given path
-func (repo *Repo) Download(path string) {}
+// Download a repository archive (zip)
+func (repo *Repo) Download(rel string, process func(total uint64)) (string, error) {
+	return repo.Call.Download(rel, process)
+}
 
 // Clone into local
 func (repo *Repo) Clone() {}

@@ -3,9 +3,13 @@ package repo
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/yaoapp/gou/dns"
 	"github.com/yaoapp/gou/network"
 )
 
@@ -63,6 +67,62 @@ func (github *Github) Dir(path string) ([]string, error) {
 		}
 	}
 	return res, nil
+}
+
+// Download a repository archive (zip) via Github API
+// Docs: https://docs.github.com/en/rest/repos/contents#download-a-repository-archive-zip
+func (github *Github) Download(rel string, process func(total uint64)) (string, error) {
+
+	p := &downloadProcess{call: process}
+	url := fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/zipball/%s",
+		github.Owner, github.Repo, rel,
+	)
+
+	// Create a temp file
+	tmpfile, err := tempFile(12, "zip")
+	if err != nil {
+		return "", err
+	}
+
+	tmp, err := os.Create(tmpfile)
+	if err != nil {
+		return "", err
+	}
+	defer tmp.Close()
+
+	// Create a get request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	// Set request headers
+	for name, header := range github.headers(nil) {
+		req.Header.Set(name, header)
+	}
+
+	// Force using system DSN resolver
+	// var dialer = &net.Dialer{Resolver: &net.Resolver{PreferGo: false}}
+	var dialContext = dns.DialContext()
+	var client *http.Client = &http.Client{Transport: &http.Transport{DialContext: dialContext}}
+
+	// Send the request
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("%s", resp.Status)
+	}
+
+	// Copy to the temp file
+	if _, err = io.Copy(tmp, io.TeeReader(resp.Body, p)); err != nil {
+		return "", err
+	}
+
+	return tmpfile, nil
 }
 
 func (github *Github) error(resp network.Response) string {

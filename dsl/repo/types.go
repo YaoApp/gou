@@ -4,6 +4,7 @@ package repo
 type API interface {
 	Content(file string) ([]byte, error)
 	Dir(path string) ([]string, error)
+	Download(rel string, process func(total uint64)) (string, error)
 }
 
 // Repo the git repo

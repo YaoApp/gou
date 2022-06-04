@@ -22,6 +22,8 @@ require (
 	rogchap.com/v8go v0.7.0
 )
 
+require github.com/dustin/go-humanize v1.0.0 // indirect
+
 require (
 	github.com/TylerBrock/colorjson v0.0.0-20200706003622-8a50f05110d2 // indirect
 	github.com/blang/semver/v4 v4.0.0
