@@ -41,6 +41,38 @@ func Config() (WorkshopConfig, error) {
 	return cfg, nil
 }
 
+// LocalRoot get the root path in the local disk
+// the default is: ~/yao/
+func LocalRoot() (string, error) {
+	root := os.Getenv(RootEnvName)
+	if root == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		root = filepath.Join(home, "yao")
+	}
+	return root, nil
+}
+
+// WorkshopRoot get the workshop root in the local disk
+func WorkshopRoot() (string, error) {
+	root, err := LocalRoot()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "workshop"), nil
+}
+
+// ConfigRoot get the workshop root in the local disk
+func ConfigRoot() (string, error) {
+	root, err := LocalRoot()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "config"), nil
+}
+
 // Setup github config
 func (cfg WorkshopConfig) github() error {
 	if _, has := cfg["github.com"]; !has {

@@ -20,3 +20,5 @@ app/plugins/logs
 app/db/*.db
 env.*.sh
 service/db/yao.db
+tests/yao/workshop/cache
+tests/yao/workshop/*

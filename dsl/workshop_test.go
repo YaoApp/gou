@@ -1,9 +1,12 @@
 package dsl
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/dustin/go-humanize"
 	"github.com/go-playground/assert/v2"
 )
 
@@ -42,15 +45,25 @@ func TestWorkshopGetBlank(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 0, len(workshop.Require))
-	err = workshop.Get("github.com/yaoapp/demo-wms/cloud", "wms", nil)
+	err = workshop.Get("github.com/yaoapp/demo-wms/cloud", "wms", func(total uint64, pkg *Package, status string) {
+		fmt.Printf("\r%s", strings.Repeat(" ", 80))
+		size := ""
+		message := "Cached"
+		if status == "Downloading" {
+			size = humanize.Bytes(total)
+			message = "Completed"
+		}
+
+		fmt.Printf("\rGET %s... %s %s", pkg.Unique, size, message)
+	})
+	fmt.Printf("\n")
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	assert.Equal(t, 1, len(workshop.Require))
 	assert.Equal(t, 2, len(workshop.Mapping))
 	assert.Equal(t, false, workshop.Require[0].Replaced)
-	assert.Equal(t, false, workshop.Require[0].Downloaded)
+	assert.Equal(t, true, workshop.Require[0].Downloaded)
 	assert.Equal(t, "github.com/yaoapp/demo-wms/cloud@0.9.5", workshop.Require[0].URL)
 	assert.Equal(t, "github.com/yaoapp/demo-wms", workshop.Require[0].Addr)
 	assert.Equal(t, "github.com", workshop.Require[0].Domain)

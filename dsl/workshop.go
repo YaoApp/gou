@@ -35,9 +35,9 @@ func OpenWorkshop(root string) (*Workshop, error) {
 	if !exists {
 		return &Workshop{
 			file:    file,
-			Require: []Package{},
+			Require: []*Package{},
 			Replace: map[string]string{},
-			Mapping: map[string]Package{},
+			Mapping: map[string]*Package{},
 		}, nil
 	}
 
@@ -46,7 +46,7 @@ func OpenWorkshop(root string) (*Workshop, error) {
 		return nil, err
 	}
 
-	workshop := &Workshop{Mapping: map[string]Package{}}
+	workshop := &Workshop{Mapping: map[string]*Package{}}
 	err = jsoniter.Unmarshal(data, workshop)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func OpenWorkshop(root string) (*Workshop, error) {
 //   github.com/yaoapp/demo-crm@e86eab4c8490
 //   github.com/yaoapp/demo-wms/cloud@e86eab4c8490
 //   github.com/yaoapp/demo-wms/edge@e86eab4c8490
-func (workshop *Workshop) Get(url, alias string, process func(total uint64)) error {
+func (workshop *Workshop) Get(url, alias string, process func(total uint64, pkg *Package, message string)) error {
 
 	// Lock the file
 	err := workshop.lock()
@@ -89,18 +89,11 @@ func (workshop *Workshop) Get(url, alias string, process func(total uint64)) err
 		return nil
 	}
 
-	err = workshop.Add(pkg)
+	// Add the package
+	err = workshop.Add(pkg, process)
 	if err != nil {
 		return err
 	}
-
-	// Checkout app.yao file
-
-	// Add to the workshop.yao
-
-	// Checkout repo to local path
-
-	// Checkout dependencies
 
 	return nil
 }
@@ -164,14 +157,17 @@ func (workshop Workshop) Map() map[string]interface{} {
 func (workshop *Workshop) Validate() {}
 
 // Add add a package to workshop.ayo
-func (workshop *Workshop) Add(pkg *Package) error {
+func (workshop *Workshop) Add(pkg *Package, process func(total uint64, pkg *Package, message string)) error {
 
 	// Download the package
+	_, err := workshop.Download(pkg, process)
+	if err != nil {
+		return err
+	}
 
-	workshop.Require = append(workshop.Require, *pkg)
-	index := len(workshop.Require) - 1
-	workshop.Mapping[pkg.Alias] = workshop.Require[index]
-	workshop.Mapping[pkg.Unique] = workshop.Require[index]
+	workshop.Require = append(workshop.Require, pkg)
+	workshop.Mapping[pkg.Alias] = pkg
+	workshop.Mapping[pkg.Unique] = pkg
 	return nil
 }
 
@@ -181,8 +177,22 @@ func (workshop *Workshop) Del(repo string) error {
 }
 
 // Download and unzip a package
-func (workshop *Workshop) Download(pkg *Package) error {
-	return nil
+func (workshop *Workshop) Download(pkg *Package, process func(total uint64, pkg *Package, message string)) (string, error) {
+	root, err := WorkshopRoot()
+	if err != nil {
+		return "", err
+	}
+
+	option := pkg.Option(workshop.cfg)
+	option["cache"] = filepath.Join(root, "cache")
+
+	// Download package
+	dest, err := pkg.Download(root, option, process)
+	if err != nil {
+		return "", err
+	}
+
+	return dest, nil
 }
 
 // Package create a new package

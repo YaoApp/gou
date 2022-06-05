@@ -38,9 +38,9 @@ type Head struct {
 
 // Workshop the required packages
 type Workshop struct {
-	Require []Package         `json:"require,omitempty"`
+	Require []*Package        `json:"require,omitempty"`
 	Replace map[string]string `json:"replace,omitempty"` // for multi projects development
-	Mapping map[string]Package
+	Mapping map[string]*Package
 	file    string // the workshop.yao file path
 	cfg     WorkshopConfig
 }

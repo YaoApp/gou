@@ -9,6 +9,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/dsl/repo"
 )
 
 // UnmarshalJSON for json
@@ -189,4 +190,86 @@ func (pkg *Package) IsDownload() (bool, error) {
 	}
 	pkg.Downloaded = true
 	return true, nil
+}
+
+// Cache get the package cache name
+func (pkg *Package) Cache(root string) string {
+	return filepath.Join(root, pkg.Domain, pkg.Owner, pkg.Repo, fmt.Sprintf("@%s.zip", pkg.Rel))
+}
+
+// LocalRepo get the package repo local path
+func (pkg *Package) LocalRepo(root string) string {
+	return filepath.Join(root, pkg.Unique)
+}
+
+// Option get the package option
+func (pkg *Package) Option(cfg WorkshopConfig) map[string]interface{} {
+	if option, has := cfg[pkg.Domain]; has {
+		return option
+	}
+	return map[string]interface{}{}
+}
+
+// Download download the package
+func (pkg *Package) Download(root string, option map[string]interface{}, process func(total uint64, pkg *Package, message string)) (string, error) {
+
+	if option == nil {
+		option = map[string]interface{}{}
+	}
+
+	// download from cache
+	if cache, has := option["cache"].(string); has {
+		cache := pkg.Cache(cache)
+		exists, _ := FileExists(cache)
+		if exists {
+			if process != nil {
+				process(100, pkg, "Cached")
+			}
+
+			pkg.Downloaded = true
+			return cache, nil
+		}
+	}
+
+	// download to cache path
+	repo, err := repo.NewRepo(pkg.Addr, option)
+	if err != nil {
+		return "", err
+	}
+
+	var p func(total uint64) = nil
+	if process != nil {
+		p = func(total uint64) {
+			process(total, pkg, "Downloading")
+		}
+	}
+
+	tmpfile, err := repo.Download(pkg.Rel, p)
+	if err != nil {
+		return "", err
+	}
+
+	// unzip file
+	dest := pkg.LocalRepo(root)
+	if exitis, _ := FileExists(dest); exitis {
+		os.RemoveAll(dest)
+	}
+
+	err = repo.Unzip(tmpfile, dest)
+	if err != nil {
+		return "", err
+	}
+
+	// Mark As Downloaded
+	pkg.Downloaded = true
+
+	// cache the temp file
+	if cache, has := option["cache"].(string); has {
+		cache := pkg.Cache(cache)
+		dir := filepath.Dir(cache)
+		os.MkdirAll(dir, 0755)
+		os.Rename(tmpfile, cache)
+	}
+
+	return dest, nil
 }
