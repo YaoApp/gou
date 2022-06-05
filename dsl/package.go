@@ -20,13 +20,36 @@ func (pkg *Package) UnmarshalJSON(data []byte) error {
 	}
 
 	if data[0] == '{' { // map format: {"key":"value"}
-		input := map[string]string{}
+		input := map[string]interface{}{}
 		err := jsoniter.Unmarshal(data, &input)
 		if err != nil {
 			return fmt.Errorf("package should be {\"key\":\"value\"} or \"value\" format, but got: %s", data)
 		}
 
-		for alias, url := range input {
+		// Set indirect
+		if indirect, has := input["indirect"].(bool); has {
+			pkg.SetIndirect(indirect)
+		}
+
+		if url, has := input["repo"].(string); has {
+			alias := ""
+			if as, ok := input["alias"].(string); ok {
+				alias = as
+			}
+
+			if err := pkg.Set(url, alias); err != nil {
+				return err
+			}
+			return nil
+
+		}
+
+		for alias, value := range input {
+			url, ok := value.(string)
+			if !ok {
+				return fmt.Errorf("package should be {\"key\":\"value\"} or \"value\" format, but got: %s", data)
+			}
+
 			if err := pkg.Set(url, alias); err != nil {
 				return err
 			}
@@ -47,10 +70,23 @@ func (pkg *Package) UnmarshalJSON(data []byte) error {
 
 // MarshalJSON for json
 func (pkg Package) MarshalJSON() ([]byte, error) {
+
+	if pkg.Indirect {
+		uri := map[string]interface{}{}
+		uri["indirect"] = pkg.Indirect
+		if pkg.Name == pkg.Alias {
+			uri["repo"] = pkg.URL
+		} else {
+			uri[pkg.Alias] = pkg.URL
+		}
+		return jsoniter.Marshal(uri)
+	}
+
 	if pkg.Name == pkg.Alias {
 		return jsoniter.Marshal(pkg.URL)
 	}
-	uri := map[string]string{}
+
+	uri := map[string]interface{}{}
 	uri[pkg.Alias] = pkg.URL
 	return jsoniter.Marshal(uri)
 }
@@ -72,6 +108,7 @@ func (pkg Package) Map() map[string]interface{} {
 		"downloaded": pkg.Downloaded,
 		"replaced":   pkg.Replaced,
 		"unique":     pkg.Unique,
+		"indirect":   pkg.Indirect,
 	}
 }
 
@@ -141,12 +178,11 @@ func (pkg *Package) SetVersion(ver string) error {
 	version, err := semver.New(strings.TrimLeft(strings.ToLower(ver), "v"))
 	if err != nil {
 
-		if len(ver) == 12 { //Commint
+		if len(ver) <= 32 { //Commint
 			pkg.Rel = ver
 			version, _ = semver.New(fmt.Sprintf("0.0.0-%s", ver))
 			pkg.Version = *version
 			pkg.Rel = ver
-
 			return nil
 		}
 
@@ -177,6 +213,11 @@ func (pkg *Package) SetLocalPath() error {
 		filepath.Join(paths...),
 	)
 	return nil
+}
+
+// SetIndirect set the indirect value
+func (pkg *Package) SetIndirect(indirect bool) {
+	pkg.Indirect = indirect
 }
 
 // IsDownload check if the package has been downloaded.
@@ -213,6 +254,8 @@ func (pkg *Package) Option(cfg WorkshopConfig) map[string]interface{} {
 // Download download the package
 func (pkg *Package) Download(root string, option map[string]interface{}, process func(total uint64, pkg *Package, message string)) (string, error) {
 
+	process(100, pkg, "prepare")
+
 	if option == nil {
 		option = map[string]interface{}{}
 	}
@@ -223,7 +266,7 @@ func (pkg *Package) Download(root string, option map[string]interface{}, process
 		exists, _ := FileExists(cache)
 		if exists {
 			if process != nil {
-				process(100, pkg, "Cached")
+				process(100, pkg, "cached")
 			}
 
 			pkg.Downloaded = true
@@ -240,7 +283,7 @@ func (pkg *Package) Download(root string, option map[string]interface{}, process
 	var p func(total uint64) = nil
 	if process != nil {
 		p = func(total uint64) {
-			process(total, pkg, "Downloading")
+			process(total, pkg, "downloading")
 		}
 	}
 
@@ -272,4 +315,18 @@ func (pkg *Package) Download(root string, option map[string]interface{}, process
 	}
 
 	return dest, nil
+}
+
+// Dependencies get the Dependencies of the package
+func (pkg *Package) Dependencies() ([]*Package, error) {
+
+	if exists, _ := FileExists(filepath.Join(pkg.LocalPath, "workshop.yao")); !exists {
+		return []*Package{}, nil
+	}
+
+	workshop, err := OpenWorkshop(pkg.LocalPath)
+	if err != nil {
+		return nil, err
+	}
+	return workshop.Require, nil
 }

@@ -49,7 +49,7 @@ func TestWorkshopGetBlank(t *testing.T) {
 		fmt.Printf("\r%s", strings.Repeat(" ", 80))
 		size := ""
 		message := "Cached"
-		if status == "Downloading" {
+		if status == "downloading" {
 			size = humanize.Bytes(total)
 			message = "Completed"
 		}
@@ -74,4 +74,43 @@ func TestWorkshopGetBlank(t *testing.T) {
 	assert.Equal(t, "wms", workshop.Require[0].Alias)
 	assert.Equal(t, "0.9.5", workshop.Require[0].Version.String())
 	assert.Equal(t, "0.9.5", workshop.Require[0].Rel)
+}
+
+func TestWorkshopGetBlankDeep(t *testing.T) {
+	root := os.TempDir()
+	workshop, err := OpenWorkshop(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 0, len(workshop.Require))
+	cnt := 0
+	err = workshop.Get("github.com/yaoapp/workshop-tests-wms", "wms", func(total uint64, pkg *Package, status string) {
+		if status == "prepare" && cnt != 0 {
+			fmt.Printf("\n")
+			return
+		}
+		fmt.Printf("\r%s", strings.Repeat(" ", 80))
+		size := ""
+		message := "Cached"
+		if status == "downloading" {
+			size = humanize.Bytes(total)
+			message = "Completed"
+		}
+
+		fmt.Printf("\rGET %s... %s %s", pkg.Unique, size, message)
+		cnt++
+	})
+	fmt.Printf("\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, len(workshop.Require), 4)
+	indirect := 0
+	for _, pkg := range workshop.Require {
+		if pkg.Indirect {
+			indirect++
+		}
+	}
+	assert.Equal(t, indirect, 3)
 }

@@ -90,7 +90,7 @@ func (workshop *Workshop) Get(url, alias string, process func(total uint64, pkg 
 	}
 
 	// Add the package
-	err = workshop.Add(pkg, process)
+	err = workshop.Add(pkg, process, false)
 	if err != nil {
 		return err
 	}
@@ -153,11 +153,14 @@ func (workshop Workshop) Map() map[string]interface{} {
 	}
 }
 
-// Validate the packages
-func (workshop *Workshop) Validate() {}
+// Has the package
+func (workshop *Workshop) Has(name string) bool {
+	_, ok := workshop.Mapping[name]
+	return ok
+}
 
 // Add add a package to workshop.ayo
-func (workshop *Workshop) Add(pkg *Package, process func(total uint64, pkg *Package, message string)) error {
+func (workshop *Workshop) Add(pkg *Package, process func(total uint64, pkg *Package, message string), indirect bool) error {
 
 	// Download the package
 	_, err := workshop.Download(pkg, process)
@@ -165,9 +168,29 @@ func (workshop *Workshop) Add(pkg *Package, process func(total uint64, pkg *Pack
 		return err
 	}
 
+	pkg.Indirect = indirect
 	workshop.Require = append(workshop.Require, pkg)
 	workshop.Mapping[pkg.Alias] = pkg
 	workshop.Mapping[pkg.Unique] = pkg
+
+	// add Dependencies
+	deps, err := pkg.Dependencies()
+	if err != nil {
+		return err
+	}
+
+	for _, dep := range deps {
+
+		if workshop.Has(dep.Unique) {
+			continue
+		}
+
+		err := workshop.Add(dep, process, true)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -178,6 +201,7 @@ func (workshop *Workshop) Del(repo string) error {
 
 // Download and unzip a package
 func (workshop *Workshop) Download(pkg *Package, process func(total uint64, pkg *Package, message string)) (string, error) {
+
 	root, err := WorkshopRoot()
 	if err != nil {
 		return "", err
