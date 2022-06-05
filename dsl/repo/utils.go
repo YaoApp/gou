@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type downloadProcess struct {
@@ -20,7 +21,8 @@ func randName(n int) string {
 	for i := range b {
 		b[i] = tempNameRunes[rand.Intn(len(tempNameRunes))]
 	}
-	return string(b)
+	prefix := time.Now().Format("20060102150405")
+	return fmt.Sprintf("%s-%s", prefix, string(b))
 }
 
 func tempFile(n int, ext string) (string, error) {

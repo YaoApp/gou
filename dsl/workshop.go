@@ -163,8 +163,11 @@ func (workshop Workshop) Map() map[string]interface{} {
 // Validate the packages
 func (workshop *Workshop) Validate() {}
 
-// Add add a repo to workshop.ayo
+// Add add a package to workshop.ayo
 func (workshop *Workshop) Add(pkg *Package) error {
+
+	// Download the package
+
 	workshop.Require = append(workshop.Require, *pkg)
 	index := len(workshop.Require) - 1
 	workshop.Mapping[pkg.Alias] = workshop.Require[index]
@@ -174,6 +177,11 @@ func (workshop *Workshop) Add(pkg *Package) error {
 
 // Del delete a repo from workshop.yao
 func (workshop *Workshop) Del(repo string) error {
+	return nil
+}
+
+// Download and unzip a package
+func (workshop *Workshop) Download(pkg *Package) error {
 	return nil
 }
 

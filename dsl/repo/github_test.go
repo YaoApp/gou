@@ -37,6 +37,30 @@ func TestGithubDir(t *testing.T) {
 	assert.Contains(t, dirs, "/tests/app/workshop.yao")
 }
 
+func TestGithubLatest(t *testing.T) {
+	repo, err := NewRepo("github.com/yaoapp/gou", map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	latest, err := repo.Latest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Greater(t, len(latest), 0)
+}
+
+func TestGithubLatestCommit(t *testing.T) {
+	repo, err := NewRepo("github.com/yaoapp/demo-crm", map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	latest, err := repo.Latest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(latest), 12)
+}
+
 func TestGithubContentPrivate(t *testing.T) {
 	url := os.Getenv("GOU_TEST_GITHUB_REPO")
 	token := os.Getenv("GOU_TEST_GITHUB_TOKEN")

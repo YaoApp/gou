@@ -69,6 +69,52 @@ func (github *Github) Dir(path string) ([]string, error) {
 	return res, nil
 }
 
+// Tags get the tags of the repository via Github API
+func (github *Github) Tags(page, perpage int) ([]string, error) {
+	url := fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/tags?per_page=%d&page=%d",
+		github.Owner, github.Repo, perpage, page,
+	)
+
+	resp := network.RequestGet(url, nil, github.headers(nil))
+	if resp.Status != 200 {
+		return nil, fmt.Errorf("Github API Error: %d %s", resp.Status, github.error(resp))
+	}
+
+	res := []string{}
+	data := github.arrayData(resp)
+	for _, row := range data {
+		if name, has := row["name"].(string); has {
+			res = append(res, name)
+		}
+	}
+	return res, nil
+}
+
+// Commits get the commits of the repository via Github API
+func (github *Github) Commits(page, perpage int) ([]string, error) {
+	url := fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/commits?per_page=%d&page=%d",
+		github.Owner, github.Repo, perpage, page,
+	)
+
+	resp := network.RequestGet(url, nil, github.headers(nil))
+	if resp.Status != 200 {
+		return nil, fmt.Errorf("Github API Error: %d %s", resp.Status, github.error(resp))
+	}
+
+	res := []string{}
+	data := github.arrayData(resp)
+	for _, row := range data {
+		if sha, has := row["sha"].(string); has {
+			if len(sha) > 12 {
+				res = append(res, sha[0:12])
+			}
+		}
+	}
+	return res, nil
+}
+
 // Download a repository archive (zip) via Github API
 // Docs: https://docs.github.com/en/rest/repos/contents#download-a-repository-archive-zip
 func (github *Github) Download(rel string, process func(total uint64)) (string, error) {
