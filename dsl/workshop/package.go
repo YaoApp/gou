@@ -1,4 +1,4 @@
-package dsl
+package workshop
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ import (
 	"github.com/blang/semver/v4"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/dsl/repo"
+	"github.com/yaoapp/gou/dsl/utils"
 )
 
 // UnmarshalJSON for json
@@ -201,7 +202,7 @@ func (pkg *Package) SetVersion(ver string) error {
 
 // SetLocalPath get the local root path
 func (pkg *Package) SetLocalPath() error {
-	root, err := WorkshopRoot()
+	root, err := Root()
 	if err != nil {
 		return err
 	}
@@ -244,7 +245,7 @@ func (pkg *Package) LocalRepo(root string) string {
 }
 
 // Option get the package option
-func (pkg *Package) Option(cfg WorkshopConfig) map[string]interface{} {
+func (pkg *Package) Option(cfg Config) map[string]interface{} {
 	if option, has := cfg[pkg.Domain]; has {
 		return option
 	}
@@ -263,7 +264,7 @@ func (pkg *Package) Download(root string, option map[string]interface{}, process
 	// download from cache
 	if cache, has := option["cache"].(string); has {
 		cache := pkg.Cache(cache)
-		exists, _ := FileExists(cache)
+		exists, _ := utils.FileExists(cache)
 		if exists {
 			if process != nil {
 				process(100, pkg, "cached")
@@ -294,7 +295,7 @@ func (pkg *Package) Download(root string, option map[string]interface{}, process
 
 	// unzip file
 	dest := pkg.LocalRepo(root)
-	if exitis, _ := FileExists(dest); exitis {
+	if exitis, _ := utils.FileExists(dest); exitis {
 		os.RemoveAll(dest)
 	}
 
@@ -320,7 +321,7 @@ func (pkg *Package) Download(root string, option map[string]interface{}, process
 // Dependencies get the Dependencies of the package
 func (pkg *Package) Dependencies() ([]*Package, error) {
 
-	if exists, _ := FileExists(filepath.Join(pkg.LocalPath, "workshop.yao")); !exists {
+	if exists, _ := utils.FileExists(filepath.Join(pkg.LocalPath, "workshop.yao")); !exists {
 		return []*Package{}, nil
 	}
 

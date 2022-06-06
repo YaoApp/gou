@@ -13,6 +13,6 @@
     "workshop.yaoapps.com/yao/project@1.0.0"
   ],
   "replace": {
-    "github.com/yaoapp/demo-wms/cloud": "../../demo-wms/cloud"
+    "github.com/yaoapp/demo-wms/cloud": "../../../demo-wms/cloud"
   }
 }

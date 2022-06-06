@@ -1,4 +1,4 @@
-package dsl
+package workshop
 
 import (
 	"errors"
@@ -8,27 +8,28 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/dsl/utils"
 )
 
-// Config get the workshop config
-func Config() (WorkshopConfig, error) {
+// GetConfig get the workshop config
+func GetConfig() (Config, error) {
 	root, err := ConfigRoot()
 	if err != nil {
 		return nil, err
 	}
 
 	file := filepath.Join(root, "workshop.yao")
-	exists, _ := FileExists(file)
+	exists, _ := utils.FileExists(file)
 	if !exists {
-		return WorkshopConfig{}, nil
+		return Config{}, nil
 	}
 
-	data, err := FileGetJSON(file)
+	data, err := utils.FileGetJSON(file)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg := WorkshopConfig{}
+	cfg := Config{}
 	err = jsoniter.Unmarshal(data, &cfg)
 	if err != nil {
 		return nil, err
@@ -55,8 +56,8 @@ func LocalRoot() (string, error) {
 	return root, nil
 }
 
-// WorkshopRoot get the workshop root in the local disk
-func WorkshopRoot() (string, error) {
+// Root get the workshop root in the local disk
+func Root() (string, error) {
 	root, err := LocalRoot()
 	if err != nil {
 		return "", err
@@ -74,7 +75,7 @@ func ConfigRoot() (string, error) {
 }
 
 // Setup github config
-func (cfg WorkshopConfig) github() error {
+func (cfg Config) github() error {
 	if _, has := cfg["github.com"]; !has {
 		return nil
 	}

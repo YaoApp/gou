@@ -1,4 +1,4 @@
-package dsl
+package workshop
 
 import (
 	"os"
@@ -7,8 +7,8 @@ import (
 	"github.com/go-playground/assert/v2"
 )
 
-func TestConfig(t *testing.T) {
-	cfg, err := Config()
+func TestGetConfig(t *testing.T) {
+	cfg, err := GetConfig()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,4 +1,4 @@
-package dsl
+package workshop
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/dsl/repo"
+	"github.com/yaoapp/gou/dsl/utils"
 )
 
 // Tidy scan the source and update workshop.yao then auto-generation the workshop.sum.yao file
@@ -21,13 +22,13 @@ func Format(root string) error { return nil }
 // OpenWorkshop open and parse the workshop dsl
 func OpenWorkshop(root string) (*Workshop, error) {
 
-	cfg, err := Config()
+	cfg, err := GetConfig()
 	if err != nil {
 		return nil, err
 	}
 
 	file := path.Join(root, "workshop.yao")
-	exists, err := FileExists(file)
+	exists, err := utils.FileExists(file)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func OpenWorkshop(root string) (*Workshop, error) {
 		}, nil
 	}
 
-	data, err := FileGetJSON(file)
+	data, err := utils.FileGetJSON(file)
 	if err != nil {
 		return nil, err
 	}
@@ -52,13 +53,13 @@ func OpenWorkshop(root string) (*Workshop, error) {
 		return nil, err
 	}
 
+	workshop.file = file
+	workshop.cfg = cfg
 	err = workshop.SetMapping()
 	if err != nil {
 		return nil, err
 	}
 
-	workshop.file = file
-	workshop.cfg = cfg
 	return workshop, nil
 }
 
@@ -115,16 +116,20 @@ func (workshop *Workshop) SetMapping() error {
 		pkgpath := filepath.Join(pkg.Addr, pkg.Path)
 		if path, has := workshop.Replace[pkgpath]; has {
 
-			localpath, err := filepath.Abs(path)
-			if err != nil {
+			localpath := path
+			if !filepath.IsAbs(path) {
+				absPath, err := filepath.Abs(filepath.Join(filepath.Dir(workshop.file), path))
+				if err != nil {
+					return err
+				}
+				localpath = absPath
+			}
+
+			if _, err := os.Stat(localpath); err != nil {
 				return err
 			}
 
-			if _, err = os.Stat(localpath); err != nil {
-				return err
-			}
-
-			if _, err = os.Stat(filepath.Join(localpath, "app.yao")); err != nil {
+			if _, err := os.Stat(filepath.Join(localpath, "app.yao")); err != nil {
 				if errors.Is(err, os.ErrNotExist) {
 					return fmt.Errorf("%s is not YAO application", localpath)
 				}
@@ -202,7 +207,7 @@ func (workshop *Workshop) Del(repo string) error {
 // Download and unzip a package
 func (workshop *Workshop) Download(pkg *Package, process func(total uint64, pkg *Package, message string)) (string, error) {
 
-	root, err := WorkshopRoot()
+	root, err := Root()
 	if err != nil {
 		return "", err
 	}
@@ -257,7 +262,7 @@ func (workshop *Workshop) Package(url, alias string) (*Package, error) {
 // lock the workshop.yao file
 func (workshop *Workshop) lock() error {
 	lockfile := fmt.Sprintf("%s.lock", workshop.file)
-	exists, err := FileExists(lockfile)
+	exists, err := utils.FileExists(lockfile)
 	if exists {
 		return fmt.Errorf("%s has been locked. Maybe another process running\n try: rm %s", workshop.file, lockfile)
 	}
