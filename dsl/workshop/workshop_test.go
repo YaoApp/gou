@@ -41,9 +41,7 @@ func TestOpenWorkshop(t *testing.T) {
 }
 
 func TestWorkshopGetBlank(t *testing.T) {
-	prefix := time.Now().Format("20060102150405")
-	root := filepath.Join(os.TempDir(), prefix)
-	os.MkdirAll(root, 0755)
+	root := tempAppRoot()
 	workshop, err := OpenWorkshop(root)
 	if err != nil {
 		t.Fatal(err)
@@ -67,9 +65,7 @@ func TestWorkshopGetBlank(t *testing.T) {
 }
 
 func TestWorkshopGetBlankDeep(t *testing.T) {
-	prefix := time.Now().Format("20060102150405")
-	root := filepath.Join(os.TempDir(), prefix)
-	os.MkdirAll(root, 0755)
+	root := tempAppRoot()
 	workshop, err := OpenWorkshop(root)
 	if err != nil {
 		t.Fatal(err)
@@ -87,9 +83,7 @@ func TestWorkshopGetBlankDeep(t *testing.T) {
 }
 
 func TestWorkshopSaveBlank(t *testing.T) {
-	prefix := time.Now().Format("20060102150405")
-	root := filepath.Join(os.TempDir(), prefix)
-	os.MkdirAll(root, 0755)
+	root := tempAppRoot()
 	workshop, err := OpenWorkshop(root)
 	if err != nil {
 		t.Fatal(err)
@@ -132,4 +126,12 @@ func get(t *testing.T, workshop *Workshop, url string, alias string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func tempAppRoot() string {
+	prefix := time.Now().Format("20060102150405000000")
+	root := filepath.Join(os.TempDir(), prefix)
+	os.RemoveAll(root)
+	os.MkdirAll(root, 0755)
+	return root
 }
