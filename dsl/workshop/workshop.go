@@ -1,6 +1,7 @@
 package workshop
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -96,7 +97,8 @@ func (workshop *Workshop) Get(url, alias string, process func(total uint64, pkg 
 		return err
 	}
 
-	return nil
+	// Save to file
+	return workshop.Save()
 }
 
 // SetMapping mapping alias and package
@@ -257,6 +259,73 @@ func (workshop *Workshop) Package(url, alias string) (*Package, error) {
 		return nil, err
 	}
 	return pkg, nil
+}
+
+// Save save the workshop to the file
+func (workshop *Workshop) Save() error {
+
+	content, err := workshop.Bytes()
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(workshop.file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		return err
+	}
+
+	err = f.Truncate(0)
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(f, "%s", content)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Bytes format and the workshop content
+func (workshop *Workshop) Bytes() ([]byte, error) {
+
+	packages := []*Package{}
+	indirects := []*Package{}
+
+	for _, pkg := range workshop.Require {
+		if pkg.Indirect {
+			indirects = append(indirects, pkg)
+			continue
+		}
+		packages = append(packages, pkg)
+	}
+
+	for _, pkg := range indirects {
+		packages = append(packages, pkg)
+	}
+
+	require, err := jsoniter.MarshalIndent(map[string]interface{}{"require": packages}, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	replace, err := jsoniter.MarshalIndent(map[string]interface{}{"replace": workshop.Replace}, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("{")
+	buf.Write(require[1 : len(require)-2])
+	buf.WriteString(",")
+	buf.Write(replace[1 : len(replace)-2])
+	buf.WriteString("\n}")
+
+	return buf.Bytes(), nil
 }
 
 // lock the workshop.yao file

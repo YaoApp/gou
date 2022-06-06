@@ -36,7 +36,7 @@ func (github *Github) Content(file string) ([]byte, error) {
 	data := github.data(resp)
 	content, ok := data["content"].(string)
 	if !ok {
-		return nil, fmt.Errorf("Github API Error: %s", resp.Body)
+		return nil, fmt.Errorf("Github API contents Error: %s", resp.Body)
 	}
 	bytes, err := base64.StdEncoding.DecodeString(content)
 	if err != nil {
@@ -56,7 +56,7 @@ func (github *Github) Dir(path string) ([]string, error) {
 
 	resp := network.RequestGet(url, nil, github.headers(nil))
 	if resp.Status != 200 {
-		return nil, fmt.Errorf("Github API Error: %d %s", resp.Status, github.error(resp))
+		return nil, fmt.Errorf("Github API dir Error: %d %s", resp.Status, github.error(resp))
 	}
 
 	res := []string{}
@@ -78,7 +78,7 @@ func (github *Github) Tags(page, perpage int) ([]string, error) {
 
 	resp := network.RequestGet(url, nil, github.headers(nil))
 	if resp.Status != 200 {
-		return nil, fmt.Errorf("Github API Error: %d %s", resp.Status, github.error(resp))
+		return nil, fmt.Errorf("Github API tags Error: %d %s", resp.Status, github.error(resp))
 	}
 
 	res := []string{}
@@ -100,7 +100,7 @@ func (github *Github) Commits(page, perpage int) ([]string, error) {
 
 	resp := network.RequestGet(url, nil, github.headers(nil))
 	if resp.Status != 200 {
-		return nil, fmt.Errorf("Github API Error: %d %s", resp.Status, github.error(resp))
+		return nil, fmt.Errorf("Github API commits Error: %d %s", resp.Status, github.error(resp))
 	}
 
 	res := []string{}

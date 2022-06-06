@@ -3,11 +3,13 @@ package workshop
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/go-playground/assert/v2"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestOpenWorkshop(t *testing.T) {
@@ -39,27 +41,15 @@ func TestOpenWorkshop(t *testing.T) {
 }
 
 func TestWorkshopGetBlank(t *testing.T) {
-	root := os.TempDir()
+	prefix := time.Now().Format("20060102150405")
+	root := filepath.Join(os.TempDir(), prefix)
+	os.MkdirAll(root, 0755)
 	workshop, err := OpenWorkshop(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 0, len(workshop.Require))
-	err = workshop.Get("github.com/yaoapp/demo-wms/cloud", "wms", func(total uint64, pkg *Package, status string) {
-		fmt.Printf("\r%s", strings.Repeat(" ", 80))
-		size := ""
-		message := "Cached"
-		if status == "downloading" {
-			size = humanize.Bytes(total)
-			message = "Completed"
-		}
-
-		fmt.Printf("\rGET %s... %s %s", pkg.Unique, size, message)
-	})
-	fmt.Printf("\n")
-	if err != nil {
-		t.Fatal(err)
-	}
+	get(t, workshop, "github.com/yaoapp/demo-wms/cloud", "wms")
 	assert.Equal(t, 1, len(workshop.Require))
 	assert.Equal(t, 2, len(workshop.Mapping))
 	assert.Equal(t, false, workshop.Require[0].Replaced)
@@ -77,14 +67,52 @@ func TestWorkshopGetBlank(t *testing.T) {
 }
 
 func TestWorkshopGetBlankDeep(t *testing.T) {
-	root := os.TempDir()
+	prefix := time.Now().Format("20060102150405")
+	root := filepath.Join(os.TempDir(), prefix)
+	os.MkdirAll(root, 0755)
 	workshop, err := OpenWorkshop(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 0, len(workshop.Require))
+	get(t, workshop, "github.com/yaoapp/workshop-tests-wms", "wms")
+	assert.Equal(t, len(workshop.Require), 4)
+	indirect := 0
+	for _, pkg := range workshop.Require {
+		if pkg.Indirect {
+			indirect++
+		}
+	}
+	assert.Equal(t, indirect, 3)
+}
+
+func TestWorkshopSaveBlank(t *testing.T) {
+	prefix := time.Now().Format("20060102150405")
+	root := filepath.Join(os.TempDir(), prefix)
+	os.MkdirAll(root, 0755)
+	workshop, err := OpenWorkshop(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	get(t, workshop, "github.com/yaoapp/workshop-tests-wms@04b2b1b", "wms")
+	err = workshop.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.FileExists(t, workshop.file)
+	content, err := os.ReadFile(workshop.file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 335, len(content))
+
+}
+
+func get(t *testing.T, workshop *Workshop, url string, alias string) {
 	cnt := 0
-	err = workshop.Get("github.com/yaoapp/workshop-tests-wms", "wms", func(total uint64, pkg *Package, status string) {
+	err := workshop.Get(url, alias, func(total uint64, pkg *Package, status string) {
 		if status == "prepare" && cnt != 0 {
 			fmt.Printf("\n")
 			return
@@ -104,13 +132,4 @@ func TestWorkshopGetBlankDeep(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	assert.Equal(t, len(workshop.Require), 4)
-	indirect := 0
-	for _, pkg := range workshop.Require {
-		if pkg.Indirect {
-			indirect++
-		}
-	}
-	assert.Equal(t, indirect, 3)
 }
