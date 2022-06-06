@@ -87,15 +87,53 @@ func (workshop *Workshop) Get(url, alias string, process func(total uint64, pkg 
 	}
 
 	// If has checkout the package, return
-	if _, has := workshop.Mapping[pkg.Unique]; has {
+	if workshop.Has(pkg.Unique) {
+		workshop.Mapping[pkg.Unique].Indirect = false // mark as indirect
+		if alias != "" {
+			workshop.Mapping[pkg.Unique].Alias = alias
+		}
 		return nil
 	}
 
 	// Add the package
-	err = workshop.Add(pkg, process, false)
+	err = workshop.Add(pkg, process, "")
 	if err != nil {
 		return err
 	}
+
+	// Save to file
+	return workshop.Save()
+}
+
+// Remove the url from the given remote repo
+// url:
+//   github.com/yaoapp/demo-crm
+//   github.com/yaoapp/demo-crm@v0.9.1
+//   github.com/yaoapp/demo-crm@e86eab4c8490
+//   github.com/yaoapp/demo-wms/cloud@e86eab4c8490
+//   github.com/yaoapp/demo-wms/edge@e86eab4c8490
+func (workshop *Workshop) Remove(url string) error {
+
+	// Lock the file
+	err := workshop.lock()
+	if err != nil {
+		return err
+	}
+	defer workshop.unlock()
+
+	// Create a new package
+	pkg, err := workshop.Package(url, "")
+	if err != nil {
+		return err
+	}
+
+	// If has checkout the package, return
+	if _, has := workshop.Mapping[pkg.Unique]; !has {
+		return nil
+	}
+
+	// Delete from require list
+	workshop.Del(pkg)
 
 	// Save to file
 	return workshop.Save()
@@ -167,7 +205,7 @@ func (workshop *Workshop) Has(name string) bool {
 }
 
 // Add add a package to workshop.ayo
-func (workshop *Workshop) Add(pkg *Package, process func(total uint64, pkg *Package, message string), indirect bool) error {
+func (workshop *Workshop) Add(pkg *Package, process func(total uint64, pkg *Package, message string), parent string) error {
 
 	// Download the package
 	_, err := workshop.Download(pkg, process)
@@ -175,7 +213,12 @@ func (workshop *Workshop) Add(pkg *Package, process func(total uint64, pkg *Pack
 		return err
 	}
 
-	pkg.Indirect = indirect
+	pkg.Indirect = false
+	if parent != "" {
+		pkg.Indirect = true
+		pkg.Parents = append(pkg.Parents, parent)
+	}
+
 	workshop.Require = append(workshop.Require, pkg)
 	workshop.Mapping[pkg.Alias] = pkg
 	workshop.Mapping[pkg.Unique] = pkg
@@ -192,7 +235,7 @@ func (workshop *Workshop) Add(pkg *Package, process func(total uint64, pkg *Pack
 			continue
 		}
 
-		err := workshop.Add(dep, process, true)
+		err := workshop.Add(dep, process, pkg.Unique)
 		if err != nil {
 			return err
 		}
@@ -201,8 +244,35 @@ func (workshop *Workshop) Add(pkg *Package, process func(total uint64, pkg *Pack
 	return nil
 }
 
-// Del delete a repo from workshop.yao
-func (workshop *Workshop) Del(repo string) error {
+// Del delete a package from workshop.yao
+func (workshop *Workshop) Del(pkg *Package) error {
+	for idx, require := range workshop.Require {
+		if pkg.Unique == require.Unique {
+			delete(workshop.Mapping, require.Name)
+			delete(workshop.Mapping, require.Unique)
+			workshop.Require = append(workshop.Require[:idx], workshop.Require[idx+1:]...)
+			continue
+		}
+	}
+	return workshop.Refresh(nil)
+}
+
+// Refresh the workshop
+func (workshop *Workshop) Refresh(process func(total uint64, pkg *Package, message string)) error {
+	packages := workshop.Require
+	workshop.Require = []*Package{}
+	workshop.Mapping = map[string]*Package{}
+
+	for _, pkg := range packages {
+		if pkg.Indirect {
+			continue
+		}
+
+		err := workshop.Add(pkg, process, "")
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -228,7 +298,7 @@ func (workshop *Workshop) Download(pkg *Package, process func(total uint64, pkg 
 
 // Package create a new package
 func (workshop *Workshop) Package(url, alias string) (*Package, error) {
-	pkg := &Package{}
+	pkg := &Package{Parents: []string{}}
 	if !strings.Contains(url, "@") {
 
 		uri := strings.Split(url, "/")

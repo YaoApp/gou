@@ -104,6 +104,22 @@ func TestWorkshopSaveBlank(t *testing.T) {
 
 }
 
+func TestWorkshopRemoveBlankDeep(t *testing.T) {
+	root := tempAppRoot()
+	workshop, err := OpenWorkshop(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 0, len(workshop.Require))
+	get(t, workshop, "github.com/yaoapp/workshop-tests-wms@04b2b1b", "wms")
+	get(t, workshop, "github.com/yaoapp/workshop-tests-erp@v0.1.0", "erp")
+	assert.Equal(t, len(workshop.Require), 4)
+
+	workshop.Remove("github.com/yaoapp/workshop-tests-wms@04b2b1b")
+	assert.FileExists(t, workshop.file)
+	assert.Equal(t, len(workshop.Require), 1)
+}
+
 func get(t *testing.T, workshop *Workshop, url string, alias string) {
 	cnt := 0
 	err := workshop.Get(url, alias, func(total uint64, pkg *Package, status string) {

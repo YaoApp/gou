@@ -255,7 +255,9 @@ func (pkg *Package) Option(cfg Config) map[string]interface{} {
 // Download download the package
 func (pkg *Package) Download(root string, option map[string]interface{}, process func(total uint64, pkg *Package, message string)) (string, error) {
 
-	process(100, pkg, "prepare")
+	if process != nil {
+		process(100, pkg, "prepare")
+	}
 
 	if option == nil {
 		option = map[string]interface{}{}

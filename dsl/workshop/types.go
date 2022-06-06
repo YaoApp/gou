@@ -28,6 +28,7 @@ type Package struct {
 	Replaced   bool           // false
 	Unique     string         // github.com/yaoapp/demo-wms@e86eab4c8490
 	Indirect   bool           // true
+	Parents    []string       // parent
 }
 
 // Config the workshop config file
