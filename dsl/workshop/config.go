@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/yaoapp/gou/dsl/utils"
+	"github.com/yaoapp/gou/dsl/u"
 )
 
 // GetConfig get the workshop config
@@ -19,12 +19,12 @@ func GetConfig() (Config, error) {
 	}
 
 	file := filepath.Join(root, "workshop.yao")
-	exists, _ := utils.FileExists(file)
+	exists, _ := u.FileExists(file)
 	if !exists {
 		return Config{}, nil
 	}
 
-	data, err := utils.FileGetJSON(file)
+	data, err := u.FileGetJSON(file)
 	if err != nil {
 		return nil, err
 	}

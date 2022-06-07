@@ -5,9 +5,9 @@ import "github.com/blang/semver/v4"
 // YAO the YAO DSL
 type YAO struct {
 	Head    *Head
-	Content *Content
+	Content map[string]interface{}
 	DSL     DSL
-	Mode    string // development | production
+	Mode    string // ? development | production
 }
 
 // DSL the YAO domain specific language interface
@@ -20,25 +20,29 @@ type DSL interface {
 	DSLDependencies() ([]string, error)
 }
 
-// Content the content of YAO DSL
-type Content map[string]interface{}
-
 // Head the YAO domain specific language Head
 type Head struct {
-	File    string
-	Name    string
-	Bindata bool
-	Type    int
-	Lang    semver.Version
-	Version semver.Version
-	From    string
-	Alias   string
-	Delete  []string
+	File    string          // the DSL file path
+	Name    string          // the name of the DSL
+	Bindata bool            // is saved in bindata
+	Type    int             // which type of the DSL
+	Lang    *semver.Version // the DSL LANG version
+	Version *semver.Version // the DSL version
+	From    string          // inherited from
+	Run     *Command        // MERGE COMMAND
+}
+
+// Command the DSL command
+type Command struct {
+	DELETE  []string                 // remove the given fields
+	MERGE   []map[string]interface{} // merge fields with the given values (not deep merge)
+	APPEND  []string                 // append to the array fields with the given values
+	REPLACE []string                 //  replace the fields with the new definition
 }
 
 const (
 	// Model the Model
-	Model = iota
+	Model = iota + 1
 	// Flow the Data Flow
 	Flow
 	// HTTP RESTFul API

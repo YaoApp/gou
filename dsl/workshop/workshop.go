@@ -11,7 +11,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/dsl/repo"
-	"github.com/yaoapp/gou/dsl/utils"
+	"github.com/yaoapp/gou/dsl/u"
 )
 
 // Tidy scan the source and update workshop.yao then auto-generation the workshop.sum.yao file
@@ -29,7 +29,7 @@ func OpenWorkshop(root string) (*Workshop, error) {
 	}
 
 	file := path.Join(root, "workshop.yao")
-	exists, err := utils.FileExists(file)
+	exists, err := u.FileExists(file)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func OpenWorkshop(root string) (*Workshop, error) {
 		}, nil
 	}
 
-	data, err := utils.FileGetJSON(file)
+	data, err := u.FileGetJSON(file)
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +401,7 @@ func (workshop *Workshop) Bytes() ([]byte, error) {
 // lock the workshop.yao file
 func (workshop *Workshop) lock() error {
 	lockfile := fmt.Sprintf("%s.lock", workshop.file)
-	exists, err := utils.FileExists(lockfile)
+	exists, err := u.FileExists(lockfile)
 	if exists {
 		return fmt.Errorf("%s has been locked. Maybe another process running\n try: rm %s", workshop.file, lockfile)
 	}

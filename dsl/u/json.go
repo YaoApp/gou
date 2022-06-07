@@ -1,23 +1,29 @@
-package utils
+package u
 
 import (
 	"errors"
 	"fmt"
 	"os"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
-// FileExists trans JSONC to JSON
-func FileExists(file string) (bool, error) {
+// FileGetMap read the json file and return map[string]interface{}
+func FileGetMap(file string) (map[string]interface{}, error) {
 	_, err := os.Stat(file)
 	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
+		return nil, fmt.Errorf("%s not exists", file)
+	} else if err != nil {
+		return nil, err
 	}
 
+	data, err := os.ReadFile(file)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return true, nil
+	bytes := ToJSON(data, nil)
+	return ToMap(bytes)
 }
 
 // FileGetJSON trans JSONC to JSON
@@ -35,6 +41,19 @@ func FileGetJSON(file string) ([]byte, error) {
 	}
 
 	return ToJSON(data, nil), nil
+}
+
+// ToMap parse and  return map[string]interface{}
+func ToMap(data []byte) (map[string]interface{}, error) {
+
+	bytes := ToJSON(data, nil)
+	res := map[string]interface{}{}
+	err := jsoniter.Unmarshal(bytes, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // ToJSON strips out comments and trailing commas and convert the input to a

@@ -10,7 +10,7 @@ import (
 	"github.com/blang/semver/v4"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/dsl/repo"
-	"github.com/yaoapp/gou/dsl/utils"
+	"github.com/yaoapp/gou/dsl/u"
 )
 
 // UnmarshalJSON for json
@@ -266,7 +266,7 @@ func (pkg *Package) Download(root string, option map[string]interface{}, process
 	// download from cache
 	if cache, has := option["cache"].(string); has {
 		cache := pkg.Cache(cache)
-		exists, _ := utils.FileExists(cache)
+		exists, _ := u.FileExists(cache)
 		if exists {
 			if process != nil {
 				process(100, pkg, "cached")
@@ -297,7 +297,7 @@ func (pkg *Package) Download(root string, option map[string]interface{}, process
 
 	// unzip file
 	dest := pkg.LocalRepo(root)
-	if exitis, _ := utils.FileExists(dest); exitis {
+	if exitis, _ := u.FileExists(dest); exitis {
 		os.RemoveAll(dest)
 	}
 
@@ -323,7 +323,7 @@ func (pkg *Package) Download(root string, option map[string]interface{}, process
 // Dependencies get the Dependencies of the package
 func (pkg *Package) Dependencies() ([]*Package, error) {
 
-	if exists, _ := utils.FileExists(filepath.Join(pkg.LocalPath, "workshop.yao")); !exists {
+	if exists, _ := u.FileExists(filepath.Join(pkg.LocalPath, "workshop.yao")); !exists {
 		return []*Package{}, nil
 	}
 
