@@ -5,13 +5,15 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/dsl/u"
+	"github.com/yaoapp/gou/dsl/workshop"
 )
 
 // New create a new YAO DSL
-func New() *YAO {
+func New(workshop *workshop.Workshop) *YAO {
 	return &YAO{
-		Head:    NewHead(),
-		Content: map[string]interface{}{},
+		Head:     NewHead(),
+		Content:  map[string]interface{}{},
+		Workshop: workshop,
 	}
 }
 
@@ -30,6 +32,14 @@ func (yao *YAO) Open(file string) error {
 	if err != nil {
 		return err
 	}
+
+	// Make DSL instance
+	dsl, err := NewDSL(yao.Head.Type)
+	if err != nil {
+		return err
+	}
+	yao.DSL = dsl
+
 	return nil
 }
 

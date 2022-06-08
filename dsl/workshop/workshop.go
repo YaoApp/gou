@@ -20,8 +20,8 @@ func Tidy(root string) error { return nil }
 // Format scan the source and format DSL code
 func Format(root string) error { return nil }
 
-// OpenWorkshop open and parse the workshop dsl
-func OpenWorkshop(root string) (*Workshop, error) {
+// Open and parse the workshop dsl
+func Open(root string) (*Workshop, error) {
 
 	cfg, err := GetConfig()
 	if err != nil {

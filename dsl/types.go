@@ -1,13 +1,17 @@
 package dsl
 
-import "github.com/blang/semver/v4"
+import (
+	"github.com/blang/semver/v4"
+	"github.com/yaoapp/gou/dsl/workshop"
+)
 
 // YAO the YAO DSL
 type YAO struct {
-	Head    *Head
-	Content map[string]interface{}
-	DSL     DSL
-	Mode    string // ? development | production
+	Head     *Head
+	Content  map[string]interface{}
+	DSL      DSL
+	Workshop *workshop.Workshop // DSL workshop
+	Mode     string             // ? development | production
 }
 
 // DSL the YAO domain specific language interface

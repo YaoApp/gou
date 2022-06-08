@@ -327,7 +327,7 @@ func (pkg *Package) Dependencies() ([]*Package, error) {
 		return []*Package{}, nil
 	}
 
-	workshop, err := OpenWorkshop(pkg.LocalPath)
+	workshop, err := Open(pkg.LocalPath)
 	if err != nil {
 		return nil, err
 	}

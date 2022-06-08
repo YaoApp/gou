@@ -14,7 +14,7 @@ import (
 
 func TestOpenWorkshop(t *testing.T) {
 	root := os.Getenv("GOU_TEST_APP_ROOT")
-	workshop, err := OpenWorkshop(root)
+	workshop, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestOpenWorkshop(t *testing.T) {
 
 func TestWorkshopGetBlank(t *testing.T) {
 	root := tempAppRoot()
-	workshop, err := OpenWorkshop(root)
+	workshop, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestWorkshopGetBlank(t *testing.T) {
 
 func TestWorkshopGetBlankDeep(t *testing.T) {
 	root := tempAppRoot()
-	workshop, err := OpenWorkshop(root)
+	workshop, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestWorkshopGetBlankDeep(t *testing.T) {
 
 func TestWorkshopSaveBlank(t *testing.T) {
 	root := tempAppRoot()
-	workshop, err := OpenWorkshop(root)
+	workshop, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestWorkshopSaveBlank(t *testing.T) {
 
 func TestWorkshopRemoveBlankDeep(t *testing.T) {
 	root := tempAppRoot()
-	workshop, err := OpenWorkshop(root)
+	workshop, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}

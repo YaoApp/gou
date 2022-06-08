@@ -2,6 +2,8 @@ package dsl
 
 import (
 	"fmt"
+
+	"github.com/yaoapp/gou"
 )
 
 // Change on file change
@@ -26,6 +28,7 @@ func (yao *YAO) Dependencies() ([]string, error) {
 
 // Compile compile the content
 func (yao *YAO) Compile() error {
+	yao.compile()
 	return yao.DSL.DSLCompile()
 }
 
@@ -35,7 +38,7 @@ func NewDSL(kind int) (DSL, error) {
 	case HTTP:
 		return nil, nil
 	case Model:
-		return nil, nil
+		return gou.MakeModel(), nil
 	case Flow:
 		return nil, nil
 	case MySQL, PgSQL, Oracle, TiDB, ClickHouse, Redis, MongoDB, Elastic:

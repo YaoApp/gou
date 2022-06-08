@@ -6,13 +6,19 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/dsl/workshop"
 )
 
 func TestYaoOpen(t *testing.T) {
 	root := os.Getenv("GOU_TEST_APP_ROOT")
 	file := filepath.Join(root, "models", "user.mod.yao")
-	yao := New()
-	err := yao.Open(file)
+	workshop, err := workshop.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	yao := New(workshop)
+	err = yao.Open(file)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,5 +33,19 @@ func TestYaoOpen(t *testing.T) {
 	assert.Equal(t, []string{"columns.1", "columns.2"}, yao.Head.Run.DELETE)
 	assert.Equal(t, []string{"table"}, yao.Head.Run.REPLACE)
 	assert.Equal(t, 1, len(yao.Head.Run.MERGE))
+}
 
+func TestYaoCompileModelFromRemote(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APP_ROOT")
+	file := filepath.Join(root, "models", "from", "remote.mod.yao")
+	workshop, err := workshop.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	yao := New(workshop)
+	err = yao.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	yao.Compile()
 }
