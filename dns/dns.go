@@ -11,11 +11,24 @@ import (
 	"github.com/yaoapp/kun/log"
 )
 
+// DNS cache
+var caches = map[string][]string{}
+
 // LookupIP looks up host using the local resolver. It returns a slice of that host's IPv4 and IPv6 addresses.
 func LookupIP(host string, ipv6 ...bool) ([]string, error) {
 
+	if ip := net.ParseIP(host); ip != nil { // the given host is ip
+		return []string{ip.String()}, nil
+	}
+
 	if ipv6 == nil {
 		ipv6 = []bool{true}
+	}
+
+	// the host was cached
+	cache := fmt.Sprintf("%s_%v", host, ipv6[0])
+	if ips, has := caches[cache]; has {
+		return ips, nil
 	}
 
 	if runtime.GOOS == "linux" {
@@ -42,6 +55,11 @@ func LookupIP(host string, ipv6 ...bool) ([]string, error) {
 	res := []string{}
 	for _, ip := range ips {
 		res = append(res, ip.String())
+	}
+
+	// cache the host resolved result
+	if len(res) > 0 {
+		caches[cache] = res
 	}
 
 	return res, nil
