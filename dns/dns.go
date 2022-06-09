@@ -36,7 +36,18 @@ func LookupIP(host string, ipv6 ...bool) ([]string, error) {
 		if err != nil {
 			return []string{}, err
 		}
-		return linuxLookupIP(host, conf.Servers, conf.Port, ipv6[0])
+
+		res, err := linuxLookupIP(host, conf.Servers, conf.Port, ipv6[0])
+		if err != nil {
+			return nil, err
+		}
+
+		// cache the host resolved result ( for linux )
+		if len(res) > 0 {
+			caches[cache] = res
+		}
+
+		return res, nil
 	}
 
 	var ips = []net.IP{}
