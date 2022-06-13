@@ -6,10 +6,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/kun/any"
+	"github.com/yaoapp/kun/day"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/xun/capsule"
 	"github.com/yaoapp/xun/dbal/schema"
@@ -83,17 +85,52 @@ func (mod *Model) Export(chunkSize int, process func(curr, total int)) ([]string
 	completed := 0
 	files := []string{}
 	err = qb.Chunk(chunkSize, func(items []interface{}, page int) error {
+
 		if len(items) < 1 {
 			return fmt.Errorf("items is null")
 		}
 
 		columns := any.Of(items[0]).MapStr().Keys()
-		values := [][]interface{}{}
-		for _, item := range items {
-			values = append(values, any.Of(item).MapStr().Values())
+		ctypes := map[int]string{}
+
+		// Filter date
+		for index, name := range columns {
+			if column, has := mod.Columns[name]; has {
+				switch strings.ToLower(column.Type) {
+				case "date":
+					ctypes[index] = "date"
+					break
+				case "time", "timetz":
+					ctypes[index] = "time"
+					break
+				case "datetime", "datetimetz", "timestamp", "timestamptz":
+					ctypes[index] = "datetime"
+					break
+				}
+			}
 		}
 
-		completed = completed + len(items)
+		values := [][]interface{}{}
+		for _, item := range items {
+			row := any.Of(item).MapStr().Values()
+			for index, value := range row {
+				if typ, has := ctypes[index]; has && value != nil {
+					switch typ {
+					case "date":
+						row[index] = day.Of(value).Format("2006-01-02")
+						break
+					case "time":
+						row[index] = day.Of(value).Format("15:04:05")
+						break
+					case "datetime":
+						row[index] = day.Of(value).Format("2006-01-02T15:04:05")
+						break
+					}
+				}
+			}
+			values = append(values, row)
+		}
+
 		name := filepath.Join(tmpdir, fmt.Sprintf("%s.%d.json", mod.Name, page))
 		bytes, err := jsoniter.Marshal(ExportData{
 			Columns: columns,
@@ -109,11 +146,11 @@ func (mod *Model) Export(chunkSize int, process func(curr, total int)) ([]string
 			return err
 		}
 
+		files = append(files, name)
+		completed = completed + len(items)
 		if process != nil {
 			process(completed, int(total))
 		}
-
-		files = append(files, name)
 		return nil
 	})
 

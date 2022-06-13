@@ -482,14 +482,15 @@ func TestModelMustEachSaveWithIndex(t *testing.T) {
 }
 
 func TestModelExportImport(t *testing.T) {
-	columns := []string{"name", "manu_id", "type", "idcard", "mobile", "password", "key", "secret", "status"}
+	columns := []string{"name", "manu_id", "type", "idcard", "mobile", "password", "key", "secret", "status", "updated_at"}
 	rows := [][]interface{}{
-		{"用户创建1", 5, "user", "23082619820207006X", "13900004444", "qV@uT1DI", "XZ12MiP1", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
-		{"用户创建2", 5, "user", "33082619820207006X", "13900005555", "qV@uT1DI", "XZ12MiP2", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
-		{"用户创建3", 5, "user", "43082619820207006X", "13900006666", "qV@uT1DI", "XZ12MiP3", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
+		{"用户创建1", 5, "user", "23082619820207006X", "13900004444", "qV@uT1DI", "XZ12MiP1", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled", "2022-06-13T10:09:01+08:00"},
+		{"用户创建2", 5, "user", "33082619820207006X", "13900005555", "qV@uT1DI", "XZ12MiP2", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled", "2022-06-13 10:09:01"},
+		{"用户创建3", 5, "user", "43082619820207006X", "13900006666", "qV@uT1DI", "XZ12MiP3", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled", "2022-06-13T10:09:01Z"},
 	}
 
-	user := Select("user")
+	user := Select("uimport")
+	user.Migrate(true)
 	err := user.Insert(columns, rows)
 	if err != nil {
 		t.Fatal(err)
@@ -506,7 +507,6 @@ func TestModelExportImport(t *testing.T) {
 
 	assert.Greater(t, len(files), 0)
 	capsule.Query().Table(user.MetaData.Table.Name).MustDelete()
-
 	for _, file := range files {
 		err = user.Import(file)
 		if err != nil {
@@ -519,6 +519,5 @@ func TestModelExportImport(t *testing.T) {
 			{Column: "name", Value: "用户创建", OP: "match"},
 		},
 	})
-
 	assert.Equal(t, 3, len(res))
 }

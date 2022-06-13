@@ -91,6 +91,7 @@ func TestMain(m *testing.M) {
 	LoadModel("file://"+path.Join(TestModRoot, "role.json"), "role")
 	LoadModel("file://"+path.Join(TestModRoot, "friends.json"), "friends")
 	LoadModel("file://"+path.Join(TestModRoot, "user_roles.json"), "user_roles")
+	LoadModel("file://"+path.Join(TestModRoot, "uimport.json"), "uimport")
 
 	// 加载插件
 	LoadPlugin(path.Join(TestPLGRoot, "user"), "user")
