@@ -82,6 +82,10 @@ func (mod *Model) Export(chunkSize int, process func(curr, total int)) ([]string
 		return nil, err
 	}
 
+	if total == 0 {
+		return []string{}, nil
+	}
+
 	completed := 0
 	files := []string{}
 	err = qb.Chunk(chunkSize, func(items []interface{}, page int) error {
