@@ -70,6 +70,53 @@ func (mod *Model) SchemaTableCreate() {
 	}
 }
 
+// ForceCreateSchema create table
+func (mod *Model) ForceCreateSchema() error {
+
+	sch := capsule.Schema()
+	err := sch.DropTableIfExists(mod.MetaData.Table.Name)
+	if err != nil {
+		return err
+	}
+
+	err = sch.CreateTable(mod.MetaData.Table.Name, func(table schema.Blueprint) {
+
+		// 创建字段
+		for _, column := range mod.MetaData.Columns {
+			col := column.SetType(table)
+			column.SetOption(col)
+		}
+
+		// 创建索引
+		for _, index := range mod.MetaData.Indexes {
+			index.SetIndex(table)
+		}
+
+		// 创建时间, 更新时间
+		if mod.MetaData.Option.Timestamps {
+			table.Timestamps()
+		}
+
+		// 软删除
+		if mod.MetaData.Option.SoftDeletes {
+			table.SoftDeletes()
+			table.JSON("__restore_data").Null()
+		}
+
+		// 追溯ID
+		if mod.MetaData.Option.Trackings || mod.MetaData.Option.Logging {
+			table.BigInteger("__tracking_id").Index().Null()
+		}
+
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Export the model
 func (mod *Model) Export(chunkSize int, process func(curr, total int)) ([]string, error) {
 
