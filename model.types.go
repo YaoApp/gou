@@ -127,3 +127,10 @@ type ColumnMap struct {
 	Model  *Model
 	Export string // 取值时的变量名
 }
+
+// ExportData the export data struct
+type ExportData struct {
+	Model   string          `json:"model"`
+	Columns []string        `json:"columns"`
+	Values  [][]interface{} `json:"values"`
+}

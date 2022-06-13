@@ -1,6 +1,7 @@
 package gou
 
 import (
+	"fmt"
 	"path"
 	"testing"
 
@@ -478,4 +479,46 @@ func TestModelMustEachSaveWithIndex(t *testing.T) {
 	capsule.Query().Table(user.MetaData.Table.Name).WhereIn("id", ids).Delete()
 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 0)
 	assert.Equal(t, any.Of(row1.Get("balance")).CInt(), 1)
+}
+
+func TestModelExportImport(t *testing.T) {
+	columns := []string{"name", "manu_id", "type", "idcard", "mobile", "password", "key", "secret", "status"}
+	rows := [][]interface{}{
+		{"用户创建1", 5, "user", "23082619820207006X", "13900004444", "qV@uT1DI", "XZ12MiP1", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
+		{"用户创建2", 5, "user", "33082619820207006X", "13900005555", "qV@uT1DI", "XZ12MiP2", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
+		{"用户创建3", 5, "user", "43082619820207006X", "13900006666", "qV@uT1DI", "XZ12MiP3", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
+	}
+
+	user := Select("user")
+	err := user.Insert(columns, rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer capsule.Query().Table(user.MetaData.Table.Name).Where("name", "like", "用户创建%").MustDelete()
+
+	files, err := user.Export(2, func(curr, total int) {
+		fmt.Printf("Export: %d/%d\n", curr, total)
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Greater(t, len(files), 0)
+	capsule.Query().Table(user.MetaData.Table.Name).MustDelete()
+
+	for _, file := range files {
+		err = user.Import(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	res := user.MustGet(QueryParam{
+		Wheres: []QueryWhere{
+			{Column: "name", Value: "用户创建", OP: "match"},
+		},
+	})
+
+	assert.Equal(t, 3, len(res))
 }
