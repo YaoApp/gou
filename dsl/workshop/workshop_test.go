@@ -20,8 +20,8 @@ func TestOpenWorkshop(t *testing.T) {
 	}
 
 	// utils.Dump(workshop)
-	assert.Equal(t, 8, len(workshop.Require))
-	assert.Equal(t, 16, len(workshop.Mapping))
+	assert.Equal(t, 9, len(workshop.Require))
+	assert.Equal(t, 28, len(workshop.Mapping))
 
 	// utils.Dump(workshop)
 
@@ -33,8 +33,8 @@ func TestOpenWorkshop(t *testing.T) {
 	assert.Equal(t, "yaoapp", workshop.Require[3].Owner)
 	assert.Equal(t, "demo-wms", workshop.Require[3].Repo)
 	assert.Equal(t, "/cloud", workshop.Require[3].Path)
-	assert.Equal(t, "demo-wms.yaoapp.cloud", workshop.Require[3].Name)
-	assert.Equal(t, "demo-wms.yaoapp.cloud", workshop.Require[3].Alias)
+	assert.Equal(t, "github.com/demo-wms/yaoapp/cloud", workshop.Require[3].Name)
+	assert.Equal(t, "github.com/demo-wms/yaoapp/cloud", workshop.Require[3].Alias)
 	assert.Equal(t, "0.0.0-e86eab4c8490", workshop.Require[3].Version.String())
 	assert.Equal(t, "e86eab4c8490", workshop.Require[3].Rel)
 
@@ -58,7 +58,7 @@ func TestWorkshopGetBlank(t *testing.T) {
 	assert.Equal(t, "yaoapp", workshop.Require[0].Owner)
 	assert.Equal(t, "demo-wms", workshop.Require[0].Repo)
 	assert.Equal(t, "/cloud", workshop.Require[0].Path)
-	assert.Equal(t, "demo-wms.yaoapp.cloud", workshop.Require[0].Name)
+	assert.Equal(t, "github.com/demo-wms/yaoapp/cloud", workshop.Require[0].Name)
 	assert.Equal(t, "wms", workshop.Require[0].Alias)
 	assert.Equal(t, "0.9.5", workshop.Require[0].Version.String())
 	assert.Equal(t, "0.9.5", workshop.Require[0].Rel)

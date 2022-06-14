@@ -155,10 +155,10 @@ func (pkg *Package) SetAddr(url string) error {
 	pkg.Owner = uri[1]
 	pkg.Repo = uri[2]
 	pkg.Path = "/"
-	name := fmt.Sprintf("%s.%s", pkg.Repo, pkg.Owner)
+	name := fmt.Sprintf("%s/%s/%s", pkg.Domain, pkg.Repo, pkg.Owner)
 	if len(uri) > 3 {
 		pkg.Path = fmt.Sprintf("/%s", filepath.Join(uri[3:]...))
-		name = fmt.Sprintf("%s.%s", name, strings.Join(uri[3:], "."))
+		name = fmt.Sprintf("%s/%s", name, strings.Join(uri[3:], "/"))
 	}
 	pkg.Name = name
 	pkg.Addr = fmt.Sprintf("%s/%s/%s", pkg.Domain, pkg.Owner, pkg.Repo)
@@ -272,7 +272,31 @@ func (pkg *Package) Download(root string, option map[string]interface{}, process
 				process(100, pkg, "cached")
 			}
 
-			pkg.Downloaded = true
+			isDownload, err := pkg.IsDownload()
+			if err != nil {
+				return "", err
+			}
+
+			// Unzip File
+			if !isDownload {
+				repo, err := repo.NewRepo(pkg.Addr, option)
+				if err != nil {
+					return "", err
+				}
+
+				dest := pkg.LocalRepo(root)
+				if exitis, _ := u.FileExists(dest); exitis {
+					os.RemoveAll(dest)
+				}
+
+				err = repo.Unzip(cache, dest)
+				if err != nil {
+					return "", err
+				}
+
+				pkg.Downloaded = true
+			}
+
 			return cache, nil
 		}
 	}

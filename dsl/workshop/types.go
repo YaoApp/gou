@@ -14,8 +14,8 @@ type Workshop struct {
 // Package the YAO package info
 type Package struct {
 	URL        string         // github.com/yaoapp/demo-wms/cloud@v0.0.0-20220223010332-e86eab4c8490
-	Name       string         // demo-wms.yaoapp.cloud
-	Alias      string         // demo-wms.yaoapp.cloud
+	Name       string         // github.com/yaoapp/demo-wms/cloud
+	Alias      string         // github.com/yaoapp/demo-wms/cloud
 	Addr       string         // github.com/yaoapp/demo-wms
 	Domain     string         // github.com
 	Owner      string         // trheyi

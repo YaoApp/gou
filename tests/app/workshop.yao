@@ -10,7 +10,8 @@
     "workshop.yaoapps.com/infra/crm@v0.9.1", // indirect
     "workshop.yaoapps.com/infra/erp@0.1.0",
     "workshop.yaoapps.com/yao/hr@1.0.0",
-    "workshop.yaoapps.com/yao/project@1.0.0"
+    "workshop.yaoapps.com/yao/project@1.0.0",
+    "github.com/yaoapp/workshop-tests-cms@10b214e"
   ],
   "replace": {
     "github.com/yaoapp/demo-wms/cloud": "../../../demo-wms/cloud"

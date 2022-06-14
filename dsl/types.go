@@ -9,8 +9,10 @@ import (
 type YAO struct {
 	Head     *Head
 	Content  map[string]interface{}
+	Compiled map[string]interface{}
 	DSL      DSL
 	Workshop *workshop.Workshop // DSL workshop
+	Trace    []string           // FROM Trace
 	Mode     string             // ? development | production
 }
 

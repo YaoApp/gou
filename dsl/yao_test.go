@@ -47,5 +47,30 @@ func TestYaoCompileModelFromRemote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	yao.Compile()
+	err = yao.Compile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 1, len(yao.Trace))
+}
+
+func TestYaoCompileModelFromRemoteDeep(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APP_ROOT")
+	file := filepath.Join(root, "models", "from", "remote-deep.mod.yao")
+	workshop, err := workshop.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	yao := New(workshop)
+	err = yao.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = yao.Compile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 3, len(yao.Trace))
 }

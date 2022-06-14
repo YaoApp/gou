@@ -180,6 +180,9 @@ func (workshop *Workshop) SetMapping() error {
 		}
 		workshop.Mapping[pkg.Alias] = workshop.Require[i]
 		workshop.Mapping[pkg.Unique] = workshop.Require[i]
+		workshop.Mapping[pkg.Addr] = workshop.Require[i]
+		workshop.Mapping[pkg.Name] = workshop.Require[i]
+
 	}
 	return nil
 }

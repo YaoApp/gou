@@ -14,6 +14,7 @@ func New(workshop *workshop.Workshop) *YAO {
 		Head:     NewHead(),
 		Content:  map[string]interface{}{},
 		Workshop: workshop,
+		Trace:    []string{},
 	}
 }
 
