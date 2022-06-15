@@ -451,6 +451,10 @@ func (yao *YAO) deleteValue(input maps.MapStr, key string) error {
 
 	// table.name
 	// table
+	if !input.Has(keys[0]) {
+		return nil
+	}
+
 	mapstr := any.Of(input.Get(keys[0])).MapStr()
 
 	// table.name

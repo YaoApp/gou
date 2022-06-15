@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/dsl/workshop"
+	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/maps"
 )
 
@@ -30,9 +31,27 @@ func TestYaoOpen(t *testing.T) {
 	assert.Equal(t, "1.0.0", yao.Head.Version.String())
 	assert.Equal(t, Model, yao.Head.Type)
 	assert.Equal(t, "user", yao.Head.Name)
-	assert.Equal(t, []string{"columns", "indexes"}, yao.Head.Run.APPEND)
-	assert.Equal(t, []string{"columns.1", "columns.2"}, yao.Head.Run.DELETE)
-	assert.Equal(t, []string{"table"}, yao.Head.Run.REPLACE)
+	assert.Equal(t, 1, len(yao.Head.Run.APPEND))
+	for key, arr := range yao.Head.Run.APPEND[0] {
+		assert.Equal(t, "columns", key)
+		assert.Equal(t, 1, len(arr))
+		v := any.Of(arr[0]).MapStr()
+		assert.Equal(t, "Published At", v.Get("comment"))
+		assert.Equal(t, "Published At", v.Get("label"))
+		assert.Equal(t, "published_at", v.Get("name"))
+		assert.Equal(t, "datetime", v.Get("type"))
+		assert.Equal(t, true, v.Get("index"))
+		assert.Equal(t, true, v.Get("nullable"))
+
+	}
+
+	assert.Equal(t, 1, len(yao.Head.Run.REPLACE))
+	for key, value := range yao.Head.Run.REPLACE[0] {
+		assert.Equal(t, "table", key)
+		assert.Equal(t, "$new.table", value)
+	}
+
+	assert.Equal(t, []string{"columns[1]", "columns[2]"}, yao.Head.Run.DELETE)
 	assert.Equal(t, 1, len(yao.Head.Run.MERGE))
 }
 
