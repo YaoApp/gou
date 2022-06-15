@@ -37,6 +37,7 @@ func Open(root string) (*Workshop, error) {
 	if !exists {
 		return &Workshop{
 			file:    file,
+			root:    root,
 			Require: []*Package{},
 			Replace: map[string]string{},
 			Mapping: map[string]*Package{},
@@ -56,12 +57,18 @@ func Open(root string) (*Workshop, error) {
 
 	workshop.file = file
 	workshop.cfg = cfg
+	workshop.root = root
 	err = workshop.SetMapping()
 	if err != nil {
 		return nil, err
 	}
 
 	return workshop, nil
+}
+
+// Root get the workshop root
+func (workshop Workshop) Root() string {
+	return workshop.root
 }
 
 // Get the url from the given remote repo

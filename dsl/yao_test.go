@@ -125,3 +125,29 @@ func TestYaoCompileModelMerge(t *testing.T) {
 	assert.Equal(t, false, res.Has("tmpl"))
 
 }
+
+func TestYaoCompileModelCopy(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APP_ROOT")
+	file := filepath.Join(root, "models", "from", "copy.mod.yao")
+	workshop, err := workshop.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	yao := New(workshop)
+	err = yao.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = yao.Compile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res := maps.Of(yao.Compiled).Dot()
+	assert.Equal(t, "phone_no", res.Get("columns[8].name"))
+	assert.Equal(t, "Copy from user {{input}} should be string", res.Get("columns[8].validations[0].message"))
+	assert.Equal(t, "product_title", res.Get("columns[9].name"))
+	assert.Equal(t, "Copy from dict/product {{input}} should be string", res.Get("columns[9].validations[0].message"))
+}

@@ -7,6 +7,7 @@ type Workshop struct {
 	Require []*Package        `json:"require,omitempty"`
 	Replace map[string]string `json:"replace,omitempty"` // for multi projects development
 	Mapping map[string]*Package
+	root    string // the root path
 	file    string // the workshop.yao file path
 	cfg     Config
 }

@@ -18,11 +18,17 @@ var keepFields = map[string]bool{"FROM": true, "RUN": true}
 // compile compile the content
 func (yao *YAO) compile() error {
 
-	// COPY Content
+	// init content
 	yao.Compiled = yao.Content
 
+	// Compile Copy
+	err := yao.compileCopy()
+	if err != nil {
+		return err
+	}
+
 	// Compile From
-	err := yao.compileFrom()
+	err = yao.compileFrom()
 	if err != nil {
 		return err
 	}
@@ -41,6 +47,16 @@ func (yao *YAO) compileFrom() error {
 	}
 
 	return yao.compileFromLocal()
+}
+
+// compileCopy
+func (yao *YAO) compileCopy() error {
+	compiled, err := yao.runCopy(yao.Compiled)
+	if err != nil {
+		return err
+	}
+	yao.Compiled = compiled
+	return nil
 }
 
 // compileFromRemote FROM the remote package
@@ -281,7 +297,93 @@ func (yao *YAO) runDelete(content maps.MapStr) error {
 	return nil
 }
 
-func (yao *YAO) runCopy() error { return nil }
+func (yao *YAO) runCopy(content map[string]interface{}) (map[string]interface{}, error) {
+
+	for key, value := range content {
+
+		if key == "COPY" {
+			name, ok := value.(string)
+			if !ok {
+				return nil, fmt.Errorf("COPY should be a string, but got %#v", value)
+			}
+
+			tpl, varname, err := yao.openTemplate(name)
+			if err != nil {
+				return nil, err
+			}
+
+			copy := maps.Of(tpl.Compiled).Dot().Get(varname)
+			mapstr, ok := copy.(map[string]interface{})
+			if !ok {
+				return nil, fmt.Errorf("COPY value should be a map, but got %#v", copy)
+			}
+
+			for k, v := range content {
+				if k == "COPY" {
+					continue
+				}
+				mapstr[k] = v
+			}
+
+			content = mapstr
+			delete(content, "COPY")
+			return content, nil
+		}
+
+		if mapstr, ok := value.(map[string]interface{}); ok {
+			new, err := yao.runCopy(mapstr)
+			if err != nil {
+				return nil, err
+			}
+
+			content[key] = new
+			continue
+		}
+
+		if arrany, ok := value.([]interface{}); ok {
+			for i := range arrany {
+				if v, ok := arrany[i].(map[string]interface{}); ok {
+					new, err := yao.runCopy(v)
+					if err != nil {
+						return nil, err
+					}
+					arrany[i] = new
+				}
+			}
+			content[key] = arrany
+			continue
+		}
+	}
+
+	return content, nil
+}
+
+func (yao *YAO) openTemplate(name string) (*YAO, string, error) {
+
+	tplpaths := strings.Split(name, "/")
+	tplnames := strings.Split(tplpaths[len(tplpaths)-1], ".")
+	varname := strings.Join(tplnames[1:], ".")
+	filename := fmt.Sprintf("%s.tpl.yao", tplnames[0])
+	paths := []string{}
+	paths = append(paths, yao.Workshop.Root(), "templates")
+	if len(tplpaths) > 1 {
+		paths = append(paths, tplpaths[:len(tplpaths)-1]...)
+	}
+	paths = append(paths, filename)
+	file := filepath.Join(paths...)
+	tpl := New(yao.Workshop)
+	err := tpl.Open(file)
+	if err != nil {
+		return nil, "", fmt.Errorf("Open template %s Error: %s", name, err.Error())
+	}
+
+	err = tpl.Compile()
+	if err != nil {
+		return nil, "", fmt.Errorf("Open template %s Compile Error: %s", name, err.Error())
+	}
+
+	return tpl, varname, nil
+}
 
 func (yao *YAO) setValue(input maps.MapStr, key string, value interface{}) error {
 
