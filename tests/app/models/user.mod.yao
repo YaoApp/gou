@@ -1,8 +1,8 @@
 {
   "FROM": "@infra.erp.models.user", // inherited from workshop.yaoapps.com/infra/erp/models/user.mod.yao
   "RUN": {
-    "DELETE": ["columns.1", "columns.2"], // remove user_sn, user_no fields
-    "REPLACE": ["table"], // replace the fields with the new definition
+    "DELETE": ["columns[1]", "columns[2]"], // remove user_sn, user_no fields
+    "REPLACE": [{ "table": "$new.table" }], // replace the fields with the new definition
     "MERGE": [
       {
         // merge mobile field add validations
@@ -17,7 +17,20 @@
         }
       }
     ], // do not deep merge
-    "APPEND": ["columns", "indexes"] // append the new definition to the fields ( optional , is the default operation )
+    "APPEND": [
+      {
+        "columns": [
+          {
+            "comment": "Published At",
+            "index": true,
+            "label": "Published At",
+            "name": "published_at",
+            "nullable": true,
+            "type": "datetime"
+          }
+        ]
+      }
+    ] // append the new definition to the fields
   },
   "table": { "name": "user", "comment": "User" },
   "columns": [

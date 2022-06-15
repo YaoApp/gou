@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/dsl/workshop"
+	"github.com/yaoapp/kun/maps"
 )
 
 func TestYaoOpen(t *testing.T) {
@@ -73,4 +74,35 @@ func TestYaoCompileModelFromRemoteDeep(t *testing.T) {
 	}
 
 	assert.Equal(t, 3, len(yao.Trace))
+}
+
+func TestYaoCompileModelMerge(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APP_ROOT")
+	file := filepath.Join(root, "models", "from", "merge.mod.yao")
+	workshop, err := workshop.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	yao := New(workshop)
+	err = yao.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = yao.Compile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res := maps.Of(yao.Compiled).Dot()
+
+	assert.Equal(t, "Merge", res.Get("name"))
+	assert.Equal(t, "author_index", res.Get("indexes[0].name"))
+	assert.Equal(t, "New User", res.Get("columns[1].label"))
+	assert.Equal(t, "New Author {{input}} should be string", res.Get("columns[3].validations[0].message"))
+	assert.Equal(t, "author_index", res.Get("indexes[0].name"))
+	assert.Equal(t, "user_id_phone_unique", res.Get("indexes[1].name"))
+	assert.Equal(t, false, res.Has("tmpl"))
+
 }

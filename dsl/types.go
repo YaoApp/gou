@@ -40,10 +40,10 @@ type Head struct {
 
 // Command the DSL command
 type Command struct {
-	DELETE  []string                 // remove the given fields
-	MERGE   []map[string]interface{} // merge fields with the given values (not deep merge)
-	APPEND  []string                 // append to the array fields with the given values
-	REPLACE []string                 //  replace the fields with the new definition
+	DELETE  []string                   // remove the given fields
+	MERGE   []map[string]interface{}   // merge fields with the given values (not deep merge)
+	REPLACE []map[string]interface{}   // replace the fields with the new definition
+	APPEND  []map[string][]interface{} // append to the array fields with the given values
 }
 
 const (

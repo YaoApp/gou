@@ -139,19 +139,29 @@ func (head *Head) setAppend(input interface{}) error {
 	}
 
 	if value, ok := input.([]interface{}); ok {
-		cmds := []string{}
+		cmds := []map[string][]interface{}{}
 		for i, val := range value {
-			cmd, ok := val.(string)
+			icmd, ok := val.(map[string]interface{})
 			if !ok {
-				return fmt.Errorf("the APPEND should be array of string, but got APPEND.%d: %#v", i, val)
+				return fmt.Errorf("the APPEND should be array of map string array, but got APPEND.%d: %#v", i, val)
 			}
+
+			cmd := map[string][]interface{}{}
+			for key, v := range icmd {
+				c, ok := v.([]interface{})
+				if !ok {
+					return fmt.Errorf("the APPEND should be array of map string array, but got APPEND.%d: %#v", i, val)
+				}
+				cmd[key] = c
+			}
+
 			cmds = append(cmds, cmd)
 		}
 		head.Run.APPEND = cmds
 		return nil
 	}
 
-	return fmt.Errorf("the APPEND should be array of string, but got: %#v", input)
+	return fmt.Errorf("the APPEND should be array of map string array, but got: %#v", input)
 }
 
 // setDelete set the DELETE of DSL
@@ -183,11 +193,11 @@ func (head *Head) setReplace(input interface{}) error {
 	}
 
 	if value, ok := input.([]interface{}); ok {
-		cmds := []string{}
+		cmds := []map[string]interface{}{}
 		for i, val := range value {
-			cmd, ok := val.(string)
+			cmd, ok := val.(map[string]interface{})
 			if !ok {
-				return fmt.Errorf("the REPLACE should be array of string, but got REPLACE.%d: %#v", i, val)
+				return fmt.Errorf("the REPLACE should be array of map, but got REPLACE.%d: %#v", i, val)
 			}
 			cmds = append(cmds, cmd)
 		}
@@ -208,7 +218,7 @@ func (head *Head) setMerge(merge interface{}) error {
 		for i, val := range values {
 			cmd, ok := val.(map[string]interface{})
 			if !ok {
-				return fmt.Errorf("the MERGE should be array of map string, but got MERGE.%d: %v", i, val)
+				return fmt.Errorf("the MERGE should be array of map, but got MERGE.%d: %v", i, val)
 			}
 			cmds = append(cmds, cmd)
 		}

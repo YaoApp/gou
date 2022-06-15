@@ -1,0 +1,67 @@
+{
+  "LANG": "1.0.0",
+  "VERSION": "1.0.0",
+  "FROM": "@github.com/yaoapp/workshop-tests-cms/models/article",
+  "RUN": {
+    "REPLACE": [
+      { "table.name": "merge", "columns[1].label": "$new.tmpl.user.label" }
+    ],
+    "MERGE": [
+      {
+        // merge author field add validations ( not deep merge )
+        "columns[4]": {
+          "index": false,
+          "validations": [
+            {
+              "method": "typeof",
+              "args": ["string"],
+              "message": "New Author {{input}} should be string"
+            }
+          ]
+        }
+      }
+    ],
+    "APPEND": [
+      {
+        "indexes": [
+          { "name": "author_index", "type": "index", "columns": ["author"] }
+        ]
+      }
+    ], // append the new definition to the fields ( optional , is the default operation )
+    "DELETE": ["columns[3]", "tmpl"] // remove Abstract field, tmpl
+  },
+  "name": "Merge",
+  "columns": [
+    {
+      "label": "Phone",
+      "name": "phone",
+      "type": "string",
+      "length": 50,
+      "comment": "Phone number",
+      "nullable": true,
+      "crypt": "AES",
+      "validations": [
+        {
+          "method": "typeof",
+          "args": ["string"],
+          "message": "New {{input}} should be string"
+        }
+      ]
+    }
+  ],
+  "indexes": [
+    {
+      "name": "user_id_phone_unique",
+      "type": "unique",
+      "columns": ["user_id", "phone"]
+    }
+  ],
+  "tmpl": {
+    "user": {
+      "label": "New User",
+      "name": "user_id",
+      "type": "bigInteger",
+      "comment": "User (user.id)"
+    }
+  }
+}
