@@ -12,6 +12,7 @@ env:
   GOU_TEST_REDIS_PORT: "6379"
   GOU_TEST_GITHUB_TOKEN: ${{ secrets.GOU_TEST_GITHUB_TOKEN }}
   GOU_TEST_GITHUB_REPO: github.com/YaoApp/workshop-tests-private
+  GOU_TEST_DSL_TABLE_NAME: test_env
 
 jobs:
   unit-test:
