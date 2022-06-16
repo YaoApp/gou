@@ -232,6 +232,8 @@ func (workshop *Workshop) Add(pkg *Package, process func(total uint64, pkg *Pack
 	workshop.Require = append(workshop.Require, pkg)
 	workshop.Mapping[pkg.Alias] = pkg
 	workshop.Mapping[pkg.Unique] = pkg
+	workshop.Mapping[pkg.Addr] = pkg
+	workshop.Mapping[pkg.Name] = pkg
 
 	// add Dependencies
 	deps, err := pkg.Dependencies()

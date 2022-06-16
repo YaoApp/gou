@@ -20,8 +20,8 @@ func TestOpenWorkshop(t *testing.T) {
 	}
 
 	// utils.Dump(workshop)
-	assert.Equal(t, 9, len(workshop.Require))
-	assert.Equal(t, 28, len(workshop.Mapping))
+	assert.Equal(t, 11, len(workshop.Require))
+	assert.Equal(t, 34, len(workshop.Mapping))
 
 	// utils.Dump(workshop)
 
@@ -49,7 +49,7 @@ func TestWorkshopGetBlank(t *testing.T) {
 	assert.Equal(t, 0, len(workshop.Require))
 	get(t, workshop, "github.com/yaoapp/demo-wms/cloud", "wms")
 	assert.Equal(t, 1, len(workshop.Require))
-	assert.Equal(t, 2, len(workshop.Mapping))
+	assert.Equal(t, 4, len(workshop.Mapping))
 	assert.Equal(t, false, workshop.Require[0].Replaced)
 	assert.Equal(t, true, workshop.Require[0].Downloaded)
 	assert.Equal(t, "github.com/yaoapp/demo-wms/cloud@0.9.5", workshop.Require[0].URL)
