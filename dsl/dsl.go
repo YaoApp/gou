@@ -13,7 +13,13 @@ func (yao *YAO) Change(file string, event int) error {
 
 // Refresh DSL
 func (yao *YAO) Refresh() error {
-	return yao.DSL.DSLRefresh()
+	file := yao.Head.File
+	*yao = *New(yao.Workshop) // RENEW
+	err := yao.Open(file)
+	if err != nil {
+		return fmt.Errorf("%s %s", yao.Head.File, err.Error())
+	}
+	return yao.DSL.DSLRefresh(yao.Workshop.Root(), yao.Head.File, yao.Compiled)
 }
 
 // Check DSL

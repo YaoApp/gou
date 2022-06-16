@@ -17,7 +17,9 @@ func (tpl *Template) DSLCompile(root string, file string, source map[string]inte
 func (tpl *Template) DSLCheck(source map[string]interface{}) error { return nil }
 
 // DSLRefresh refresh the DSL
-func (tpl *Template) DSLRefresh() error { return nil }
+func (tpl *Template) DSLRefresh(root string, file string, source map[string]interface{}) error {
+	return nil
+}
 
 // DSLChange on the DSL file change
 func (tpl *Template) DSLChange(file string, event int) error { return nil }

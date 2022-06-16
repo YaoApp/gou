@@ -1,6 +1,7 @@
 package model
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -56,7 +57,51 @@ func TestDSLCheckFatal(t *testing.T) {
 	assert.Contains(t, err.Error(), "fatal.mod.yao columns[11].name id is existed")
 }
 
-func TestDSLRefresh(t *testing.T) {}
+func TestDSLRefresh(t *testing.T) {
+	yao := newModel(t, "simple.mod.yao")
+	err := yao.Compile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, has := gou.Models["simple"]
+	assert.Equal(t, true, has)
+	assert.Equal(t, "simple", m.Name)
+	assert.Equal(t, "simple_tab", m.MetaData.Table.Name)
+	assert.Equal(t, 14, len(m.ColumnNames))
+
+	// Backup content
+	file := yao.Head.File
+	backup, err := ioutil.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ioutil.WriteFile(file, backup, 0644) // RESET
+
+	// change the content
+	err = ioutil.WriteFile(file, []byte(`{
+		"LANG": "1.0.0",
+		"VERSION": "1.0.0",
+		"FROM": "@github.com/yaoapp/workshop-tests-crm/models/user",
+		"table": { "name": "simple_refresh_tab" }
+	  }`), 0644)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = yao.Refresh()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, has = gou.Models["simple"]
+	assert.Equal(t, true, has)
+	assert.Equal(t, "simple", m.Name)
+	assert.Equal(t, "simple_refresh_tab", m.MetaData.Table.Name)
+	assert.Equal(t, 14, len(m.ColumnNames))
+
+}
 
 func TestDSLChange(t *testing.T) {}
 

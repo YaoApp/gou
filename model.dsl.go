@@ -66,7 +66,11 @@ func (mod *Model) DSLCheck(source map[string]interface{}) error {
 }
 
 // DSLRefresh refresh the DSL
-func (mod *Model) DSLRefresh() error { return nil }
+func (mod *Model) DSLRefresh(root string, file string, source map[string]interface{}) error {
+	fullname, _, _ := mod.nameRouter(root, file)
+	delete(Models, fullname)
+	return mod.DSLCompile(root, file, source)
+}
 
 // DSLChange on the DSL file change
 func (mod *Model) DSLChange(file string, event int) error { return nil }

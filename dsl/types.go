@@ -21,7 +21,7 @@ type YAO struct {
 type DSL interface {
 	DSLCompile(root string, file string, source map[string]interface{}) error
 	DSLCheck(source map[string]interface{}) error
-	DSLRefresh() error
+	DSLRefresh(root string, file string, source map[string]interface{}) error
 	DSLChange(file string, event int) error
 }
 
