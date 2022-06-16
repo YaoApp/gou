@@ -6,7 +6,7 @@ func MakeModel() *Model {
 }
 
 // DSLCompile compile the DSL
-func (mod *Model) DSLCompile() error { return nil }
+func (mod *Model) DSLCompile(source map[string]interface{}) error { return nil }
 
 // DSLCheck check the DSL
 func (mod *Model) DSLCheck() error { return nil }

@@ -7,18 +7,19 @@ import (
 
 // YAO the YAO DSL
 type YAO struct {
-	Head     *Head
-	Content  map[string]interface{}
-	Compiled map[string]interface{}
-	DSL      DSL
-	Workshop *workshop.Workshop // DSL workshop
-	Trace    []string           // FROM Trace
-	Mode     string             // ? development | production
+	Head      *Head
+	Content   map[string]interface{}
+	Compiled  map[string]interface{}
+	DSL       DSL
+	Workshop  *workshop.Workshop // DSL workshop
+	Trace     []string           // FROM Trace
+	templates map[string]*YAO    // The templates cache
+	Mode      string             // ? development | production
 }
 
 // DSL the YAO domain specific language interface
 type DSL interface {
-	DSLCompile() error
+	DSLCompile(source map[string]interface{}) error
 	DSLCheck() error
 	DSLRefresh() error
 	DSLRegister() error
@@ -65,6 +66,8 @@ const (
 	Oracle
 	// ClickHouse the ClickHouse connector
 	ClickHouse
+	// SQLite the SQLite3 connector
+	SQLite
 	// Elastic the Elastic connector
 	Elastic
 	// Redis the Redis connector
@@ -113,6 +116,7 @@ var TypeExtensions = map[int]string{
 	Oracle:     "oracle",
 	TiDB:       "tidb",
 	ClickHouse: "click",
+	SQLite:     "db",
 	Redis:      "redis",
 	MongoDB:    "mongo",
 	Socket:     "sock",
@@ -137,6 +141,7 @@ var ExtensionTypes = map[string]int{
 	"my":         MySQL,
 	"pgsql":      PgSQL,
 	"pg":         PgSQL,
+	"db":         SQLite,
 	"tidb":       TiDB,
 	"oracle":     Oracle,
 	"click":      ClickHouse,
@@ -167,7 +172,7 @@ var DirTypes = map[string][]int{
 	"/apis":       {HTTP, MQTT},
 	"/models":     {Model},
 	"/flows":      {Flow},
-	"/connectors": {MySQL, PgSQL, Oracle, TiDB, ClickHouse, Redis, MongoDB, Elastic},
+	"/connectors": {MySQL, PgSQL, Oracle, TiDB, SQLite, ClickHouse, Redis, MongoDB, Elastic},
 	"/services":   {Socket, WebSocket, Store, Queue},
 	"/schedules":  {Schedule},
 	"/components": {Component},
@@ -180,6 +185,7 @@ var TypeDirs = map[int]string{
 	MQTT:       "/apis",
 	Model:      "/models",
 	Flow:       "/flows",
+	SQLite:     "/connectors",
 	MySQL:      "/connectors",
 	PgSQL:      "/connectors",
 	Oracle:     "/connectors",

@@ -9,7 +9,7 @@ func MakeTemplate() *Template {
 }
 
 // DSLCompile compile the DSL
-func (tpl *Template) DSLCompile() error { return nil }
+func (tpl *Template) DSLCompile(source map[string]interface{}) error { return nil }
 
 // DSLCheck check the DSL
 func (tpl *Template) DSLCheck() error { return nil }

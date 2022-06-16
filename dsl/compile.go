@@ -2,6 +2,7 @@ package dsl
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 var regArr, _ = regexp.Compile(`([a-zA-Z0-9_-]+)\[([0-9]+)\]+`)
 var keepFields = map[string]bool{"FROM": true, "RUN": true}
+var templateRefs = map[string][]string{}
 
 // compile compile the content
 func (yao *YAO) compile() error {
@@ -29,6 +31,12 @@ func (yao *YAO) compile() error {
 
 	// Compile From
 	err = yao.compileFrom()
+	if err != nil {
+		return err
+	}
+
+	// Compile Env
+	err = yao.compileEnv()
 	if err != nil {
 		return err
 	}
@@ -52,6 +60,16 @@ func (yao *YAO) compileFrom() error {
 // compileCopy
 func (yao *YAO) compileCopy() error {
 	compiled, err := yao.runCopy(yao.Compiled)
+	if err != nil {
+		return err
+	}
+	yao.Compiled = compiled
+	return nil
+}
+
+// compileEnv
+func (yao *YAO) compileEnv() error {
+	compiled, err := yao.runEnv(yao.Compiled)
 	if err != nil {
 		return err
 	}
@@ -286,14 +304,12 @@ func (yao *YAO) runDelete(content maps.MapStr) error {
 	if yao.Head.Run.DELETE == nil {
 		return nil
 	}
-
 	for _, key := range yao.Head.Run.DELETE {
 		err := yao.deleteValue(content, key)
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -358,6 +374,42 @@ func (yao *YAO) runCopy(content map[string]interface{}) (map[string]interface{},
 	return content, nil
 }
 
+func (yao *YAO) runEnv(content map[string]interface{}) (map[string]interface{}, error) {
+
+	for key, value := range content {
+
+		if v, ok := value.(string); ok && strings.HasPrefix(v, "$env.") {
+			name := strings.TrimPrefix(v, "$env.")
+			content[key] = os.Getenv(name)
+		}
+
+		if mapstr, ok := value.(map[string]interface{}); ok {
+			new, err := yao.runEnv(mapstr)
+			if err != nil {
+				return nil, err
+			}
+			content[key] = new
+			continue
+		}
+
+		if arrany, ok := value.([]interface{}); ok {
+			for i := range arrany {
+				if v, ok := arrany[i].(map[string]interface{}); ok {
+					new, err := yao.runEnv(v)
+					if err != nil {
+						return nil, err
+					}
+					arrany[i] = new
+				}
+			}
+			content[key] = arrany
+			continue
+		}
+	}
+
+	return content, nil
+}
+
 func (yao *YAO) openTemplate(name string) (*YAO, string, error) {
 
 	tplpaths := strings.Split(name, "/")
@@ -371,17 +423,32 @@ func (yao *YAO) openTemplate(name string) (*YAO, string, error) {
 	}
 	paths = append(paths, filename)
 	file := filepath.Join(paths...)
-	tpl := New(yao.Workshop)
-	err := tpl.Open(file)
-	if err != nil {
-		return nil, "", fmt.Errorf("Open template %s Error: %s", name, err.Error())
+
+	var tpl *YAO
+	if t, has := yao.templates[file]; has {
+		tpl = t
+
+	} else {
+		tpl = New(yao.Workshop)
+		err := tpl.Open(file)
+		if err != nil {
+			return nil, "", fmt.Errorf("Open template %s Error: %s", name, err.Error())
+		}
+
+		err = tpl.Compile()
+		if err != nil {
+			return nil, "", fmt.Errorf("Open template %s Compile Error: %s", name, err.Error())
+		}
+
+		yao.templates[file] = tpl
 	}
 
-	err = tpl.Compile()
-	if err != nil {
-		return nil, "", fmt.Errorf("Open template %s Compile Error: %s", name, err.Error())
+	// Add to templates references
+	if _, has := templateRefs[file]; !has {
+		templateRefs[file] = []string{}
 	}
 
+	templateRefs[file] = append(templateRefs[file], yao.Head.File)
 	return tpl, varname, nil
 }
 
@@ -588,9 +655,16 @@ func (yao *YAO) deleteArrayValue(content maps.MapStr, key string, idx int) error
 
 func (yao *YAO) getValue(new maps.MapStr, value interface{}) interface{} {
 	v, ok := value.(string)
-	if ok && strings.HasPrefix(v, "$new.") {
-		key := strings.TrimPrefix(v, "$new.")
-		return new.Get(key)
+	if ok {
+		if strings.HasPrefix(v, "$new.") {
+			key := strings.TrimPrefix(v, "$new.")
+			return new.Get(key)
+		}
+
+		if strings.HasPrefix(v, "$env.") {
+			key := strings.TrimPrefix(v, "$env.")
+			return os.Getenv(key)
+		}
 	}
 	return value
 }

@@ -35,6 +35,7 @@ type Model struct {
 // MetaData 元数据
 type MetaData struct {
 	Name      string              `json:"name,omitempty"`      // 元数据名称
+	Connector string              `json:"connector,omitempty"` // Bind a connector, MySQL, SQLite, Postgres, Clickhouse, Tidb, Oracle support. default is SQLite
 	Table     Table               `json:"table,omitempty"`     // 数据表选项
 	Columns   []Column            `json:"columns,omitempty"`   // 字段定义
 	Indexes   []Index             `json:"indexes,omitempty"`   // 索引定义
@@ -119,6 +120,7 @@ type Option struct {
 	Constraints bool `json:"constraints,omitempty"`  // + 约束定义
 	Permission  bool `json:"permission,omitempty"`   // + __permission 字段
 	Logging     bool `json:"logging,omitempty"`      // + __logging_id 字段
+
 }
 
 // ColumnMap ColumnMap 字段映射

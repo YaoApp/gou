@@ -32,7 +32,7 @@ func (yao *YAO) Compile() error {
 	if err != nil {
 		return err
 	}
-	return yao.DSL.DSLCompile()
+	return yao.DSL.DSLCompile(yao.Compiled)
 }
 
 // NewDSL create DSL with type
@@ -46,7 +46,7 @@ func NewDSL(kind int) (DSL, error) {
 		return gou.MakeTemplate(), nil
 	case Flow:
 		return nil, nil
-	case MySQL, PgSQL, Oracle, TiDB, ClickHouse, Redis, MongoDB, Elastic:
+	case MySQL, PgSQL, Oracle, TiDB, ClickHouse, Redis, MongoDB, Elastic, SQLite:
 		return nil, nil
 	case Socket, WebSocket, Store, Queue:
 		return nil, nil

@@ -11,10 +11,11 @@ import (
 // New create a new YAO DSL
 func New(workshop *workshop.Workshop) *YAO {
 	return &YAO{
-		Head:     NewHead(),
-		Content:  map[string]interface{}{},
-		Workshop: workshop,
-		Trace:    []string{},
+		Head:      NewHead(),
+		Content:   map[string]interface{}{},
+		Workshop:  workshop,
+		Trace:     []string{},
+		templates: map[string]*YAO{},
 	}
 }
 

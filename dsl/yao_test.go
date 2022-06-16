@@ -150,4 +150,47 @@ func TestYaoCompileModelCopy(t *testing.T) {
 	assert.Equal(t, "Copy from user {{input}} should be string", res.Get("columns[8].validations[0].message"))
 	assert.Equal(t, "product_title", res.Get("columns[9].name"))
 	assert.Equal(t, "Copy from dict/product {{input}} should be string", res.Get("columns[9].validations[0].message"))
+	assert.Equal(t, 2, len(templateRefs))
+	validate := map[string]string{
+		"user.tpl.yao":    "copy.mod.yao",
+		"product.tpl.yao": "copy.mod.yao",
+	}
+	for key, val := range templateRefs {
+		key = filepath.Base(key)
+		assert.NotEmpty(t, validate[key])
+		for _, v := range val {
+			v = filepath.Base(v)
+			assert.Equal(t, validate[key], v)
+		}
+	}
+}
+
+func TestYaoCompileModelEnv(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APP_ROOT")
+	file := filepath.Join(root, "models", "from", "env.mod.yao")
+	workshop, err := workshop.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	yao := New(workshop)
+	err = yao.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = yao.Compile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res := maps.Of(yao.Compiled).Dot()
+	assert.Equal(t, "test_env", res.Get("table.name"))
+	assert.Equal(t, "phone_no", res.Get("columns[8].name"))
+	assert.Equal(t, "test_env", res.Get("columns[8].comment"))
+	assert.Equal(t, "ENV NAME user {{input}} should be string", res.Get("columns[8].validations[0].message"))
+	assert.Equal(t, "product_title", res.Get("columns[9].name"))
+	assert.Equal(t, "test_env", res.Get("columns[9].comment"))
+	assert.Equal(t, "Copy from dict/product {{input}} should be string", res.Get("columns[9].validations[0].message"))
+
 }
