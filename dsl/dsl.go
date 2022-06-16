@@ -16,6 +16,15 @@ func (yao *YAO) Refresh() error {
 	return yao.DSL.DSLRefresh()
 }
 
+// Check DSL
+func (yao *YAO) Check() error {
+	err := yao.DSL.DSLCheck(yao.Compiled)
+	if err != nil {
+		return fmt.Errorf("%s %s", yao.Head.File, err.Error())
+	}
+	return nil
+}
+
 // Compile compile the content
 func (yao *YAO) Compile() error {
 	err := yao.DSL.DSLCheck(yao.Compiled)

@@ -48,13 +48,61 @@ func (mod *Model) DSLCompile(root string, file string, source map[string]interfa
 }
 
 // DSLCheck check the DSL
-func (mod *Model) DSLCheck(source map[string]interface{}) error { return nil }
+func (mod *Model) DSLCheck(source map[string]interface{}) error {
+
+	// Check Columns
+	err := mod.checkColumns(source["columns"])
+	if err != nil {
+		return err
+	}
+
+	// Check Indexes
+
+	// Check Relations
+
+	// Check Options
+
+	return nil
+}
 
 // DSLRefresh refresh the DSL
 func (mod *Model) DSLRefresh() error { return nil }
 
 // DSLChange on the DSL file change
 func (mod *Model) DSLChange(file string, event int) error { return nil }
+
+func (mod *Model) checkColumns(input interface{}) error {
+	columns, ok := input.([]interface{})
+	if !ok {
+		return fmt.Errorf("columns should be a array, bug got:%#v", input)
+	}
+
+	loaded := map[string]int{}
+	for i, column := range columns {
+		col, ok := column.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("columns[%d] should be a map, bug got:%#v", i, column)
+		}
+
+		name, has := col["name"].(string)
+		if !has {
+			return fmt.Errorf("columns[%d].name is required and should be a string, bug got:%#v", i, column)
+		}
+
+		if _, has := loaded[name]; has {
+			return fmt.Errorf("columns[%d].name %s is existed, check columns[%d]", i, name, loaded[name])
+		}
+
+		// t, has := col["type"].(string)
+		// if !has {
+		// 	return fmt.Errorf("columns[%d].name is required and should be a string, bug got:%#v", i, column)
+		// }
+
+		loaded[name] = i
+	}
+
+	return nil
+}
 
 // nameRouter get the model name from router
 func (mod *Model) nameRouter(root string, file string) (fullname string, namespace string, name string) {

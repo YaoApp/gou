@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-playground/assert/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou"
 	"github.com/yaoapp/gou/dsl"
 	"github.com/yaoapp/gou/dsl/workshop"
@@ -50,11 +50,13 @@ func TestDSLCompileRouterTableName(t *testing.T) {
 	assert.Equal(t, 16, len(m.ColumnNames))
 }
 
-func TestDSLCheck(t *testing.T) {}
+func TestDSLCheckFatal(t *testing.T) {
+	yao := newModel(t, "fatal.mod.yao")
+	err := yao.Check()
+	assert.Contains(t, err.Error(), "fatal.mod.yao columns[11].name id is existed")
+}
 
 func TestDSLRefresh(t *testing.T) {}
-
-func TestDSLRegister(t *testing.T) {}
 
 func TestDSLChange(t *testing.T) {}
 
