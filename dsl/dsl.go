@@ -11,24 +11,18 @@ func (yao *YAO) Change(file string, event int) error {
 	return yao.DSL.DSLChange(file, event)
 }
 
-// Register the DSL
-func (yao *YAO) Register() error {
-	return yao.DSL.DSLRegister()
-}
-
 // Refresh DSL
 func (yao *YAO) Refresh() error {
 	return yao.DSL.DSLRefresh()
 }
 
-// Dependencies check the Dependencies list
-func (yao *YAO) Dependencies() ([]string, error) {
-	return yao.DSL.DSLDependencies()
-}
-
 // Compile compile the content
 func (yao *YAO) Compile() error {
-	return yao.DSL.DSLCompile(yao.Compiled)
+	err := yao.DSL.DSLCheck(yao.Compiled)
+	if err != nil {
+		return err
+	}
+	return yao.DSL.DSLCompile(yao.Workshop.Root(), yao.Head.File, yao.Compiled)
 }
 
 // NewDSL create DSL with type

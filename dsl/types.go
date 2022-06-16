@@ -19,12 +19,10 @@ type YAO struct {
 
 // DSL the YAO domain specific language interface
 type DSL interface {
-	DSLCompile(source map[string]interface{}) error
-	DSLCheck() error
+	DSLCompile(root string, file string, source map[string]interface{}) error
+	DSLCheck(source map[string]interface{}) error
 	DSLRefresh() error
-	DSLRegister() error
 	DSLChange(file string, event int) error
-	DSLDependencies() ([]string, error)
 }
 
 // Head the YAO domain specific language Head

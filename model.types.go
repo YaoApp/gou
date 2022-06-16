@@ -93,7 +93,8 @@ type Index struct {
 
 // Table the model mapping table in DB
 type Table struct {
-	Name        string   `json:"name"`
+	Name        string   `json:"name,omitempty"`   // optional, if not set, the default is generate from model name. eg name.space.user, table name is name_space_user
+	Prefix      string   `json:"prefix,omitempty"` // optional, the table prefix
 	Comment     string   `json:"comment,omitempty"`
 	Engine      string   `json:"engine,omitempty"` // InnoDB,MyISAM ( MySQL Only )
 	Collation   string   `json:"collation"`
@@ -120,7 +121,7 @@ type Option struct {
 	Constraints bool `json:"constraints,omitempty"`  // + 约束定义
 	Permission  bool `json:"permission,omitempty"`   // + __permission 字段
 	Logging     bool `json:"logging,omitempty"`      // + __logging_id 字段
-
+	Readonly    bool `json:"read_only,omitempty"`    // Ignore the migrate operation
 }
 
 // ColumnMap ColumnMap 字段映射
