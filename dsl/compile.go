@@ -35,7 +35,10 @@ func (yao *YAO) compile() error {
 		return err
 	}
 
-	// Compile Env
+	// @TODO:
+	// SHOULD BE CACHED THE COMPILED CODE
+
+	// Replace Env
 	err = yao.compileEnv()
 	if err != nil {
 		return err
@@ -346,7 +349,11 @@ func (yao *YAO) runCopy(content map[string]interface{}) (map[string]interface{},
 			return content, nil
 		}
 
-		if mapstr, ok := value.(map[string]interface{}); ok {
+		mapstr, ok := value.(map[string]interface{})
+		if !ok {
+			mapstr, ok = value.(maps.MapStr)
+		}
+		if ok {
 			new, err := yao.runCopy(mapstr)
 			if err != nil {
 				return nil, err
@@ -383,7 +390,11 @@ func (yao *YAO) runEnv(content map[string]interface{}) (map[string]interface{}, 
 			content[key] = os.Getenv(name)
 		}
 
-		if mapstr, ok := value.(map[string]interface{}); ok {
+		mapstr, ok := value.(map[string]interface{})
+		if !ok {
+			mapstr, ok = value.(maps.MapStr)
+		}
+		if ok {
 			new, err := yao.runEnv(mapstr)
 			if err != nil {
 				return nil, err
@@ -661,10 +672,10 @@ func (yao *YAO) getValue(new maps.MapStr, value interface{}) interface{} {
 			return new.Get(key)
 		}
 
-		if strings.HasPrefix(v, "$env.") {
-			key := strings.TrimPrefix(v, "$env.")
-			return os.Getenv(key)
-		}
+		// if strings.HasPrefix(v, "$env.") {
+		// 	key := strings.TrimPrefix(v, "$env.")
+		// 	return os.Getenv(key)
+		// }
 	}
 	return value
 }
