@@ -23,3 +23,8 @@ func (tpl *Template) DSLRefresh(root string, file string, source map[string]inte
 
 // DSLChange on the DSL file change
 func (tpl *Template) DSLChange(file string, event int) error { return nil }
+
+// DSLRemove the DSL
+func (tpl *Template) DSLRemove(root string, file string) error {
+	return nil
+}

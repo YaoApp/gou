@@ -72,8 +72,12 @@ func (mod *Model) DSLRefresh(root string, file string, source map[string]interfa
 	return mod.DSLCompile(root, file, source)
 }
 
-// DSLChange on the DSL file change
-func (mod *Model) DSLChange(file string, event int) error { return nil }
+// DSLRemove the DSL
+func (mod *Model) DSLRemove(root string, file string) error {
+	fullname, _, _ := mod.nameRouter(root, file)
+	delete(Models, fullname)
+	return nil
+}
 
 func (mod *Model) checkColumns(input interface{}) error {
 	columns, ok := input.([]interface{})

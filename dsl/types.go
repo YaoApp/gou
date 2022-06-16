@@ -22,7 +22,7 @@ type DSL interface {
 	DSLCompile(root string, file string, source map[string]interface{}) error
 	DSLCheck(source map[string]interface{}) error
 	DSLRefresh(root string, file string, source map[string]interface{}) error
-	DSLChange(file string, event int) error
+	DSLRemove(root string, file string) error
 }
 
 // Head the YAO domain specific language Head

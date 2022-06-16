@@ -6,22 +6,6 @@ import (
 	"github.com/yaoapp/gou"
 )
 
-// Change on file change
-func (yao *YAO) Change(file string, event int) error {
-	return yao.DSL.DSLChange(file, event)
-}
-
-// Refresh DSL
-func (yao *YAO) Refresh() error {
-	file := yao.Head.File
-	*yao = *New(yao.Workshop) // RENEW
-	err := yao.Open(file)
-	if err != nil {
-		return fmt.Errorf("%s %s", yao.Head.File, err.Error())
-	}
-	return yao.DSL.DSLRefresh(yao.Workshop.Root(), yao.Head.File, yao.Compiled)
-}
-
 // Check DSL
 func (yao *YAO) Check() error {
 	err := yao.DSL.DSLCheck(yao.Compiled)
@@ -38,6 +22,47 @@ func (yao *YAO) Compile() error {
 		return err
 	}
 	return yao.DSL.DSLCompile(yao.Workshop.Root(), yao.Head.File, yao.Compiled)
+}
+
+// Refresh DSL
+func (yao *YAO) Refresh() error {
+	file := yao.Head.File
+	*yao = *New(yao.Workshop) // RENEW
+	err := yao.Open(file)
+	if err != nil {
+		return fmt.Errorf("%s %s", yao.Head.File, err.Error())
+	}
+	return yao.DSL.DSLRefresh(yao.Workshop.Root(), yao.Head.File, yao.Compiled)
+}
+
+// Remove DSL
+func (yao *YAO) Remove() error {
+	err := yao.DSL.DSLRemove(yao.Workshop.Root(), yao.Head.File)
+	if err != nil {
+		return err
+	}
+	*yao = *New(yao.Workshop) // RENEW
+	return nil
+}
+
+// On the DSL file change
+func (yao *YAO) On(event int, file string) error {
+
+	switch event {
+	case CREATE:
+		*yao = *New(yao.Workshop)
+		err := yao.Open(file)
+		if err != nil {
+			return fmt.Errorf("%s %s", yao.Head.File, err.Error())
+		}
+		return yao.Compile()
+	case CHANGE:
+		return yao.Refresh()
+	case REMOVE:
+		return yao.Remove()
+	}
+
+	return nil
 }
 
 // NewDSL create DSL with type
