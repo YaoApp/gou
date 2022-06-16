@@ -22,7 +22,7 @@ func (head *Head) SetFrom(from interface{}) bool {
 	}
 
 	if from, ok := from.(string); ok {
-		head.From = from
+		head.From = strings.ToLower(from)
 		return true
 	}
 
@@ -56,7 +56,7 @@ func (head *Head) SetType(kind int) {
 
 // SetName set the name of DSL
 func (head *Head) SetName(name string) {
-	head.Name = name
+	head.Name = strings.ToLower(name)
 }
 
 // SetFile parse file path and set the name and kind

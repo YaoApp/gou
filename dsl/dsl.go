@@ -28,10 +28,6 @@ func (yao *YAO) Dependencies() ([]string, error) {
 
 // Compile compile the content
 func (yao *YAO) Compile() error {
-	err := yao.compile()
-	if err != nil {
-		return err
-	}
 	return yao.DSL.DSLCompile(yao.Compiled)
 }
 

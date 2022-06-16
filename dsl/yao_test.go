@@ -26,7 +26,7 @@ func TestYaoOpen(t *testing.T) {
 	}
 
 	assert.FileExists(t, yao.Head.File)
-	assert.Equal(t, "@infra.erp.models.user", yao.Head.From)
+	assert.Equal(t, "@github.com/yaoapp/workshop-tests-erp/models/user", yao.Head.From)
 	assert.Equal(t, "1.0.0", yao.Head.Lang.String())
 	assert.Equal(t, "1.0.0", yao.Head.Version.String())
 	assert.Equal(t, Model, yao.Head.Type)
@@ -87,10 +87,6 @@ func TestYaoCompileModelFromRemoteDeep(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = yao.Compile()
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	assert.Equal(t, 3, len(yao.Trace))
 }
@@ -109,11 +105,6 @@ func TestYaoCompileModelMerge(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = yao.Compile()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	res := maps.Of(yao.Compiled).Dot()
 
 	assert.Equal(t, "Merge", res.Get("name"))
@@ -127,6 +118,8 @@ func TestYaoCompileModelMerge(t *testing.T) {
 }
 
 func TestYaoCompileModelCopy(t *testing.T) {
+
+	templateRefs = map[string][]string{} // clear cache
 	root := os.Getenv("GOU_TEST_APP_ROOT")
 	file := filepath.Join(root, "models", "from", "copy.mod.yao")
 	workshop, err := workshop.Open(root)
@@ -136,11 +129,6 @@ func TestYaoCompileModelCopy(t *testing.T) {
 
 	yao := New(workshop)
 	err = yao.Open(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = yao.Compile()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,6 +143,7 @@ func TestYaoCompileModelCopy(t *testing.T) {
 		"user.tpl.yao":    "copy.mod.yao",
 		"product.tpl.yao": "copy.mod.yao",
 	}
+
 	for key, val := range templateRefs {
 		key = filepath.Base(key)
 		assert.NotEmpty(t, validate[key])
@@ -175,11 +164,6 @@ func TestYaoCompileModelEnv(t *testing.T) {
 
 	yao := New(workshop)
 	err = yao.Open(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = yao.Compile()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -103,12 +103,6 @@ func (yao *YAO) compileFromRemote() error {
 		return err
 	}
 
-	// Compile remote file
-	err = remote.Compile()
-	if err != nil {
-		return err
-	}
-
 	// Append the remote trace
 	yao.Trace = append(yao.Trace, remote.Trace...)
 
@@ -143,6 +137,11 @@ func (yao *YAO) fromRemoteFile() (remoteWorkshop *workshop.Workshop, file string
 		})
 		if err != nil {
 			return nil, "", fmt.Errorf("The package %s does not loaded. %s", name, err.Error())
+		}
+
+		if !yao.Workshop.Has(name) {
+			fmt.Println("---", name)
+			return nil, "", fmt.Errorf("The package %s does not loaded", name)
 		}
 	}
 
@@ -484,7 +483,7 @@ func (yao *YAO) setValue(input maps.MapStr, key string, value interface{}) error
 		// columns
 		arr := any.Of(input.Get(key)).CArray()
 		if len(arr) <= idx {
-			return fmt.Errorf("%s[%d] does not existed", key, idx)
+			return fmt.Errorf("%s %s[%d] does not existed", yao.Head.File, key, idx)
 		}
 
 		// columns[0].label
@@ -502,7 +501,12 @@ func (yao *YAO) setValue(input maps.MapStr, key string, value interface{}) error
 
 	// table.name
 	// table
-	mapstr := any.Of(input.Get(keys[0])).MapStr()
+	// Check
+	val := any.Of(input.Get(keys[0]))
+	if !val.IsMap() {
+		return fmt.Errorf("%s %s should be map, but got: %#v", yao.Head.File, key, input.Get(keys[0]))
+	}
+	mapstr := val.MapStr()
 
 	// table.name
 	err := yao.setValue(mapstr, strings.Join(keys[1:], "."), value)
@@ -526,12 +530,12 @@ func (yao *YAO) isArrayKey(key string) (bool, string, int) {
 func (yao *YAO) setArrayValue(content maps.MapStr, key string, idx int, value interface{}) error {
 	arr := content.Get(key)
 	if !any.Of(arr).IsSlice() {
-		return fmt.Errorf("%s is not array", key)
+		return fmt.Errorf("%s %s is not array", yao.Head.File, key)
 	}
 
 	v := any.Of(arr).CArray()
 	if len(v) <= idx {
-		return fmt.Errorf("%s[%d] does not existed", key, idx)
+		return fmt.Errorf("%s %s[%d] does not existed", yao.Head.File, key, idx)
 	}
 
 	v[idx] = value
@@ -558,7 +562,7 @@ func (yao *YAO) deepMerge(content, merge map[string]interface{}) error {
 
 			valueMap, ok := valueAny.(map[string]interface{})
 			if !ok {
-				return fmt.Errorf("The %s value is %v, not a map", key, value)
+				return fmt.Errorf("The %s %s value is %v, not a map", yao.Head.File, key, value)
 			}
 
 			err := yao.deepMerge(valueMap, mapstr)
@@ -578,7 +582,7 @@ func (yao *YAO) deepMerge(content, merge map[string]interface{}) error {
 
 			valueArr, ok := valueAny.([]interface{})
 			if !ok {
-				return fmt.Errorf("The %s value is %v, not a array", key, value)
+				return fmt.Errorf("The %s %s value is %v, not a array", yao.Head.File, key, value)
 			}
 			valueArr = append(valueArr, arr...)
 			content[key] = valueArr
@@ -613,7 +617,7 @@ func (yao *YAO) deleteValue(input maps.MapStr, key string) error {
 		// columns
 		arr := any.Of(input.Get(key)).CArray()
 		if len(arr) <= idx {
-			return fmt.Errorf("%s[%d] does not existed", key, idx)
+			return fmt.Errorf("%s %s[%d] does not existed", yao.Head.File, key, idx)
 		}
 
 		// columns[0].label

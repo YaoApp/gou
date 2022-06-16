@@ -42,6 +42,12 @@ func (yao *YAO) Open(file string) error {
 	}
 	yao.DSL = dsl
 
+	// Compile FROM、RUN、COPY etc.
+	err = yao.compile()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

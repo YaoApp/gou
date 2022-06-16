@@ -1,12 +1,12 @@
 {
-  "FROM": "@infra.erp.models.user", // inherited from workshop.yaoapps.com/infra/erp/models/user.mod.yao
+  "FROM": "@github.com/YaoApp/workshop-tests-erp/models/user", // inherited from github.com/YaoApp/workshop-tests-erp/models/user
   "RUN": {
     "DELETE": ["columns[1]", "columns[2]"], // remove user_sn, user_no fields
     "REPLACE": [{ "table": "$new.table" }], // replace the fields with the new definition
     "MERGE": [
       {
         // merge mobile field add validations
-        "columns.5": {
+        "columns[5]": {
           "validations": [
             {
               "method": "mobile",
@@ -50,7 +50,7 @@
         }
       ]
     },
-    { "COPY": "@yaoapp.demo-wms.cloud.fields.supplier_id" } // copy the supplier supplier_id from github.com/yaoapp/templates/fields.tpl.yao
+    { "COPY": "user.phone" } // copy the supplier supplier_id from templates/user.tpl.yao
   ],
   "indexes": [
     {
