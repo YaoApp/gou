@@ -75,7 +75,7 @@ func NewDSL(kind int) (DSL, error) {
 	case Template:
 		return gou.MakeTemplate(), nil
 	case Flow:
-		return nil, nil
+		return gou.MakeFlow(), nil
 	case MySQL, PgSQL, Oracle, TiDB, ClickHouse, Redis, MongoDB, Elastic, SQLite:
 		return nil, nil
 	case Socket, WebSocket, Store, Queue:
