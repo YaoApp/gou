@@ -47,6 +47,6 @@ type Option struct {
 
 // In the in struct
 type In struct {
-	hanlder func(c *gin.Context, name string) interface{}
+	handler func(c *gin.Context, name string) interface{}
 	varname string
 }

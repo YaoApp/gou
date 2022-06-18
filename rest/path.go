@@ -95,7 +95,7 @@ var getHandlers = map[string]func(c *gin.Context, name string) interface{}{
 	},
 }
 
-// Handlers set the path hanlder
+// Handlers set the path handler
 func (path Path) setHandlers(router gin.IRoutes, guard string) error {
 	handlers, err := path.handlers(router, guard)
 	if err != nil {
@@ -207,24 +207,24 @@ func (path Path) input() func(c *gin.Context) []interface{} {
 			}
 
 			if get, has := getHandlers[vartype]; has {
-				gets = append(gets, In{hanlder: get, varname: varname})
+				gets = append(gets, In{handler: get, varname: varname})
 				continue
 			}
 		}
 		// Default var
-		gets = append(gets, In{hanlder: func(c *gin.Context, name string) interface{} { return in }, varname: ""})
+		gets = append(gets, In{handler: func(c *gin.Context, name string) interface{} { return in }, varname: ""})
 	}
 
 	return func(c *gin.Context) []interface{} {
 		values := []interface{}{}
 		for _, in := range gets {
-			values = append(values, in.hanlder(c, in.varname))
+			values = append(values, in.handler(c, in.varname))
 		}
 		return values
 	}
 }
 
-// set hanlders
+// set handlers
 func (path Path) set(router gin.IRoutes, handlers ...gin.HandlerFunc) error {
 	method := strings.TrimSpace(strings.ToUpper(path.Method))
 	switch method {
