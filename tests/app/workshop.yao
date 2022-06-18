@@ -8,7 +8,7 @@
     "workshop.yaoapps.com/infra/erp@0.1.0",
     "workshop.yaoapps.com/yao/hr@1.0.0",
     "workshop.yaoapps.com/yao/project@1.0.0",
-    "github.com/yaoapp/workshop-tests-cms@944e6c24ec1a",
+    "github.com/yaoapp/workshop-tests-cms@3b5b56e45ff1",
     "github.com/yaoapp/workshop-tests-crm@v0.2.1",
     "github.com/yaoapp/workshop-tests-erp@v0.2.0"
   ],
