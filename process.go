@@ -3,6 +3,7 @@ package gou
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/yaoapp/gou/session"
 	"github.com/yaoapp/kun/exception"
@@ -214,10 +215,18 @@ func processSession(process *Process) interface{} {
 		return ss.MustGet(process.ArgsString(0))
 	case "set":
 		process.ValidateArgNums(2)
+		if process.NumOfArgs() == 3 {
+			ss.MustSetWithEx(process.ArgsString(0), process.Args[1], time.Duration(process.ArgsInt(2))*time.Second)
+			return nil
+		}
 		ss.MustSet(process.ArgsString(0), process.Args[1])
 		return nil
 	case "setmany":
 		process.ValidateArgNums(1)
+		if process.NumOfArgs() == 2 {
+			ss.MustSetManyWithEx(process.ArgsMap(0), time.Duration(process.ArgsInt(1))*time.Second)
+			return nil
+		}
 		ss.MustSetMany(process.ArgsMap(0))
 		return nil
 	case "dump":
