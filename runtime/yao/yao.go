@@ -30,6 +30,7 @@ func New(numOfContexts int) *Yao {
 	}
 
 	yao.template.Set("fetch", v8.NewFunctionTemplate(yao.iso, yao.jsFetch))
+	yao.AddObjectTemplate("log", objects.NewLog().ExportObject(yao.iso))
 	yao.AddFunctionTemplates(map[string]*v8.FunctionTemplate{
 		"Exception": objects.NewException().ExportFunction(yao.iso),
 		"WebSocket": objects.NewWebSocket().ExportFunction(yao.iso),
@@ -201,6 +202,12 @@ func (yao *Yao) AddObject(name string, methods map[string]func(global map[string
 		jsFun := yao.goFunTemplate(fn)
 		object.Set(method, jsFun)
 	}
+	yao.objectTemplates[name] = object
+	return nil
+}
+
+// AddObjectTemplate add a global object template
+func (yao *Yao) AddObjectTemplate(name string, object *v8go.ObjectTemplate) error {
 	yao.objectTemplates[name] = object
 	return nil
 }
