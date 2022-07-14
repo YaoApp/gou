@@ -120,9 +120,6 @@ func TestMain(m *testing.M) {
 	LoadFlow("file://"+path.Join(TestFLWRoot, "user", "info.flow.json"), "user.info").
 		LoadScript("file://"+path.Join(TestFLWRoot, "user", "info.data.js"), "data")
 
-	LoadFlow("file://"+path.Join(TestFLWRoot, "rfid", "read.flow.json"), "rfid.read").
-		LoadScript("file://"+path.Join(TestFLWRoot, "rfid", "read.print.js"), "print")
-
 	// 加密密钥
 	LoadCrypt(fmt.Sprintf(`{"key":"%s"}`, TestAESKey), "AES")
 	LoadCrypt(`{}`, "PASSWORD")

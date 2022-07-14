@@ -53,7 +53,7 @@ func SelectSocket(name string) *Socket {
 // Start Start server
 func (sock Socket) Start(args ...interface{}) {
 	socket.Start(sock.Protocol, sock.Host, sock.Port, sock.BufferSize, sock.KeepAlive, func(data []byte, recvLen int, err error) ([]byte, error) {
-		res, err := NewProcess(sock.Process, hex.EncodeToString(data)).Exec()
+		res, err := NewProcess(sock.Event.Data, hex.EncodeToString(data)).Exec()
 		if err != nil {
 			log.Error(err.Error())
 			return nil, err
@@ -67,7 +67,7 @@ func (sock Socket) Start(args ...interface{}) {
 			v := fmt.Sprintf("%v", res)
 			return []byte(v), nil
 		}
-		return nil, fmt.Errorf("%s response data type error", sock.Process)
+		return nil, fmt.Errorf("%s response data type error", sock.Event.Data)
 	})
 }
 
@@ -94,7 +94,7 @@ func (sock Socket) Connect(args ...interface{}) error {
 		sock.BufferSize,
 		time.Duration(sock.KeepAlive)*time.Second,
 		func(data []byte, recvLen int, err error) ([]byte, error) {
-			res, err := NewProcess(sock.Process, hex.EncodeToString(data)).Exec()
+			res, err := NewProcess(sock.Event.Data, hex.EncodeToString(data)).Exec()
 			if err != nil {
 				return nil, err
 			}
@@ -109,6 +109,6 @@ func (sock Socket) Connect(args ...interface{}) error {
 				return []byte(v), nil
 			}
 
-			return nil, fmt.Errorf("%s response data type error", sock.Process)
+			return nil, fmt.Errorf("%s response data type error", sock.Event.Data)
 		})
 }

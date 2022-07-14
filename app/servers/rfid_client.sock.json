@@ -4,9 +4,13 @@
   "mode": "client",
   "version": "0.9.2",
   "protocol": "tcp",
-  "host": "192.168.1.192",
+  "host": "192.168.31.192",
   "port": "6000",
-  "process": "flows.rfid.read",
+  "event": {
+    "data": "scripts.rfid.onData",
+    "close": "scripts.rfid.onClose",
+    "error": "scripts.rfid.onError"
+  },
   "buffer": 60,
   "keep": 0
 }

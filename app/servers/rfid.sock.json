@@ -6,7 +6,11 @@
   "protocol": "tcp",
   "host": "0.0.0.0",
   "port": "3019",
-  "process": "flows.rfid.read",
+  "event": {
+    "data": "scripts.rfid.onData",
+    "close": "scripts.rfid.onClose",
+    "error": "scripts.rfid.onError"
+  },
   "keep": 0,
   "buffer": 60
 }

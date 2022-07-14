@@ -12,7 +12,9 @@ func TestLoadSocket(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, sock.Name, "RFID Receiver (Server Mode)")
 	assert.Equal(t, sock.Mode, "server")
-	assert.Equal(t, sock.Process, "flows.rfid.read")
+	assert.Equal(t, sock.Event.Data, "scripts.rfid.onData")
+	assert.Equal(t, sock.Event.Close, "scripts.rfid.onClose")
+	assert.Equal(t, sock.Event.Error, "scripts.rfid.onError")
 	assert.Equal(t, sock.Port, "3019")
 	assert.Equal(t, sock.Host, "0.0.0.0")
 }
@@ -22,7 +24,9 @@ func TestSocketStart(t *testing.T) {
 	sock := SelectSocket("rfid")
 	assert.Equal(t, sock.Name, "RFID Receiver (Server Mode)")
 	assert.Equal(t, sock.Mode, "server")
-	assert.Equal(t, sock.Process, "flows.rfid.read")
+	assert.Equal(t, sock.Event.Data, "scripts.rfid.onData")
+	assert.Equal(t, sock.Event.Close, "scripts.rfid.onClose")
+	assert.Equal(t, sock.Event.Error, "scripts.rfid.onError")
 	assert.Equal(t, sock.Port, "3019")
 	assert.Equal(t, sock.Host, "0.0.0.0")
 
@@ -34,9 +38,11 @@ func TestSocketConnect(t *testing.T) {
 	sock := SelectSocket("rfid_client")
 	assert.Equal(t, sock.Name, "RFID Receiver (Client Mode)")
 	assert.Equal(t, sock.Mode, "client")
-	assert.Equal(t, sock.Process, "flows.rfid.read")
+	assert.Equal(t, sock.Event.Data, "scripts.rfid.onData")
+	assert.Equal(t, sock.Event.Close, "scripts.rfid.onClose")
+	assert.Equal(t, sock.Event.Error, "scripts.rfid.onError")
 	assert.Equal(t, sock.Port, "6000")
-	assert.Equal(t, sock.Host, "192.168.1.192")
+	assert.Equal(t, sock.Host, "192.168.31.192")
 
 	// sock.Connect()
 }

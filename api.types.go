@@ -48,16 +48,23 @@ type Server struct {
 
 // Socket struct
 type Socket struct {
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Mode        string `json:"mode,omitempty"`      // Server | client
-	Reconnect   int    `json:"reconnect,omitempty"` // max times try to reconnect server when connection break (client mode only)
-	Description string `json:"description,omitempty"`
-	Protocol    string `json:"protocol,omitempty"`
-	Host        string `json:"host,omitempty"`
-	Port        string `json:"port,omitempty"`
-	Process     string `json:"process,omitempty"`
-	Timeout     int    `json:"timeout,omitempty"` // timeout (seconds)
-	BufferSize  int    `json:"buffer,omitempty"`  // bufferSize
-	KeepAlive   int    `json:"keep,omitempty"`    // -1 not keep alive, 0 keep alive always, keep alive n seconds.
+	Name        string      `json:"name"`
+	Version     string      `json:"version"`
+	Mode        string      `json:"mode,omitempty"`      // Server | client
+	Reconnect   int         `json:"reconnect,omitempty"` // max times try to reconnect server when connection break (client mode only)
+	Description string      `json:"description,omitempty"`
+	Protocol    string      `json:"protocol,omitempty"`
+	Host        string      `json:"host,omitempty"`
+	Port        string      `json:"port,omitempty"`
+	Event       SocketEvent `json:"event,omitempty"`
+	Timeout     int         `json:"timeout,omitempty"` // timeout (seconds)
+	BufferSize  int         `json:"buffer,omitempty"`  // bufferSize
+	KeepAlive   int         `json:"keep,omitempty"`    // -1 not keep alive, 0 keep alive always, keep alive n seconds.
+}
+
+// SocketEvent struct
+type SocketEvent struct {
+	Data  string `json:"data,omitempty"`
+	Error string `json:"error,omitempty"`
+	Close string `json:"close,omitempty"`
 }
