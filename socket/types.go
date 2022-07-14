@@ -33,28 +33,32 @@ const (
 
 // Client the socket client
 type Client struct {
-	Status   uint
-	Conn     net.Conn
-	Option   Option
-	Handlers Handlers
+	Status       uint
+	Conn         net.Conn
+	Option       Option
+	Handlers     Handlers
+	Attempts     int
+	AttemptAfter time.Duration
+	AttemptTimes int
 }
 
 // Option the socket option
 type Option struct {
-	Protocol   string        `json:"protocol,omitempty"`  // TCP/UDP
-	Reconnect  int           `json:"reconnect,omitempty"` // max times try to reconnect server when connection break (client mode only)
-	Host       string        `json:"host,omitempty"`
-	Port       string        `json:"port,omitempty"`
-	Timeout    time.Duration `json:"timeout,omitempty"` // timeout (seconds)
-	BufferSize int           `json:"buffer,omitempty"`  // bufferSize
-	KeepAlive  time.Duration `json:"keep,omitempty"`    // -1 not keep alive, 0 keep alive always, keep alive n seconds.
+	Protocol     string        `json:"protocol,omitempty"` // TCP/UDP
+	Host         string        `json:"host,omitempty"`
+	Port         string        `json:"port,omitempty"`
+	Timeout      time.Duration `json:"timeout,omitempty"`       // timeout (seconds)
+	BufferSize   int           `json:"buffer,omitempty"`        // bufferSize
+	KeepAlive    time.Duration `json:"keep,omitempty"`          // -1 not keep alive, 0 keep alive always, keep alive n seconds.
+	AttemptAfter time.Duration `json:"attempt_after,omitempty"` // Attempt attempt_after
+	Attempts     int           `json:"attempts,omitempty"`      // max times try to reconnect server when connection break (client mode only)
 }
 
 // Handlers the socket hanlders
 type Handlers struct {
 	Data      DataHandler
 	Error     ErrorHandler
-	Close     CloseHandler
+	Closed    ClosedHandler
 	Connected ConnectedHandler
 }
 
@@ -64,8 +68,8 @@ type DataHandler func([]byte, int) ([]byte, error)
 // ErrorHandler Handler
 type ErrorHandler func(error)
 
-// CloseHandler Handler
-type CloseHandler func([]byte, error) []byte
+// ClosedHandler Handler
+type ClosedHandler func([]byte, error) []byte
 
 // ConnectedHandler Handler
 type ConnectedHandler func(option Option) error

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/kun/log"
 
 	"github.com/yaoapp/gou/helper"
@@ -94,7 +95,7 @@ func (sock Socket) Connect(args ...interface{}) error {
 		sock.BufferSize,
 		time.Duration(sock.KeepAlive)*time.Second,
 		func(data []byte, recvLen int, err error) ([]byte, error) {
-			res, err := NewProcess(sock.Event.Data, hex.EncodeToString(data)).Exec()
+			res, err := NewProcess(sock.Process, hex.EncodeToString(data)).Exec()
 			if err != nil {
 				return nil, err
 			}
@@ -111,4 +112,137 @@ func (sock Socket) Connect(args ...interface{}) error {
 
 			return nil, fmt.Errorf("%s response data type error", sock.Event.Data)
 		})
+}
+
+// Open Connect the socket server
+func (sock Socket) Open(args ...interface{}) error {
+	host := sock.Host
+	port := sock.Port
+	argsLen := len(args)
+	if argsLen > 0 {
+		if inputHost, ok := args[0].(string); ok {
+			host = inputHost
+		}
+	}
+
+	if argsLen > 1 {
+		if inputPort, ok := args[1].(string); ok {
+			port = inputPort
+		}
+	}
+
+	client := socket.NewClient(
+		socket.Option{
+			Host:         host,
+			Port:         port,
+			Timeout:      time.Duration(sock.Timeout) * time.Second,
+			KeepAlive:    time.Duration(sock.KeepAlive) * time.Second,
+			BufferSize:   sock.BufferSize,
+			Protocol:     sock.Protocol,
+			Attempts:     sock.Attempts,
+			AttemptAfter: time.Duration(sock.AttemptAfter) * time.Second,
+		},
+		socket.Handlers{
+			Connected: sock.onConnected,
+			Closed:    sock.onClosed,
+			Data:      sock.onData,
+			Error:     sock.onError,
+		})
+
+	return client.Open()
+}
+
+func (sock Socket) onClosed(data []byte, err error) []byte {
+	if sock.Event.Closed == "" {
+		return nil
+	}
+
+	var msg = ""
+	if data != nil {
+		msg = string(data)
+	}
+
+	errstr := ""
+	if err != nil {
+		errstr = err.Error()
+	}
+
+	res, err := NewProcess(sock.Event.Closed, msg, errstr).Exec()
+	if err != nil {
+		log.Error("sock.Event.Closed Error: %s", err)
+		return nil
+	}
+
+	return sock.toBytes(res, "sock.Event.Closed")
+}
+
+func (sock Socket) onData(data []byte, recvLen int) ([]byte, error) {
+
+	if sock.Event.Data == "" {
+		return nil, nil
+	}
+
+	fmt.Println("onData:", hex.EncodeToString(nil))
+
+	res, err := NewProcess(sock.Event.Data, hex.EncodeToString(data), recvLen).Exec()
+	if err != nil {
+		return nil, err
+	}
+
+	return sock.toBytes(res, "sock.Event.Data"), nil
+}
+
+func (sock Socket) onError(err error) {
+	if sock.Event.Error == "" {
+		return
+	}
+
+	_, err = NewProcess(sock.Event.Error, err.Error()).Exec()
+	if err != nil {
+		log.Error("sock.Event.Error Error: %s", err.Error())
+	}
+}
+
+func (sock Socket) onConnected(option socket.Option) error {
+	if sock.Event.Connected == "" {
+		return nil
+	}
+
+	_, err := NewProcess(sock.Event.Connected, option).Exec()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (sock Socket) toBytes(value interface{}, name string) []byte {
+	if value == nil {
+		return nil
+	}
+
+	switch value.(type) {
+	case []byte:
+		return value.([]byte)
+
+	case string:
+		if value.(string) == "" {
+			return nil
+		}
+
+		bytes, err := hex.DecodeString(value.(string))
+		if err != nil {
+			log.Error("%s Error: %s", name, err.Error())
+			return nil
+		}
+
+		return bytes
+
+	default:
+		v, err := jsoniter.Marshal(value)
+		if err != nil {
+			log.Error("%s Error: %s", name, err.Error())
+		}
+		return v
+	}
 }

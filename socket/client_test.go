@@ -17,7 +17,7 @@ var events = map[string]chan uint{
 	"onConnected": make(chan uint),
 	"onData":      make(chan uint),
 	"onError":     make(chan uint),
-	"onClose":     make(chan uint),
+	"onClosed":    make(chan uint),
 }
 var resps = map[string]interface{}{}
 
@@ -41,7 +41,7 @@ func TestClient(t *testing.T) {
 			Connected: onConnected,
 			Error:     onError,
 			Data:      onData,
-			Close:     onClose,
+			Closed:    onClosed,
 		})
 
 	go func() { client.Open() }()
@@ -101,9 +101,9 @@ func onData(data []byte, length int) ([]byte, error) {
 	return nil, nil
 }
 
-func onClose(msg []byte, err error) []byte {
-	resps["onClose"] = fmt.Sprintf("%v|%v", msg, err)
-	fmt.Println("onClose: called")
+func onClosed(msg []byte, err error) []byte {
+	resps["onClosed"] = fmt.Sprintf("%v|%v", msg, err)
+	fmt.Println("onClosed: called")
 	return []byte("Gone")
 }
 

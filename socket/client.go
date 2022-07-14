@@ -15,9 +15,12 @@ import (
 // NewClient Create a socket client
 func NewClient(option Option, handlers Handlers) *Client {
 	return &Client{
-		Status:   WAITING,
-		Option:   option,
-		Handlers: handlers,
+		Status:       WAITING,
+		Option:       option,
+		Handlers:     handlers,
+		Attempts:     option.Attempts,
+		AttemptAfter: option.AttemptAfter,
+		AttemptTimes: 0,
 	}
 }
 
@@ -56,16 +59,42 @@ func (client *Client) tcpOpen() error {
 		dial.KeepAlive = option.KeepAlive
 	}
 
+	// System os signal
+	ch := make(chan uint)
+	go func() {
+		done := make(chan os.Signal, 1)
+		signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+		<-done
+		ch <- MCLOSE
+	}()
+
+	// Connecting
 	conn, err := dial.Dial("tcp", fmt.Sprintf("%s:%s", option.Host, option.Port))
 	if err != nil {
 		log.With(log.F{"option": option}).Error("Socket Open: %s", err)
 		client.emitError(err)
+
+		if client.Attempts > client.AttemptTimes {
+			client.AttemptTimes = client.AttemptTimes + 1
+			if client.AttemptAfter > 0 {
+				var after = time.Duration(int(client.AttemptAfter) * client.AttemptTimes)
+				log.With(log.F{"option": client.Option}).Info("Try to reconnect after %v", after)
+				time.Sleep(after)
+			}
+			log.With(log.F{"option": client.Option}).Info("Connecting ... %d/%d", client.AttemptTimes, client.Attempts)
+
+			client.Status = WAITING
+			return client.tcpOpen()
+		}
+
 		return err
 	}
 
 	defer conn.Close()
 	client.Status = CONNECTED
 	client.Conn = conn
+	client.AttemptTimes = 0
+
 	log.With(log.F{"option": option}).Trace("Connected")
 	err = client.emitConnected()
 	if err != nil {
@@ -73,7 +102,6 @@ func (client *Client) tcpOpen() error {
 		client.emitError(err)
 	}
 
-	ch := make(chan uint)
 	// read and write
 	go func() {
 		for {
@@ -118,21 +146,14 @@ func (client *Client) tcpOpen() error {
 		}
 	}()
 
-	// System os signal
-	go func() {
-		done := make(chan os.Signal, 1)
-		signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-		<-done
-		ch <- MCLOSE
-	}()
-
 	switch <-ch {
 	case MREAD, MBREAK:
 		client.Status = CLOSED
-		client.emitClose(nil, fmt.Errorf("BREAK"))
+		client.emitClosed(nil, fmt.Errorf("BREAK"))
+		// return nil
 		return client.tcpOpen()
 	case MCLOSE:
-		resp := client.emitClose([]byte("CLOSE"), nil)
+		resp := client.emitClosed([]byte("CLOSE"), nil)
 		if resp != nil {
 			recvLen, err := conn.Write(resp)
 			if err != nil {
@@ -172,12 +193,12 @@ func (client *Client) emitError(err error) {
 	client.Handlers.Error(err)
 }
 
-// emitError trigger the error event and get the response
-func (client *Client) emitClose(data []byte, err error) []byte {
-	if client.Handlers.Close == nil {
+// emitClosed trigger the error event and get the response
+func (client *Client) emitClosed(data []byte, err error) []byte {
+	if client.Handlers.Closed == nil {
 		return nil
 	}
-	return client.Handlers.Close(data, err)
+	return client.Handlers.Closed(data, err)
 }
 
 // Connect Connect socket server  (alpha -> will be refactored at a beta version...)

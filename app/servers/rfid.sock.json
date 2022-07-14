@@ -7,9 +7,10 @@
   "host": "0.0.0.0",
   "port": "3019",
   "event": {
-    "data": "scripts.rfid.onData",
-    "close": "scripts.rfid.onClose",
-    "error": "scripts.rfid.onError"
+    "data": "scripts.socket.onData",
+    "closed": "scripts.socket.onClosed",
+    "connected": "scripts.socket.onConnected",
+    "error": "scripts.socket.onError"
   },
   "keep": 0,
   "buffer": 60
