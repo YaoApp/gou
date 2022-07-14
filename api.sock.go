@@ -167,7 +167,13 @@ func (sock Socket) onClosed(data []byte, err error) []byte {
 		errstr = err.Error()
 	}
 
-	res, err := NewProcess(sock.Event.Closed, msg, errstr).Exec()
+	p, err := ProcessOf(sock.Event.Closed, msg, errstr)
+	if err != nil {
+		log.Error("sock.Event.Closed Error: %s", err)
+		return nil
+	}
+
+	res, err := p.Exec()
 	if err != nil {
 		log.Error("sock.Event.Closed Error: %s", err)
 		return nil
@@ -182,9 +188,12 @@ func (sock Socket) onData(data []byte, recvLen int) ([]byte, error) {
 		return nil, nil
 	}
 
-	fmt.Println("onData:", hex.EncodeToString(nil))
+	p, err := ProcessOf(sock.Event.Data, hex.EncodeToString(data), recvLen)
+	if err != nil {
+		return nil, err
+	}
 
-	res, err := NewProcess(sock.Event.Data, hex.EncodeToString(data), recvLen).Exec()
+	res, err := p.Exec()
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +206,12 @@ func (sock Socket) onError(err error) {
 		return
 	}
 
-	_, err = NewProcess(sock.Event.Error, err.Error()).Exec()
+	p, err := ProcessOf(sock.Event.Error, err.Error())
+	if err != nil {
+		log.Error("sock.Event.Error Error: %s", err.Error())
+	}
+
+	_, err = p.Exec()
 	if err != nil {
 		log.Error("sock.Event.Error Error: %s", err.Error())
 	}
@@ -208,12 +222,13 @@ func (sock Socket) onConnected(option socket.Option) error {
 		return nil
 	}
 
-	_, err := NewProcess(sock.Event.Connected, option).Exec()
+	p, err := ProcessOf(sock.Event.Connected, option)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	_, err = p.Exec()
+	return err
 }
 
 func (sock Socket) toBytes(value interface{}, name string) []byte {

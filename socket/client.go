@@ -95,7 +95,7 @@ func (client *Client) tcpOpen() error {
 	client.Conn = conn
 	client.AttemptTimes = 0
 
-	log.With(log.F{"option": option}).Trace("Connected")
+	log.With(log.F{"option": option}).Info("Connected")
 	err = client.emitConnected()
 	if err != nil {
 		log.With(log.F{"option": option}).Error("Socket Open trigger connected event: %s", err.Error())
@@ -119,9 +119,10 @@ func (client *Client) tcpOpen() error {
 				return
 			}
 
-			log.With(log.F{"option": option, "recvLen": recvLen, "data": fmt.Sprintf("%x", buffer)}).Trace("Receive")
 			data := []byte{}
 			data = append(data, buffer[:recvLen]...)
+			log.With(log.F{"option": option, "recvLen": recvLen, "data": fmt.Sprintf("%x", data)}).Trace("Receive")
+
 			resp, err := client.emitData(data, recvLen)
 			if err != nil {
 				log.With(log.F{"option": option}).Error("Socket Open trigger connected event: %s", err.Error())
