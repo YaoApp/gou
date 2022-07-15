@@ -108,13 +108,13 @@ func (client *Client) tcpOpen() error {
 			buffer := make([]byte, option.BufferSize)
 			recvLen, err := conn.Read(buffer)
 			if err != nil && err != io.EOF {
-				log.With(log.F{"option": option}).Error("Socket Open read: %s", err)
+				log.With(log.F{"option": option}).Trace("Socket Open read: %s", err)
 				ch <- MREAD
 				return
 			}
 
 			if err == io.EOF {
-				log.With(log.F{"option": option}).Error("Socket Open Connection lost")
+				log.With(log.F{"option": option}).Trace("Socket Open Connection lost")
 				ch <- MBREAK
 				return
 			}
