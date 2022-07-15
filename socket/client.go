@@ -78,10 +78,10 @@ func (client *Client) tcpOpen() error {
 			client.AttemptTimes = client.AttemptTimes + 1
 			if client.AttemptAfter > 0 {
 				var after = time.Duration(int(client.AttemptAfter) * client.AttemptTimes)
-				log.With(log.F{"option": client.Option}).Info("Try to reconnect after %v", after)
+				log.With(log.F{"option": client.Option}).Trace("Try to reconnect after %v", after)
 				time.Sleep(after)
 			}
-			log.With(log.F{"option": client.Option}).Info("Connecting ... %d/%d", client.AttemptTimes, client.Attempts)
+			log.With(log.F{"option": client.Option}).Trace("Connecting ... %d/%d", client.AttemptTimes, client.Attempts)
 
 			client.Status = WAITING
 			return client.tcpOpen()
@@ -95,7 +95,7 @@ func (client *Client) tcpOpen() error {
 	client.Conn = conn
 	client.AttemptTimes = 0
 
-	log.With(log.F{"option": option}).Info("Connected")
+	log.With(log.F{"option": option}).Trace("Connected")
 	err = client.emitConnected()
 	if err != nil {
 		log.With(log.F{"option": option}).Error("Socket Open trigger connected event: %s", err.Error())
