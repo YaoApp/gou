@@ -1,6 +1,8 @@
 package websocket
 
 import (
+	"time"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -37,6 +39,42 @@ type Upgrader struct {
 	up          *websocket.Upgrader
 	interrupt   chan bool
 }
+
+// WSClient the websocket client
+type WSClient struct {
+	WSClientOption
+	conn *websocket.Conn // the connection
+}
+
+// WSClientOption the webocket client option
+type WSClientOption struct {
+	URL          string        `json:"url,omitempty"`
+	Guard        string        `json:"guard,omitempty"`
+	Protocols    []string      `json:"protocols,omitempty"`
+	KeepAlive    time.Duration `json:"keep,omitempty"`          // -1 not keep alive, 0 keep alive always, keep alive n seconds.
+	AttemptAfter time.Duration `json:"attempt_after,omitempty"` // Attempt attempt_after
+	Attempts     int           `json:"attempts,omitempty"`      // max times try to reconnect server when connection break (client mode only)
+}
+
+// Handlers the websocket hanlders
+type Handlers struct {
+	Data      DataHandler
+	Error     ErrorHandler
+	Closed    ClosedHandler
+	Connected ConnectedHandler
+}
+
+// DataHandler Handler
+type DataHandler func(string, int) (string, error)
+
+// ErrorHandler Handler
+type ErrorHandler func(error)
+
+// ClosedHandler Handler
+type ClosedHandler func(string, error) string
+
+// ConnectedHandler Handler
+type ConnectedHandler func(option WSClientOption) error
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {

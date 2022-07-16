@@ -14,6 +14,19 @@ const (
 	timeout         = 5 * time.Second
 )
 
+// NewWSClient create a new webocket client connection
+func NewWSClient(url string, protocals []string) (*WSClient, error) {
+	return nil, nil
+}
+
+// Open the websockt connetion
+func (ws *WSClient) Open() error {
+	return nil
+}
+
+// emitConnect trigger the connected event
+func (ws *WSClient) emitConnected() error { return nil }
+
 // NewWebSocket create a new websocket connection
 func NewWebSocket(url string, protocals []string) (*websocket.Conn, error) {
 

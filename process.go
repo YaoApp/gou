@@ -76,7 +76,7 @@ func (process *Process) make() (err error) {
 func (process *Process) extraProcess() {
 	namer := strings.Split(process.Name, ".")
 	last := len(namer) - 1
-	if last < 2 && namer[0] != "flows" && namer[0] != "session" {
+	if last < 2 && namer[0] != "flows" && namer[0] != "session" && namer[0] != "ssl" {
 		exception.New("Process:%s format error", 400, process.Name).Throw()
 	}
 
