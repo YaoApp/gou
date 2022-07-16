@@ -62,3 +62,24 @@ function Basic() {
   var message = ws.push("Hello Server!");
   console.log(message);
 }
+
+function onData(data, recvLen) {
+  console.log(`Data: ${data} ${recvLen}`);
+  log.Trace("onData: %v %v", data, recvLen);
+  if (data[0] == "1") {
+    Process("websocket.Close", "message");
+  }
+}
+
+function onError(err) {
+  console.log(`Error: ${err} `);
+}
+
+function onClosed(data, err) {
+  console.log(`Closed: ${data} ${err} `);
+}
+
+function onConnected(option) {
+  console.log("onConnected", option);
+  Process("websocket.Write", "message", "1|Hello World");
+}

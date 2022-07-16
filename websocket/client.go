@@ -45,6 +45,16 @@ func NewWSClient(option WSClientOption, handlers Handlers) *WSClient {
 	return cli
 }
 
+// SetURL set the websocket url
+func (ws *WSClient) SetURL(url string) {
+	ws.option.URL = url
+}
+
+// SetProtocols set the websocket protocols
+func (ws *WSClient) SetProtocols(Protocols ...string) {
+	ws.option.Protocols = Protocols
+}
+
 // Open the websockt connetion
 func (ws *WSClient) Open() error {
 

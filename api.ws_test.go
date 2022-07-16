@@ -14,7 +14,7 @@ import (
 	"github.com/yaoapp/kun/log"
 )
 
-func TestLoadWebSocket(t *testing.T) {
+func TestLoadWebSocketServer(t *testing.T) {
 
 	ws, err := LoadWebSocketServer("file://"+path.Join(TestAPIRoot, "chat.ws.json"), "chat")
 	if err != nil {

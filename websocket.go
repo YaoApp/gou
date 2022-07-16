@@ -14,6 +14,7 @@ import (
 
 func init() {
 	RegisterProcessHandler("websocket.Write", processWrite)
+	RegisterProcessHandler("websocket.Close", processClose)
 }
 
 // WebSockets websockets loaded (Alpha)
@@ -66,13 +67,37 @@ func SelectWebSocket(name string) *WebSocket {
 	return ws
 }
 
-// processWrite WebSocket client write
+// Open open the websocket connection
+func (ws *WebSocket) Open(args ...string) error {
+	if len(args) > 0 {
+		ws.Client.SetURL(args[0])
+	}
+	if len(args) > 1 {
+		ws.Client.SetProtocols(args[1:]...)
+	}
+
+	return ws.Client.Open()
+}
+
+// processWrite WebSocket client send message to server
 func processWrite(process *Process) interface{} {
 	process.ValidateArgNums(2)
 	name := process.ArgsString(0)
 	message := process.ArgsString(1)
 	ws := SelectWebSocket(name)
 	err := ws.Client.Write([]byte(message))
+	if err != nil {
+		return map[string]interface{}{"code": 500, "message": err.Error()}
+	}
+	return nil
+}
+
+// processClose WebSocket client close the connection
+func processClose(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	name := process.ArgsString(0)
+	ws := SelectWebSocket(name)
+	err := ws.Client.Close()
 	if err != nil {
 		return map[string]interface{}{"code": 500, "message": err.Error()}
 	}
