@@ -12,8 +12,12 @@ import (
 	"github.com/yaoapp/kun/log"
 )
 
-// LoadWebSocket load websockets api
-func LoadWebSocket(source string, name string) (*websocket.Upgrader, error) {
+func init() {
+	RegisterProcessHandler("websocket.Broadcast", processBroadcast)
+}
+
+// LoadWebSocketServer load websocket servers
+func LoadWebSocketServer(source string, name string) (*websocket.Upgrader, error) {
 	var input io.Reader = nil
 	if strings.HasPrefix(source, "file://") {
 		filename := strings.TrimPrefix(source, "file://")
@@ -58,11 +62,21 @@ func LoadWebSocket(source string, name string) (*websocket.Upgrader, error) {
 	return ws, nil
 }
 
-// SelectWebSocket Get WebSocket by name
-func SelectWebSocket(name string) *websocket.Upgrader {
+// SelectWebSocketServer Get WebSocket server by name
+func SelectWebSocketServer(name string) *websocket.Upgrader {
 	ws, has := websocket.Upgraders[name]
 	if !has {
 		exception.New("WebSocket:%s does not load", 500, name).Throw()
 	}
 	return ws
+}
+
+// processBroadcast WebSocket Server broadcast the message
+func processBroadcast(process *Process) interface{} {
+	process.ValidateArgNums(2)
+	name := process.ArgsString(0)
+	message := process.ArgsString(1)
+	ws := SelectWebSocketServer(name)
+	ws.Broadcast([]byte(message))
+	return nil
 }

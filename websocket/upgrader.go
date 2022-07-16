@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -37,7 +40,8 @@ func NewUpgrader(name string, config ...[]byte) (*Upgrader, error) {
 		Guard:     "-",
 		handler:   func([]byte) ([]byte, error) { return nil, nil },
 		Timeout:   5,
-		interrupt: make(chan bool),
+		interrupt: make(chan int),
+		status:    WAITING,
 	}
 
 	// load from config json
@@ -86,12 +90,29 @@ func (upgrader *Upgrader) SetRouter(r *gin.Engine) {
 // Start the hub
 func (upgrader *Upgrader) Start() {
 	go upgrader.hub.run()
+	upgrader.status = LISTENING
+	go func() {
+		done := make(chan os.Signal, 1)
+		signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+		<-done
+		upgrader.interrupt <- 2
+	}()
+
 	<-upgrader.interrupt
+	upgrader.hub.interrupt <- 1
+	upgrader.status = CLOSED
 }
 
 // Stop the hub
 func (upgrader *Upgrader) Stop() {
-	upgrader.interrupt <- true
+	if upgrader.status != CLOSED {
+		upgrader.interrupt <- 1
+	}
+}
+
+// Broadcast broadcast the message
+func (upgrader *Upgrader) Broadcast(message []byte) {
+	upgrader.hub.broadcast <- message
 }
 
 // UpgradeGin upgrades the Gin server connection to the WebSocket protocol.

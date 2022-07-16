@@ -11,6 +11,35 @@ var (
 	space   = []byte{' '}
 )
 
+const (
+	// WAITING waiting for connecting
+	WAITING uint = iota
+
+	// CONNECTING connecting the host
+	CONNECTING
+
+	// CONNECTED  the socket is connected
+	CONNECTED
+
+	// CLOSED the socket is closed
+	CLOSED
+
+	// LISTENING the websocket server is listening
+	LISTENING
+)
+
+const (
+
+	// MREAD socket read error ( the local peer closed )
+	MREAD uint = iota
+
+	// MBREAK the remote peer closed
+	MBREAK
+
+	// MCLOSE user send the CLOSE signal
+	MCLOSE
+)
+
 // Upgrader the upgrader setting
 // {
 // 		"name": "A Chat WebSocket server",
@@ -37,23 +66,38 @@ type Upgrader struct {
 	handler     func([]byte) ([]byte, error)
 	hub         *Hub
 	up          *websocket.Upgrader
-	interrupt   chan bool
+	interrupt   chan int
+	status      uint
 }
 
 // WSClient the websocket client
 type WSClient struct {
-	WSClientOption
-	conn *websocket.Conn // the connection
+	name         string
+	status       uint
+	keepAlive    time.Duration
+	timeout      time.Duration
+	attemptAfter time.Duration
+	conn         *websocket.Conn
+	option       WSClientOption
+	attempts     int
+	attemptTimes int
+	interrupt    chan uint
+	handlers     Handlers `json:"-"`
 }
 
 // WSClientOption the webocket client option
 type WSClientOption struct {
-	URL          string        `json:"url,omitempty"`
-	Guard        string        `json:"guard,omitempty"`
-	Protocols    []string      `json:"protocols,omitempty"`
-	KeepAlive    time.Duration `json:"keep,omitempty"`          // -1 not keep alive, 0 keep alive always, keep alive n seconds.
-	AttemptAfter time.Duration `json:"attempt_after,omitempty"` // Attempt attempt_after
-	Attempts     int           `json:"attempts,omitempty"`      // max times try to reconnect server when connection break (client mode only)
+	Name         string     `json:"name,omitempty"`
+	Description  string     `json:"description,omitempty"`
+	Version      string     `json:"version,omitempty"`
+	URL          string     `json:"url,omitempty"`
+	Protocols    []string   `json:"protocols,omitempty"`
+	Guard        string     `json:"guard,omitempty"`
+	Buffer       BufferSize `json:"buffer,omitempty"`
+	Timeout      int        `json:"timeout,omitempty"`
+	KeepAlive    int        `json:"keep,omitempty"`          // -1 not keep alive, 0 keep alive always, keep alive n seconds.
+	AttemptAfter int        `json:"attempt_after,omitempty"` // Attempt attempt_after
+	Attempts     int        `json:"attempts,omitempty"`      // max times try to reconnect server when connection break (client mode only)
 }
 
 // Handlers the websocket hanlders
@@ -65,13 +109,13 @@ type Handlers struct {
 }
 
 // DataHandler Handler
-type DataHandler func(string, int) (string, error)
+type DataHandler func([]byte, int) ([]byte, error)
 
 // ErrorHandler Handler
 type ErrorHandler func(error)
 
 // ClosedHandler Handler
-type ClosedHandler func(string, error) string
+type ClosedHandler func([]byte, error) []byte
 
 // ConnectedHandler Handler
 type ConnectedHandler func(option WSClientOption) error
@@ -103,6 +147,8 @@ type Hub struct {
 
 	// Unregister requests from clients.
 	unregister chan *Client
+
+	interrupt chan int
 }
 
 // BufferSize read and write buffer sizes

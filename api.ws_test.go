@@ -2,6 +2,8 @@ package gou
 
 import (
 	"fmt"
+	"net"
+	"net/http"
 	"path"
 	"testing"
 	"time"
@@ -14,7 +16,7 @@ import (
 
 func TestLoadWebSocket(t *testing.T) {
 
-	ws, err := LoadWebSocket("file://"+path.Join(TestAPIRoot, "chat.ws.json"), "chat")
+	ws, err := LoadWebSocketServer("file://"+path.Join(TestAPIRoot, "chat.ws.json"), "chat")
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -35,40 +37,59 @@ func TestLoadWebSocket(t *testing.T) {
 
 func TestStartWebSocket(t *testing.T) {
 
-	ws, err := LoadWebSocket("file://"+path.Join(TestAPIRoot, "chat.ws.json"), "chat")
+	ws, err := LoadWebSocketServer("file://"+path.Join(TestAPIRoot, "chat.ws.json"), "chat")
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
 	defer ws.Stop()
 
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ws.SetHandler(func(message []byte) ([]byte, error) { return message, nil })
 	ws.SetRouter(router)
 
 	go ws.Start()
-	go router.Run(":5055")
+	go func() {
+		http.Serve(listener, router)
+	}()
 
-	send(t)
+	url := fmt.Sprintf("ws://127.0.0.1:%d/websocket/chat", listener.Addr().(*net.TCPAddr).Port)
+
+	send(t, url)
 }
 
 func TestWebSocketRunProcess(t *testing.T) {
 	LoadFlow("file://"+path.Join(TestFLWRoot, "websocket", "chat.flow.json"), "websocket.chat")
-	ws, err := LoadWebSocket("file://"+path.Join(TestAPIRoot, "chat.ws.json"), "chat")
+	ws, err := LoadWebSocketServer("file://"+path.Join(TestAPIRoot, "chat.ws.json"), "chat")
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
 	defer ws.Stop()
 
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ws.SetRouter(router)
 
 	go ws.Start()
-	go router.Run(":5055")
+	go func() {
+		http.Serve(listener, router)
+	}()
 
-	send(t)
+	url := fmt.Sprintf("ws://127.0.0.1:%d/websocket/chat", listener.Addr().(*net.TCPAddr).Port)
+	send(t, url)
 }
 
-func send(t *testing.T) {
+func send(t *testing.T, url string) {
 
 	fmt.Println("Waiting for the WebSocket server to start")
 	time.Sleep(200 * time.Millisecond)
@@ -79,7 +100,7 @@ func send(t *testing.T) {
 		HandshakeTimeout: 5 * time.Second,
 	}
 
-	ws, _, err := cstDialer.Dial("ws://127.0.0.1:5055/websocket/chat", nil)
+	ws, _, err := cstDialer.Dial(url, nil)
 	if err != nil {
 		log.Error("Dial: %v", err)
 	}

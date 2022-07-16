@@ -1,6 +1,9 @@
 package websocket
 
 import (
+	"fmt"
+	"net"
+	"net/http"
 	"testing"
 	"time"
 
@@ -9,12 +12,13 @@ import (
 )
 
 func TestPush(t *testing.T) {
-	ws := serve(t)
-	conn, err := NewWebSocket("ws://127.0.0.1:5056/websocket/test", []string{"po"})
+	srv, url := serve(t)
+	defer srv.Stop()
+
+	conn, err := NewWebSocket(url, []string{"po"})
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
-	defer ws.Stop()
 
 	err = Push(conn, "Hello World!")
 	if err != nil {
@@ -23,19 +27,64 @@ func TestPush(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func serve(t *testing.T) *Upgrader {
+func TestOpen(t *testing.T) {
+	srv, url := serve(t)
+	defer srv.Stop()
+
+	var ws *WSClient = nil
+	var hanlders = Handlers{
+		Connected: func(option WSClientOption) error {
+			fmt.Println("onConnected", option)
+			srv.Broadcast([]byte("Hello world"))
+			time.Sleep(500 * time.Millisecond)
+			ws.Write([]byte("1|I'm Here, The connection will be closed"))
+			return nil
+		},
+		Closed: func(data []byte, err error) []byte {
+			fmt.Printf("onClosed: %s %v\n", data, err)
+			return nil
+		},
+		Data: func(data []byte, length int) ([]byte, error) {
+			fmt.Printf("onData: %s %d\n", data, length)
+			if data[0] == 0x31 {
+				err := ws.Close()
+				fmt.Println("Close connection", err)
+			}
+			return nil, nil
+		},
+		Error: func(err error) {
+			fmt.Printf("Error: %s\n", err)
+		},
+	}
+	ws = NewWSClient(WSClientOption{URL: url, Protocols: []string{"po"}}, hanlders)
+	err := ws.Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func serve(t *testing.T) (*Upgrader, string) {
 
 	ws, err := NewUpgrader("test")
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
 
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	ws.SetHandler(func(message []byte) ([]byte, error) { return message, nil })
 	ws.SetRouter(router)
 
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	go ws.Start()
-	go router.Run(":5056")
+	go func() {
+		http.Serve(listener, router)
+	}()
 	time.Sleep(200 * time.Millisecond)
-	return ws
+
+	return ws, fmt.Sprintf("ws://127.0.0.1:%d/websocket/test", listener.Addr().(*net.TCPAddr).Port)
 }
