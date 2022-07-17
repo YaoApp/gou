@@ -3,6 +3,7 @@ package websocket
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"time"
@@ -111,12 +112,17 @@ func (ws *WSClient) Open() error {
 
 	log.With(log.F{"option": ws.option}).Trace("Connected")
 	defer conn.Close()
+
+	addr := conn.LocalAddr().(*net.TCPAddr)
+	ws.option.Timestamp = int(time.Now().UnixMilli())
+	ws.option.IP = addr.IP.String()
+	ws.option.Port = addr.Port
+
 	ws.conn = conn
 	ws.status = CONNECTED
 	ws.conn = conn
 	ws.attemptTimes = 0
 	err = ws.emitConnected(ws.option)
-
 	done := make(chan struct{})
 	status := uint(0)
 

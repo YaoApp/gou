@@ -99,6 +99,9 @@ type WSClientOption struct {
 	KeepAlive    int        `json:"keep,omitempty"`          // -1 not keep alive, 0 keep alive always, keep alive n seconds.
 	AttemptAfter int        `json:"attempt_after,omitempty"` // Attempt attempt_after
 	Attempts     int        `json:"attempts,omitempty"`      // max times try to reconnect server when connection break (client mode only)
+	Timestamp    int        `json:"timestamp,omitempty"`
+	IP           string     `json:"ip,omitempty"`
+	Port         int        `json:"port,omitempty"`
 }
 
 // Handlers the websocket hanlders
