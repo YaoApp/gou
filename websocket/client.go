@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -37,11 +36,17 @@ func NewWSClient(option WSClientOption, handlers Handlers) *WSClient {
 		option.AttemptAfter = 50
 	}
 
+	if option.Ping == 0 {
+		option.Ping = 2592000
+	}
+
 	cli := &WSClient{option: option, handlers: handlers}
+	cli.name = option.Name
 	cli.timeout = time.Duration(option.Timeout) * time.Second
 	cli.attemptAfter = time.Duration(option.AttemptAfter) * time.Millisecond
 	cli.keepAlive = time.Duration(option.KeepAlive) * time.Second
-	cli.interrupt = make(chan uint)
+	cli.ping = time.Duration(option.Ping) * time.Second
+	cli.interrupt = 0
 	return cli
 }
 
@@ -57,6 +62,9 @@ func (ws *WSClient) SetProtocols(Protocols ...string) {
 
 // Open the websockt connetion
 func (ws *WSClient) Open() error {
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
 
 	if ws.status == CONNECTING {
 		err := fmt.Errorf("WebSocket Open: %s:%v is connecting", ws.option.URL, ws.option.Protocols)
@@ -109,36 +117,58 @@ func (ws *WSClient) Open() error {
 	ws.attemptTimes = 0
 	err = ws.emitConnected(ws.option)
 
-	// ws.conn.SetCloseHandler(func(code int, text string) error {
-	// 	// fmt.Println("On Closed ", code, text)
-	// 	return nil
-	// })
+	done := make(chan struct{})
+	status := uint(0)
 
-	// System os signal
 	go func() {
-		done := make(chan os.Signal, 1)
-		signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-		<-done
-		ws.interrupt <- MCLOSE
+		defer close(done)
+		status = ws.readPump()
 	}()
-	go ws.readPump()
 
-	select {
-	case exit := <-ws.interrupt:
-		if exit == MBREAK || exit == MREAD {
-			ws.emitClosed(nil, fmt.Errorf("BREAK"))
+	ticker := time.NewTicker(ws.ping)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-done:
 			ws.status = CLOSED
-			return ws.Open()
-		}
-		if exit == MCLOSE {
-			ws.emitClosed([]byte("CLOSE"), nil)
-			ws.status = CLOSED
+			ws.emitClosed([]byte("DONE"), nil)
+
+			switch status {
+			case MCLOSE:
+				return nil
+			case MBREAK:
+				return ws.Open()
+			}
+			return nil
+
+		case t := <-ticker.C:
+			log.Trace("WebSocket %s PING %v", ws.name, time.Now())
+			err := ws.conn.WriteMessage(websocket.PingMessage, nil)
+			if err != nil {
+				log.Error("write : %v %d %v", err, ws.interrupt, t)
+				return nil
+			}
+
+		case <-interrupt:
+			err := ws.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			if err != nil {
+				log.Error("write: %v", err)
+				return nil
+			}
+
+			select {
+			case <-done:
+				ws.status = CLOSED
+				ws.emitClosed([]byte("DONE"), nil)
+
+			case <-time.After(time.Second):
+			}
 			return nil
 		}
-		break
+
 	}
 
-	return nil
 }
 
 // Close the connection
@@ -147,7 +177,9 @@ func (ws *WSClient) Close() error {
 	if err != nil {
 		return err
 	}
-	ws.interrupt <- MCLOSE
+	ws.status = CLOSED
+	ws.interrupt = 0
+	ws.emitClosed([]byte("CLOSE"), nil)
 	return nil
 }
 
@@ -161,13 +193,7 @@ func (ws *WSClient) Write(message []byte) error {
 // The application runs readPump in a per-connection goroutine. The application
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
-func (ws *WSClient) readPump() {
-
-	if err := ws.conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
-		log.Error("Websocket SetReadDeadline: %v", err)
-		ws.interrupt <- MCLOSE
-		return
-	}
+func (ws *WSClient) readPump() uint {
 
 	for {
 		_, message, err := ws.conn.ReadMessage()
@@ -176,19 +202,19 @@ func (ws *WSClient) readPump() {
 
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				log.Trace("WebSocket Read: %s [200]%s", ws.name, err.Error())
-				ws.interrupt <- CLOSED
-				return
+				return MCLOSE
 			}
 
 			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseServiceRestart, websocket.CloseInternalServerErr, websocket.CloseAbnormalClosure) {
 				log.Trace("WebSocket Read: %s [500]%s", ws.name, err.Error())
 				ws.emitError(err)
-				ws.interrupt <- MBREAK
-				return
+				return MBREAK
 			}
 
-			break
+			log.Error("WebSocket Read: %s [500]%s", ws.name, err.Error())
+			return MREAD
 		}
+
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		response, err := ws.emitData(message, len(message))
 		if err != nil {
@@ -205,10 +231,11 @@ func (ws *WSClient) readPump() {
 
 		// KeepLive
 		if ws.option.KeepAlive == -1 {
-			ws.interrupt <- MCLOSE
-			return
+			return MCLOSE
 		}
 	}
+
+	return 0
 }
 
 // emitConnect trigger the connected event

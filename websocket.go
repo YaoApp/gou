@@ -53,6 +53,7 @@ func LoadWebSocket(source string, name string) (*WebSocket, error) {
 		Error:     ws.onError,
 	}
 
+	ws.WSClientOption.Name = name
 	ws.Client = websocket.NewWSClient(ws.WSClientOption, handers)
 	WebSockets[name] = &ws
 	return WebSockets[name], nil

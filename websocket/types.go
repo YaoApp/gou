@@ -31,7 +31,7 @@ const (
 const (
 
 	// MREAD socket read error ( the local peer closed )
-	MREAD uint = iota
+	MREAD uint = iota + 1
 
 	// MBREAK the remote peer closed
 	MBREAK
@@ -77,10 +77,11 @@ type WSClient struct {
 	keepAlive    time.Duration
 	timeout      time.Duration
 	attemptAfter time.Duration
+	ping         time.Duration
 	conn         *websocket.Conn
 	option       WSClientOption
 	attemptTimes int
-	interrupt    chan uint
+	interrupt    uint
 	handlers     Handlers `json:"-"`
 }
 
@@ -94,6 +95,7 @@ type WSClientOption struct {
 	Guard        string     `json:"guard,omitempty"`
 	Buffer       BufferSize `json:"buffer,omitempty"`
 	Timeout      int        `json:"timeout,omitempty"`
+	Ping         int        `json:"ping,omitempty"`
 	KeepAlive    int        `json:"keep,omitempty"`          // -1 not keep alive, 0 keep alive always, keep alive n seconds.
 	AttemptAfter int        `json:"attempt_after,omitempty"` // Attempt attempt_after
 	Attempts     int        `json:"attempts,omitempty"`      // max times try to reconnect server when connection break (client mode only)
