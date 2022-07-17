@@ -16,7 +16,7 @@ import (
 func TestLoadWebSocket(t *testing.T) {
 	ws, err := LoadWebSocket("file://"+path.Join(TestServerRoot, "message.ws.json"), "message")
 	assert.Nil(t, err)
-	assert.Equal(t, ws.Name, "A WebSocket client")
+	assert.Equal(t, ws.Name, "message")
 	assert.Equal(t, ws.URL, "ws://127.0.0.1:5011/websocket/message")
 	assert.Equal(t, ws.Protocols, []string{"yao-message-01"})
 	assert.Equal(t, ws.Event.Data, "scripts.websocket.onData")
