@@ -82,26 +82,20 @@ func (ws *WSClient) Open() error {
 		HandshakeTimeout: ws.timeout,
 	}
 
-	// System os signal
-	go func() {
-		done := make(chan os.Signal, 1)
-		signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-		<-done
-		ws.interrupt <- MCLOSE
-	}()
-
 	conn, _, err := dialer.Dial(ws.option.URL, nil)
 	if err != nil {
 		log.With(log.F{"option": ws.option}).Error("WebSocket Open: %s", err)
 		ws.emitError(err)
-		if ws.attempts > ws.attemptTimes {
+		// fmt.Printf("ws.option.Attempts > ws.attemptTimes: %v > %v = %v\n", ws.option.Attempts, ws.attemptTimes, ws.option.Attempts > ws.attemptTimes)
+		ws.status = WAITING
+		if ws.option.Attempts > ws.attemptTimes {
 			ws.attemptTimes = ws.attemptTimes + 1
 			if ws.attemptAfter > 0 {
 				var after = time.Duration(int(ws.attemptAfter) * ws.attemptTimes)
 				log.With(log.F{"option": ws.option}).Trace("Try to reconnect after %v", after)
 				time.Sleep(after)
 			}
-			log.With(log.F{"option": ws.option}).Trace("Connecting ... %d/%d", ws.attemptTimes, ws.attempts)
+			log.With(log.F{"option": ws.option}).Trace("Connecting ... %d/%d", ws.attemptTimes, ws.option.Attempts)
 			return ws.Open()
 		}
 		return err
@@ -115,12 +109,25 @@ func (ws *WSClient) Open() error {
 	ws.attemptTimes = 0
 	err = ws.emitConnected(ws.option)
 
+	// ws.conn.SetCloseHandler(func(code int, text string) error {
+	// 	// fmt.Println("On Closed ", code, text)
+	// 	return nil
+	// })
+
+	// System os signal
+	go func() {
+		done := make(chan os.Signal, 1)
+		signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+		<-done
+		ws.interrupt <- MCLOSE
+	}()
 	go ws.readPump()
 
 	select {
 	case exit := <-ws.interrupt:
 		if exit == MBREAK || exit == MREAD {
 			ws.emitClosed(nil, fmt.Errorf("BREAK"))
+			ws.status = CLOSED
 			return ws.Open()
 		}
 		if exit == MCLOSE {
@@ -156,7 +163,7 @@ func (ws *WSClient) Write(message []byte) error {
 // reads from this goroutine.
 func (ws *WSClient) readPump() {
 
-	if err := ws.conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+	if err := ws.conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
 		log.Error("Websocket SetReadDeadline: %v", err)
 		ws.interrupt <- MCLOSE
 		return
@@ -164,13 +171,22 @@ func (ws *WSClient) readPump() {
 
 	for {
 		_, message, err := ws.conn.ReadMessage()
+		// log.Trace("WebSocket Read: %s %v %v", ws.name, message, err)
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+				log.Trace("WebSocket Read: %s [200]%s", ws.name, err.Error())
+				ws.interrupt <- CLOSED
+				return
+			}
+
+			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseServiceRestart, websocket.CloseInternalServerErr, websocket.CloseAbnormalClosure) {
 				log.Trace("WebSocket Read: %s [500]%s", ws.name, err.Error())
 				ws.emitError(err)
 				ws.interrupt <- MBREAK
 				return
 			}
+
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))

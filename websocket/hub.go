@@ -1,5 +1,10 @@
 package websocket
 
+import (
+	"github.com/gorilla/websocket"
+	"github.com/yaoapp/kun/log"
+)
+
 func newHub() *Hub {
 	return &Hub{
 		broadcast:  make(chan []byte),
@@ -33,6 +38,12 @@ LOOP:
 
 		case exit := <-h.interrupt:
 			if exit == 1 {
+				for client := range h.clients {
+					err := client.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseServiceRestart, "Repair"))
+					log.Trace("Close Client Connection, %v", err)
+					// close(client.send)
+					// delete(h.clients, client)
+				}
 				break LOOP
 			}
 		}

@@ -228,7 +228,7 @@ func (c *Client) readPump() {
 			break
 		}
 
-		if response != nil {
+		if response != nil && len(response) > 0 {
 			log.Trace("Upgrader Message: %s [200]%s", c.upgrader.name, message)
 			log.Trace("Upgrader Response: %s [200]%s", c.upgrader.name, response)
 			c.hub.broadcast <- response

@@ -44,16 +44,21 @@ func LoadWebSocketServer(source string, name string) (*websocket.Upgrader, error
 	ws.SetHandler(func(message []byte) ([]byte, error) {
 		response, err := NewProcess(ws.Process, message).Exec()
 		if err != nil {
-			log.Error("Websocket: %s %s", name, err.Error())
+			log.Error("Websocket Handler: %s %s", name, err.Error())
 			return nil, err
 		}
+
+		if response == nil {
+			return nil, nil
+		}
+
 		switch response.(type) {
 		case string:
 			return []byte(response.(string)), nil
 		case []byte:
 			return response.([]byte), nil
 		default:
-			message := fmt.Sprintf("Websocket: %s response message dose not support", name)
+			message := fmt.Sprintf("Websocket: %s handler response message dose not support(%#v)", name, response)
 			log.Error(message)
 			return nil, fmt.Errorf(message)
 		}

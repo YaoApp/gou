@@ -79,7 +79,6 @@ type WSClient struct {
 	attemptAfter time.Duration
 	conn         *websocket.Conn
 	option       WSClientOption
-	attempts     int
 	attemptTimes int
 	interrupt    chan uint
 	handlers     Handlers `json:"-"`
