@@ -14,6 +14,9 @@ import (
 
 func init() {
 	RegisterProcessHandler("websocket.Broadcast", processBroadcast)
+	RegisterProcessHandler("websocket.Direct", processDirect)
+	RegisterProcessHandler("websocket.Online", processOnline)
+	RegisterProcessHandler("websocket.Clients", processClients)
 }
 
 // LoadWebSocketServer load websocket servers
@@ -41,8 +44,8 @@ func LoadWebSocketServer(source string, name string) (*websocket.Upgrader, error
 	}
 
 	// SetHandler
-	ws.SetHandler(func(message []byte) ([]byte, error) {
-		response, err := NewProcess(ws.Process, message).Exec()
+	ws.SetHandler(func(message []byte, client int) ([]byte, error) {
+		response, err := NewProcess(ws.Process, message, client).Exec()
 		if err != nil {
 			log.Error("Websocket Handler: %s %s", name, err.Error())
 			return nil, err
@@ -77,6 +80,7 @@ func SelectWebSocketServer(name string) *websocket.Upgrader {
 }
 
 // processBroadcast WebSocket Server broadcast the message
+// websocket.Broadcast name hello
 func processBroadcast(process *Process) interface{} {
 	process.ValidateArgNums(2)
 	name := process.ArgsString(0)
@@ -84,4 +88,34 @@ func processBroadcast(process *Process) interface{} {
 	ws := SelectWebSocketServer(name)
 	ws.Broadcast([]byte(message))
 	return nil
+}
+
+// processDirect send the message to the client directly
+// websocket.Direct name 32 hello
+func processDirect(process *Process) interface{} {
+	process.ValidateArgNums(3)
+	name := process.ArgsString(0)
+	id := process.ArgsInt(1)
+	message := process.ArgsString(2)
+	ws := SelectWebSocketServer(name)
+	ws.Direct(uint32(id), []byte(message))
+	return nil
+}
+
+// processOnline count the online client's nums
+// websocket.Online name
+func processOnline(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	name := process.ArgsString(0)
+	ws := SelectWebSocketServer(name)
+	return ws.Online()
+}
+
+// processClients return the online clients
+// websocket.Clients name
+func processClients(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	name := process.ArgsString(0)
+	ws := SelectWebSocketServer(name)
+	return ws.Clients()
 }

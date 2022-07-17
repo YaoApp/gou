@@ -45,7 +45,7 @@ func serve(t *testing.T) *websocket.Upgrader {
 	}
 
 	router := gin.Default()
-	ws.SetHandler(func(message []byte) ([]byte, error) { return message, nil })
+	ws.SetHandler(func(message []byte, client int) ([]byte, error) { return message, nil })
 	ws.SetRouter(router)
 
 	go ws.Start()

@@ -38,7 +38,7 @@ func NewUpgrader(name string, config ...[]byte) (*Upgrader, error) {
 		Limit:     Limit{WriteWait: 10, PongWait: 60, MaxMessage: 1024},
 		Protocols: []string{},
 		Guard:     "-",
-		handler:   func([]byte) ([]byte, error) { return nil, nil },
+		handler:   func([]byte, int) ([]byte, error) { return nil, nil },
 		Timeout:   5,
 		interrupt: make(chan int),
 		status:    WAITING,
@@ -74,7 +74,7 @@ func NewUpgrader(name string, config ...[]byte) (*Upgrader, error) {
 }
 
 // SetHandler set the message handler
-func (upgrader *Upgrader) SetHandler(handler func([]byte) ([]byte, error)) {
+func (upgrader *Upgrader) SetHandler(handler func([]byte, int) ([]byte, error)) {
 	upgrader.handler = handler
 }
 
@@ -115,6 +115,21 @@ func (upgrader *Upgrader) Broadcast(message []byte) {
 	upgrader.hub.broadcast <- message
 }
 
+// Direct send the message to the client directly
+func (upgrader *Upgrader) Direct(id uint32, message []byte) {
+	upgrader.hub.direct <- upgrader.hub.AddID(id, message)
+}
+
+// Clients return the online clients
+func (upgrader *Upgrader) Clients() []uint32 {
+	return upgrader.hub.Clients()
+}
+
+// Online count the online client's nums
+func (upgrader *Upgrader) Online() int {
+	return upgrader.hub.Nums()
+}
+
 // UpgradeGin upgrades the Gin server connection to the WebSocket protocol.
 func (upgrader *Upgrader) UpgradeGin(c *gin.Context, responseHeader http.Header) (*websocket.Conn, error) {
 	return upgrader.Upgrade(c.Writer, c.Request, responseHeader)
@@ -135,9 +150,9 @@ func (upgrader *Upgrader) Upgrade(w http.ResponseWriter, r *http.Request, respon
 		return nil, err
 	}
 
-	// Todo: add client id for direct message
-	client := &Client{hub: upgrader.hub, upgrader: upgrader, conn: conn, send: make(chan []byte, 256)}
-	client.hub.register <- client
+	id := upgrader.hub.NextID()
+	client := &Client{id: id, upgrader: upgrader, conn: conn, send: make(chan []byte, 256)}
+	upgrader.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
@@ -205,7 +220,7 @@ func (c *Client) writePump() {
 // reads from this goroutine.
 func (c *Client) readPump() {
 	defer func() {
-		c.hub.unregister <- c
+		c.upgrader.hub.unregister <- c
 		c.conn.Close()
 	}()
 
@@ -222,7 +237,7 @@ func (c *Client) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		response, err := c.upgrader.handler(message)
+		response, err := c.upgrader.handler(message, int(c.id))
 		if err != nil {
 			log.Error("Upgrader: %s [500]%s", c.upgrader.name, err.Error())
 			break
@@ -231,7 +246,7 @@ func (c *Client) readPump() {
 		if response != nil && len(response) > 0 {
 			log.Trace("Upgrader Message: %s [200]%s", c.upgrader.name, message)
 			log.Trace("Upgrader Response: %s [200]%s", c.upgrader.name, response)
-			c.hub.broadcast <- response
+			c.upgrader.hub.direct <- c.upgrader.hub.AddID(c.id, response)
 		}
 	}
 }

@@ -63,7 +63,7 @@ type Upgrader struct {
 	Limit       Limit      `json:"limit,omitempty"`
 	Timeout     int        `json:"timeout,omitempty"`
 	Process     string     `json:"process,omitempty"` // serve handler
-	handler     func([]byte) ([]byte, error)
+	handler     func([]byte, int) ([]byte, error)
 	hub         *Hub
 	up          *websocket.Upgrader
 	interrupt   chan int
@@ -126,7 +126,6 @@ type ConnectedHandler func(option WSClientOption) error
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	hub *Hub
 
 	// The upgrader.
 	upgrader *Upgrader
@@ -136,6 +135,9 @@ type Client struct {
 
 	// Buffered channel of outbound messages.
 	send chan []byte
+
+	// The websocket client ID
+	id uint32
 }
 
 // Hub maintains the set of active clients and broadcasts messages to the
@@ -143,8 +145,14 @@ type Hub struct {
 	// Registered clients.
 	clients map[*Client]bool
 
+	// The client indexes
+	indexes map[uint32]*Client
+
 	// Inbound messages from the clients.
 	broadcast chan []byte
+
+	// Direct message, 0-4 id, 4~N message eg: [0 0 0 1 49 124...]
+	direct chan []byte
 
 	// Register requests from the clients.
 	register chan *Client
@@ -152,6 +160,7 @@ type Hub struct {
 	// Unregister requests from clients.
 	unregister chan *Client
 
+	// Interrupt from the server
 	interrupt chan int
 }
 

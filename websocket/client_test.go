@@ -35,6 +35,8 @@ func TestOpen(t *testing.T) {
 	var hanlders = Handlers{
 		Connected: func(option WSClientOption) error {
 			fmt.Println("onConnected", option)
+			fmt.Println("Online", srv.Online())
+			fmt.Println("Clients", srv.Clients())
 			srv.Broadcast([]byte("Hello world"))
 			time.Sleep(500 * time.Millisecond)
 			ws.Write([]byte("1|I'm Here, The connection will be closed"))
@@ -72,7 +74,7 @@ func serve(t *testing.T) (*Upgrader, string) {
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
-	ws.SetHandler(func(message []byte) ([]byte, error) { return message, nil })
+	ws.SetHandler(func(message []byte, client int) ([]byte, error) { return message, nil })
 	ws.SetRouter(router)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

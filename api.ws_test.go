@@ -50,7 +50,7 @@ func TestStartWebSocket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ws.SetHandler(func(message []byte) ([]byte, error) { return message, nil })
+	ws.SetHandler(func(message []byte, client int) ([]byte, error) { return message, nil })
 	ws.SetRouter(router)
 
 	go ws.Start()
