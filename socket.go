@@ -53,7 +53,7 @@ func SelectSocket(name string) *Socket {
 
 // Start Start server
 func (sock Socket) Start(args ...interface{}) {
-	socket.Start(sock.Protocol, sock.Host, sock.Port, sock.BufferSize, sock.KeepAlive, func(data []byte, recvLen int, err error) ([]byte, error) {
+	socket.Start(sock.Protocol, sock.Host, sock.Port, sock.BufferSize, sock.KeepAlive, func(data []byte, _ int, err error) ([]byte, error) {
 		res, err := NewProcess(sock.Event.Data, hex.EncodeToString(data)).Exec()
 		if err != nil {
 			log.Error(err.Error())
@@ -94,7 +94,7 @@ func (sock Socket) Connect(args ...interface{}) error {
 		time.Duration(sock.Timeout)*time.Second,
 		sock.BufferSize,
 		time.Duration(sock.KeepAlive)*time.Second,
-		func(data []byte, recvLen int, err error) ([]byte, error) {
+		func(data []byte, _ int, err error) ([]byte, error) {
 			res, err := NewProcess(sock.Process, hex.EncodeToString(data)).Exec()
 			if err != nil {
 				return nil, err

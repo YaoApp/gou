@@ -25,7 +25,7 @@ var Validations = map[string]func(value interface{}, row maps.MapStrAny, args ..
 }
 
 // ValidationTypeof 校验数值类型
-func ValidationTypeof(value interface{}, row maps.MapStrAny, args ...interface{}) bool {
+func ValidationTypeof(value interface{}, _ maps.MapStrAny, args ...interface{}) bool {
 
 	if len(args) < 1 {
 		return false
@@ -74,7 +74,7 @@ func ValidationTypeof(value interface{}, row maps.MapStrAny, args ...interface{}
 }
 
 // ValidationMin 最小值
-func ValidationMin(value interface{}, row maps.MapStrAny, args ...interface{}) bool {
+func ValidationMin(value interface{}, _ maps.MapStrAny, args ...interface{}) bool {
 	if len(args) < 1 {
 		return true
 	}
@@ -88,7 +88,7 @@ func ValidationMin(value interface{}, row maps.MapStrAny, args ...interface{}) b
 }
 
 // ValidationMax 最大值
-func ValidationMax(value interface{}, row maps.MapStrAny, args ...interface{}) bool {
+func ValidationMax(value interface{}, _ maps.MapStrAny, args ...interface{}) bool {
 	if len(args) < 1 {
 		return true
 	}
@@ -102,7 +102,7 @@ func ValidationMax(value interface{}, row maps.MapStrAny, args ...interface{}) b
 }
 
 // ValidationEnum 枚举型
-func ValidationEnum(value interface{}, row maps.MapStrAny, args ...interface{}) bool {
+func ValidationEnum(value interface{}, _ maps.MapStrAny, args ...interface{}) bool {
 	if len(args) < 1 {
 		return true
 	}
@@ -117,7 +117,7 @@ func ValidationEnum(value interface{}, row maps.MapStrAny, args ...interface{}) 
 }
 
 // ValidationPattern 正则匹配
-func ValidationPattern(value interface{}, row maps.MapStrAny, args ...interface{}) bool {
+func ValidationPattern(value interface{}, _ maps.MapStrAny, args ...interface{}) bool {
 	if len(args) < 1 {
 		return true
 	}
@@ -130,7 +130,7 @@ func ValidationPattern(value interface{}, row maps.MapStrAny, args ...interface{
 }
 
 // ValidationMinLength 最小长度
-func ValidationMinLength(value interface{}, row maps.MapStrAny, args ...interface{}) bool {
+func ValidationMinLength(value interface{}, _ maps.MapStrAny, args ...interface{}) bool {
 	if len(args) < 1 {
 		return true
 	}
@@ -138,7 +138,7 @@ func ValidationMinLength(value interface{}, row maps.MapStrAny, args ...interfac
 }
 
 // ValidationMaxLength 最大长度
-func ValidationMaxLength(value interface{}, row maps.MapStrAny, args ...interface{}) bool {
+func ValidationMaxLength(value interface{}, _ maps.MapStrAny, args ...interface{}) bool {
 	if len(args) < 1 {
 		return true
 	}
@@ -146,7 +146,7 @@ func ValidationMaxLength(value interface{}, row maps.MapStrAny, args ...interfac
 }
 
 // ValidationEmail 验证邮箱
-func ValidationEmail(value interface{}, row maps.MapStrAny, args ...interface{}) bool {
+func ValidationEmail(value interface{}, _ maps.MapStrAny, _ ...interface{}) bool {
 	v := any.Of(value)
 	if !v.IsString() {
 		return false
@@ -156,7 +156,7 @@ func ValidationEmail(value interface{}, row maps.MapStrAny, args ...interface{})
 }
 
 // ValidationMobile 验证手机号
-func ValidationMobile(value interface{}, row maps.MapStrAny, args ...interface{}) bool {
+func ValidationMobile(value interface{}, _ maps.MapStrAny, args ...interface{}) bool {
 
 	v := any.Of(value)
 	if !v.IsString() {

@@ -39,7 +39,7 @@ func TestServeHTTP(t *testing.T) {
 		Host:   "127.0.0.1",
 		Port:   5001,
 		Allows: []string{"a.com", "b.com"},
-	}, &shutdown, func(s Server) {
+	}, &shutdown, func(_ Server) {
 		log.Println("服务已关闭")
 	})
 	defer func() { shutdown <- true }()
@@ -84,7 +84,7 @@ func TestServeHTTPShutDown(t *testing.T) {
 		Host:   "127.0.0.1",
 		Port:   5001,
 		Allows: []string{"a.com", "b.com"},
-	}, &shutdown, func(s Server) {
+	}, &shutdown, func(_ Server) {
 		log.Println("服务已关闭")
 	})
 

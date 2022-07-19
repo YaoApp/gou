@@ -61,7 +61,7 @@ func NewUpgrader(name string, config ...[]byte) (*Upgrader, error) {
 		HandshakeTimeout: time.Duration(upgrader.Timeout) * time.Second,
 		Subprotocols:     upgrader.Protocols,
 		CheckOrigin:      func(r *http.Request) bool { return true },
-		Error: func(w http.ResponseWriter, r *http.Request, status int, reason error) {
+		Error: func(_ http.ResponseWriter, _ *http.Request, status int, reason error) {
 			log.Error("Upgrader: %s [%d]%s", name, status, reason.Error())
 		},
 		EnableCompression: true,
@@ -112,12 +112,20 @@ func (upgrader *Upgrader) Stop() {
 
 // Broadcast broadcast the message
 func (upgrader *Upgrader) Broadcast(message []byte) {
-	upgrader.hub.broadcast <- message
+	select {
+	case upgrader.hub.broadcast <- message:
+	default:
+		log.Error("Upgrader: %s [500] broadcast message error len(%v)", upgrader.name, len(message))
+	}
 }
 
 // Direct send the message to the client directly
 func (upgrader *Upgrader) Direct(id uint32, message []byte) {
-	upgrader.hub.direct <- upgrader.hub.AddID(id, message)
+	select {
+	case upgrader.hub.direct <- upgrader.hub.AddID(id, message):
+	default:
+		log.Error("Upgrader: %s [500] direct message error len(%v)", upgrader.name, len(message))
+	}
 }
 
 // Clients return the online clients
