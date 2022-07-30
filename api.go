@@ -16,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/gou/task"
 	"github.com/yaoapp/gou/websocket"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/xun"
@@ -89,19 +90,30 @@ func SelectAPI(name string) *API {
 	return api
 }
 
-// ServeHTTP  启动HTTP服务
-func ServeHTTP(server Server, shutdown *chan bool, onShutdown func(Server), middlewares ...gin.HandlerFunc) {
+// ServeHTTP  Start the http server
+func ServeHTTP(server Server, shutdown chan bool, onShutdown func(Server), middlewares ...gin.HandlerFunc) {
 	router := gin.Default()
 	ServeHTTPCustomRouter(router, server, shutdown, onShutdown, middlewares...)
 }
 
-// ServeHTTPCustomRouter 启动HTTP服务, 自定义路由器
-func ServeHTTPCustomRouter(router *gin.Engine, server Server, shutdown *chan bool, onShutdown func(Server), middlewares ...gin.HandlerFunc) {
+// ServeHTTPCustomRouter Start the cumtom http server
+func ServeHTTPCustomRouter(router *gin.Engine, server Server, shutdown chan bool, onShutdown func(Server), middlewares ...gin.HandlerFunc) {
 
-	// 设置路由
+	// recive interrupt signal
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+
+	// ctx
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// kill plugins
+	defer KillPlugins()
+
+	// Set the routes
 	SetHTTPRoutes(router, server, middlewares...)
 
-	// 服务配置
+	// server setting
 	addr := fmt.Sprintf("%s:%d", server.Host, server.Port)
 	srv := &http.Server{
 		Addr:    addr,
@@ -123,31 +135,53 @@ func ServeHTTPCustomRouter(router *gin.Engine, server Server, shutdown *chan boo
 		}
 	}()
 
+	// start tasks
+	for name, t := range task.Tasks {
+		go t.Start()
+		log.Trace("Task %s start", name)
+	}
+
+	// stop tasks
+	defer func() {
+		for name, t := range task.Tasks {
+			t.Stop()
+			log.Trace("Task %s quit", name)
+		}
+	}()
+
+	// start Schedules
+	for name, sch := range Schedules {
+		sch.Start()
+		log.Trace("Schedule %s start", name)
+	}
+
+	// stop Schedules
+	defer func() {
+		for name, sch := range Schedules {
+			sch.Stop()
+			log.Trace("Schedule %s quit", name)
+		}
+	}()
+
+	// start Http server
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("listen: %s", err)
 		}
 	}()
 
-	// 接收关闭信号
-	go func() {
-		<-*shutdown
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := srv.Shutdown(ctx); err != nil {
-			log.Fatal("服务关闭失败: %s", err)
+	for {
+		select {
+		case <-shutdown:
+			srv.Shutdown(ctx)
+			onShutdown(server)
+			return
+		case <-interrupt:
+			srv.Shutdown(ctx)
+			onShutdown(server)
+			return
 		}
-		KillPlugins()
-		fmt.Println("stop")
-		onShutdown(server)
-	}()
-
-	// 服务终止时 关闭插件进程
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
-	<-quit
-	KillPlugins()
-
+	}
 }
 
 // SetHTTPRoutes 设定路由

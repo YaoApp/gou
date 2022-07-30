@@ -33,13 +33,13 @@ func TestSelectAPI(t *testing.T) {
 }
 
 func TestServeHTTP(t *testing.T) {
-	shutdown := make(chan bool)
+	shutdown := make(chan bool, 1)
 	go ServeHTTP(Server{
 		Debug:  true,
 		Host:   "127.0.0.1",
 		Port:   5001,
 		Allows: []string{"a.com", "b.com"},
-	}, &shutdown, func(_ Server) {
+	}, shutdown, func(_ Server) {
 		log.Println("服务已关闭")
 	})
 	defer func() { shutdown <- true }()
@@ -78,13 +78,13 @@ func TestServeHTTP(t *testing.T) {
 }
 
 func TestServeHTTPShutDown(t *testing.T) {
-	shutdown := make(chan bool)
+	shutdown := make(chan bool, 1)
 	go ServeHTTP(Server{
 		Debug:  true,
 		Host:   "127.0.0.1",
 		Port:   5001,
 		Allows: []string{"a.com", "b.com"},
-	}, &shutdown, func(_ Server) {
+	}, shutdown, func(_ Server) {
 		log.Println("服务已关闭")
 	})
 
