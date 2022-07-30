@@ -38,7 +38,7 @@ func TestTaskProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(400 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	s2, err := NewProcess("tasks.mail.Get", id).Exec()
 	if err != nil {
 		t.Fatal(err)
