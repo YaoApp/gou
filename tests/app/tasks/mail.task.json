@@ -3,7 +3,7 @@
   "worker_nums": "$ENV.SEND_MAIL_WORKER_NUMS",
   "attempts": 3,
   "attempt_after": 200,
-  "timeout": 1,
+  "timeout": 2,
   "size": 1000,
   "process": "scripts.mail.Send",
   "event": {
