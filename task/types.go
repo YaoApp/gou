@@ -20,6 +20,13 @@ const (
 	FAILURE
 )
 
+var status = map[int]string{
+	WAITING: "WAITING",
+	RUNNING: "RUNNING",
+	SUCCESS: "SUCCESS",
+	FAILURE: "SUCCESS",
+}
+
 // Task the task struct
 type Task struct {
 	name     string
@@ -73,7 +80,7 @@ type Job struct {
 type Handlers struct {
 	Exec     func(int, ...interface{}) (interface{}, error)
 	Progress func(int, int, int, string)
-	NextID   func() int
+	NextID   func() (int, error)
 	Add      func(int)
 	Success  func(int, interface{})
 	Error    func(int, error)

@@ -85,6 +85,7 @@ func (t *Task) Stop() {
 func (t *Task) Add(args ...interface{}) (int, error) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
+
 	id := t.nextID()
 	if len(t.pool.jobque) > t.pool.max {
 		return 0, fmt.Errorf("[TASK] %s reached the limit of jobs queue", t.name)
@@ -124,6 +125,22 @@ func Progress(name string, id, curr, total int, message string) error {
 	job.message = message
 	t.progress(job, curr, total, message)
 	return nil
+}
+
+// Get get job by job id
+func (t *Task) Get(id int) (map[string]interface{}, error) {
+	job, has := t.jobs[id]
+	if !has {
+		return nil, fmt.Errorf("job %d does not exist or was completed", id)
+	}
+	return map[string]interface{}{
+		"id":       job.id,
+		"status":   status[job.status],
+		"current":  job.curr,
+		"total":    job.total,
+		"message":  job.message,
+		"response": job.response,
+	}, nil
 }
 
 // createWorker create a new worker
@@ -198,7 +215,13 @@ func (t *Task) nextID() int {
 	if t.handlers.NextID == nil {
 		return len(t.pool.jobque) + 1
 	}
-	return t.handlers.NextID()
+
+	id, err := t.handlers.NextID()
+	if err != nil {
+		log.Error("[TASK] %s can't get next id (%s)", t.name, err.Error())
+		return len(t.pool.jobque) + 1
+	}
+	return id
 }
 
 // exec excute the job
