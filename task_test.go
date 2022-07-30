@@ -31,13 +31,13 @@ func TestTaskProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	s1, err := NewProcess("tasks.mail.Get", id).Exec()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	s2, err := NewProcess("tasks.mail.Get", id).Exec()
 	if err != nil {
 		t.Fatal(err)
@@ -54,7 +54,7 @@ func TestTaskProcess(t *testing.T) {
 	assert.Equal(t, "unit-test", s2.(map[string]interface{})["message"])
 
 	// waitting
-	time.Sleep(2500 * time.Millisecond)
+	time.Sleep(3000 * time.Millisecond)
 }
 
 func taskLoad(t *testing.T) *task.Task {

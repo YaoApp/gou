@@ -12,7 +12,7 @@ function NextID() {
 
 function Send(id, mail, flag) {
   for (var i = 1; i <= 3; i++) {
-    Process("xiang.system.Sleep", 100);
+    Process("xiang.system.Sleep", 200);
     Process("tasks.mail.Progress", id, i, 3, "unit-test");
   }
   if (flag) {
