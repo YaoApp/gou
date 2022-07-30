@@ -123,6 +123,14 @@ func (process *Process) extraProcess() {
 		}
 		process.Handler = handler
 		return
+	case "schedules":
+		process.Name = strings.ToLower(process.Name)
+		handler, has := ScheduleHandlers[process.Method]
+		if !has {
+			exception.New("Schedule: %s %s does not exist", 404, process.Name, process.Method).Throw()
+		}
+		process.Handler = handler
+		return
 	case "models":
 		process.Name = strings.ToLower(process.Name)
 		handler, has := ModelHandlers[process.Method]

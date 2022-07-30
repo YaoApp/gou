@@ -19,6 +19,9 @@ function Send(id, mail, flag) {
     console.log(`flag: ${flag}`);
     Process("xiang.system.Sleep", 2000);
   }
+  console.log(
+    `Send: ${JSON.stringify({ foo: "bar", mail: mail, flag: flag || "-" })}`
+  );
   return { foo: "bar", mail: mail, flag: flag || "-" };
 }
 

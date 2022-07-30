@@ -3,6 +3,7 @@ module github.com/yaoapp/gou
 go 1.18
 
 require (
+	github.com/dustin/go-humanize v1.0.0
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-errors/errors v1.4.2
 	github.com/go-playground/assert/v2 v2.0.1
@@ -20,7 +21,7 @@ require (
 	github.com/yaoapp/xun v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab
 	rogchap.com/v8go v0.7.0
-	github.com/dustin/go-humanize v1.0.0
+	github.com/robfig/cron/v3 v3.0.0
 )
 
 require (
