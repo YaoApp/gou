@@ -32,19 +32,19 @@ func TestTaskProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(200 * time.Millisecond)
+	// time.Sleep(200 * time.Millisecond)
 	s1, err := NewProcess("tasks.mail.Get", id).Exec()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	s2, err := NewProcess("tasks.mail.Get", id).Exec()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	// time.Sleep(500 * time.Millisecond)
 
 	utils.Dump(s1, s2, id, id2)
 	assert.Equal(t, 1025, id)
