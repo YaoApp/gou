@@ -242,6 +242,40 @@
       "nullable": true
     },
     {
+      "label": "分数",
+      "name": "score",
+      "type": "float",
+      "comment": "分数",
+      "default": 99.25,
+      "precision": 4,
+      "scale": 2
+    },
+    {
+      "label": "总分",
+      "name": "total",
+      "type": "double",
+      "comment": "总分",
+      "default": 99.16,
+      "precision": 4,
+      "scale": 2
+    },
+    {
+      "label": "单科",
+      "name": "signle",
+      "type": "decimal",
+      "comment": "单科",
+      "default": 69.28,
+      "precision": 4,
+      "scale": 2
+    },
+    {
+      "label": "通过",
+      "name": "pass",
+      "type": "boolean",
+      "comment": "通过",
+      "default": false
+    },
+    {
       "label": "状态",
       "comment": "用户状态 enabled 有效, disabled 无效",
       "name": "status",
@@ -384,6 +418,12 @@
       "name": "manu_id_mobile_unique",
       "columns": ["manu_id", "mobile"],
       "type": "unique"
+    },
+    {
+      "comment": "名称身份",
+      "name": "name_idcard_index",
+      "columns": ["name", "idcard"],
+      "type": "index"
     },
     {
       "comment": "简历全文检索",
