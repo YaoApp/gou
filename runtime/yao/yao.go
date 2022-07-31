@@ -232,6 +232,10 @@ func (yao *Yao) jsFetch(info *v8.FunctionCallbackInfo) *v8.Value {
 	resolver, _ := v8.NewPromiseResolver(info.Context())
 	go func() {
 		res, _ := http.Get(url)
+		if res.Body == nil {
+			resolver.Resolve(v8.Undefined(yao.iso))
+			return
+		}
 		body, _ := ioutil.ReadAll(res.Body)
 		val, _ := v8.NewValue(yao.iso, string(body))
 		resolver.Resolve(val)
