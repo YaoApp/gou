@@ -92,7 +92,7 @@ func (x *Xun) Drop(name string) error {
 
 // Tables get the list of table
 func (x *Xun) Tables(prefix ...string) ([]string, error) {
-	fliters := []string{}
+	filters := []string{}
 	sch := x.Manager.Schema()
 	tables, err := sch.GetTables()
 	if err != nil {
@@ -103,10 +103,10 @@ func (x *Xun) Tables(prefix ...string) ([]string, error) {
 	}
 	for _, table := range tables {
 		if strings.HasPrefix(table, prefix[0]) {
-			fliters = append(fliters, table)
+			filters = append(filters, table)
 		}
 	}
-	return fliters, nil
+	return filters, nil
 }
 
 // TableGet get a table blueprint
