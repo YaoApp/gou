@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 
@@ -33,9 +34,38 @@ func NewJSON(data []byte) (Blueprint, error) {
 	return blueprint, err
 }
 
-// NewMap create a Blueprint by map string
-func NewMap(data map[string]interface{}) (Blueprint, error) {
-	return New(), nil
+// NewAny create a Blueprint
+func NewAny(data interface{}) (Blueprint, error) {
+	blueprint := New()
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return Blueprint{}, err
+	}
+
+	err = jsoniter.Unmarshal(bytes, &blueprint)
+	return blueprint, err
+}
+
+// NewColumnAny create a Column of Blueprint
+func NewColumnAny(data interface{}) (Column, error) {
+	column := Column{}
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return Column{}, err
+	}
+	err = jsoniter.Unmarshal(bytes, &column)
+	return column, err
+}
+
+// NewIndexAny create a index of Blueprint
+func NewIndexAny(data interface{}) (Index, error) {
+	index := Index{}
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return Index{}, err
+	}
+	err = jsoniter.Unmarshal(bytes, &index)
+	return index, err
 }
 
 // NewDiff create a new Diff

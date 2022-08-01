@@ -286,7 +286,7 @@ func newXunSchema(t *testing.T) types.Schema {
 	dsn := os.Getenv("GOU_TEST_DSN")
 	driver := os.Getenv("GOU_TEST_DB_DRIVER")
 	manager := capsule.AddConn("primary", driver, dsn, 5*time.Second)
-	sch := Use("xun")
+	sch := Use("tests")
 	err := sch.SetOption(xun.Option{Manager: manager})
 	if err != nil {
 		t.Fatal(err)
