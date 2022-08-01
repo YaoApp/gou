@@ -426,6 +426,12 @@
       "type": "index"
     },
     {
+      "comment": "API账户余额",
+      "name": "key_balance_index",
+      "columns": ["key", "balance"],
+      "type": "index"
+    },
+    {
       "comment": "简历全文检索",
       "name": "resume_fulltext",
       "columns": ["resume"],

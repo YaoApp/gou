@@ -18,10 +18,11 @@ type Schema interface {
 
 	ColumnAdd(name string, column Column) error
 	ColumnAlt(name string, column Column) error
-	ColumnDel(name string) error
+	ColumnDel(name string, columns ...string) error
+
 	IndexAdd(name string, index Index) error
 	IndexAlt(name string, index Index) error
-	IndexDel(name string) error
+	IndexDel(name string, indexes ...string) error
 }
 
 // Diff the different of schema
@@ -77,6 +78,7 @@ type Column struct {
 	Index       bool        `json:"index,omitempty"`
 	Unique      bool        `json:"unique,omitempty"`
 	Primary     bool        `json:"primary,omitempty"`
+	Origin      string      `json:"origin,omitempty"`
 }
 
 // Index the search index struct
@@ -85,4 +87,5 @@ type Index struct {
 	Name    string   `json:"name,omitempty"`
 	Columns []string `json:"columns,omitempty"`
 	Type    string   `json:"type,omitempty"` // primary,unique,index,match
+	Origin  string   `json:"origin,omitempty"`
 }

@@ -6,7 +6,6 @@ import (
 
 	"github.com/yaoapp/gou/schema/types"
 	"github.com/yaoapp/kun/log"
-	"github.com/yaoapp/kun/utils"
 	"github.com/yaoapp/xun/capsule"
 	"github.com/yaoapp/xun/dbal/schema"
 )
@@ -128,15 +127,15 @@ func (x *Xun) TableCreate(name string, blueprint types.Blueprint) error {
 		for _, column := range blueprint.Columns {
 			_, err := setColumn(table, column)
 			if err != nil {
-				log.Error("[TableCreate] column %s %s", column.Name, err)
+				log.Error("[TableCreate] table:%s column: %s %s", name, column.Name, err)
 			}
 		}
 
 		// Create indexes
 		for _, index := range blueprint.Indexes {
-			err := SetIndex(table, index)
+			err := setIndex(table, index)
 			if err != nil {
-				log.Error("[TableCreate] index %s %s", index.Name, err)
+				log.Error("[TableCreate] table:%s index %s %s", name, index.Name, err)
 			}
 		}
 
@@ -169,42 +168,98 @@ func (x *Xun) TableRename(name string, new string) error {
 
 // TableDiff compare the two tables, return the difference
 func (x *Xun) TableDiff(blueprint types.Blueprint, another types.Blueprint) (types.Diff, error) {
-	utils.Dump(blueprint, another)
-	diff := types.NewDiff()
-	return diff, nil
+	return types.Compare(blueprint, another)
 }
 
 // TableSave a table, if the table exists update, otherwise create
 func (x *Xun) TableSave(name string, blueprint types.Blueprint) error {
-	return nil
+	sch := x.Manager.Schema()
+	table, err := sch.GetTable(name)
+	if err != nil && !strings.Contains(err.Error(), "does not exists") {
+		return err
+	}
+
+	// the table does not exists, create
+	if err != nil {
+		return x.TableCreate(name, blueprint)
+	}
+
+	// Update
+	diff, err := types.Compare(TableToBlueprint(table), blueprint)
+	if err != nil {
+		return err
+	}
+
+	return diff.Apply(x, name)
 }
 
 // ColumnAdd add a column to the given table
 func (x *Xun) ColumnAdd(name string, column types.Column) error {
-	return nil
+	sch := x.Manager.Schema()
+	return sch.AlterTable(name, func(table schema.Blueprint) {
+		_, err := setColumn(table, column)
+		if err != nil {
+			log.Error("[ColumnAdd] table: %s column: %s %s", name, column.Name, err)
+		}
+	})
 }
 
 // ColumnAlt alter a column to the given table, if the column does not exists add it to the table
 func (x *Xun) ColumnAlt(name string, column types.Column) error {
-	return nil
+	sch := x.Manager.Schema()
+
+	// drop indexes
+	if column.Index {
+		x.IndexDel(name, fmt.Sprintf("%s_index", column.Name))
+	} else if column.Unique {
+		x.IndexDel(name, fmt.Sprintf("%s_unique", column.Name))
+	}
+
+	return sch.AlterTable(name, func(table schema.Blueprint) {
+		_, err := setColumn(table, column)
+		if err != nil {
+			log.Error("[ColumnAlt] table: %s column: %s %s", name, column.Name, err)
+		}
+	})
 }
 
 // ColumnDel delete a column from the given table
-func (x *Xun) ColumnDel(name string) error {
-	return nil
+func (x *Xun) ColumnDel(name string, columns ...string) error {
+	if len(columns) == 0 {
+		return fmt.Errorf("missing columns")
+	}
+	sch := x.Manager.Schema()
+	return sch.AlterTable(name, func(table schema.Blueprint) {
+		for _, col := range columns {
+			table.RenameColumn(col, fmt.Sprintf("__DEL__%s", col))
+		}
+	})
 }
 
 // IndexAdd add a index to the given table
 func (x *Xun) IndexAdd(name string, index types.Index) error {
-	return nil
+	sch := x.Manager.Schema()
+	return sch.AlterTable(name, func(table schema.Blueprint) {
+		err := setIndex(table, index)
+		if err != nil {
+			log.Error("[IndexAdd] table: %s index: %s %s", name, index.Name, err)
+		}
+	})
+}
+
+// IndexDel delete a index from the given table
+func (x *Xun) IndexDel(name string, indexes ...string) error {
+	if len(indexes) == 0 {
+		return fmt.Errorf("missing indexes")
+	}
+	sch := x.Manager.Schema()
+	return sch.AlterTable(name, func(table schema.Blueprint) {
+		table.DropIndex(indexes...)
+	})
 }
 
 // IndexAlt alter a index to the given table, if the column does not exists add it to the table
 func (x *Xun) IndexAlt(name string, index types.Index) error {
-	return nil
-}
-
-// IndexDel delete a index from the given table
-func (x *Xun) IndexDel(name string) error {
+	log.Warn(`[IndexAlt] does not support yet`)
 	return nil
 }

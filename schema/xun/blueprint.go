@@ -121,10 +121,6 @@ func ColumnToBlueprint(col *schema.Column, prikeys []string) types.Column {
 		column.Length = *col.Length
 	}
 
-	if col.OctetLength != nil {
-		column.Length = *col.OctetLength
-	}
-
 	if col.Precision != nil {
 		column.Precision = *col.Precision
 	}
@@ -200,6 +196,10 @@ func parseColumnType(col *schema.Column, column *types.Column) {
 		break
 
 	case "timestamp", "datetime":
+		if col.OctetLength != nil {
+			// fmt.Println("OctetLength:", column.Name, *col.OctetLength)
+			column.Length = *col.OctetLength
+		}
 		switch column.Default.(type) {
 		case []byte:
 			column.DefaultRaw = string(column.Default.([]byte))

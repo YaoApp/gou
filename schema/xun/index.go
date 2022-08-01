@@ -7,8 +7,8 @@ import (
 	"github.com/yaoapp/xun/dbal/schema"
 )
 
-// SetIndex 设置索引
-func SetIndex(table schema.Blueprint, index types.Index) error {
+// setIndex
+func setIndex(table schema.Blueprint, index types.Index) error {
 	if index.Name == "" {
 		return fmt.Errorf("missing name %v", index)
 	}

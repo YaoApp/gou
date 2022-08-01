@@ -1,9 +1,11 @@
 package types
 
 import (
+	"fmt"
 	"io/ioutil"
 
 	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/crypto/md4"
 )
 
 // New  create a Blueprint
@@ -47,4 +49,47 @@ func NewDiff() Diff {
 	diff.Indexes.Alt = []Index{}
 	diff.Option = map[string]bool{}
 	return diff
+}
+
+// ColumnsMapping get the mapping of columns
+func (blueprint Blueprint) ColumnsMapping() map[string]Column {
+	mapping := map[string]Column{}
+	for _, col := range blueprint.Columns {
+		mapping[col.Hash()] = col
+		mapping[col.Name] = col
+	}
+	return mapping
+}
+
+// IndexesMapping get the mapping of indexes
+func (blueprint Blueprint) IndexesMapping() map[string]Index {
+	mapping := map[string]Index{}
+	for _, idx := range blueprint.Indexes {
+		mapping[idx.Name] = idx
+		mapping[idx.Hash()] = idx
+	}
+	return mapping
+}
+
+// Hash get the column hash
+func (column Column) Hash() string {
+	switch column.Type {
+	case "enum":
+		unique := fmt.Sprintf("%v|%v|%v", column.Type, column.Option, column.Comment)
+		return hash(unique)
+	default:
+		unique := fmt.Sprintf("%v|%v", column.Type, column.Comment)
+		return hash(unique)
+	}
+}
+
+// Hash get the index hash
+func (index Index) Hash() string {
+	unique := fmt.Sprintf("%v|%v", index.Columns, index.Type)
+	return hash(unique)
+}
+
+func hash(s string) string {
+	h := md4.New()
+	return string(h.Sum([]byte(s)))
 }
