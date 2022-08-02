@@ -3,23 +3,6 @@
  */
 
 /**
- * Source
- * Where to get the source of DSL
- */
-function Source() {
-  var forms = Process("models.dyform.Get", {
-    select: ["name", "source"],
-    limit: 500,
-  });
-
-  var sources = {};
-  forms.forEach((form) => {
-    sources[form.name] = form.source;
-  });
-  return sources;
-}
-
-/**
  * Export APIs
  * @param {*} dsl
  * @returns

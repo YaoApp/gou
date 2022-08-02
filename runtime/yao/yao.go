@@ -141,7 +141,7 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 	}
 
 	if !global.Has(method) {
-		return nil, fmt.Errorf("global %s", method)
+		return nil, fmt.Errorf("function %s does not exists", method)
 	}
 
 	jsArgs, err := bridge.ArrayToValuers(v8ctx, args)

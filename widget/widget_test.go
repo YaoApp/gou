@@ -13,7 +13,7 @@ import (
 
 func TestLoad(t *testing.T) {
 	w := load(t)
-	v, err := w.Runtime.New("dyform.scripts.helper", "Foo").Call("Hello")
+	v, err := w.ScriptExec("helper", "Foo", "Hello")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -23,6 +23,14 @@ func TestLoad(t *testing.T) {
 	assert.Equal(t, "A form widget. users can design forms online", w.Description)
 	assert.Equal(t, "0.1.0", w.Version)
 	assert.Equal(t, "Hello World", v)
+}
+
+func TestInstanceLoad(t *testing.T) {
+	w := load(t)
+	err := w.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func load(t *testing.T) *Widget {

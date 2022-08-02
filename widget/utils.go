@@ -25,8 +25,8 @@ func Walk(root string, typeName string, cb func(root, filename string) error) er
 	return err
 }
 
-// ScriptName   root: "/tests/apis"  file: "/tests/apis/foo/bar.http.json"
-func ScriptName(root string, file string) string {
+// InstName   root: "/tests/apis"  file: "/tests/apis/foo/bar.http.json"
+func InstName(root string, file string) string {
 	filename := strings.TrimPrefix(file, root+"/") // "foo/bar.http.json"
 	namer := strings.Split(filename, ".")          // ["foo/bar", "http", "json"]
 	nametypes := strings.Split(namer[0], "/")      // ["foo", "bar"]

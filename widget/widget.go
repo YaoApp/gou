@@ -14,7 +14,7 @@ var Widgets = map[string]*Widget{}
 
 // Load load a widget
 func Load(path string, runtime *runtime.Runtime) (*Widget, error) {
-	w := &Widget{Name: filepath.Base(path), Path: path, Runtime: runtime}
+	w := &Widget{Name: filepath.Base(path), Path: path, Runtime: runtime, Instances: map[string]*Instance{}}
 
 	data, err := ioutil.ReadFile(filepath.Join(path, "widget.json"))
 	if err != nil {
@@ -37,26 +37,6 @@ func Load(path string, runtime *runtime.Runtime) (*Widget, error) {
 	// Register the widget
 	Widgets[w.Name] = w
 	return w, nil
-}
-
-// Load load the widget instances
-func (w *Widget) Load(name string) error {
-
-	// Compile DSL
-
-	// Trigger the load event
-
-	// Load Models
-
-	// Load Flows
-
-	// Load Tables
-
-	// Load Tasks
-
-	// Load Schedules
-
-	return nil
 }
 
 // Migrate the migrate
