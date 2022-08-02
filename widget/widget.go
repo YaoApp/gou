@@ -13,8 +13,16 @@ import (
 var Widgets = map[string]*Widget{}
 
 // Load load a widget
-func Load(path string, runtime *runtime.Runtime) (*Widget, error) {
-	w := &Widget{Name: filepath.Base(path), Path: path, Runtime: runtime, Instances: map[string]*Instance{}}
+func Load(path string, runtime *runtime.Runtime, processRegister ProcessRegister, moduleRegister ModuleRegister) (*Widget, error) {
+
+	w := &Widget{
+		Name:            filepath.Base(path),
+		Path:            path,
+		Instances:       map[string]*Instance{},
+		Runtime:         runtime,
+		ProcessRegister: processRegister,
+		ModuleRegister:  moduleRegister,
+	}
 
 	data, err := ioutil.ReadFile(filepath.Join(path, "widget.json"))
 	if err != nil {
@@ -31,6 +39,12 @@ func Load(path string, runtime *runtime.Runtime) (*Widget, error) {
 	err = w.loadScripts()
 	if err != nil {
 		log.Error("[Widget] load widget scirpts error: %s", err.Error())
+		return nil, err
+	}
+
+	// Register the process
+	err = w.RegisterProcess()
+	if err != nil {
 		return nil, err
 	}
 

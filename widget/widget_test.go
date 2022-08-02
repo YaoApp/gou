@@ -36,7 +36,7 @@ func TestInstanceLoad(t *testing.T) {
 func load(t *testing.T) *Widget {
 	root := os.Getenv("GOU_TEST_APP_ROOT")
 	path := filepath.Join(root, "widgets", "dyform")
-	widget, err := Load(path, yao())
+	widget, err := Load(path, yao(), processRegister(), moduleRegister())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,4 +58,28 @@ func yao() *runtime.Runtime {
 				return nil
 			},
 		})
+}
+
+func moduleRegister() ModuleRegister {
+	return ModuleRegister{
+		"Models": func(name string, source []byte) error {
+			fmt.Printf("Model %s Registered\n", name)
+			return nil
+		},
+		"Flows": func(name string, source []byte) error {
+			fmt.Printf("Flow %s Registered\n", name)
+			return nil
+		},
+		"Apis": func(name string, source []byte) error {
+			fmt.Printf("API %s Registered\n", name)
+			return nil
+		},
+	}
+}
+
+func processRegister() ProcessRegister {
+	return func(widget, name string, process func(args ...interface{}) interface{}) error {
+		fmt.Printf("PROCESS: %s.<INSTANCE>.%s Registered\n", widget, name)
+		return nil
+	}
 }

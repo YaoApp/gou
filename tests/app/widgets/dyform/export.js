@@ -3,12 +3,12 @@
  */
 
 /**
- * Export APIs
+ * Export Apis
  * @param {*} dsl
  * @returns
  */
-function APIs(dsl) {
-  return [{}];
+function Apis(name, dsl) {
+  return { hello: { name: name, foo: "bar" } };
 }
 
 /**
@@ -16,7 +16,7 @@ function APIs(dsl) {
  * @param {*} dsl
  * @returns
  */
-function Models(dsl) {
+function Models(name, dsl) {
   return { dyform: dyformModel() };
 }
 
@@ -25,7 +25,7 @@ function Models(dsl) {
  * @param {*} dsl
  * @returns
  */
-function Flows(dsl) {
+function Flows(name, dsl) {
   return [{}];
 }
 
@@ -34,7 +34,7 @@ function Flows(dsl) {
  * @param {*} dsl
  * @returns
  */
-function Tables(dsl) {
+function Tables(name, dsl) {
   return [{}];
 }
 
@@ -43,7 +43,7 @@ function Tables(dsl) {
  * @param {*} dsl
  * @returns
  */
-function Tasks(dsl) {
+function Tasks(name, dsl) {
   return [{}];
 }
 
@@ -52,7 +52,7 @@ function Tasks(dsl) {
  * @param {*} dsl
  * @returns
  */
-function Schedules(dsl) {
+function Schedules(name, dsl) {
   return [{}];
 }
 

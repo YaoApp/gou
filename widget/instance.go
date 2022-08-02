@@ -68,16 +68,17 @@ func (w *Widget) LoadInstance(source []byte, name string) error {
 
 	inst := &Instance{Name: name, DSL: newdsl}
 
-	// Register Models
+	// Register modules
+	if w.Modules != nil {
+		for _, module := range w.Modules {
+			err = w.RegisterModule(module, name, dsl)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
-	// Register Flows
-
-	// Register Tables
-
-	// Register Tasks
-
-	// Register Schedules
-
+	// Save instances
 	w.Instances[name] = inst
 
 	// Trigger OnLoad Event
