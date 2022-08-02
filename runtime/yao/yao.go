@@ -59,6 +59,7 @@ func (yao *Yao) Load(filename string, name string) error {
 	}
 	file, err := os.Open(filename)
 	if err != nil {
+		log.Error("[Runtime] load %s %s error: %s", filename, name, err.Error())
 		return err
 	}
 	defer file.Close()
@@ -86,7 +87,10 @@ func (yao *Yao) LoadReader(reader io.Reader, name string, filename ...string) er
 
 	// opt
 	ctx := v8.NewContext(yao.iso, yao.template)
-	ctx.RunScript(code, scriptfile)
+	_, err = ctx.RunScript(code, scriptfile)
+	if err != nil {
+		return err
+	}
 
 	yao.scripts[name] = script{
 		name:     name,

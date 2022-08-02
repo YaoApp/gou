@@ -14,6 +14,14 @@ function Compile(name, source) {
 }
 
 /**
+ * Prepare
+ * When the yao server started, the function will be called.
+ * For preparing the sources the widget need.
+ * @param {DSL} dsl
+ */
+function Prepare(dsl) {}
+
+/**
  * Load
  * When the widget instance are loaded, the function will be called.
  * For preparing the sources the widget need.

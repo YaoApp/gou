@@ -6,7 +6,18 @@
  * Source
  * Where to get the source of DSL
  */
-function Source() {}
+function Source() {
+  var forms = Process("models.dyform.Get", {
+    select: ["name", "source"],
+    limit: 500,
+  });
+
+  var sources = {};
+  forms.forEach((form) => {
+    sources[form.name] = form.source;
+  });
+  return sources;
+}
 
 /**
  * Export APIs
@@ -23,7 +34,7 @@ function APIs(dsl) {
  * @returns
  */
 function Models(dsl) {
-  return [{}];
+  return { dyform: dyformModel() };
 }
 
 /**
@@ -60,4 +71,24 @@ function Tasks(dsl) {
  */
 function Schedules(dsl) {
   return [{}];
+}
+
+function dyformModel() {
+  return {
+    table: { name: "dyform" },
+    columns: [
+      { label: "DYFORM ID", name: "id", type: "ID" },
+      { label: "SN", name: "sn", type: "string", length: 20, unique: true },
+      { label: "NAME", name: "name", type: "string", length: 200, index: true },
+      { label: "SOURCE", name: "source", type: "JSON", nullable: true },
+      {
+        label: "TITLE",
+        name: "title",
+        type: "string",
+        length: 200,
+        index: true,
+      },
+    ],
+    indexes: [],
+  };
 }

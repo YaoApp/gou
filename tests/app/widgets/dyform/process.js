@@ -11,4 +11,6 @@
  * @name: dyform.<INSTANCE>.SchemaSave
  * @param {*} payload
  */
-function SchemaSave(payload) {}
+function SchemaSave(payload) {
+  return payload;
+}
