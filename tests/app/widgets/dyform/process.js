@@ -8,16 +8,17 @@
 /**
  * SchemaSave
  * Save the schema of dyform
- * @name: dyform.<INSTANCE>.SchemaSave
+ * @name: dyform.<INSTANCE>.Save
+ * @param {String} instance the instance name
  * @param {*} payload
  */
-function SchemaSave(payload) {
-  return payload;
+function SchemaSave(instance, payload) {
+  return { instance: instance, payload: payload };
 }
 
 /**
  * Export processes
  */
 function Export() {
-  return { Save: "SaveSchema" };
+  return { Save: "SchemaSave" };
 }

@@ -18,7 +18,13 @@ func (w *Widget) Load() error {
 		err := Walk(root, w.Extension, func(root, filename string) error {
 			basename := filepath.Base(filename)
 			name := InstName(root, basename)
-			return w.LoadInstanceFile(filename, name)
+			err := w.LoadInstanceFile(filename, name)
+			if err != nil {
+				log.Error("[Widget] load %s.%s error: %s file:", w.Name, name, err.Error(), filename)
+				return err
+			}
+			log.Info("[Widget] %s.%s loaded", w.Name, name)
+			return nil
 		})
 
 		if err != nil {
@@ -29,14 +35,16 @@ func (w *Widget) Load() error {
 	// Load from the customize path
 	sources, err := w.CompileSource()
 	if err != nil {
-		log.Error("[Widget] compile.js Source: %s ", err.Error())
+		log.Error("[Widget] %s compile.js Source: %s ", w.Name, err.Error())
 		return err
 	}
 	for name, source := range sources {
 		err := w.LoadInstance(source, name)
 		if err != nil {
-			return err
+			log.Error("[Widget] load %s.%s error: %s ", w.Name, name, err.Error())
+			continue
 		}
+		log.Info("[Widget] %s.%s loaded ", w.Name, name)
 	}
 
 	return nil
@@ -88,6 +96,23 @@ func (w *Widget) LoadInstance(source []byte, name string) error {
 	}
 
 	return nil
+}
+
+// RemoveInstance remove the widget instance
+func (w *Widget) RemoveInstance(name string) {
+	if _, has := w.Instances[name]; !has {
+		delete(w.Instances, name)
+	}
+}
+
+// ReloadInstanceFile reload the widget instance from file
+func (w *Widget) ReloadInstanceFile(file string, name string) error {
+	return w.LoadInstanceFile(file, name)
+}
+
+// ReloadInstance reload the widget instance
+func (w *Widget) ReloadInstance(source []byte, name string) error {
+	return w.LoadInstance(source, name)
 }
 
 // InstanceRoot get the instance root path

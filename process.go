@@ -115,6 +115,14 @@ func (process *Process) extraProcess() {
 		}
 		process.Handler = handler
 		return
+	case "widgets":
+		process.Name = strings.ToLower(process.Name)
+		handler, has := WidgetHandlers[process.Method]
+		if !has {
+			exception.New("Widget: %s %s does not exist", 404, process.Name, process.Method).Throw()
+		}
+		process.Handler = handler
+		return
 	case "schemas":
 		process.Name = strings.ToLower(process.Name)
 		handler, has := SchemaHandlers[process.Method]
@@ -156,6 +164,12 @@ func (process *Process) extraProcess() {
 			process.Name = strings.ToLower(process.Name)
 			process.Handler = handler
 			return
+		} else if widgetHanlders, has := WidgetCustomHandlers[strings.ToLower(process.Type)]; has {
+			if handler, has := widgetHanlders[strings.ToLower(process.Method)]; has {
+				process.Name = strings.ToLower(process.Name)
+				process.Handler = handler
+				return
+			}
 		}
 	}
 
