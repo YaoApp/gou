@@ -20,7 +20,7 @@ func (w *Widget) Load() error {
 			name := InstName(root, basename)
 			err := w.LoadInstanceFile(filename, name)
 			if err != nil {
-				log.Error("[Widget] load %s.%s error: %s file:", w.Name, name, err.Error(), filename)
+				log.Error("[Widget] load %s.%s error: %s file:%s", w.Name, name, err.Error(), filename)
 				return err
 			}
 			log.Info("[Widget] %s.%s loaded", w.Name, name)
