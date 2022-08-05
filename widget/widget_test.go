@@ -79,7 +79,7 @@ func moduleRegister() ModuleRegister {
 
 func processRegister() ProcessRegister {
 	return func(widget, name string, process func(args ...interface{}) interface{}) error {
-		fmt.Printf("PROCESS: %s.<INSTANCE>.%s Registered\n", widget, name)
+		fmt.Printf("PROCESS: widgets.%s.%s Registered\n", widget, name)
 		return nil
 	}
 }

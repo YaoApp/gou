@@ -16,10 +16,32 @@ func (r ModuleRegister) Call(method string, name string, source []byte) error {
 	return nil
 }
 
-// RegisterModule Execute the export.js Models function and register the models
+// RegisterAPI Execute the export.js API function and register the Apis
+func (w *Widget) RegisterAPI() (err error) {
+
+	if w.ModuleRegister == nil {
+		return nil
+	}
+
+	res, err := w.Export("Apis", "", nil)
+	if err != nil {
+		return err
+	}
+
+	for name, bytes := range res {
+		err = w.ModuleRegister.Call("Apis", name, bytes)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// RegisterModule Execute the export.js name function and register the modules
 func (w *Widget) RegisterModule(module, name string, dsl map[string]interface{}) (err error) {
 
-	if w.ModuleRegister == nil || w.ModuleRegister[module] == nil {
+	if w.ModuleRegister == nil || w.ModuleRegister[module] == nil || module == "Apis" {
 		return nil
 	}
 
@@ -38,7 +60,7 @@ func (w *Widget) RegisterModule(module, name string, dsl map[string]interface{})
 	return nil
 }
 
-// RegisterProcess Execute the export.js Models function and register the models
+// RegisterProcess Execute the process.js Export function and register the process
 func (w *Widget) RegisterProcess() (err error) {
 	if w.ProcessRegister == nil {
 		return nil

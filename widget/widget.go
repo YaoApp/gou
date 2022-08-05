@@ -48,6 +48,12 @@ func Load(path string, runtime *runtime.Runtime, processRegister ProcessRegister
 		return nil, err
 	}
 
+	// Register the api
+	err = w.RegisterAPI()
+	if err != nil {
+		return nil, err
+	}
+
 	// Register the widget
 	Widgets[w.Name] = w
 	return w, nil

@@ -11,7 +11,7 @@ import (
 	"github.com/yaoapp/kun/any"
 )
 
-func TestLoadWidgetReload(t *testing.T) {
+func TestWidgetReload(t *testing.T) {
 	load(t)
 	v, err := NewProcess("widgets.dyform.Reload", "pad", "{}").Exec()
 	if err != nil {
@@ -20,9 +20,9 @@ func TestLoadWidgetReload(t *testing.T) {
 	assert.Equal(t, nil, v)
 }
 
-func TestLoadWidgetCustomProcess(t *testing.T) {
+func TestWidgetCustomProcess(t *testing.T) {
 	load(t)
-	v, err := NewProcess("dyform.pad.Save", "foo").Exec()
+	v, err := NewProcess("widgets.dyform.Save", "pad", "foo").Exec()
 	if err != nil {
 		t.Fatal(err)
 	}

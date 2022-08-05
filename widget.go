@@ -29,14 +29,13 @@ func customProcessRegister() widget.ProcessRegister {
 	return func(widget, name string, handler func(args ...interface{}) interface{}) error {
 		widget = strings.ToLower(widget)
 		name = strings.ToLower(name)
-		log.Info("[Widget] Register Process %s.<INSTANCE>.%s", widget, name)
+		log.Info("[Widget] Register Process widgets.%s.%s", widget, name)
 		if _, has := WidgetCustomHandlers[widget]; !has {
 			WidgetCustomHandlers[widget] = map[string]ProcessHandler{}
 		}
 
 		WidgetCustomHandlers[widget][name] = func(process *Process) interface{} {
-			args := append([]interface{}{strings.ToLower(process.Class)}, process.Args...)
-			return handler(args...)
+			return handler(process.Args...)
 		}
 		return nil
 	}
