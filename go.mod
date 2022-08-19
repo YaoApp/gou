@@ -22,6 +22,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab
 	rogchap.com/v8go v0.7.0
 	github.com/robfig/cron/v3 v3.0.0
+	gopkg.in/yaml.v3 v3.0.0
 )
 
 require (
@@ -68,7 +69,6 @@ require (
 	google.golang.org/grpc v1.46.2 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0 // indirect
 )
 
 replace github.com/yaoapp/kun => ../kun

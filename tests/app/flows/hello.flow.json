@@ -1,0 +1,13 @@
+{
+  "label": "::Latest",
+  "version": "1.0.0",
+  "description": "\\:\\:Latest",
+  "nodes": [
+    {
+      "name": "nextID",
+      "process": "scripts.mail.NextID",
+      "args": []
+    }
+  ],
+  "output": "{{$res.nextID}}"
+}
