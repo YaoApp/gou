@@ -130,7 +130,7 @@ func LoadModel(source string, name string) *Model {
 
 // Reload 更新模型
 func (mod *Model) Reload() *Model {
-	mod = LoadModel(mod.Source, mod.Name)
+	*mod = *LoadModel(mod.Source, mod.Name)
 	return mod
 }
 
