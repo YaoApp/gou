@@ -73,3 +73,24 @@ func TestApply(t *testing.T) {
 	assert.Equal(t, w2.Foo, "NotDefined")
 	assert.Equal(t, w2.Bar, "Ignore")
 }
+
+func TestReplace(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APP_ROOT")
+	root = filepath.Join(root, "langs")
+	err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := "ZipCode"
+	Pick("zh-cn").AsDefault()
+
+	s1 := s
+	Replace(&s1)
+	assert.Equal(t, s1, "邮政编码")
+
+	Pick("zh-hk").AsDefault()
+	s2 := s
+	Replace(&s2)
+	assert.Equal(t, s2, "郵政編碼")
+}

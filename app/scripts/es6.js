@@ -14,11 +14,15 @@ function now() {
 }
 
 function promiseTest() {
-  return fetch("https://blog.iqka.com/api/article/find/1");
+  return new Promise((resole, reject) => {
+    resole(true);
+  });
 }
 
 async function asyncTest() {
-  const body = await fetch("https://blog.iqka.com/api/article/find/1");
+  const body = await new Promise((resole, reject) => {
+    resole(JSON.stringify({ foo: bar }));
+  })();
   const data = JSON.parse(body);
   console.log(data);
   return data;

@@ -27,6 +27,9 @@ func RegisterWidget(path, name string) {
 	Widgets[path] = name
 }
 
+// Default the default language
+var Default *Dict = nil
+
 // Pick get the dictionary by the ISO 639-1 standard language code
 func Pick(name string) *Dict {
 	dict, has := Dicts[name]
@@ -143,6 +146,25 @@ func OpenYaml(file string) (Words, error) {
 	return words, nil
 }
 
+// Replace replace the value in the global dictionary
+// if was replaced return true else return false
+func Replace(value *string) bool {
+	if Default == nil {
+		return false
+	}
+
+	if value == nil {
+		return false
+	}
+
+	if v, has := Default.Global[*value]; has {
+		*value = v
+		return true
+	}
+
+	return false
+}
+
 // Apply Replace the words in the dictionary
 // if was replaced return true else return false
 func (dict *Dict) Apply(lang Lang) {
@@ -153,7 +175,7 @@ func (dict *Dict) Apply(lang Lang) {
 
 // Replace replace the value in the dictionary
 // if was replaced return true else return false
-func (dict Dict) Replace(name string, inst string, value *string) bool {
+func (dict *Dict) Replace(name string, inst string, value *string) bool {
 	if value == nil {
 		return false
 	}
@@ -185,4 +207,10 @@ func (dict Dict) Replace(name string, inst string, value *string) bool {
 
 	*value = val
 	return false
+}
+
+// AsDefault set current dict as default
+func (dict *Dict) AsDefault() *Dict {
+	Default = dict
+	return dict
 }
