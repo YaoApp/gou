@@ -50,6 +50,7 @@ func New(handlers *Handlers, option Option) *Task {
 		cancel:   cancel,
 		pool:     pool,
 		timeout:  option.Timeout,
+		Option:   option,
 	}
 }
 

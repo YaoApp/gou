@@ -37,6 +37,7 @@ type Task struct {
 	mutex    sync.Mutex
 	ctx      context.Context
 	cancel   context.CancelFunc
+	Option   Option
 }
 
 // Option the task option
