@@ -10,111 +10,118 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/schema"
+	"github.com/yaoapp/gou/schema/types"
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/day"
-	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/xun/capsule"
-	"github.com/yaoapp/xun/dbal/schema"
 )
 
-// SchemaTableUpgrade 旧表数据结构差别对比后升级
-func (mod *Model) SchemaTableUpgrade() {
-}
-
-// SchemaTableDiff 旧表数据结构差别对比
-func (mod *Model) SchemaTableDiff() {
-}
-
-// SchemaTableCreate 创建新的数据表
-func (mod *Model) SchemaTableCreate() {
-
-	sch := capsule.Schema()
-	err := sch.CreateTable(mod.MetaData.Table.Name, func(table schema.Blueprint) {
-
-		// 创建字段
-		for _, column := range mod.MetaData.Columns {
-			col := column.SetType(table)
-			column.SetOption(col)
-		}
-
-		// 创建索引
-		for _, index := range mod.MetaData.Indexes {
-			index.SetIndex(table)
-		}
-
-		// 创建时间, 更新时间
-		if mod.MetaData.Option.Timestamps {
-			table.Timestamps()
-		}
-
-		// 软删除
-		if mod.MetaData.Option.SoftDeletes {
-			table.SoftDeletes()
-			table.JSON("__restore_data").Null()
-		}
-
-		// 追溯ID
-		if mod.MetaData.Option.Trackings || mod.MetaData.Option.Logging {
-			table.BigInteger("__tracking_id").Index().Null()
-		}
-
-	})
-
-	if err != nil {
-		exception.Err(err, 500).Throw()
+// CreateTable create the table of the model
+func (mod *Model) CreateTable() error {
+	connector := mod.MetaData.Connector
+	if connector == "" {
+		connector = "default"
 	}
 
-	// 添加默认值
-	for _, row := range mod.MetaData.Values {
-		mod.MustCreate(row)
+	table := mod.MetaData.Table.Name
+	if table == "" {
+		return fmt.Errorf("missing table name")
 	}
-}
 
-// ForceCreateSchema create table
-func (mod *Model) ForceCreateSchema() error {
-
-	sch := capsule.Schema()
-	err := sch.DropTableIfExists(mod.MetaData.Table.Name)
+	blueprint, err := mod.Blueprint()
 	if err != nil {
 		return err
 	}
 
-	err = sch.CreateTable(mod.MetaData.Table.Name, func(table schema.Blueprint) {
+	sch := schema.Use(connector)
+	return sch.TableCreate(table, blueprint)
 
-		// 创建字段
-		for _, column := range mod.MetaData.Columns {
-			col := column.SetType(table)
-			column.SetOption(col)
-		}
+}
 
-		// 创建索引
-		for _, index := range mod.MetaData.Indexes {
-			index.SetIndex(table)
-		}
+// SaveTable update or create the table of the model
+func (mod *Model) SaveTable() error {
+	connector := mod.MetaData.Connector
+	if connector == "" {
+		connector = "default"
+	}
 
-		// 创建时间, 更新时间
-		if mod.MetaData.Option.Timestamps {
-			table.Timestamps()
-		}
+	table := mod.MetaData.Table.Name
+	if table == "" {
+		return fmt.Errorf("missing table name")
+	}
 
-		// 软删除
-		if mod.MetaData.Option.SoftDeletes {
-			table.SoftDeletes()
-			table.JSON("__restore_data").Null()
-		}
-
-		// 追溯ID
-		if mod.MetaData.Option.Trackings || mod.MetaData.Option.Logging {
-			table.BigInteger("__tracking_id").Index().Null()
-		}
-
-	})
-
+	blueprint, err := mod.Blueprint()
 	if err != nil {
 		return err
 	}
 
+	sch := schema.Use(connector)
+	err = sch.TableSave(table, blueprint)
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+// DropTable drop the table of the model
+func (mod *Model) DropTable() error {
+	connector := mod.MetaData.Connector
+	if connector == "" {
+		connector = "default"
+	}
+
+	table := mod.MetaData.Table.Name
+	if table == "" {
+		return fmt.Errorf("missing table name")
+	}
+
+	sch := schema.Use(connector)
+	return sch.TableDrop(table)
+}
+
+// HasTable check if the table of the model is exists
+func (mod *Model) HasTable() (bool, error) {
+	connector := mod.MetaData.Connector
+	if connector == "" {
+		connector = "default"
+	}
+
+	table := mod.MetaData.Table.Name
+	if table == "" {
+		return false, fmt.Errorf("missing table name")
+	}
+
+	sch := schema.Use(connector)
+	_, err := sch.TableGet(table)
+	if err != nil && strings.Contains(err.Error(), "does not exists") {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// InsertValues insert the default values of the model
+func (mod *Model) InsertValues() ([]int, []error) {
+
+	ids := []int{}
+	errs := []error{}
+
+	// Add the default values
+	for _, row := range mod.MetaData.Values {
+		id, err := mod.Create(row)
+		if err != nil {
+			errs = append(errs, nil)
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, errs
+}
+
+// Blueprint cast to the blueprint struct
+func (mod *Model) Blueprint() (types.Blueprint, error) {
+	return types.NewAny(mod.MetaData)
 }
 
 // Export the model

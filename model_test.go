@@ -11,7 +11,6 @@ import (
 	"github.com/yaoapp/gou/lang"
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/maps"
-	"github.com/yaoapp/kun/utils"
 	"github.com/yaoapp/xun/capsule"
 )
 
@@ -31,9 +30,11 @@ func TestModelReload(t *testing.T) {
 }
 
 func TestModelMigrate(t *testing.T) {
-	for name, mod := range Models {
-		utils.Dump(name)
-		mod.Migrate(true)
+	for _, mod := range Models {
+		err := mod.Migrate(true)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -493,8 +494,11 @@ func TestModelExportImport(t *testing.T) {
 	}
 
 	user := Select("uimport")
-	user.Migrate(true)
-	err := user.Insert(columns, rows)
+	err := user.Migrate(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = user.Insert(columns, rows)
 	if err != nil {
 		t.Fatal(err)
 	}

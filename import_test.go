@@ -16,11 +16,18 @@ func TestImportInsertCSV(t *testing.T) {
 	}).Set("strict", true)
 
 	manu := Select("manu")
-	manu.Migrate(true)
+	err := manu.Migrate(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	csvfile := path.Join(TestModRoot, "manu.csv")
 	res := manucsv.InsertCSV(csvfile, "manu")
 	assert.Equal(t, 243, res.Total)
 	assert.Equal(t, 143, res.Success)
 	assert.Equal(t, 100, res.Failure)
-	manu.Migrate(true)
+	err = manu.Migrate(true)
+	if err != nil {
+		t.Fatal(err)
+	}
 }

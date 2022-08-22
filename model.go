@@ -135,19 +135,36 @@ func (mod *Model) Reload() *Model {
 }
 
 // Migrate 数据迁移
-func (mod *Model) Migrate(force bool) {
-	table := mod.MetaData.Table.Name
-	schema := capsule.Schema()
+func (mod *Model) Migrate(force bool) error {
 	if force {
-		schema.DropTableIfExists(table)
+		err := mod.DropTable()
+		if err != nil {
+			return err
+		}
 	}
 
-	if !schema.MustHasTable(table) {
-		mod.SchemaTableCreate()
-		return
+	has, err := mod.HasTable()
+	if err != nil {
+		return err
 	}
 
-	mod.SchemaTableUpgrade()
+	if !has {
+		err := mod.CreateTable()
+		if err != nil {
+			return err
+		}
+
+		_, errs := mod.InsertValues()
+		if errs != nil && len(errs) > 0 {
+			for _, err := range errs {
+				log.Error("[Migrate] %s", err.Error())
+			}
+			return fmt.Errorf("%d values error, please check the logs", len(errs))
+		}
+		return nil
+	}
+
+	return mod.SaveTable()
 }
 
 // Select 读取已加载模型
