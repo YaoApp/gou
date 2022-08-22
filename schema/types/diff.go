@@ -138,6 +138,13 @@ func (diff *Diff) columnsDel(columns []Column, another map[string]Column) {
 
 func (diff *Diff) columnsAddAlt(columns []Column, blueprint map[string]Column) {
 	for _, column := range columns {
+
+		// Ignore created_at, updated_at, deleted_at
+		if column.Type == "timestamp" &&
+			(column.Name == "created_at" || column.Name == "updated_at" || column.Name == "deleted_at") {
+			continue
+		}
+
 		origin, has := blueprint[column.Name]
 		// if !has {
 		// 	origin, has = blueprint[column.Hash()]
@@ -158,7 +165,11 @@ func (diff *Diff) columnsAddAlt(columns []Column, blueprint map[string]Column) {
 			continue
 		}
 
-		if origin.Type != column.Type {
+		if strings.ToLower(origin.Type) == "json" {
+			continue
+		}
+
+		if strings.ToLower(origin.Type) != strings.ToLower(column.Type) {
 			diff.Columns.Alt = append(diff.Columns.Alt, column)
 			continue
 		}
@@ -168,7 +179,7 @@ func (diff *Diff) columnsAddAlt(columns []Column, blueprint map[string]Column) {
 			continue
 		}
 
-		if origin.Type == "string" && origin.Length != column.Length {
+		if origin.Type == "string" && origin.Length != column.Length && column.Length > 0 {
 			diff.Columns.Alt = append(diff.Columns.Alt, column)
 			continue
 		}
