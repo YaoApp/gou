@@ -27,6 +27,60 @@ jobs:
         db: [MySQL8.0, SQLite3]
         redis: [4, 5, 6]
     steps:
+      - name: "Download artifact"
+        uses: actions/github-script@v3.1.0
+        with:
+          script: |
+            var artifacts = await github.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: ${{github.event.workflow_run.id }},
+            });
+            var matchArtifact = artifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == "pr"
+            })[0];
+            var download = await github.actions.downloadArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: matchArtifact.id,
+               archive_format: 'zip',
+            });
+            var fs = require('fs');
+            fs.writeFileSync('${{github.workspace}}/pr.zip', Buffer.from(download.data));
+
+      - name: "Read NR & SHA"
+        run: |
+          unzip pr.zip
+          cat NR
+          cat SHA
+          echo HEAD=$(cat SHA) >> $GITHUB_ENV
+          echo NR=$(cat NR) >> $GITHUB_ENV
+
+      - name: "Comment on PR"
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { NR } = process.env
+            var fs = require('fs');
+            var issue_number = NR;
+            await github.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              body: 'Thank you for the PR! The ${{ matrix.db }} test workflow is running, the results of the run will be commented later.'
+            });
+
+      - name: Setup Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
       - name: Checkout Kun
         uses: actions/checkout@v2
         with:
@@ -61,8 +115,10 @@ jobs:
           ls -l .
           ls -l ../
 
-      - name: Checkout code
+      - name: Checkout pull request HEAD commit
         uses: actions/checkout@v2
+        with:
+          ref: ${{ env.HEAD }}
 
       - name: Start Redis
         uses: supercharge/redis-github-action@1.4.0
@@ -117,3 +173,18 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+
+      - name: "Comment on PR"
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { NR } = process.env
+            var fs = require('fs');
+            var issue_number = NR;
+            await github.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              body: '✨DONE✨ ${{ matrix.db }} passed.'
+            });
