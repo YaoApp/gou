@@ -9,4 +9,4 @@ App engine framework
 
 Gou 来自易经姤卦。《象》曰: 天下有风，姤。后以施命诰四方。
 
-[Documentation](https://yaoapps.com/docs)
+[Documentation](https://yaoapps.com/doc)

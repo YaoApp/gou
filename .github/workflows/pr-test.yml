@@ -68,7 +68,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue_number,
-              body: 'Thank you for the PR! The ${{ matrix.db }} test workflow is running, the results of the run will be commented later.'
+              body: 'Thank you for the PR! The test workflow ( GO:${{ matrix.go }} DB:${{ matrix.db }} Redis:${{ matrix.redis }} ) is running, the results of the run will be commented later.'
             });
 
       - name: Setup Cache
@@ -186,5 +186,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue_number,
-              body: '✨DONE✨ ${{ matrix.db }} passed.'
+              body: '✨DONE✨ GO:${{ matrix.go }} DB:${{ matrix.db }} Redis:${{ matrix.redis }} passed.'
             });
