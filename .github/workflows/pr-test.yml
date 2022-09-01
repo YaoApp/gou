@@ -1,12 +1,12 @@
-name: Unit-Test
+name: Comment on the pull request
 
+# read-write repo token
+# access to secrets
 on:
-  workflow_dispatch:
-    inputs:
-      tags:
-        description: "Comment"
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["Receive PR"]
+    types:
+      - completed
 
 env:
   GOU_TEST_AES_KEY: "^*aNBue!loLTTiP*4i&BSK7s#QRbe0^g"
@@ -17,8 +17,6 @@ env:
   GOU_TEST_DSL_TABLE_NAME: test_env
   SEND_MAIL_WORKER_NUMS: 2
   SEND_MAIL_TEST_MAIL: max@iqka.com
-  REPO_KUN: ${{ github.repository_owner }}/kun
-  REPO_XUN: ${{ github.repository_owner }}/xun
 
 jobs:
   unit-test:
@@ -32,13 +30,13 @@ jobs:
       - name: Checkout Kun
         uses: actions/checkout@v2
         with:
-          repository: ${{ env.REPO_KUN }}
+          repository: yaoapp/kun
           path: kun
 
       - name: Checkout Xun
         uses: actions/checkout@v2
         with:
-          repository: ${{ env.REPO_XUN }}
+          repository: yaoapp/xun
           path: xun
 
       - name: Checkout V8Go
