@@ -102,6 +102,7 @@ func (http HTTP) Routes(router *gin.Engine, root string, allows ...string) {
 	}
 	group = router.Group(root)
 	for _, path := range http.Paths {
+		path.Method = strings.ToUpper(path.Method)
 		http.Route(group, path, allows...)
 	}
 }
@@ -440,7 +441,7 @@ func (http HTTP) method(name string, path string, router gin.IRoutes, handlers .
 	case "HEAD":
 		router.HEAD(path, handlers...)
 		return
-	case "Any":
+	case "ANY":
 		router.Any(path, handlers...)
 		return
 	case "OPTIONS":
