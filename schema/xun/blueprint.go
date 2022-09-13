@@ -57,6 +57,7 @@ func TableToBlueprint(table schema.Blueprint) types.Blueprint {
 	for _, name := range table.GetColumnNames() {
 		col, has := columns[name]
 		if !has ||
+			strings.HasPrefix(name, "__DEL") ||
 			(name == "created_at" && blueprint.Option.Timestamps) ||
 			(name == "updated_at" && blueprint.Option.Timestamps) ||
 			(name == "deleted_at" && blueprint.Option.SoftDeletes) ||
