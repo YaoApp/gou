@@ -7,22 +7,22 @@ require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-errors/errors v1.4.2
 	github.com/go-playground/assert/v2 v2.0.1
-	github.com/go-redis/redis/v8 v8.11.4
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.2.0
 	github.com/hashicorp/go-plugin v1.4.4
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/json-iterator/go v1.1.12
 	github.com/miekg/dns v1.1.48
+	github.com/robfig/cron/v3 v3.0.0
 	github.com/stretchr/testify v1.7.1
 	github.com/takama/daemon v1.0.0
 	github.com/tidwall/buntdb v1.2.9
 	github.com/yaoapp/kun v0.9.0
 	github.com/yaoapp/xun v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab
-	rogchap.com/v8go v0.7.0
-	github.com/robfig/cron/v3 v3.0.0
 	gopkg.in/yaml.v3 v3.0.0
+	rogchap.com/v8go v0.7.0
 )
 
 require (

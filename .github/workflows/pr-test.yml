@@ -18,6 +18,17 @@ env:
   SEND_MAIL_WORKER_NUMS: 2
   SEND_MAIL_TEST_MAIL: max@iqka.com
 
+  MYSQL_TEST_HOST: "127.0.0.1"
+  MYSQL_TEST_PORT: "3308"
+  MYSQL_TEST_USER: test
+  MYSQL_TEST_PASS: "123456"
+
+  SQLITE_DB: "./app/db/yao.db"
+
+  REDIS_TEST_HOST: "127.0.0.1"
+  REDIS_TEST_PORT: "6379"
+  REDIS_TEST_DB: "2"
+
 jobs:
   unit-test:
     runs-on: ubuntu-latest
@@ -124,6 +135,15 @@ jobs:
         uses: supercharge/redis-github-action@1.4.0
         with:
           redis-version: ${{ matrix.redis }}
+
+      - name: Setup MySQL8.0 (connector)
+        uses: ./.github/actions/setup-db
+        with:
+          kind: "MySQL8.0"
+          db: "test"
+          user: "test"
+          password: "123456"
+          port: "3308"
 
       - name: Setup ${{ matrix.db }}
         uses: ./.github/actions/setup-db
