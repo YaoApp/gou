@@ -5,7 +5,7 @@ VETPACKAGES ?= $(shell $(GO) list ./... | grep -v /examples/)
 GOFILES := $(shell find . -name "*.go")
 
 # ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-TESTFOLDER := $(shell $(GO) list ./... | grep -E './gou$$|./query$$|./session$$|./objects$$|./values$$|./kv|./dsl|./encoding|./dns|./task|./schema|./lang|./connector' | grep -v examples)
+TESTFOLDER := $(shell $(GO) list ./... | grep -E './gou$$|./query$$|./session$$|./objects$$|./values$$|./store|./dsl|./encoding|./dns|./task|./schema|./lang|./connector' | grep -v examples)
 TESTTAGS ?= ""
 
 .PHONY: test

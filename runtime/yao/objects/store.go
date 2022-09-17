@@ -3,9 +3,9 @@ package objects
 import (
 	"fmt"
 
-	"github.com/yaoapp/gou/kv"
 	"github.com/yaoapp/gou/runtime/yao/bridge"
 	"github.com/yaoapp/gou/runtime/yao/values"
+	kv "github.com/yaoapp/gou/store"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
 )

@@ -6,15 +6,14 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-// Cache redis store
-type Cache struct {
+// Store redis store
+type Store struct {
 	rdb    *redis.Client
-	Option *Option
+	Option Option
 }
 
 // Option redis option
 type Option struct {
 	Timeout time.Duration
 	Prefix  string
-	Redis   *redis.Options
 }

@@ -13,9 +13,9 @@ import (
 
 // Connector connector
 type Connector struct {
-	Name    string
-	rdb     *redis.Client
-	Options Options `json:"options"`
+	Name    string        `json:"name"`
+	Rdb     *redis.Client `json:"-"`
+	Options Options       `json:"options"`
 }
 
 // Options the redis connector option
@@ -95,6 +95,6 @@ func (r *Connector) makeConnection() error {
 		return err
 	}
 
-	r.rdb = client
+	r.Rdb = client
 	return nil
 }
