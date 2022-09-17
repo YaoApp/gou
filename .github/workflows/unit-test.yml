@@ -31,6 +31,11 @@ env:
   REDIS_TEST_PORT: "6379"
   REDIS_TEST_DB: "2"
 
+  MONGO_TEST_HOST: "127.0.0.1"
+  MONGO_TEST_PORT: "27017"
+  MONGO_TEST_USER: "root"
+  MONGO_TEST_PASS: "123456"
+
 jobs:
   unit-test:
     runs-on: ubuntu-latest
@@ -39,6 +44,7 @@ jobs:
         go: [1.18.2]
         db: [MySQL8.0, SQLite3]
         redis: [4, 5, 6]
+        mongo: ["6.0"]
     steps:
       - name: Checkout Kun
         uses: actions/checkout@v2
@@ -81,6 +87,14 @@ jobs:
         uses: supercharge/redis-github-action@1.4.0
         with:
           redis-version: ${{ matrix.redis }}
+
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.8.0
+        with:
+          mongodb-version: ${{ matrix.mongo }}
+          mongodb-username: root
+          mongodb-password: 123456
+          mongodb-db: test
 
       - name: Setup MySQL8.0 (connector)
         uses: ./.github/actions/setup-db

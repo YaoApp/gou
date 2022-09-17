@@ -4,10 +4,15 @@
   "label": "Mongo TEST",
   "type": "mongo",
   "options": {
-    "host": "$ENV.MONGO_TEST_HOST",
-    "port": "$ENV.MONGO_TEST_PORT",
-    "user": "$ENV.MONGO_TEST_USER",
-    "pass": "$ENV.MONGO_TEST_PASS",
-    "options": { "maxPoolSize": 20, "w": "majority" }
+    "db": "test",
+    "hosts": [
+      {
+        "host": "$ENV.MONGO_TEST_HOST",
+        "port": "$ENV.MONGO_TEST_PORT",
+        "user": "$ENV.MONGO_TEST_USER",
+        "pass": "$ENV.MONGO_TEST_PASS"
+      }
+    ],
+    "params": { "maxPoolSize": 20, "w": "majority" }
   }
 }

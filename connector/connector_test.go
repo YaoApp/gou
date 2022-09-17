@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/yaoapp/gou/connector/database"
+	mongo "github.com/yaoapp/gou/connector/mongo"
 	"github.com/yaoapp/gou/connector/redis"
 )
 
@@ -71,6 +72,27 @@ func TestLoadRedis(t *testing.T) {
 
 	if _, ok := Connectors["redis"].(*redis.Connector); !ok {
 		t.Fatal("the redis connector is not a *redis.Connector")
+	}
+}
+
+func TestLoadMongoDB(t *testing.T) {
+	content := source(t, "mongo")
+	_, err := Load(content, "mongo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, has := Connectors["mongo"]
+	if !has {
+		t.Fatal("the mongo connector does not exist")
+	}
+
+	if !Connectors["mongo"].Is(MONGO) {
+		t.Fatal("the redis connector is not a MONGO")
+	}
+
+	if _, ok := Connectors["mongo"].(*mongo.Connector); !ok {
+		t.Fatal("the mongo connector is not a *mongo.Connector")
 	}
 }
 

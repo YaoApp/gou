@@ -5,6 +5,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/connector/database"
+	mongo "github.com/yaoapp/gou/connector/mongo"
 	"github.com/yaoapp/gou/connector/redis"
 )
 
@@ -54,6 +55,10 @@ func make(typ string) (Connector, error) {
 
 	case REDIS:
 		c := &redis.Connector{}
+		return c, nil
+
+	case MONGO:
+		c := &mongo.Connector{}
 		return c, nil
 	}
 
