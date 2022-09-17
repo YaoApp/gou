@@ -25,13 +25,15 @@ func (cache *Cache) Get(key string) (value interface{}, ok bool) {
 }
 
 // Set adds a value to the cache.
-func (cache *Cache) Set(key string, value interface{}, ttl time.Duration) {
+func (cache *Cache) Set(key string, value interface{}, ttl time.Duration) error {
 	cache.lru.Add(key, value)
+	return nil
 }
 
 // Del remove is used to purge a key from the cache
-func (cache *Cache) Del(key string) {
+func (cache *Cache) Del(key string) error {
 	cache.lru.Remove(key)
+	return nil
 }
 
 // Has check if the cache is exist ( without updating recency or frequency )

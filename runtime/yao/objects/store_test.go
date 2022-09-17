@@ -1,24 +1,38 @@
 package objects
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yaoapp/gou/kv"
-	"github.com/yaoapp/gou/kv/lru"
+	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/runtime/yao/bridge"
+	"github.com/yaoapp/gou/store"
 	"github.com/yaoapp/kun/any"
 	"rogchap.com/v8go"
 )
 
-func TestStoreObject(t *testing.T) {
+func TestStoreObjectLRU(t *testing.T) {
+	lru := newStore(t, nil)
+	testStoreObject(t, lru)
+}
 
-	c, err := lru.New(1024)
-	if err != nil {
-		t.Fatal(err)
-	}
-	kv.Pools["basic"] = c
+func TestStoreObjectRedis(t *testing.T) {
+	redis := newStore(t, makeConnector(t, "redis"))
+	testStoreObject(t, redis)
+}
 
+func TestStoreObjectMongo(t *testing.T) {
+	mongo := newStore(t, makeConnector(t, "mongo"))
+	testStoreObject(t, mongo)
+}
+
+func testStoreObject(t *testing.T, c store.Store) {
+
+	store.Pools["basic"] = c
 	iso := v8go.NewIsolate()
 	defer iso.Dispose()
 
@@ -210,4 +224,28 @@ func TestStoreObject(t *testing.T) {
 	flat = res.Dot()
 	assert.Equal(t, float64(0), res.Get("len"))
 	assert.Equal(t, []interface{}{}, res.Get("keys"))
+}
+
+func newStore(t *testing.T, c connector.Connector) store.Store {
+	s, err := store.New(c, store.Option{"size": 20480})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+func makeConnector(t *testing.T, name string) connector.Connector {
+	root := os.Getenv("GOU_TEST_APP_ROOT")
+	path := filepath.Join(root, "connectors", fmt.Sprintf("%s.conn.json", name))
+
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = connector.Load(string(content), name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return connector.Connectors[name]
 }

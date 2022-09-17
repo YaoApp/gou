@@ -1,17 +1,38 @@
-package lru
+package store
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/connector"
+	"github.com/yaoapp/kun/any"
 )
 
-func TestBasic(t *testing.T) {
-	kv, err := New(100)
-	if err != nil {
-		t.Fatalf("%s", err.Error())
-	}
+func TestLRU(t *testing.T) {
+	lru := newStore(t, nil)
+	testBasic(t, lru)
+	testMulti(t, lru)
+}
+
+func TestRedis(t *testing.T) {
+	redis := newStore(t, makeConnector(t, "redis"))
+	testBasic(t, redis)
+	testMulti(t, redis)
+}
+
+func TestMongo(t *testing.T) {
+	mongo := newStore(t, makeConnector(t, "mongo"))
+	testBasic(t, mongo)
+	testMulti(t, mongo)
+}
+
+func testBasic(t *testing.T, kv Store) {
+
+	var err error
 
 	kv.Set("key1", "bar", 0)
 	kv.Set("key2", 1024, 0)
@@ -22,7 +43,7 @@ func TestBasic(t *testing.T) {
 
 	value, ok = kv.Get("key2")
 	assert.True(t, ok)
-	assert.Equal(t, 1024, value)
+	assert.Equal(t, 1024, any.Of(value).CInt())
 
 	value, ok = kv.Get("key3")
 	assert.True(t, ok)
@@ -44,7 +65,10 @@ func TestBasic(t *testing.T) {
 	assert.True(t, kv.Has("key2"))
 	assert.True(t, kv.Has("key3"))
 
-	assert.Equal(t, []string{"key2", "key3"}, kv.Keys())
+	assert.Contains(t, kv.Keys(), "key2")
+	assert.Contains(t, kv.Keys(), "key3")
+	assert.Equal(t, 2, len(kv.Keys()))
+
 	kv.Clear()
 	assert.Equal(t, 0, kv.Len())
 
@@ -74,18 +98,14 @@ func TestBasic(t *testing.T) {
 
 }
 
-func TestMulti(t *testing.T) {
-	kv, err := New(100)
-	if err != nil {
-		t.Fatalf("%s", err.Error())
-	}
+func testMulti(t *testing.T, kv Store) {
 
 	kv.SetMulti(map[string]interface{}{"key1": "foo", "key2": 1024, "key3": 0.618}, 0)
 	assert.Equal(t, 3, kv.Len())
 
 	values := kv.GetMulti([]string{"key1", "key2", "key3", "key4"})
 	assert.Equal(t, "foo", values["key1"])
-	assert.Equal(t, 1024, values["key2"])
+	assert.Equal(t, 1024, any.Of(values["key2"]).CInt())
 	assert.Equal(t, 0.618, values["key3"])
 	assert.Equal(t, nil, values["key4"])
 
@@ -117,4 +137,28 @@ func TestMulti(t *testing.T) {
 
 	kv.DelMulti([]string{"key1", "key2"})
 	assert.Equal(t, 0, kv.Len())
+}
+
+func newStore(t *testing.T, c connector.Connector) Store {
+	store, err := New(c, Option{"size": 20480})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return store
+}
+
+func makeConnector(t *testing.T, name string) connector.Connector {
+	root := os.Getenv("GOU_TEST_APP_ROOT")
+	path := filepath.Join(root, "connectors", fmt.Sprintf("%s.conn.json", name))
+
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = connector.Load(string(content), name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return connector.Connectors[name]
 }

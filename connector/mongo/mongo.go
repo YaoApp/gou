@@ -13,10 +13,11 @@ import (
 
 // Connector the ConnectorDB struct
 type Connector struct {
-	Name    string        `json:"-"`
-	Version string        `json:"version,omitempty"`
-	Options Options       `json:"options"`
-	Client  *mongo.Client `json:"-"`
+	Name     string          `json:"-"`
+	Version  string          `json:"version,omitempty"`
+	Options  Options         `json:"options"`
+	Client   *mongo.Client   `json:"-"`
+	Database *mongo.Database `json:"-"`
 }
 
 // Options the connetion options
@@ -63,8 +64,8 @@ func (m *Connector) makeConnection() error {
 		return err
 	}
 
-	client.Database(m.Options.DB)
 	m.Client = client
+	m.Database = client.Database(m.Options.DB)
 	return nil
 }
 

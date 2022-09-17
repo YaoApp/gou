@@ -1,12 +1,12 @@
-package kv
+package store
 
 import "time"
 
 // Store The interface of a key-value store
 type Store interface {
 	Get(key string) (value interface{}, ok bool)
-	Set(key string, value interface{}, ttl time.Duration)
-	Del(key string)
+	Set(key string, value interface{}, ttl time.Duration) error
+	Del(key string) error
 	Has(key string) bool
 	Len() int
 	Keys() []string
@@ -18,3 +18,6 @@ type Store interface {
 	DelMulti(keys []string)
 	GetSetMulti(keys []string, ttl time.Duration, getValue func(key string) (interface{}, error)) map[string]interface{}
 }
+
+// Option the store option
+type Option map[string]interface{}
