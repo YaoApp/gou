@@ -21,6 +21,7 @@ const (
 
 // Model 数据模型
 type Model struct {
+	ID            string
 	Name          string
 	Source        string
 	Driver        string // Driver

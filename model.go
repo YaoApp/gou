@@ -51,6 +51,7 @@ func LoadModel(source string, name string) *Model {
 	}
 
 	mod := &Model{
+		ID:       name,
 		Name:     name,
 		Source:   source,
 		MetaData: metadata,
