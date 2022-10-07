@@ -1,3 +1,3 @@
 function TestLang() {
-  return LL("ZipCode");
+  return $L("ZipCode");
 }

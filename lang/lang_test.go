@@ -36,6 +36,25 @@ func TestLoadPick(t *testing.T) {
 	dict := Pick("zh-cn")
 	assert.Len(t, dict.Global, 5)
 	assert.Len(t, dict.Widgets, 2)
+	assert.Len(t, dict.Widgets["flow"]["hello"], 1)
+	assert.Len(t, dict.Widgets["model"]["demo"], 1)
+	assert.Equal(t, dict.Name, "zh-cn")
+}
+
+func TestLoadMerge(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APP_ROOT")
+	root = filepath.Join(root, "langs-tests")
+	err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Len(t, Dicts, 2)
+
+	dict := Pick("zh-cn")
+	assert.Len(t, dict.Global, 6)
+	assert.Len(t, dict.Widgets, 2)
+	assert.Len(t, dict.Widgets["flow"]["hello"], 2)
+	assert.Len(t, dict.Widgets["model"]["demo"], 2)
 	assert.Equal(t, dict.Name, "zh-cn")
 }
 
@@ -70,6 +89,48 @@ func TestApply(t *testing.T) {
 	assert.Equal(t, w2.Flow, "演示")
 	assert.Equal(t, w2.Model, "編碼")
 	assert.Equal(t, w2.Hello, "::World")
+	assert.Equal(t, w2.Foo, "NotDefined")
+	assert.Equal(t, w2.Bar, "Ignore")
+}
+
+func TestApplyMuti(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APP_ROOT")
+	root = filepath.Join(root, "langs")
+	err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	root = os.Getenv("GOU_TEST_APP_ROOT")
+	root = filepath.Join(root, "langs-tests")
+	err = Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := &TestSomeWidget{
+		Model: "$L(SN)",
+		Flow:  "$L(Create)$L(Demo)",
+		Foo:   "$L(NotDefined)",
+		Bar:   "Ignore",
+		Hello: "\\$L(Create) ::World",
+	}
+
+	w1 := *w
+	dict := Pick("zh-cn")
+	dict.Apply(&w1)
+	assert.Equal(t, w1.Flow, "创建演示")
+	assert.Equal(t, w1.Model, "编码")
+	assert.Equal(t, w1.Hello, "$L(Create) ::World")
+	assert.Equal(t, w1.Foo, "NotDefined")
+	assert.Equal(t, w1.Bar, "Ignore")
+
+	w2 := *w
+	dict = Pick("zh-hk")
+	dict.Apply(&w2)
+	assert.Equal(t, w2.Flow, "創建演示")
+	assert.Equal(t, w2.Model, "編碼")
+	assert.Equal(t, w2.Hello, "$L(Create) ::World")
 	assert.Equal(t, w2.Foo, "NotDefined")
 	assert.Equal(t, w2.Bar, "Ignore")
 }

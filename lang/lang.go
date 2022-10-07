@@ -1,16 +1,20 @@
 package lang
 
 import (
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/yaoapp/kun/log"
 	"gopkg.in/yaml.v3"
 )
+
+var regVar, _ = regexp.Compile(`([\\]*)\$L\(([^\)]+)\)`)
 
 // Dicts the dictionaries loaded
 var Dicts = map[string]*Dict{}
@@ -28,7 +32,7 @@ func RegisterWidget(path, name string) {
 }
 
 // Default the default language
-var Default *Dict = nil
+var Default *Dict = &Dict{Global: Words{}, Widgets: map[string]Widget{}}
 
 // Pick get the dictionary by the ISO 639-1 standard language code
 func Pick(name string) *Dict {
@@ -64,6 +68,11 @@ func Load(root string) error {
 		}
 
 		langName := filepath.Base(path)
+		if _, has := Dicts[langName]; has {
+			Dicts[langName].Merge(dict)
+			return nil
+		}
+
 		Dicts[langName] = dict
 		return nil
 	})
@@ -168,14 +177,55 @@ func Replace(value *string) bool {
 // Apply Replace the words in the dictionary
 // if was replaced return true else return false
 func (dict *Dict) Apply(lang Lang) {
-	lang.Lang(func(name string, inst string, value *string) bool {
-		return dict.Replace(name, inst, value)
+	lang.Lang(func(widgetName string, inst string, value *string) bool {
+		res := dict.Replace(widgetName, inst, value)
+		if res {
+			return res
+		}
+		return dict.ReplaceMatch(widgetName, inst, value)
 	})
+}
+
+// Merge the new dict
+func (dict *Dict) Merge(new *Dict) {
+
+	// Merge global
+	if new.Global != nil {
+		if dict.Global == nil {
+			dict.Global = Words{}
+		}
+		for k, v := range new.Global {
+			dict.Global[k] = v
+		}
+	}
+
+	// Merge Widgets
+	if new.Widgets != nil {
+		if dict.Widgets == nil {
+			dict.Widgets = map[string]Widget{}
+		}
+
+		for name, widget := range new.Widgets {
+			if dict.Widgets[name] == nil {
+				dict.Widgets[name] = Widget{}
+			}
+
+			for inst, words := range widget {
+				if dict.Widgets[name][inst] == nil {
+					dict.Widgets[name][inst] = Words{}
+				}
+				for k, v := range words {
+					dict.Widgets[name][inst][k] = v
+				}
+			}
+		}
+	}
+
 }
 
 // Replace replace the value in the dictionary
 // if was replaced return true else return false
-func (dict *Dict) Replace(name string, inst string, value *string) bool {
+func (dict *Dict) Replace(widgetName string, inst string, value *string) bool {
 	if value == nil {
 		return false
 	}
@@ -191,7 +241,7 @@ func (dict *Dict) Replace(name string, inst string, value *string) bool {
 	}
 
 	val := strings.TrimLeft(*value, "::")
-	if widget, has := dict.Widgets[name]; has {
+	if widget, has := dict.Widgets[widgetName]; has {
 		if words, has := widget[inst]; has {
 			if v, has := words[val]; has {
 				*value = v
@@ -207,6 +257,44 @@ func (dict *Dict) Replace(name string, inst string, value *string) bool {
 
 	*value = val
 	return false
+}
+
+// ReplaceMatch replace the value in the dictionary
+func (dict *Dict) ReplaceMatch(widgetName string, inst string, value *string) bool {
+	if value == nil {
+		return false
+	}
+
+	matches := regVar.FindAllStringSubmatch(*value, -1)
+	res := false
+	for _, match := range matches {
+		old := strings.TrimSpace(match[0])
+		key := match[2]
+		if match[1] == "\\" {
+			*value = strings.ReplaceAll(*value, old, fmt.Sprintf("$L(%s)", key))
+			continue
+		}
+
+		if widget, has := dict.Widgets[widgetName]; has {
+			if words, has := widget[inst]; has {
+				if v, has := words[key]; has {
+					*value = strings.ReplaceAll(*value, old, v)
+					res = true
+					continue
+				}
+			}
+		}
+
+		if v, has := dict.Global[key]; has {
+			*value = strings.ReplaceAll(*value, old, v)
+			res = true
+			continue
+		}
+
+		*value = strings.ReplaceAll(*value, old, key)
+	}
+
+	return res
 }
 
 // AsDefault set current dict as default
