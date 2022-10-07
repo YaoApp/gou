@@ -29,7 +29,7 @@ func New(numOfContexts int) *Yao {
 		numOfContexts:   numOfContexts,
 	}
 
-	yao.template.Set("LL", v8.NewFunctionTemplate(yao.iso, yao.jsLang))
+	yao.template.Set("$L", v8.NewFunctionTemplate(yao.iso, yao.jsLang))
 	yao.AddObjectTemplate("log", objects.NewLog().ExportObject(yao.iso))
 	yao.AddFunctionTemplates(map[string]*v8.FunctionTemplate{
 		"Exception": objects.NewException().ExportFunction(yao.iso),
