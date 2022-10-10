@@ -227,7 +227,7 @@ func (t *Task) nextID() int {
 
 // exec excute the job
 // @todo:
-// 	1. The goroutine will be running until the handler completed, it should be killed.
+//  1. The goroutine will be running until the handler completed, it should be killed.
 //  2. Should retry if the handler is error or panic
 func (t *Task) exec(job *Job) (interface{}, error) {
 	job.status = RUNNING

@@ -73,11 +73,12 @@ func (workshop Workshop) Root() string {
 
 // Get the url from the given remote repo
 // url:
-//   github.com/yaoapp/demo-crm
-//   github.com/yaoapp/demo-crm@v0.9.1
-//   github.com/yaoapp/demo-crm@e86eab4c8490
-//   github.com/yaoapp/demo-wms/cloud@e86eab4c8490
-//   github.com/yaoapp/demo-wms/edge@e86eab4c8490
+//
+//	github.com/yaoapp/demo-crm
+//	github.com/yaoapp/demo-crm@v0.9.1
+//	github.com/yaoapp/demo-crm@e86eab4c8490
+//	github.com/yaoapp/demo-wms/cloud@e86eab4c8490
+//	github.com/yaoapp/demo-wms/edge@e86eab4c8490
 func (workshop *Workshop) Get(url, alias string, process func(total uint64, pkg *Package, message string)) error {
 
 	// Lock the file
@@ -114,11 +115,12 @@ func (workshop *Workshop) Get(url, alias string, process func(total uint64, pkg 
 
 // Remove the url from the given remote repo
 // url:
-//   github.com/yaoapp/demo-crm
-//   github.com/yaoapp/demo-crm@v0.9.1
-//   github.com/yaoapp/demo-crm@e86eab4c8490
-//   github.com/yaoapp/demo-wms/cloud@e86eab4c8490
-//   github.com/yaoapp/demo-wms/edge@e86eab4c8490
+//
+//	github.com/yaoapp/demo-crm
+//	github.com/yaoapp/demo-crm@v0.9.1
+//	github.com/yaoapp/demo-crm@e86eab4c8490
+//	github.com/yaoapp/demo-wms/cloud@e86eab4c8490
+//	github.com/yaoapp/demo-wms/edge@e86eab4c8490
 func (workshop *Workshop) Remove(url string) error {
 
 	// Lock the file

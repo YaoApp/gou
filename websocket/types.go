@@ -41,17 +41,18 @@ const (
 )
 
 // Upgrader the upgrader setting
-// {
-// 		"name": "A Chat WebSocket server",
-// 		"description": "A Chat WebSocket serverr",
-// 		"version": "0.9.2",
-// 		"protocols": ["yao-chat-01"],
-// 		"guard": "bearer-jwt",
-// 		"buffer": { "read": 1024, "write": 1024 },
-// 		"limit": { "read-wait": 5, "pong-wait": 10, "max-message":512 },
-// 		"timeout": 10,
-// 		"process": "flows.websocket.chat",
-// }
+//
+//	{
+//			"name": "A Chat WebSocket server",
+//			"description": "A Chat WebSocket serverr",
+//			"version": "0.9.2",
+//			"protocols": ["yao-chat-01"],
+//			"guard": "bearer-jwt",
+//			"buffer": { "read": 1024, "write": 1024 },
+//			"limit": { "read-wait": 5, "pong-wait": 10, "max-message":512 },
+//			"timeout": 10,
+//			"process": "flows.websocket.chat",
+//	}
 type Upgrader struct {
 	name        string
 	Name        string     `json:"name,omitempty"`
