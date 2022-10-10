@@ -294,7 +294,7 @@ func TestFileInfo(t *testing.T) {
 		// ModTime Time
 		modTime, err := stor.ModTime(f["F1"])
 		assert.Nil(t, err, name)
-		assert.Less(t, time.Now().UnixMicro()-modTime.UnixMicro(), int64(1000))
+		assert.Less(t, time.Now().UnixMicro()-modTime.UnixMicro(), int64(10000))
 	}
 }
 
