@@ -18,10 +18,10 @@ func TestMkdir(t *testing.T) {
 	f := testFiles(t)
 	for name, stor := range stores {
 		clear(stor, t)
-		err := stor.Mkdir(f["D1_D2"], int(os.ModePerm))
+		err := Mkdir(stor, f["D1_D2"], int(os.ModePerm))
 		assert.NotNil(t, err, name)
 
-		err = stor.Mkdir(f["D1"], int(os.ModePerm))
+		err = Mkdir(stor, f["D1"], int(os.ModePerm))
 		assert.Nil(t, err, name)
 	}
 }
@@ -31,10 +31,10 @@ func TestMkdirAll(t *testing.T) {
 	f := testFiles(t)
 	for name, stor := range stores {
 		clear(stor, t)
-		err := stor.MkdirAll(f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
 		assert.Nil(t, err, name)
 
-		err = stor.Mkdir(f["D1"], int(os.ModePerm))
+		err = Mkdir(stor, f["D1"], int(os.ModePerm))
 		assert.NotNil(t, err, name)
 	}
 }
@@ -45,40 +45,40 @@ func TestMkdirTemp(t *testing.T) {
 	for name, stor := range stores {
 		clear(stor, t)
 		data := testData(t)
-		tempPath, err := stor.MkdirTemp("", "")
+		tempPath, err := MkdirTemp(stor, "", "")
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, tempPath, name)
 
-		tempPath, err = stor.MkdirTemp("", "*-logs")
+		tempPath, err = MkdirTemp(stor, "", "*-logs")
 		assert.Nil(t, err, name)
 		assert.True(t, strings.HasSuffix(tempPath, "-logs"))
 		checkFileExists(stor, t, tempPath, name)
 
-		tempPath, err = stor.MkdirTemp("", "logs-")
+		tempPath, err = MkdirTemp(stor, "", "logs-")
 		assert.Nil(t, err, name)
 		assert.True(t, strings.HasPrefix(filepath.Base(tempPath), "logs-"))
 		checkFileExists(stor, t, tempPath, name)
 
-		tempPath, err = stor.MkdirTemp(f["D1_D2"], "")
+		tempPath, err = MkdirTemp(stor, f["D1_D2"], "")
 		assert.Nil(t, err, name)
 		assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
 		checkFileExists(stor, t, tempPath, name)
 
-		tempPath, err = stor.MkdirTemp(f["D1_D2"], "*-logs")
+		tempPath, err = MkdirTemp(stor, f["D1_D2"], "*-logs")
 		assert.Nil(t, err, name)
 		assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
 		assert.True(t, strings.HasSuffix(tempPath, "-logs"))
 		checkFileExists(stor, t, tempPath, name)
 
-		tempPath, err = stor.MkdirTemp(f["D1_D2"], "logs-")
+		tempPath, err = MkdirTemp(stor, f["D1_D2"], "logs-")
 		assert.Nil(t, err, name)
 		assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
 		assert.True(t, strings.HasPrefix(filepath.Base(tempPath), "logs-"))
 		checkFileExists(stor, t, tempPath, name)
 
-		_, err = stor.WriteFile(f["F1"], data, 0644)
+		_, err = WriteFile(stor, f["F1"], data, 0644)
 		assert.Nil(t, err, name)
-		tempPath, err = stor.MkdirTemp(f["F1"], "logs-")
+		tempPath, err = MkdirTemp(stor, f["F1"], "logs-")
 		assert.NotNil(t, err, name)
 	}
 }
@@ -91,33 +91,33 @@ func TestReadDir(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := stor.MkdirAll(f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
 
 		// Write
-		_, err = stor.WriteFile(f["D1_F1"], data, 0644)
+		_, err = WriteFile(stor, f["D1_F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_F1"], name)
 
-		_, err = stor.WriteFile(f["D1_F2"], data, 0644)
+		_, err = WriteFile(stor, f["D1_F2"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_F2"], name)
 
-		_, err = stor.WriteFile(f["D1_D2_F1"], data, 0644)
+		_, err = WriteFile(stor, f["D1_D2_F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_D2_F1"], name)
 
-		_, err = stor.WriteFile(f["D1_D2_F2"], data, 0644)
+		_, err = WriteFile(stor, f["D1_D2_F2"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_D2_F2"], name)
 
-		dirs, err := stor.ReadDir(f["D1"], false)
+		dirs, err := ReadDir(stor, f["D1"], false)
 		assert.Nil(t, err, name)
 		assert.Equal(t, 3, len(dirs))
 
-		dirs, err = stor.ReadDir(f["D1"], true)
+		dirs, err = ReadDir(stor, f["D1"], true)
 		assert.Equal(t, 5, len(dirs))
 	}
 }
@@ -130,7 +130,7 @@ func TestWriteFile(t *testing.T) {
 		data := testData(t)
 
 		// Write
-		length, err := stor.WriteFile(f["F1"], data, 0644)
+		length, err := WriteFile(stor, f["F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["F1"], name)
 		checkFileSize(stor, t, f["F1"], length, name)
@@ -138,14 +138,14 @@ func TestWriteFile(t *testing.T) {
 
 		// Overwrite
 		data = testData(t)
-		l21, err := stor.WriteFile(f["F2"], data, 0644)
+		l21, err := WriteFile(stor, f["F2"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["F2"], name)
 		checkFileSize(stor, t, f["F2"], l21, name)
 		checkFileMode(stor, t, f["F2"], 0644, name)
 
 		data = testData(t)
-		l22, err := stor.WriteFile(f["F2"], data, 0644)
+		l22, err := WriteFile(stor, f["F2"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["F2"], name)
 		checkFileSize(stor, t, f["F2"], l22, name)
@@ -161,25 +161,25 @@ func TestReadFile(t *testing.T) {
 		data := testData(t)
 
 		// Write
-		length, err := stor.WriteFile(f["F1"], data, 0644)
+		length, err := WriteFile(stor, f["F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["F1"], name)
 		checkFileSize(stor, t, f["F1"], length, name)
 		checkFileMode(stor, t, f["F1"], 0644, name)
 
 		// Read
-		content, err := stor.ReadFile(f["F1"])
+		content, err := ReadFile(stor, f["F1"])
 		assert.Nil(t, err, name)
 		assert.Equal(t, data, content, name)
 
 		// file does not exist
-		content, err = stor.ReadFile(f["F2"])
+		content, err = ReadFile(stor, f["F2"])
 		assert.NotNil(t, err, name)
 
 		// file is a directory
-		err = stor.MkdirAll(f["D1"], int(os.ModePerm))
+		err = MkdirAll(stor, f["D1"], int(os.ModePerm))
 		assert.Nil(t, err, name)
-		content, err = stor.ReadFile(f["D1"])
+		content, err = ReadFile(stor, f["D1"])
 		assert.NotNil(t, err, name)
 	}
 }
@@ -192,33 +192,33 @@ func TestRemove(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := stor.MkdirAll(f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
 
 		// Write
-		_, err = stor.WriteFile(f["F1"], data, 0644)
+		_, err = WriteFile(stor, f["F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["F1"], name)
 
 		// Remove
-		err = stor.Remove(f["F1"])
+		err = Remove(stor, f["F1"])
 		assert.Nil(t, err, name)
 		checkFileNotExists(stor, t, f["F1"], name)
 
 		// Remove Dir not empty
-		err = stor.Remove(f["D1"])
+		err = Remove(stor, f["D1"])
 		assert.NotNil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 
 		// Remove Dir
-		err = stor.Remove(f["D1_D2"])
+		err = Remove(stor, f["D1_D2"])
 		assert.Nil(t, err, name)
 		checkFileNotExists(stor, t, f["D1_D2"], name)
 
 		// Remove not exist
-		err = stor.Remove(f["F2"])
+		err = Remove(stor, f["F2"])
 		assert.Nil(t, err, name)
 	}
 }
@@ -231,29 +231,29 @@ func TestRemoveAll(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := stor.MkdirAll(f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
 
 		// Write
-		_, err = stor.WriteFile(f["F1"], data, 0644)
+		_, err = WriteFile(stor, f["F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["F1"], name)
 
 		// Remove
-		err = stor.RemoveAll(f["F1"])
+		err = RemoveAll(stor, f["F1"])
 		assert.Nil(t, err, name)
 		checkFileNotExists(stor, t, f["F1"], name)
 
 		// Remove Dir not empty
-		err = stor.RemoveAll(f["D1"])
+		err = RemoveAll(stor, f["D1"])
 		assert.Nil(t, err, name)
 		checkFileNotExists(stor, t, f["D1"], name)
 		checkFileNotExists(stor, t, f["D1_D2"], name)
 
 		// Remove not exist
-		err = stor.RemoveAll(f["F2"])
+		err = RemoveAll(stor, f["F2"])
 		assert.Nil(t, err, name)
 	}
 }
@@ -266,33 +266,33 @@ func TestFileInfo(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := stor.MkdirAll(f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
 
 		// Write
-		_, err = stor.WriteFile(f["F1"], data, 0644)
+		_, err = WriteFile(stor, f["F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["F1"], name)
 
-		_, err = stor.WriteFile(f["D1_D2_F1"], data, 0644)
+		_, err = WriteFile(stor, f["D1_D2_F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_D2_F1"], name)
 
 		// IsDir IsFile
-		assert.True(t, stor.IsDir(f["D1_D2"]), name)
-		assert.False(t, stor.IsDir(f["F1"]), name)
-		assert.True(t, stor.IsFile(f["F1"]), name)
-		assert.False(t, stor.IsFile(f["D1_D2"]), name)
+		assert.True(t, IsDir(stor, f["D1_D2"]), name)
+		assert.False(t, IsDir(stor, f["F1"]), name)
+		assert.True(t, IsFile(stor, f["F1"]), name)
+		assert.False(t, IsFile(stor, f["D1_D2"]), name)
 
 		// Mode
-		mode, err := stor.Mode(f["F1"])
+		mode, err := Mode(stor, f["F1"])
 		assert.Nil(t, err, name)
 		assert.Equal(t, 0644, mode)
 
 		// ModTime Time
-		modTime, err := stor.ModTime(f["F1"])
+		modTime, err := ModTime(stor, f["F1"])
 		assert.Nil(t, err, name)
 		assert.Less(t, time.Now().UnixMicro()-modTime.UnixMicro(), int64(10000))
 	}
@@ -306,36 +306,36 @@ func TestChmod(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := stor.MkdirAll(f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
 
 		// Write
-		_, err = stor.WriteFile(f["F1"], data, 0644)
+		_, err = WriteFile(stor, f["F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["F1"], name)
 
 		// Chmod file
-		mode, err := stor.Mode(f["F1"])
+		mode, err := Mode(stor, f["F1"])
 		assert.Nil(t, err, name)
 		assert.Equal(t, 0644, mode)
 
-		err = stor.Chmod(f["F1"], 0755)
+		err = Chmod(stor, f["F1"], 0755)
 		assert.Nil(t, err, name)
 
-		mode, err = stor.Mode(f["F1"])
+		mode, err = Mode(stor, f["F1"])
 		assert.Nil(t, err, name)
 		assert.Equal(t, 0755, mode)
 
 		// Chmod Dir
-		mode, err = stor.Mode(f["D1_D2"])
+		mode, err = Mode(stor, f["D1_D2"])
 		assert.Nil(t, err, name)
 
-		err = stor.Chmod(f["D1"], 0755)
+		err = Chmod(stor, f["D1"], 0755)
 		assert.Nil(t, err, name)
 
-		mode, err = stor.Mode(f["D1_D2"])
+		mode, err = Mode(stor, f["D1_D2"])
 		assert.Nil(t, err, name)
 		assert.Equal(t, 0755, mode)
 	}
@@ -349,33 +349,33 @@ func TestMove(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := stor.MkdirAll(f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
 
 		// Write
-		_, err = stor.WriteFile(f["D1_F1"], data, 0644)
+		_, err = WriteFile(stor, f["D1_F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_F1"], name)
 
-		_, err = stor.WriteFile(f["D1_F2"], data, 0644)
+		_, err = WriteFile(stor, f["D1_F2"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_F2"], name)
 
-		_, err = stor.WriteFile(f["D1_D2_F1"], data, 0644)
+		_, err = WriteFile(stor, f["D1_D2_F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_D2_F1"], name)
 
-		_, err = stor.WriteFile(f["D1_D2_F2"], data, 0644)
+		_, err = WriteFile(stor, f["D1_D2_F2"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_D2_F2"], name)
 
-		err = stor.Move(f["D1_D2"], f["D2"])
+		err = Move(stor, f["D1_D2"], f["D2"])
 		assert.Nil(t, err, name)
 		checkFileNotExists(stor, t, f["D1_D2"], name)
 
-		dirs, err := stor.ReadDir(f["D2"], true)
+		dirs, err := ReadDir(stor, f["D2"], true)
 		assert.Nil(t, err, name)
 		assert.Equal(t, 2, len(dirs))
 		checkFileExists(stor, t, f["D2_F1"], name)
@@ -392,33 +392,33 @@ func TestCopy(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := stor.MkdirAll(f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
 
 		// Write
-		_, err = stor.WriteFile(f["D1_F1"], data, 0644)
+		_, err = WriteFile(stor, f["D1_F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_F1"], name)
 
-		_, err = stor.WriteFile(f["D1_F2"], data, 0644)
+		_, err = WriteFile(stor, f["D1_F2"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_F2"], name)
 
-		_, err = stor.WriteFile(f["D1_D2_F1"], data, 0644)
+		_, err = WriteFile(stor, f["D1_D2_F1"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_D2_F1"], name)
 
-		_, err = stor.WriteFile(f["D1_D2_F2"], data, 0644)
+		_, err = WriteFile(stor, f["D1_D2_F2"], data, 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_D2_F2"], name)
 
-		err = stor.Copy(f["D1_D2"], f["D2"])
+		err = Copy(stor, f["D1_D2"], f["D2"])
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1_D2"], name)
 
-		dirs, err := stor.ReadDir(f["D2"], true)
+		dirs, err := ReadDir(stor, f["D2"], true)
 		assert.Nil(t, err, name)
 		assert.Equal(t, 2, len(dirs))
 		checkFileExists(stor, t, f["D2_F1"], name)
@@ -433,22 +433,22 @@ func TestMimeType(t *testing.T) {
 	for name, stor := range stores {
 		clear(stor, t)
 
-		_, err := stor.WriteFile(f["F1"], []byte(`<html></html>`), 0644)
+		_, err := WriteFile(stor, f["F1"], []byte(`<html></html>`), 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["F1"], name)
 
-		_, err = stor.WriteFile(f["F3"], []byte(`HELLO WORLD`), 0644)
+		_, err = WriteFile(stor, f["F3"], []byte(`HELLO WORLD`), 0644)
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["F3"], name)
 
-		mime, err := stor.MimeType(f["F1"])
+		mime, err := MimeType(stor, f["F1"])
 		assert.Nil(t, err, name)
 		assert.Equal(t, "text/html; charset=utf-8", mime)
 
-		mime, err = stor.MimeType(f["F2"])
+		mime, err = MimeType(stor, f["F2"])
 		assert.NotNil(t, err, name)
 
-		mime, err = stor.MimeType(f["F3"])
+		mime, err = MimeType(stor, f["F3"])
 		assert.Nil(t, err, name)
 		assert.Equal(t, "text/plain; charset=utf-8", mime)
 
@@ -506,22 +506,22 @@ func testFiles(t *testing.T) map[string]string {
 }
 
 func checkFileExists(stor FileSystem, t assert.TestingT, path string, name string) {
-	exist, _ := stor.Exists(path)
+	exist, _ := Exists(stor, path)
 	assert.True(t, exist, name)
 }
 
 func checkFileNotExists(stor FileSystem, t assert.TestingT, path string, name string) {
-	exist, _ := stor.Exists(path)
+	exist, _ := Exists(stor, path)
 	assert.False(t, exist, name)
 }
 
 func checkFileSize(stor FileSystem, t assert.TestingT, path string, size int, name string) {
-	realSize, _ := stor.Size(path)
+	realSize, _ := Size(stor, path)
 	assert.Equal(t, size, realSize, name)
 }
 
 func checkFileMode(stor FileSystem, t assert.TestingT, path string, mode int, name string) {
-	realMode, _ := stor.Mode(path)
+	realMode, _ := Mode(stor, path)
 	assert.Equal(t, mode, realMode, name)
 }
 
@@ -533,7 +533,7 @@ func clear(stor FileSystem, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = stor.MkdirAll(root, int(os.ModePerm))
+	err = MkdirAll(stor, root, int(os.ModePerm))
 	if err != nil {
 		t.Fatal(err)
 	}

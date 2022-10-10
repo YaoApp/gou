@@ -67,12 +67,12 @@ func RemoveAll(xfs FileSystem, name string) error {
 
 // Move move from src to dst
 func Move(xfs FileSystem, name string, dst string) error {
-	return nil
+	return xfs.Move(name, dst)
 }
 
 // Copy copy from src to dst
 func Copy(xfs FileSystem, name string, dst string) error {
-	return nil
+	return xfs.Copy(name, dst)
 }
 
 // Exists returns a boolean indicating whether the error is known to report that a file or directory already exists.
