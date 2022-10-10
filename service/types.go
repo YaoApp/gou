@@ -3,20 +3,21 @@ package service
 import "github.com/takama/daemon"
 
 // Service embedded daemon
-// {
-// 	"name": "Server for receiving RFID",
-// 	"description": "Server for receiving RFID",
-// 	"version": "0.9.2",
-// 	"restart": "on-failure",
-// 	"requires": ["servers.rfid_server"],
-// 	"after": ["servers.rfid_server"],
-// 	"error": "/var/log/test.err"
-// 	"output": "/var/log/test.log"
-// 	"process": "servers.rfid_client",
-// 	"args": ["192.168.1.192", 6000],
-//  "user": "root",
-//  "group": "root"
-// }
+//
+//	{
+//		"name": "Server for receiving RFID",
+//		"description": "Server for receiving RFID",
+//		"version": "0.9.2",
+//		"restart": "on-failure",
+//		"requires": ["servers.rfid_server"],
+//		"after": ["servers.rfid_server"],
+//		"error": "/var/log/test.err"
+//		"output": "/var/log/test.log"
+//		"process": "servers.rfid_client",
+//		"args": ["192.168.1.192", 6000],
+//	 "user": "root",
+//	 "group": "root"
+//	}
 type Service struct {
 	name        string
 	Name        string   `json:"name,omitempty"`

@@ -13,7 +13,8 @@ func ReadFile(xfs FileSystem, file string) ([]byte, error) {
 }
 
 // WriteFile writes data to the named file, creating it if necessary.
-//  If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
+//
+//	If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
 func WriteFile(xfs FileSystem, file string, data []byte, pterm int) (int, error) {
 	return xfs.WriteFile(file, data, pterm)
 }

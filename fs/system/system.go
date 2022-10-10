@@ -27,7 +27,8 @@ func (f *File) ReadFile(file string) ([]byte, error) {
 }
 
 // WriteFile writes data to the named file, creating it if necessary.
-//  If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
+//
+//	If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
 func (f *File) WriteFile(file string, data []byte, pterm int) (int, error) {
 
 	dir := filepath.Dir(file)

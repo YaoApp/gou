@@ -10,7 +10,7 @@ import (
 // Certificates loaded
 var Certificates = map[string]*Certificate{}
 
-//LoadCertificateFrom Load the certificate from the given file
+// LoadCertificateFrom Load the certificate from the given file
 func LoadCertificateFrom(file string, name string) (*Certificate, error) {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
