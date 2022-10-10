@@ -24,3 +24,4 @@ tests/yao/workshop/cache
 tests/yao/workshop/*
 .idea
 tests/app/db
+tests/app/data
