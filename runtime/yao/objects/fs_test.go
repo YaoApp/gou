@@ -274,6 +274,90 @@ func TestFSObjectFileInfo(t *testing.T) {
 
 }
 
+func TestFSObjectMove(t *testing.T) {
+
+	testFsClear(t)
+	testFsMakeData(t)
+	f := testFsFiles(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsobj := &FSOBJ{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsobj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// WriteFile
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function Move() {
+		var res = {}
+		var fs = new FS("system")
+		return fs.Move("%s", "%s")
+	
+	}
+	Move()
+	`, f["D1_D2"], f["D2"]), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.True(t, v.IsNull())
+	stor := fs.FileSystems["system"]
+	dirs, err := fs.ReadDir(stor, f["D2"], true)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(dirs))
+	checkFileNotExists(t, f["D1_D2"])
+	checkFileExists(t, f["D2_F1"])
+	checkFileExists(t, f["D2_F2"])
+}
+
+func TestFSObjectCopy(t *testing.T) {
+
+	testFsClear(t)
+	testFsMakeData(t)
+	f := testFsFiles(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsobj := &FSOBJ{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsobj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// WriteFile
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function Copy() {
+		var res = {}
+		var fs = new FS("system")
+		return fs.Copy("%s", "%s")
+	
+	}
+	Copy()
+	`, f["D1_D2"], f["D2"]), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.True(t, v.IsNull())
+	stor := fs.FileSystems["system"]
+	dirs, err := fs.ReadDir(stor, f["D2"], true)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(dirs))
+	checkFileExists(t, f["D1_D2"])
+	checkFileExists(t, f["D2_F1"])
+	checkFileExists(t, f["D2_F2"])
+}
+
 func TestFSObjectDir(t *testing.T) {
 	testFsClear(t)
 	f := testFsFiles(t)
@@ -325,6 +409,50 @@ func testFsMakeF1(t *testing.T) []byte {
 	}
 
 	return data
+}
+
+func checkFileExists(t assert.TestingT, path string) {
+	stor := fs.FileSystems["system"]
+	exist, _ := fs.Exists(stor, path)
+	assert.True(t, exist)
+}
+
+func checkFileNotExists(t assert.TestingT, path string) {
+	stor := fs.FileSystems["system"]
+	exist, _ := fs.Exists(stor, path)
+	assert.False(t, exist)
+}
+func testFsMakeData(t *testing.T) {
+
+	stor := fs.FileSystems["system"]
+	f := testFsFiles(t)
+	data := testFsData(t)
+
+	err := fs.MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Write
+	_, err = fs.WriteFile(stor, f["D1_F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = fs.WriteFile(stor, f["D1_F2"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = fs.WriteFile(stor, f["D1_D2_F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = fs.WriteFile(stor, f["D1_D2_F2"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func testFsData(t *testing.T) []byte {
