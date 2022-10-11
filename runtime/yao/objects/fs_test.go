@@ -2,6 +2,7 @@ package objects
 
 import (
 	"fmt"
+	iofs "io/fs"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -210,6 +211,67 @@ func TestFSObjectExistRemove(t *testing.T) {
 	assert.Contains(t, retval["RemoveError"], "directory not empty")
 	assert.Nil(t, retval["RemoveAll"])
 	assert.Nil(t, retval["RemoveAllNotExists"])
+}
+
+func TestFSObjectFileInfo(t *testing.T) {
+
+	testFsClear(t)
+	data := testFsMakeF1(t)
+	testFsMakeD1D2F1(t)
+	f := testFsFiles(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fs := &FSOBJ{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fs.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// WriteFile
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function FileInfo() {
+		var res = {}
+		var fs = new FS("system")
+		res["BaseName"] = fs.BaseName("%s");
+		res["DirName"] = fs.DirName("%s");
+		res["ExtName"] = fs.ExtName("%s");
+		res["MimeType"] = fs.MimeType("%s");
+		res["Size"] = fs.Size("%s");
+		res["ModTime"] = fs.ModTime("%s");
+		res["Mode"] = fs.Mode("%s");
+		res["Chmod"] = fs.Chmod("%s", 0755);
+		res["ModeAfter"] = fs.Mode("%s");
+		return res
+	}
+	FileInfo()
+	`,
+		f["F1"], f["F1"], f["F1"], f["F1"], f["F1"], f["F1"], f["F1"], f["F1"], f["F1"],
+	), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.ToInterface(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ret := res.(map[string]interface{})
+	assert.Equal(t, "f1.file", ret["BaseName"])
+	assert.Equal(t, f["root"], ret["DirName"])
+	assert.Equal(t, "file", ret["ExtName"])
+	assert.Equal(t, "text/plain; charset=utf-8", ret["MimeType"])
+	assert.Equal(t, len(data), int(ret["Size"].(float64)))
+	assert.Equal(t, iofs.FileMode(0644), iofs.FileMode(int(ret["Mode"].(float64))))
+	assert.Equal(t, iofs.FileMode(0755), iofs.FileMode(int(ret["ModeAfter"].(float64))))
+	assert.Equal(t, true, int(time.Now().Unix()) >= int(ret["ModTime"].(float64)))
+	assert.Nil(t, ret["Chmod"])
+
 }
 
 func TestFSObjectDir(t *testing.T) {

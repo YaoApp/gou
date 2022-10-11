@@ -2,6 +2,7 @@ package gou
 
 import (
 	"fmt"
+	iofs "io/fs"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -236,6 +237,84 @@ func TestProcessFsExistRemove(t *testing.T) {
 	}
 	assert.Nil(t, res)
 
+}
+
+func TestProcessFsFileInfo(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(fs.FileSystems["system"], t)
+	data := testFsMakeF1(t)
+
+	process := "fs.system.BaseName"
+	args := []interface{}{f["F1"]}
+	res, err := NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "f1.file", res)
+
+	process = "fs.system.DirName"
+	args = []interface{}{f["F1"]}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, f["root"], res)
+
+	process = "fs.system.ExtName"
+	args = []interface{}{f["F1"]}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "file", res)
+
+	process = "fs.system.MimeType"
+	args = []interface{}{f["F1"]}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "text/plain; charset=utf-8", res)
+
+	process = "fs.system.Size"
+	args = []interface{}{f["F1"]}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res)
+
+	process = "fs.system.ModTime"
+	args = []interface{}{f["F1"]}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, true, int(time.Now().Unix()) >= res.(int))
+
+	process = "fs.system.Mode"
+	args = []interface{}{f["F1"]}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, iofs.FileMode(0644), iofs.FileMode(res.(uint32)))
+
+	process = "fs.system.Chmod"
+	args = []interface{}{f["F1"], 0755}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Nil(t, res)
+
+	process = "fs.system.Mode"
+	args = []interface{}{f["F1"]}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, iofs.FileMode(0755), iofs.FileMode(res.(uint32)))
 }
 
 func testFsMakeF1(t *testing.T) []byte {
