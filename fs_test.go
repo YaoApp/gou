@@ -317,6 +317,50 @@ func TestProcessFsFileInfo(t *testing.T) {
 	assert.Equal(t, iofs.FileMode(0755), iofs.FileMode(res.(uint32)))
 }
 
+func TestProcessFsMove(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(fs.FileSystems["system"], t)
+	testFsMakeData(t)
+
+	process := "fs.system.Move"
+	args := []interface{}{f["D1_D2"], f["D2"]}
+	res, err := NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stor := fs.FileSystems["system"]
+	dirs, err := fs.ReadDir(stor, f["D2"], true)
+	assert.Nil(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 2, len(dirs))
+	checkFileNotExists(t, f["D1_D2"])
+	checkFileExists(t, f["D2_F1"])
+	checkFileExists(t, f["D2_F2"])
+}
+
+func TestProcessFsCopy(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(fs.FileSystems["system"], t)
+	testFsMakeData(t)
+
+	process := "fs.system.Copy"
+	args := []interface{}{f["D1_D2"], f["D2"]}
+	res, err := NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stor := fs.FileSystems["system"]
+	dirs, err := fs.ReadDir(stor, f["D2"], true)
+	assert.Nil(t, err)
+	assert.Nil(t, res)
+	assert.Equal(t, 2, len(dirs))
+	checkFileExists(t, f["D1_D2"])
+	checkFileExists(t, f["D2_F1"])
+	checkFileExists(t, f["D2_F2"])
+}
+
 func testFsMakeF1(t *testing.T) []byte {
 	data := testFsData(t)
 	f := testFsFiles(t)
@@ -341,6 +385,50 @@ func testFsMakeD1D2F1(t *testing.T) []byte {
 	}
 
 	return data
+}
+
+func checkFileExists(t assert.TestingT, path string) {
+	stor := fs.FileSystems["system"]
+	exist, _ := fs.Exists(stor, path)
+	assert.True(t, exist)
+}
+
+func checkFileNotExists(t assert.TestingT, path string) {
+	stor := fs.FileSystems["system"]
+	exist, _ := fs.Exists(stor, path)
+	assert.False(t, exist)
+}
+func testFsMakeData(t *testing.T) {
+
+	stor := fs.FileSystems["system"]
+	f := testFsFiles(t)
+	data := testFsData(t)
+
+	err := fs.MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Write
+	_, err = fs.WriteFile(stor, f["D1_F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = fs.WriteFile(stor, f["D1_F2"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = fs.WriteFile(stor, f["D1_D2_F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = fs.WriteFile(stor, f["D1_D2_F2"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func testFsData(t *testing.T) []byte {

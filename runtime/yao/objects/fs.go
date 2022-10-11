@@ -43,6 +43,10 @@ import (
 // var res 			  = fs.Mode("/root/path/name.file")
 // var res 			  = fs.Size("/root/path/name.file")
 // var res 			  = fs.ModTime("/root/path/name.file")
+// var res 			  = fs.Copy("/root/path/foo.file", "/root/path/bar.file")
+// var res 			  = fs.Copy("/root/path", "/root/new")
+// var res 			  = fs.Move("/root/path/foo.file", "/root/path/bar.file")
+// var res 			  = fs.Move("/root/path", "/root/new")
 
 // FSOBJ Javascript API
 type FSOBJ struct{}
@@ -81,6 +85,8 @@ func (obj *FSOBJ) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl.Set("Size", obj.size(iso))
 	tmpl.Set("ModTime", obj.modTime(iso))
 
+	tmpl.Set("Move", obj.move(iso))
+	tmpl.Set("Copy", obj.copy(iso))
 	return tmpl
 }
 
@@ -109,6 +115,48 @@ func (obj *FSOBJ) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		return this.Value
 	})
 	return tmpl
+}
+
+func (obj *FSOBJ) move(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 2 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		err = fs.Move(stor, args[0].String(), args[1].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return v8go.Null(iso)
+	})
+}
+
+func (obj *FSOBJ) copy(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 2 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		err = fs.Copy(stor, args[0].String(), args[1].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return v8go.Null(iso)
+	})
 }
 
 func (obj *FSOBJ) baseName(iso *v8go.Isolate) *v8go.FunctionTemplate {

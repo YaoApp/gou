@@ -34,6 +34,8 @@ var FileSystemHandlers = map[string]ProcessHandler{
 	"dirname":         processDirName,
 	"extname":         processExtName,
 	"mimetype":        processMimeType,
+	"move":            processMove,
+	"copy":            processCopy,
 }
 
 func init() {
@@ -285,10 +287,26 @@ func processMimeType(process *Process) interface{} {
 	return mimetype
 }
 
-// func processMove(process *Process) interface{} {
-// 	return nil
-// }
+func processMove(process *Process) interface{} {
+	process.ValidateArgNums(2)
+	stor := stor(process)
+	src := process.ArgsString(0)
+	dst := process.ArgsString(1)
+	err := fs.Move(stor, src, dst)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
 
-// func processCopy(process *Process) interface{} {
-// 	return nil
-// }
+func processCopy(process *Process) interface{} {
+	process.ValidateArgNums(2)
+	stor := stor(process)
+	src := process.ArgsString(0)
+	dst := process.ArgsString(1)
+	err := fs.Copy(stor, src, dst)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
