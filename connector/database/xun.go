@@ -16,8 +16,9 @@ import (
 
 // Xun the xun database ORM
 type Xun struct {
-	Name    string           `json:"-"`
+	id      string
 	Manager *capsule.Manager `json:"-"`
+	Name    string           `json:"name,omitempty"`
 	Driver  string           `json:"type"`
 	Version string           `json:"version,omitempty"`
 	Options XunOptions       `json:"options"`
@@ -47,7 +48,7 @@ type XunHost struct {
 }
 
 // Register the connections from dsl
-func (x *Xun) Register(name string, dsl []byte) error {
+func (x *Xun) Register(id string, dsl []byte) error {
 	err := jsoniter.Unmarshal(dsl, x)
 	if err != nil {
 		return err
@@ -57,13 +58,18 @@ func (x *Xun) Register(name string, dsl []byte) error {
 	if err != nil {
 		return err
 	}
-	x.Name = name
+	x.id = id
 	return x.makeConnections()
 }
 
 // Is the connections from dsl
 func (x *Xun) Is(typ int) bool {
 	return 1 == typ
+}
+
+// ID get connector id
+func (x *Xun) ID() string {
+	return x.id
 }
 
 func (x *Xun) makeConnections() (err error) {

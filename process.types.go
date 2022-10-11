@@ -17,3 +17,6 @@ type ProcessHandler func(process *Process) interface{}
 
 // ThirdHandlers 第三方处理器
 var ThirdHandlers = map[string]ProcessHandler{}
+
+// HandlerGroups registered process handler groups
+var HandlerGroups = map[string]map[string]ProcessHandler{}

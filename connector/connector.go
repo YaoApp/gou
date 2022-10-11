@@ -13,7 +13,7 @@ import (
 var Connectors = map[string]Connector{}
 
 // Load a connector from source
-func Load(source string, name string) (Connector, error) {
+func Load(source string, id string) (Connector, error) {
 
 	dsl := DSL{}
 	bytes := []byte(source)
@@ -27,17 +27,17 @@ func Load(source string, name string) (Connector, error) {
 		return nil, err
 	}
 
-	err = c.Register(name, bytes)
+	err = c.Register(id, bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	Connectors[name] = c
-	return Connectors[name], nil
+	Connectors[id] = c
+	return Connectors[id], nil
 }
 
 // Select a connector
-func Select(name string) (Connector, error) {
+func Select(id string) (Connector, error) {
 	return nil, nil
 }
 

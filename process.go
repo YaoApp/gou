@@ -44,6 +44,12 @@ func RegisterProcessHandler(name string, handler ProcessHandler) {
 	ThirdHandlers[name] = handler
 }
 
+// RegisterProcessGroup register a process handler group
+func RegisterProcessGroup(name string, group map[string]ProcessHandler) {
+	name = strings.ToLower(name)
+	HandlerGroups[name] = group
+}
+
 // AliasProcess 设置别名
 func AliasProcess(name string, alias string) {
 	name = strings.ToLower(name)
@@ -87,6 +93,17 @@ func (process *Process) extraProcess() {
 	} else {
 		process.Class = strings.ToLower(namer[1])
 		process.Method = ""
+	}
+
+	// Handler groups
+	if handlers, has := HandlerGroups[process.Type]; has {
+		process.Name = strings.ToLower(process.Name)
+		handler, has := handlers[process.Method]
+		if !has {
+			exception.New("%s: %s %s does not exist", 404, process.Type, process.Name, process.Method).Throw()
+		}
+		process.Handler = handler
+		return
 	}
 
 	switch process.Type {

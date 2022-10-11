@@ -13,6 +13,7 @@ import (
 
 // Connector connector
 type Connector struct {
+	id      string        `json:"-"`
 	Name    string        `json:"name"`
 	Rdb     *redis.Client `json:"-"`
 	Options Options       `json:"options"`
@@ -29,7 +30,7 @@ type Options struct {
 }
 
 // Register the connections from dsl
-func (r *Connector) Register(name string, dsl []byte) error {
+func (r *Connector) Register(id string, dsl []byte) error {
 	err := jsoniter.Unmarshal(dsl, r)
 	if err != nil {
 		return err
@@ -40,13 +41,18 @@ func (r *Connector) Register(name string, dsl []byte) error {
 		return err
 	}
 
-	r.Name = name
+	r.id = id
 	return r.makeConnection()
 }
 
 // Is the connections from dsl
 func (r *Connector) Is(typ int) bool {
 	return 2 == typ
+}
+
+// ID get connector id
+func (r *Connector) ID() string {
+	return r.id
 }
 
 func (r *Connector) setDefaults() error {

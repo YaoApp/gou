@@ -1,10 +1,14 @@
 package bridge
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
+	"strconv"
+	"strings"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/runtime/bridge"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
@@ -20,12 +24,30 @@ func ToInterface(value *v8go.Value) (interface{}, error) {
 	var v interface{} = nil
 	if value.IsNull() || value.IsUndefined() {
 		return nil, nil
+
 	} else if value.IsBigInt() {
 		return value.BigInt(), nil
+
 	} else if value.IsBoolean() {
 		return value.Boolean(), nil
+
 	} else if value.IsString() {
 		return value.String(), nil
+
+	} else if value.IsInt32() {
+		return int(value.Int32()), nil
+
+	} else if value.IsUint8Array() || value.IsArrayBufferView() {
+		res := []byte{}
+		codes := strings.Split(value.String(), ",")
+		for _, code := range codes {
+			c, err := strconv.Atoi(code)
+			if err != nil {
+				return nil, err
+			}
+			res = append(res, byte(c))
+		}
+		return res, nil
 	}
 
 	content, err := value.MarshalJSON()
@@ -56,8 +78,26 @@ func AnyToValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
 	switch value.(type) {
 	case []byte:
-		// Todo: []byte to Uint8Array
 		return v8go.NewValue(ctx.Isolate(), string(value.([]byte)))
+
+	case bridge.Uint8Array:
+		// should be change in next version
+		hexstr := hex.EncodeToString(value.(bridge.Uint8Array))
+		res, err := ctx.RunScript(fmt.Sprintf(`
+			function _yao_hexToBytes(hex) {
+				for (var bytes = [], c = 0; c < hex.length; c += 2) {
+					bytes.push(parseInt(hex.substr(c, 2), 16));
+				}
+				return bytes;
+			}
+			new Uint8Array(_yao_hexToBytes("%s"));
+		`, hexstr), "__temp")
+
+		if err != nil {
+			return nil, err
+		}
+		return res, nil
+
 	case string, int32, uint32, int64, uint64, bool, float64, *big.Int:
 		return v8go.NewValue(ctx.Isolate(), value)
 	case int:

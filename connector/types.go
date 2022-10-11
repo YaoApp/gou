@@ -36,14 +36,16 @@ var types = map[string]int{
 
 // Connector the connector interface
 type Connector interface {
-	Register(name string, dsl []byte) error
+	Register(id string, dsl []byte) error
+	ID() string
 	Is(int) bool
 }
 
 // DSL the connector DSL
 type DSL struct {
-	Name    string                 `json:"-"`
+	ID      string                 `json:"-"`
 	Type    string                 `json:"type"`
+	Name    string                 `json:"name,omitempty"`
 	Label   string                 `json:"label,omitempty"`
 	Version string                 `json:"version,omitempty"`
 	Options map[string]interface{} `json:"options,omitempty"`
