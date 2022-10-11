@@ -17,7 +17,7 @@ func TestProcessFsReadFile(t *testing.T) {
 	f := testFsFiles(t)
 	testFsClear(fs.FileSystems["system"], t)
 	data := testFsMakeF1(t)
-	process := "fs.system.readFile"
+	process := "fs.system.ReadFile"
 	args := []interface{}{f["F1"]}
 	res, err := NewProcess(process, args...).Exec()
 	if err != nil {
@@ -33,7 +33,7 @@ func TestProcessFsReadFileBuffer(t *testing.T) {
 	f := testFsFiles(t)
 	testFsClear(fs.FileSystems["system"], t)
 	data := testFsMakeF1(t)
-	process := "fs.system.readFileBuffer"
+	process := "fs.system.ReadFileBuffer"
 	args := []interface{}{f["F1"]}
 	res, err := NewProcess(process, args...).Exec()
 	if err != nil {
@@ -49,7 +49,7 @@ func TestProcessFsWriteFile(t *testing.T) {
 	testFsClear(fs.FileSystems["system"], t)
 	data := testFsData(t)
 
-	process := "fs.system.writeFile"
+	process := "fs.system.WriteFile"
 	args := []interface{}{f["F1"], string(data), 0644}
 	res, err := NewProcess(process, args...).Exec()
 	if err != nil {
@@ -64,7 +64,7 @@ func TestProcessFsWriteBuffer(t *testing.T) {
 	testFsClear(fs.FileSystems["system"], t)
 	data := testFsData(t)
 
-	process := "fs.system.writeFileBuffer"
+	process := "fs.system.WriteFileBuffer"
 	args := []interface{}{f["F1"], data, 0644}
 	res, err := NewProcess(process, args...).Exec()
 	if err != nil {
@@ -83,6 +83,61 @@ func TestProcessFsWriteBuffer(t *testing.T) {
 	args = []interface{}{f["F1"], string(data), 0644}
 	res, err = NewProcess(process, args...).Exec()
 	assert.NotNil(t, err)
+}
+
+func TestProcessFsDir(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(fs.FileSystems["system"], t)
+	process := "fs.system.Mkdir"
+	args := []interface{}{f["D2"]}
+	_, err := NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	process = "fs.system.MkdirAll"
+	args = []interface{}{f["D1_D2"]}
+	_, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	process = "fs.system.MkdirTemp"
+	args = []interface{}{}
+	_, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	process = "fs.system.MkdirTemp"
+	args = []interface{}{f["D1"]}
+	_, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	process = "fs.system.MkdirTemp"
+	args = []interface{}{f["D1"], "*-logs"}
+	_, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	process = "fs.system.ReadDir"
+	args = []interface{}{f["root"]}
+	res, err := NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 2, len(res.([]string)))
+
+	process = "fs.system.ReadDir"
+	args = []interface{}{f["root"], true}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 5, len(res.([]string)))
 }
 
 func testFsMakeF1(t *testing.T) []byte {

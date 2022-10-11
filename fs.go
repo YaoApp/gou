@@ -1,6 +1,7 @@
 package gou
 
 import (
+	"os"
 	"strings"
 
 	"github.com/yaoapp/gou/fs"
@@ -8,12 +9,16 @@ import (
 	"github.com/yaoapp/kun/exception"
 )
 
-// FileSystemHandlers 模型运行器
+// FileSystemHandlers the file system handlers
 var FileSystemHandlers = map[string]ProcessHandler{
 	"readfile":        processReadFile,
 	"readfilebuffer":  processReadFileBuffer,
 	"writefile":       processWirteFile,
 	"writefilebuffer": processWriteFileBuffer,
+	"readdir":         processReadDir,
+	"mkdir":           processMkdir,
+	"mkdirall":        processMkdirAll,
+	"mkdirtemp":       processMkdirTemp,
 }
 
 func init() {
@@ -87,21 +92,54 @@ func processWriteFileBuffer(process *Process) interface{} {
 	return length
 }
 
-// func processReadDir(process *Process) interface{} {
-// 	return nil
-// }
+func processReadDir(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	dir := process.ArgsString(0)
+	recursive := process.ArgsBool(1, false)
+	dirs, err := fs.ReadDir(stor, dir, recursive)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return dirs
+}
 
-// func processMkdir(process *Process) interface{} {
-// 	return nil
-// }
+func processMkdir(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	dir := process.ArgsString(0)
+	pterm := process.ArgsInt(1, int(os.ModePerm))
 
-// func processMkdirAll(process *Process) interface{} {
-// 	return nil
-// }
+	err := fs.Mkdir(stor, dir, pterm)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
 
-// func processMkdirTemp(process *Process) interface{} {
-// 	return nil
-// }
+func processMkdirAll(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	dir := process.ArgsString(0)
+	pterm := process.ArgsInt(1, int(os.ModePerm))
+
+	err := fs.MkdirAll(stor, dir, pterm)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
+
+func processMkdirTemp(process *Process) interface{} {
+	stor := stor(process)
+	dir := process.ArgsString(0, "")
+	pattern := process.ArgsString(1, "")
+	path, err := fs.MkdirTemp(stor, dir, pattern)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return path
+}
 
 // func processChmod(process *Process) interface{} {
 // 	return nil

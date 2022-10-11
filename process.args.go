@@ -79,7 +79,7 @@ func (process *Process) ArgsQueryParams(i int, defaults ...QueryParam) QueryPara
 		param = defaults[0]
 	}
 
-	if process.Args[i] == nil || len(process.Args) <= i {
+	if len(process.Args) <= i || process.Args[i] == nil {
 		return param
 	}
 
@@ -99,7 +99,7 @@ func (process *Process) ArgsInt(i int, defaults ...int) int {
 		value = defaults[0]
 	}
 
-	if process.Args[i] == nil || len(process.Args) <= i {
+	if len(process.Args) <= i || process.Args[i] == nil {
 		return value
 	}
 
@@ -125,7 +125,7 @@ func (process *Process) ArgsString(i int, defaults ...string) string {
 		value = defaults[0]
 	}
 
-	if process.Args[i] == nil || len(process.Args) <= i {
+	if len(process.Args) <= i || process.Args[i] == nil {
 		return value
 	}
 
@@ -175,7 +175,7 @@ func (process *Process) ArgsBool(i int, defaults ...bool) bool {
 		value = defaults[0]
 	}
 
-	if process.Args[i] == nil || len(process.Args) <= i {
+	if len(process.Args) <= i || process.Args[i] == nil {
 		return value
 	}
 
