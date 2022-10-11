@@ -11,7 +11,7 @@ import (
 	"github.com/yaoapp/kun/exception"
 )
 
-// FileSystems Register filesytems
+// FileSystems Register filesystems
 var FileSystems = map[string]FileSystem{
 	"system": system.New(),
 	"binary": system.New(), // binary.New()
