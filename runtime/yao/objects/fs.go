@@ -35,6 +35,14 @@ import (
 // var ok 		      = fs.IsFile("/root/path");
 // var ok 		      = fs.Remove("/root/path");
 // var ok 		      = fs.RemoveAll("/root/path");
+// var err 			  = fs.Chmod("/root/path", 0755)
+// var res 			  = fs.BaseName("/root/path/name.file")
+// var res 			  = fs.DirName("/root/path/name.file")
+// var res 			  = fs.ExtName("/root/path/name.file")
+// var res 			  = fs.MimeType("/root/path/name.file")
+// var res 			  = fs.Mode("/root/path/name.file")
+// var res 			  = fs.Size("/root/path/name.file")
+// var res 			  = fs.ModTime("/root/path/name.file")
 
 // FSOBJ Javascript API
 type FSOBJ struct{}
@@ -64,6 +72,15 @@ func (obj *FSOBJ) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl.Set("MkdirAll", obj.mkdirAll(iso))
 	tmpl.Set("MkdirTemp", obj.mkdirTemp(iso))
 
+	tmpl.Set("Chmod", obj.chmod(iso))
+	tmpl.Set("BaseName", obj.baseName(iso))
+	tmpl.Set("DirName", obj.dirName(iso))
+	tmpl.Set("ExtName", obj.extName(iso))
+	tmpl.Set("MimeType", obj.mimeType(iso))
+	tmpl.Set("Mode", obj.mode(iso))
+	tmpl.Set("Size", obj.size(iso))
+	tmpl.Set("ModTime", obj.modTime(iso))
+
 	return tmpl
 }
 
@@ -92,6 +109,150 @@ func (obj *FSOBJ) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		return this.Value
 	})
 	return tmpl
+}
+
+func (obj *FSOBJ) baseName(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		res := fs.BaseName(args[0].String())
+		return obj.stringValue(info, res)
+	})
+}
+
+func (obj *FSOBJ) dirName(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		res := fs.DirName(args[0].String())
+		return obj.stringValue(info, res)
+	})
+}
+
+func (obj *FSOBJ) extName(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		res := fs.ExtName(args[0].String())
+		return obj.stringValue(info, res)
+	})
+}
+
+func (obj *FSOBJ) mimeType(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		res, err := fs.MimeType(stor, args[0].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.stringValue(info, res)
+	})
+}
+
+func (obj *FSOBJ) size(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		res, err := fs.Size(stor, args[0].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.intValue(info, int32(res))
+	})
+}
+
+func (obj *FSOBJ) mode(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		res, err := fs.Mode(stor, args[0].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.uint32Value(info, uint32(res))
+	})
+}
+
+func (obj *FSOBJ) modTime(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		res, err := fs.ModTime(stor, args[0].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.intValue(info, int32(res.Unix()))
+	})
+}
+
+func (obj *FSOBJ) chmod(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 2 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		name := args[0].String()
+		pterm := int(args[1].Int32())
+
+		err = fs.Chmod(stor, name, pterm)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return v8go.Null(iso)
+	})
 }
 
 func (obj *FSOBJ) remove(iso *v8go.Isolate) *v8go.FunctionTemplate {
@@ -458,6 +619,22 @@ func (obj *FSOBJ) stringArrayValue(info *v8go.FunctionCallbackInfo, value []stri
 }
 
 func (obj *FSOBJ) intValue(info *v8go.FunctionCallbackInfo, value int32) *v8go.Value {
+	res, err := v8go.NewValue(info.Context().Isolate(), value)
+	if err != nil {
+		return obj.error(info, err)
+	}
+	return res
+}
+
+func (obj *FSOBJ) int64Value(info *v8go.FunctionCallbackInfo, value int64) *v8go.Value {
+	res, err := v8go.NewValue(info.Context().Isolate(), value)
+	if err != nil {
+		return obj.error(info, err)
+	}
+	return res
+}
+
+func (obj *FSOBJ) uint32Value(info *v8go.FunctionCallbackInfo, value uint32) *v8go.Value {
 	res, err := v8go.NewValue(info.Context().Isolate(), value)
 	if err != nil {
 		return obj.error(info, err)

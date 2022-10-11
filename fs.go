@@ -26,6 +26,14 @@ var FileSystemHandlers = map[string]ProcessHandler{
 	"isdir":           processIsDir,
 	"isfile":          processIsFile,
 	"islink":          processIsLink,
+	"chmod":           processChmod,
+	"size":            processSize,
+	"mode":            processMode,
+	"modtime":         processModTime,
+	"basename":        processBaseName,
+	"dirname":         processDirName,
+	"extname":         processExtName,
+	"mimetype":        processMimeType,
 }
 
 func init() {
@@ -203,37 +211,79 @@ func processIsLink(process *Process) interface{} {
 	return fs.IsLink(stor, name)
 }
 
-// func processChmod(process *Process) interface{} {
-// 	return nil
-// }
+func processChmod(process *Process) interface{} {
+	process.ValidateArgNums(2)
+	stor := stor(process)
+	name := process.ArgsString(0)
+	pterm := process.ArgsInt(1)
+	err := fs.Chmod(stor, name, pterm)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
 
-// func processSize(process *Process) interface{} {
-// 	return nil
-// }
+func processSize(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	name := process.ArgsString(0)
+	size, err := fs.Size(stor, name)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return size
+}
 
-// func processMode(process *Process) interface{} {
-// 	return nil
-// }
+func processMode(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	name := process.ArgsString(0)
+	mode, err := fs.Mode(stor, name)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return uint32(mode)
+}
 
-// func processModTime(process *Process) interface{} {
-// 	return nil
-// }
+func processModTime(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	name := process.ArgsString(0)
+	t, err := fs.ModTime(stor, name)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return int(t.Unix())
+}
 
-// func processBaseName(process *Process) interface{} {
-// 	return nil
-// }
+func processBaseName(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	name := process.ArgsString(0)
+	return fs.BaseName(name)
+}
 
-// func processDirName(process *Process) interface{} {
-// 	return nil
-// }
+func processDirName(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	name := process.ArgsString(0)
+	return fs.DirName(name)
+}
 
-// func processExtName(process *Process) interface{} {
-// 	return nil
-// }
+func processExtName(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	name := process.ArgsString(0)
+	return fs.ExtName(name)
+}
 
-// func processMimeType(process *Process) interface{} {
-// 	return nil
-// }
+func processMimeType(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	name := process.ArgsString(0)
+	mimetype, err := fs.MimeType(stor, name)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return mimetype
+}
 
 // func processMove(process *Process) interface{} {
 // 	return nil
