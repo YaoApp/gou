@@ -7,6 +7,7 @@ import (
 	"github.com/yaoapp/gou/fs"
 	"github.com/yaoapp/gou/runtime/bridge"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/log"
 )
 
 // FileSystemHandlers the file system handlers
@@ -19,6 +20,12 @@ var FileSystemHandlers = map[string]ProcessHandler{
 	"mkdir":           processMkdir,
 	"mkdirall":        processMkdirAll,
 	"mkdirtemp":       processMkdirTemp,
+	"remove":          processRemove,
+	"removeall":       processRemoveAll,
+	"exists":          processExists,
+	"isdir":           processIsDir,
+	"isfile":          processIsFile,
+	"islink":          processIsLink,
 }
 
 func init() {
@@ -141,27 +148,62 @@ func processMkdirTemp(process *Process) interface{} {
 	return path
 }
 
+func processRemove(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	dir := process.ArgsString(0)
+	err := fs.Remove(stor, dir)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
+
+func processRemoveAll(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	dir := process.ArgsString(0)
+	err := fs.RemoveAll(stor, dir)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
+
+func processExists(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	dir := process.ArgsString(0)
+	has, err := fs.Exists(stor, dir)
+	if err != nil {
+		log.Error("[%s] %s", process.Class, err.Error())
+		return false
+	}
+	return has
+}
+
+func processIsDir(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	name := process.ArgsString(0)
+	return fs.IsDir(stor, name)
+}
+
+func processIsFile(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	name := process.ArgsString(0)
+	return fs.IsFile(stor, name)
+}
+
+func processIsLink(process *Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	name := process.ArgsString(0)
+	return fs.IsLink(stor, name)
+}
+
 // func processChmod(process *Process) interface{} {
-// 	return nil
-// }
-
-// func processRemove(process *Process) interface{} {
-// 	return nil
-// }
-
-// func processRemoveAll(process *Process) interface{} {
-// 	return nil
-// }
-
-// func processMove(process *Process) interface{} {
-// 	return nil
-// }
-
-// func processCopy(process *Process) interface{} {
-// 	return nil
-// }
-
-// func processExists(process *Process) interface{} {
 // 	return nil
 // }
 
@@ -174,14 +216,6 @@ func processMkdirTemp(process *Process) interface{} {
 // }
 
 // func processModTime(process *Process) interface{} {
-// 	return nil
-// }
-
-// func processIsDir(process *Process) interface{} {
-// 	return nil
-// }
-
-// func processIsFile(process *Process) interface{} {
 // 	return nil
 // }
 
@@ -198,5 +232,13 @@ func processMkdirTemp(process *Process) interface{} {
 // }
 
 // func processMimeType(process *Process) interface{} {
+// 	return nil
+// }
+
+// func processMove(process *Process) interface{} {
+// 	return nil
+// }
+
+// func processCopy(process *Process) interface{} {
 // 	return nil
 // }

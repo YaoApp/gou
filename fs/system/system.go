@@ -187,7 +187,7 @@ func (f *File) IsFile(name string) bool {
 func (f *File) IsLink(name string) bool {
 	info, err := os.Stat(name)
 	if err != nil {
-		log.Warn("[IsFile] %s %s", name, err.Error())
+		log.Warn("[IsLink] %s %s", name, err.Error())
 		return false
 	}
 	return info.Mode()&os.ModeSymlink != 0

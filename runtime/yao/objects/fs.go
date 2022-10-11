@@ -30,6 +30,11 @@ import (
 // var temp 		  = fs.MkdirTemp();
 // var temp 		  = fs.MkdirTemp("/root/path/dir");
 // var temp 		  = fs.MkdirTemp("/root/path/dir", "*-logs");
+// var ok 		      = fs.Exists("/root/path");
+// var ok 		      = fs.IsDir("/root/path");
+// var ok 		      = fs.IsFile("/root/path");
+// var ok 		      = fs.Remove("/root/path");
+// var ok 		      = fs.RemoveAll("/root/path");
 
 // FSOBJ Javascript API
 type FSOBJ struct{}
@@ -42,15 +47,23 @@ func NewFS() *FSOBJ {
 // ExportObject Export as a FS Object
 func (obj *FSOBJ) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl := v8go.NewObjectTemplate(iso)
+	tmpl.Set("Exists", obj.exists(iso))
+	tmpl.Set("IsDir", obj.isdir(iso))
+	tmpl.Set("IsFile", obj.isfile(iso))
+	tmpl.Set("IsLink", obj.islink(iso))
+
 	tmpl.Set("ReadFile", obj.readFile(iso))
 	tmpl.Set("ReadFileBuffer", obj.readFileBuffer(iso))
 	tmpl.Set("WriteFile", obj.writeFile(iso))
 	tmpl.Set("WriteFileBuffer", obj.writeFileBuffer(iso))
+	tmpl.Set("Remove", obj.remove(iso))
+	tmpl.Set("RemoveAll", obj.removeAll(iso))
 
 	tmpl.Set("ReadDir", obj.readdir(iso))
 	tmpl.Set("Mkdir", obj.mkdir(iso))
 	tmpl.Set("MkdirAll", obj.mkdirAll(iso))
 	tmpl.Set("MkdirTemp", obj.mkdirTemp(iso))
+
 	return tmpl
 }
 
@@ -79,6 +92,120 @@ func (obj *FSOBJ) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		return this.Value
 	})
 	return tmpl
+}
+
+func (obj *FSOBJ) remove(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		err = fs.Remove(stor, args[0].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return v8go.Null(iso)
+	})
+}
+
+func (obj *FSOBJ) removeAll(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		err = fs.RemoveAll(stor, args[0].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return v8go.Null(iso)
+	})
+}
+
+func (obj *FSOBJ) exists(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		ok, err := fs.Exists(stor, args[0].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.boolValue(info, ok)
+	})
+}
+
+func (obj *FSOBJ) isdir(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		ok := fs.IsDir(stor, args[0].String())
+		return obj.boolValue(info, ok)
+	})
+}
+
+func (obj *FSOBJ) isfile(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		ok := fs.IsFile(stor, args[0].String())
+		return obj.boolValue(info, ok)
+	})
+}
+
+func (obj *FSOBJ) islink(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		ok := fs.IsLink(stor, args[0].String())
+		return obj.boolValue(info, ok)
+	})
 }
 
 func (obj *FSOBJ) readdir(iso *v8go.Isolate) *v8go.FunctionTemplate {
@@ -201,7 +328,7 @@ func (obj *FSOBJ) readFile(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return obj.error(info, err)
 		}
 
-		data, err := fs.ReadFile(stor, info.Args()[0].String())
+		data, err := fs.ReadFile(stor, args[0].String())
 		if err != nil {
 			return obj.error(info, err)
 		}
@@ -222,7 +349,7 @@ func (obj *FSOBJ) readFileBuffer(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return obj.error(info, err)
 		}
 
-		data, err := fs.ReadFile(stor, info.Args()[0].String())
+		data, err := fs.ReadFile(stor, args[0].String())
 		if err != nil {
 			return obj.error(info, err)
 		}
@@ -331,6 +458,14 @@ func (obj *FSOBJ) stringArrayValue(info *v8go.FunctionCallbackInfo, value []stri
 }
 
 func (obj *FSOBJ) intValue(info *v8go.FunctionCallbackInfo, value int32) *v8go.Value {
+	res, err := v8go.NewValue(info.Context().Isolate(), value)
+	if err != nil {
+		return obj.error(info, err)
+	}
+	return res
+}
+
+func (obj *FSOBJ) boolValue(info *v8go.FunctionCallbackInfo, value bool) *v8go.Value {
 	res, err := v8go.NewValue(info.Context().Isolate(), value)
 	if err != nil {
 		return obj.error(info, err)
