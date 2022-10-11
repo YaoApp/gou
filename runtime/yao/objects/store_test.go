@@ -234,18 +234,18 @@ func newStore(t *testing.T, c connector.Connector) store.Store {
 	return s
 }
 
-func makeConnector(t *testing.T, name string) connector.Connector {
+func makeConnector(t *testing.T, id string) connector.Connector {
 	root := os.Getenv("GOU_TEST_APP_ROOT")
-	path := filepath.Join(root, "connectors", fmt.Sprintf("%s.conn.json", name))
+	path := filepath.Join(root, "connectors", fmt.Sprintf("%s.conn.json", id))
 
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = connector.Load(string(content), name)
+	_, err = connector.Load(string(content), id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return connector.Connectors[name]
+	return connector.Connectors[id]
 }

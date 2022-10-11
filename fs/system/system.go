@@ -33,7 +33,7 @@ func (f *File) WriteFile(file string, data []byte, pterm int) (int, error) {
 
 	dir := filepath.Dir(file)
 	err := os.MkdirAll(dir, os.ModePerm)
-	if err != nil && os.IsExist(err) {
+	if err != nil && !os.IsExist(err) {
 		return 0, err
 	}
 

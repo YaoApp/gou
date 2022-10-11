@@ -1,10 +1,53 @@
 package fs
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/yaoapp/gou/connector"
+	"github.com/yaoapp/gou/fs/system"
+	"github.com/yaoapp/kun/exception"
 )
+
+// FileSystems Register filesystems
+var FileSystems = map[string]FileSystem{
+	"system": system.New(),
+	"binary": system.New(), // binary.New()
+}
+
+// Register connector
+func Register(c connector.Connector) error {
+	// if c.Is(connector.DATABASE) {
+	// 	FileSystems[c.ID()] = system.New() // xun.New(Connector)
+
+	// } else if c.Is(connector.REDIS) {
+	// 	FileSystems[c.ID()] = system.New() // redis.New(Connector)
+
+	// } else if c.Is(connector.MONGO) {
+	// 	FileSystems[c.ID()] = system.New() // mongo.New(Connector)
+	// }
+	return fmt.Errorf("connector %s does not support", c.ID())
+}
+
+// Get pick a filesystem via the given name
+func Get(name string) (FileSystem, error) {
+	if fs, has := FileSystems[name]; has {
+		return fs, nil
+	}
+	return nil, fmt.Errorf("%s does not registered", name)
+}
+
+// MustGet pick a filesystem via the given name
+func MustGet(name string) FileSystem {
+	fs, err := Get(name)
+	if err != nil {
+		exception.New(err.Error(), 400).Throw()
+		return nil
+	}
+	return fs
+}
 
 // ReadFile reads the named file and returns the contents.
 // A successful call returns err == nil, not err == EOF. Because ReadFile reads the whole file, it does not treat an EOF from Read as an error to be reported.

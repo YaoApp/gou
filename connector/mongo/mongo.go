@@ -13,7 +13,8 @@ import (
 
 // Connector the ConnectorDB struct
 type Connector struct {
-	Name     string          `json:"-"`
+	id       string
+	Name     string          `json:"name,omitempty"`
 	Version  string          `json:"version,omitempty"`
 	Options  Options         `json:"options"`
 	Client   *mongo.Client   `json:"-"`
@@ -38,7 +39,7 @@ type Host struct {
 }
 
 // Register the connections from dsl
-func (m *Connector) Register(name string, dsl []byte) error {
+func (m *Connector) Register(id string, dsl []byte) error {
 	err := jsoniter.Unmarshal(dsl, m)
 	if err != nil {
 		return err
@@ -49,8 +50,13 @@ func (m *Connector) Register(name string, dsl []byte) error {
 		return err
 	}
 
-	m.Name = name
+	m.id = id
 	return m.makeConnection()
+}
+
+// ID get connector id
+func (m *Connector) ID() string {
+	return m.id
 }
 
 // Is the connections from dsl

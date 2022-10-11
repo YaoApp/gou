@@ -22,7 +22,7 @@ func New(c connector.Connector) (*Store, error) {
 	}
 
 	// coll
-	coll := mongodb.Database.Collection(mongodb.Name)
+	coll := mongodb.Database.Collection(mongodb.ID())
 
 	// Create indexes
 	indexModel := mongo.IndexModel{

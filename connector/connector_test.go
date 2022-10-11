@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/go-playground/assert/v2"
 	"github.com/yaoapp/gou/connector/database"
 	mongo "github.com/yaoapp/gou/connector/mongo"
 	"github.com/yaoapp/gou/connector/redis"
@@ -52,6 +53,8 @@ func TestLoadSQLite(t *testing.T) {
 	if _, ok := Connectors["sqlite"].(*database.Xun); !ok {
 		t.Fatal("the sqlite connector is not a *database.Xun")
 	}
+
+	assert.Equal(t, "sqlite", Connectors["sqlite"].ID())
 }
 
 func TestLoadRedis(t *testing.T) {
@@ -73,6 +76,8 @@ func TestLoadRedis(t *testing.T) {
 	if _, ok := Connectors["redis"].(*redis.Connector); !ok {
 		t.Fatal("the redis connector is not a *redis.Connector")
 	}
+
+	assert.Equal(t, "redis", Connectors["redis"].ID())
 }
 
 func TestLoadMongoDB(t *testing.T) {
@@ -94,6 +99,8 @@ func TestLoadMongoDB(t *testing.T) {
 	if _, ok := Connectors["mongo"].(*mongo.Connector); !ok {
 		t.Fatal("the mongo connector is not a *mongo.Connector")
 	}
+
+	assert.Equal(t, "mongo", Connectors["mongo"].ID())
 }
 
 func source(t *testing.T, name string) string {

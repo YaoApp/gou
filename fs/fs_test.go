@@ -150,6 +150,22 @@ func TestWriteFile(t *testing.T) {
 		checkFileExists(stor, t, f["F2"], name)
 		checkFileSize(stor, t, f["F2"], l22, name)
 		checkFileMode(stor, t, f["F2"], 0644, name)
+
+		// permission denied
+		err = Chmod(stor, f["F2"], 0400)
+		assert.Nil(t, err, name)
+		l31, err := WriteFile(stor, f["F2"], data, 0644)
+		assert.NotNil(t, err, name)
+		assert.Equal(t, l31, 0)
+
+		err = MkdirAll(stor, f["D1"], int(os.ModePerm))
+		assert.Nil(t, err, name)
+		err = Chmod(stor, f["D1"], 0400)
+		assert.Nil(t, err, name)
+
+		l32, err := WriteFile(stor, f["D1_D2_F1"], data, 0644)
+		assert.NotNil(t, err, name)
+		assert.Equal(t, l32, 0)
 	}
 }
 
