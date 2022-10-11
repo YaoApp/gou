@@ -36,6 +36,7 @@ func New(numOfContexts int) *Yao {
 		"WebSocket": objects.NewWebSocket().ExportFunction(yao.iso),
 		"Store":     objects.NewStore().ExportFunction(yao.iso),
 		"Query":     objects.NewQuery().ExportFunction(yao.iso),
+		"FS":        objects.NewFS().ExportFunction(yao.iso),
 	})
 	return yao
 }

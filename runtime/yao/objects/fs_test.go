@@ -15,7 +15,7 @@ import (
 )
 
 func TestFSObjectReadFile(t *testing.T) {
-
+	testFsClear(t)
 	f := testFsFiles(t)
 	data := testFsMakeF1(t)
 
@@ -89,7 +89,7 @@ func TestFSObjectReadFile(t *testing.T) {
 }
 
 func TestFSObjectWriteFile(t *testing.T) {
-
+	testFsClear(t)
 	f := testFsFiles(t)
 	data := testFsMakeF1(t)
 
@@ -144,6 +144,46 @@ func TestFSObjectWriteFile(t *testing.T) {
 
 }
 
+func TestFSObjectDir(t *testing.T) {
+	testFsClear(t)
+	f := testFsFiles(t)
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fs := &FSOBJ{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fs.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// DirTest
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function DirTest() {
+		var fs = new FS("system");
+		fs.Mkdir("%s");
+		fs.MkdirAll("%s");
+		fs.MkdirTemp()
+		fs.MkdirTemp("%s")
+		fs.MkdirTemp("%s", "*-logs")
+		return fs.ReadDir("%s", true)
+	}
+	DirTest()
+	`, f["D2"], f["D1_D2"], f["D1"], f["D1"], f["root"]), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.True(t, v.IsArray())
+	res, err := bridge.ToInterface(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 5, len(res.([]interface{})))
+}
+
 func testFsMakeF1(t *testing.T) []byte {
 	data := testFsData(t)
 	f := testFsFiles(t)
@@ -189,14 +229,13 @@ func testFsFiles(t *testing.T) map[string]string {
 
 }
 
-func testFsClear(stor fs.FileSystem, t *testing.T) {
-
+func testFsClear(t *testing.T) {
+	stor := fs.FileSystems["system"]
 	root := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")
 	err := os.RemoveAll(root)
 	if err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
-
 	err = fs.MkdirAll(stor, root, int(os.ModePerm))
 	if err != nil {
 		t.Fatal(err)
