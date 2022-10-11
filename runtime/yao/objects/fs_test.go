@@ -144,6 +144,74 @@ func TestFSObjectWriteFile(t *testing.T) {
 
 }
 
+func TestFSObjectExistRemove(t *testing.T) {
+
+	testFsClear(t)
+	testFsMakeF1(t)
+	testFsMakeD1D2F1(t)
+	f := testFsFiles(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fs := &FSOBJ{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fs.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// WriteFile
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function ExistRemove() {
+		var res = {}
+		var fs = new FS("system")
+		res["ExistsTrue"] = fs.Exists("%s");
+		res["ExistsFalse"] = fs.Exists("%s");
+		res["IsDirTrue"] = fs.IsDir("%s");
+		res["IsDirFalse"] = fs.IsDir("%s");
+		res["IsFileTrue"] = fs.IsFile("%s");
+		res["IsFileFalse"] = fs.IsFile("%s");
+		res["Remove"] = fs.Remove("%s");
+		res["RemoveNotExists"] = fs.Remove("%s");
+		try {
+			fs.Remove("%s");
+		} catch( err ) {
+			res["RemoveError"] = err.message
+		}
+		res["RemoveAll"] = fs.RemoveAll("%s");
+		res["RemoveAllNotExists"] = fs.RemoveAll("%s");
+		return res
+	}
+	ExistRemove()
+	`,
+		f["F1"], f["F2"], f["D1"], f["F1"], f["F1"], f["D1"], f["F1"], f["F2"], f["D1"], f["D1"], f["D1_D2"],
+	), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.ToInterface(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	retval := res.(map[string]interface{})
+	assert.Equal(t, true, retval["ExistsTrue"])
+	assert.Equal(t, false, retval["ExistsFalse"])
+	assert.Equal(t, true, retval["IsDirTrue"])
+	assert.Equal(t, false, retval["IsDirFalse"])
+	assert.Equal(t, true, retval["IsFileTrue"])
+	assert.Equal(t, false, retval["IsFileFalse"])
+	assert.Nil(t, retval["Remove"])
+	assert.Nil(t, retval["RemoveNotExists"])
+	assert.Contains(t, retval["RemoveError"], "directory not empty")
+	assert.Nil(t, retval["RemoveAll"])
+	assert.Nil(t, retval["RemoveAllNotExists"])
+}
+
 func TestFSObjectDir(t *testing.T) {
 	testFsClear(t)
 	f := testFsFiles(t)
@@ -240,4 +308,14 @@ func testFsClear(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func testFsMakeD1D2F1(t *testing.T) []byte {
+	data := testFsData(t)
+	f := testFsFiles(t)
+	_, err := fs.WriteFile(fs.FileSystems["system"], f["D1_D2_F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
 }

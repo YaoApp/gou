@@ -149,6 +149,11 @@ func IsFile(xfs FileSystem, name string) bool {
 	return xfs.IsFile(name)
 }
 
+// IsLink check the given path is symbolic link
+func IsLink(xfs FileSystem, name string) bool {
+	return xfs.IsLink(name)
+}
+
 // MimeType return the MimeType
 func MimeType(xfs FileSystem, name string) (string, error) {
 	return xfs.MimeType(name)

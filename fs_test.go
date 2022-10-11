@@ -140,12 +140,123 @@ func TestProcessFsDir(t *testing.T) {
 	assert.Equal(t, 5, len(res.([]string)))
 }
 
+func TestProcessFsExistRemove(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(fs.FileSystems["system"], t)
+	testFsMakeF1(t)
+	testFsMakeD1D2F1(t)
+
+	// Exists
+	process := "fs.system.Exists"
+	args := []interface{}{f["F1"]}
+	ok, err := NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, ok.(bool))
+
+	process = "fs.system.Exists"
+	args = []interface{}{f["F2"]}
+	ok, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.False(t, ok.(bool))
+
+	// IsDir
+	process = "fs.system.IsDir"
+	args = []interface{}{f["D1"]}
+	ok, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, ok.(bool))
+
+	process = "fs.system.IsDir"
+	args = []interface{}{f["F1"]}
+	ok, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.False(t, ok.(bool))
+
+	// IsFile
+	process = "fs.system.IsFile"
+	args = []interface{}{f["F1"]}
+	ok, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, ok.(bool))
+
+	process = "fs.system.IsFile"
+	args = []interface{}{f["D1"]}
+	ok, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.False(t, ok.(bool))
+
+	// Remove
+	process = "fs.system.Remove"
+	args = []interface{}{f["F1"]}
+	res, err := NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Nil(t, res)
+
+	process = "fs.system.Remove"
+	args = []interface{}{f["F2"]}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Nil(t, res)
+
+	process = "fs.system.Remove"
+	args = []interface{}{f["D1"]}
+	res, err = NewProcess(process, args...).Exec()
+	assert.NotNil(t, err)
+
+	// RemoveAll
+	process = "fs.system.RemoveAll"
+	args = []interface{}{f["D1"]}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Nil(t, res)
+
+	process = "fs.system.RemoveAll"
+	args = []interface{}{f["D1_D2"]}
+	res, err = NewProcess(process, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Nil(t, res)
+
+}
+
 func testFsMakeF1(t *testing.T) []byte {
 	data := testFsData(t)
 	f := testFsFiles(t)
 
 	// Write
 	_, err := fs.WriteFile(fs.FileSystems["system"], f["F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return data
+}
+
+func testFsMakeD1D2F1(t *testing.T) []byte {
+	data := testFsData(t)
+	f := testFsFiles(t)
+
+	// Write
+	_, err := fs.WriteFile(fs.FileSystems["system"], f["D1_D2_F1"], data, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
