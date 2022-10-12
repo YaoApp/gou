@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestWriteFile(t *testing.T) {
+func TestDSLWriteFile(t *testing.T) {
 	data := []byte(`{"foo": "bar", "hello":{ "int": 1, "float": 0.618}}`)
 	shoud := []byte(`{
   "foo": "bar",

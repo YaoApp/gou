@@ -28,6 +28,30 @@ func (f *File) WriteFile(file string, data []byte, pterm int) (int, error) {
 	return f.File.WriteFile(file, data, pterm)
 }
 
+// Allow allow rel path
+func (f *File) Allow(patterns ...string) *File {
+	f.File.Allow(patterns...)
+	return f
+}
+
+// Deny deny rel path
+func (f *File) Deny(patterns ...string) *File {
+	f.File.Deny(patterns...)
+	return f
+}
+
+// AllowAbs allow abs path
+func (f *File) AllowAbs(patterns ...string) *File {
+	f.File.AllowAbs(patterns...)
+	return f
+}
+
+// DenyAbs deny abs path
+func (f *File) DenyAbs(patterns ...string) *File {
+	f.File.DenyAbs(patterns...)
+	return f
+}
+
 // Fmt data
 func (f *File) Fmt(data []byte) ([]byte, error) {
 	var out bytes.Buffer
