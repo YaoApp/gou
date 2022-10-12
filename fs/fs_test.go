@@ -13,6 +13,16 @@ import (
 	"github.com/yaoapp/gou/fs/system"
 )
 
+func TestMustGet(t *testing.T) {
+	testStores(t)
+	system := MustGet("system")
+	assert.NotNil(t, system)
+
+	rel := MustGet("system-relpath")
+	assert.NotNil(t, rel)
+	assert.Panics(t, func() { MustGet("not-found") })
+}
+
 func TestMkdir(t *testing.T) {
 	stores := testStores(t)
 	f := testFiles(t)
@@ -115,10 +125,10 @@ func TestReadDir(t *testing.T) {
 
 		dirs, err := ReadDir(stor, f["D1"], false)
 		assert.Nil(t, err, name)
-		assert.Equal(t, 3, len(dirs))
+		assert.Equal(t, 3, len(dirs), name)
 
 		dirs, err = ReadDir(stor, f["D1"], true)
-		assert.Equal(t, 5, len(dirs))
+		assert.Equal(t, 5, len(dirs), name)
 	}
 }
 
@@ -483,10 +493,9 @@ func TestBase(t *testing.T) {
 }
 
 func testStores(t *testing.T) map[string]FileSystem {
-	return map[string]FileSystem{
-		"system":       system.New(),
-		"system-test2": system.New(),
-	}
+	Register("system", system.New())
+	Register("system-relpath", system.New(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")))
+	return FileSystems
 }
 
 func testData(t *testing.T) []byte {

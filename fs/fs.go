@@ -17,8 +17,8 @@ var FileSystems = map[string]FileSystem{
 	"binary": system.New(), // binary.New()
 }
 
-// Register connector
-func Register(c connector.Connector) error {
+// RegisterConnector register a fileSystem via connector
+func RegisterConnector(c connector.Connector) error {
 	// if c.Is(connector.DATABASE) {
 	// 	FileSystems[c.ID()] = system.New() // xun.New(Connector)
 
@@ -29,6 +29,12 @@ func Register(c connector.Connector) error {
 	// 	FileSystems[c.ID()] = system.New() // mongo.New(Connector)
 	// }
 	return fmt.Errorf("connector %s does not support", c.ID())
+}
+
+// Register a FileSystem
+func Register(id string, fs FileSystem) FileSystem {
+	FileSystems[id] = fs
+	return FileSystems[id]
 }
 
 // Get pick a filesystem via the given name
