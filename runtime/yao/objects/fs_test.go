@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/fs"
+	"github.com/yaoapp/gou/fs/system"
 	"github.com/yaoapp/gou/runtime/yao/bridge"
 	"rogchap.com/v8go"
 )
@@ -87,6 +88,92 @@ func TestFSObjectReadFile(t *testing.T) {
 	res, err = bridge.ToInterface(v)
 	assert.True(t, v.IsUint8Array())
 	assert.Equal(t, data, res)
+}
+
+func TestFSObjectRootFs(t *testing.T) {
+	testFsClear(t)
+	f := testFsFiles(t)
+	data := testFsMakeF1(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fs := &FSOBJ{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("__YAO_SU_ROOT", true)
+	global.Set("FS", fs.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// WriteFile
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function WriteFile() {
+		var fs = new FS("dsl")
+		return fs.WriteFile("%s", "%s", 0644);
+	}
+	WriteFile()
+	`, f["F1"], string(data)), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.ToInterface(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res)
+}
+
+func TestFSObjectRootFsError(t *testing.T) {
+	testFsClear(t)
+	f := testFsFiles(t)
+	data := testFsMakeF1(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fs := &FSOBJ{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fs.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// WriteFile
+	_, err := ctx.RunScript(fmt.Sprintf(`
+	function WriteFile() {
+		var fs = new FS("dsl")
+		return fs.WriteFile("%s", "%s", 0644);
+	}
+	WriteFile()
+	`, f["F1"], string(data)), "")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "dsl does not loaded")
+
+	// WriteFile SU root
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	__YAO_SU_ROOT=true
+	function WriteFile() {
+		var fs = new FS("dsl")
+		return fs.WriteFile("%s", "%s", 0644);
+	}
+	WriteFile()
+	`, f["F1"], string(data)), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.ToInterface(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res)
+
 }
 
 func TestFSObjectWriteFile(t *testing.T) {
@@ -488,6 +575,10 @@ func testFsFiles(t *testing.T) map[string]string {
 }
 
 func testFsClear(t *testing.T) {
+
+	fs.Register("system", system.New())
+	fs.RootRegister("dsl", system.New())
+
 	stor := fs.FileSystems["system"]
 	root := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")
 	err := os.RemoveAll(root)

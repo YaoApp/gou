@@ -14,8 +14,10 @@ import (
 // FileSystems Register filesystems
 var FileSystems = map[string]FileSystem{
 	"system": system.New(),
-	"binary": system.New(), // binary.New()
 }
+
+// RootFileSystems high-level filesystem
+var RootFileSystems = map[string]FileSystem{}
 
 // RegisterConnector register a fileSystem via connector
 func RegisterConnector(c connector.Connector) error {
@@ -37,6 +39,12 @@ func Register(id string, fs FileSystem) FileSystem {
 	return FileSystems[id]
 }
 
+// RootRegister Register a root FileSystem
+func RootRegister(id string, fs FileSystem) FileSystem {
+	RootFileSystems[id] = fs
+	return RootFileSystems[id]
+}
+
 // Get pick a filesystem via the given name
 func Get(name string) (FileSystem, error) {
 	if fs, has := FileSystems[name]; has {
@@ -48,6 +56,30 @@ func Get(name string) (FileSystem, error) {
 // MustGet pick a filesystem via the given name
 func MustGet(name string) FileSystem {
 	fs, err := Get(name)
+	if err != nil {
+		exception.New(err.Error(), 400).Throw()
+		return nil
+	}
+	return fs
+}
+
+// RootGet pick a filesystem via the given name (root first)
+func RootGet(name string) (FileSystem, error) {
+
+	if fs, has := RootFileSystems[name]; has {
+		return fs, nil
+	}
+
+	if fs, has := FileSystems[name]; has {
+		return fs, nil
+	}
+
+	return nil, fmt.Errorf("%s does not registered", name)
+}
+
+// MustRootGet pick a filesystem via the given name
+func MustRootGet(name string) FileSystem {
+	fs, err := RootGet(name)
 	if err != nil {
 		exception.New(err.Error(), 400).Throw()
 		return nil

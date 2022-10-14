@@ -64,3 +64,8 @@ function Auth(path, params, query, payload, headers) {
   }
   throw new Exception("failure", 403);
 }
+
+// IsRoot
+function IsRoot() {
+  return __YAO_SU_ROOT;
+}
