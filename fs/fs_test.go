@@ -20,7 +20,23 @@ func TestMustGet(t *testing.T) {
 
 	rel := MustGet("system-relpath")
 	assert.NotNil(t, rel)
+
 	assert.Panics(t, func() { MustGet("not-found") })
+	assert.Panics(t, func() { MustGet("system-root") })
+}
+
+func TestMustRootGet(t *testing.T) {
+	testStores(t)
+	system := MustRootGet("system")
+	assert.NotNil(t, system)
+
+	rel := MustRootGet("system-relpath")
+	assert.NotNil(t, rel)
+
+	root := MustRootGet("system-root")
+	assert.NotNil(t, root)
+
+	assert.Panics(t, func() { MustRootGet("not-found") })
 }
 
 func TestMkdir(t *testing.T) {
@@ -495,6 +511,7 @@ func TestBase(t *testing.T) {
 func testStores(t *testing.T) map[string]FileSystem {
 	Register("system", system.New())
 	Register("system-relpath", system.New(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")))
+	RootRegister("system-root", system.New())
 	return FileSystems
 }
 

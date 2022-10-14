@@ -25,6 +25,7 @@ func New(numOfContexts int) *Yao {
 		iso:             iso,
 		template:        global,
 		scripts:         map[string]script{},
+		rootScripts:     map[string]script{},
 		objectTemplates: map[string]*v8.ObjectTemplate{},
 		numOfContexts:   numOfContexts,
 	}
@@ -67,8 +68,33 @@ func (yao *Yao) Load(filename string, name string) error {
 	return yao.LoadReader(file, name, filename)
 }
 
+// RootLoad load and compile script
+func (yao *Yao) RootLoad(filename string, name string) error {
+	filename, err := filepath.Abs(filename)
+	if err != nil {
+		return err
+	}
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Error("[Runtime] load %s %s error: %s", filename, name, err.Error())
+		return err
+	}
+	defer file.Close()
+	return yao.RootLoadReader(file, name, filename)
+}
+
+// RootLoadReader load and compile script
+func (yao *Yao) RootLoadReader(reader io.Reader, name string, filename ...string) error {
+	return yao.loadReader(yao.rootScripts, true, reader, name, filename...)
+}
+
 // LoadReader load and compile script
 func (yao *Yao) LoadReader(reader io.Reader, name string, filename ...string) error {
+	return yao.loadReader(yao.scripts, false, reader, name, filename...)
+}
+
+// LoadReader load and compile script
+func (yao *Yao) loadReader(scripts map[string]script, isroot bool, reader io.Reader, name string, filename ...string) error {
 	source, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return err
@@ -93,11 +119,12 @@ func (yao *Yao) LoadReader(reader io.Reader, name string, filename ...string) er
 		return err
 	}
 
-	yao.scripts[name] = script{
+	scripts[name] = script{
 		name:     name,
 		filename: scriptfile,
 		source:   code,
-		ctx:      ctx,
+		Ctx:      ctx,
+		IsRoot:   isroot,
 		// compiled: compiled,
 	}
 	return nil
@@ -109,9 +136,30 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 	if !has {
 		return nil, fmt.Errorf("The %s does not loaded (%d)", name, len(yao.scripts))
 	}
+	return yao.call(script, data, name, method, args...)
+}
+
+// RootCall cal javascript function
+func (yao *Yao) RootCall(data map[string]interface{}, name string, method string, args ...interface{}) (interface{}, error) {
+
+	script, has := yao.rootScripts[name]
+	if has {
+		return yao.call(script, data, name, method, args...)
+	}
+
+	script, has = yao.scripts[name]
+	if has {
+		return yao.call(script, data, name, method, args...)
+	}
+
+	return nil, fmt.Errorf("The %s does not loaded (%d)", name, len(yao.scripts))
+}
+
+// Call cal javascript function
+func (yao *Yao) call(script script, data map[string]interface{}, name string, method string, args ...interface{}) (interface{}, error) {
 
 	var err error
-	v8ctx := script.ctx
+	v8ctx := script.Ctx
 	// v8ctx, err := yao.contexts.Make(func() *v8.Context { return v8.NewContext(yao.iso, yao.template) })
 	// if err != nil {
 	// 	return nil, err
@@ -129,6 +177,9 @@ func (yao *Yao) Call(data map[string]interface{}, name string, method string, ar
 	if global == nil {
 		return nil, fmt.Errorf("global is nil")
 	}
+
+	// set as
+	global.Set("__YAO_SU_ROOT", script.IsRoot)
 
 	// set global data
 	if data == nil {

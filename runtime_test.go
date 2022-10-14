@@ -9,9 +9,39 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestRuntimeRootLoad(t *testing.T) {
+
+	ctx := context.Background()
+	err := TestYao.RootLoad(path.Join(TestScriptRoot, "test.js"), "test")
+	assert.Nil(t, err)
+
+	isRoot := TestYao.New("test", "IsRoot").
+		WithGlobal(map[string]interface{}{"foo": "bar"}).
+		WithSid("1").
+		WithContext(ctx)
+
+	v, err := isRoot.Call()
+	assert.NotNil(t, err)
+
+	v, err = isRoot.RootCall()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, true, v.(bool))
+}
+
 func TestRuntimeLoad(t *testing.T) {
+	ctx := context.Background()
 	err := TestYao.Load(path.Join(TestScriptRoot, "test.js"), "test")
 	assert.Nil(t, err)
+	isRoot := TestYao.New("test", "IsRoot").
+		WithGlobal(map[string]interface{}{"foo": "bar"}).
+		WithSid("1").
+		WithContext(ctx)
+
+	v, err := isRoot.Call()
+	assert.Nil(t, err)
+	assert.Equal(t, false, v.(bool))
 }
 
 func TestRuntimeExec(t *testing.T) {

@@ -102,8 +102,21 @@ func (obj *FSOBJ) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			name = args[0].String()
 		}
 
-		if _, has := fs.FileSystems[name]; !has {
-			return obj.errorString(info, fmt.Sprintf("%s does not loaded", name))
+		v, err := info.Context().Global().Get("__YAO_SU_ROOT")
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		if v.Boolean() {
+			_, err := fs.RootGet(name)
+			if err != nil {
+				return obj.errorString(info, fmt.Sprintf("%s does not loaded", name))
+			}
+		} else {
+			_, err := fs.Get(name)
+			if err != nil {
+				return obj.errorString(info, fmt.Sprintf("%s does not loaded", name))
+			}
 		}
 
 		this, err := object.NewInstance(info.Context())
@@ -641,7 +654,17 @@ func (obj *FSOBJ) getFS(info *v8go.FunctionCallbackInfo) (fs.FileSystem, error) 
 	if err != nil {
 		return nil, err
 	}
-	return fs.MustGet(name.String()), nil
+
+	v, err := info.Context().Global().Get("__YAO_SU_ROOT")
+	if err != nil {
+		return nil, err
+	}
+
+	if v.Boolean() {
+		return fs.RootGet(name.String())
+	}
+
+	return fs.Get(name.String())
 }
 
 func (obj *FSOBJ) stringValue(info *v8go.FunctionCallbackInfo, value string) *v8go.Value {
