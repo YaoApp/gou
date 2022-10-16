@@ -310,12 +310,11 @@ func (dict *Dict) ReplaceClone(widgetName string, inst string, input interface{}
 	ref := reflect.ValueOf(input)
 	kind := ref.Kind()
 
-	if kind == reflect.Interface {
-		ref = ref.Elem()
-		kind = ref.Kind()
-	}
-
 	switch kind {
+
+	case reflect.Interface:
+
+		return dict.ReplaceClone(widgetName, inst, ref.Elem())
 
 	case reflect.Pointer:
 

@@ -468,3 +468,16 @@ func TestProcessExec(t *testing.T) {
 	assert.Nil(t, value)
 	assert.Equal(t, "ID=100的数据不存在", err.Error())
 }
+
+func TestProcessLang(t *testing.T) {
+
+	lang := NewProcess("models.user.Find", 1, QueryParam{}).Lang()
+	assert.Equal(t, "", lang)
+
+	sid := session.ID()
+	session.Global().ID(sid).Set("__yao_lang", "zh-cn")
+
+	lang = NewProcess("models.user.Find", 1, QueryParam{}).WithSID(sid).Lang()
+	assert.Equal(t, "zh-cn", lang)
+
+}

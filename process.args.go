@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/yaoapp/gou/query/share"
+	"github.com/yaoapp/gou/session"
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
@@ -258,4 +259,14 @@ func (process *Process) ArgsStrings(index int) []string {
 func (process *Process) ArgsArray(index int) []interface{} {
 	process.ValidateArgNums(index + 1)
 	return any.Of(process.Args[index]).CArray()
+}
+
+// Lang get lang
+func (process *Process) Lang() string {
+	if process.Sid != "" {
+		ss := session.Global().ID(process.Sid)
+		v, _ := ss.Get("__yao_lang")
+		return fmt.Sprintf("%v", v)
+	}
+	return ""
 }
