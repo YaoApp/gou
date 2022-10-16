@@ -349,26 +349,36 @@ func (dict *Dict) ReplaceClone(widgetName string, inst string, input interface{}
 		return new.Interface(), nil
 
 	case reflect.Slice:
-		values := []interface{}{}
+		values := reflect.MakeSlice(ref.Type(), 0, 0)
 		for i := 0; i < ref.Len(); i++ {
 			val, err := dict.ReplaceClone(widgetName, inst, ref.Index(i).Interface())
+			if val == nil {
+				values = reflect.Append(values, reflect.ValueOf(nil))
+				continue
+			}
 			if err == nil {
-				values = append(values, val)
+				values = reflect.Append(values, reflect.ValueOf(val))
 			}
 		}
-		return values, nil
+		return values.Interface(), nil
 
 	case reflect.Struct:
 		value := copyStruct(ref)
 		for i := 0; i < ref.NumField(); i++ {
 			if value.Field(i).CanSet() {
-				val, err := dict.ReplaceClone(widgetName, inst, ref.Field(i).Interface())
-				if err == nil {
-					value.Field(i).Set(reflect.ValueOf(val).Convert(ref.Field(i).Type()))
+				if value.Field(i).Interface() != nil {
+					val, err := dict.ReplaceClone(widgetName, inst, ref.Field(i).Interface())
+					if err == nil && val != nil {
+						value.Field(i).Set(reflect.ValueOf(val).Convert(ref.Field(i).Type()))
+					}
 				}
 			}
 		}
 		return value.Interface(), nil
+	}
+
+	if ref.IsZero() {
+		return nil, nil
 	}
 
 	return ref.Interface(), nil
@@ -417,14 +427,19 @@ func (dict *Dict) ReplaceAll(widgetName string, inst string, ptr interface{}) er
 		break
 
 	case reflect.Slice:
-		values := []interface{}{}
+		values := reflect.MakeSlice(ref.Type(), 0, 0)
 		for i := 0; i < ref.Len(); i++ {
-			val := ref.Index(i).Interface()
-			if err := dict.ReplaceAll(widgetName, inst, &val); err == nil {
-				values = append(values, val)
+			itemVal := ref.Index(i).Interface()
+			if itemVal == nil {
+				values = reflect.Append(values, reflect.ValueOf(nil))
+				continue
+			}
+
+			if err := dict.ReplaceAll(widgetName, inst, &itemVal); err == nil {
+				values = reflect.Append(values, reflect.ValueOf(itemVal))
 			}
 		}
-		ptrRef.Elem().Set(reflect.ValueOf(values))
+		ptrRef.Elem().Set(values)
 		break
 
 	case reflect.Struct:
@@ -432,8 +447,10 @@ func (dict *Dict) ReplaceAll(widgetName string, inst string, ptr interface{}) er
 		for i := 0; i < ref.NumField(); i++ {
 			if value.Field(i).CanSet() {
 				val := ref.Field(i).Interface()
-				if err := dict.ReplaceAll(widgetName, inst, &val); err == nil {
-					value.Field(i).Set(reflect.ValueOf(val).Convert(ref.Field(i).Type()))
+				if val != nil {
+					if err := dict.ReplaceAll(widgetName, inst, &val); err == nil {
+						value.Field(i).Set(reflect.ValueOf(val).Convert(ref.Field(i).Type()))
+					}
 				}
 			}
 		}
@@ -473,7 +490,9 @@ func makeStruct(t reflect.Type, v reflect.Value) {
 		case reflect.Ptr:
 			fv := reflect.New(ft.Type.Elem())
 			makeStruct(ft.Type.Elem(), fv.Elem())
-			f.Set(fv)
+			if f.CanSet() {
+				f.Set(fv)
+			}
 		default:
 		}
 	}
