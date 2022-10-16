@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -174,6 +175,12 @@ func Replace(value *string) bool {
 	return false
 }
 
+// AsDefault set current dict as default
+func (dict *Dict) AsDefault() *Dict {
+	Default = dict
+	return dict
+}
+
 // Apply Replace the words in the dictionary
 // if was replaced return true else return false
 func (dict *Dict) Apply(lang Lang) {
@@ -256,7 +263,7 @@ func (dict *Dict) Replace(widgetName string, inst string, value *string) bool {
 	}
 
 	*value = val
-	return false
+	return true
 }
 
 // ReplaceMatch replace the value in the dictionary
@@ -291,14 +298,183 @@ func (dict *Dict) ReplaceMatch(widgetName string, inst string, value *string) bo
 			continue
 		}
 
+		res = true
 		*value = strings.ReplaceAll(*value, old, key)
 	}
 
 	return res
 }
 
-// AsDefault set current dict as default
-func (dict *Dict) AsDefault() *Dict {
-	Default = dict
-	return dict
+// ReplaceClone replace the value in dictionary
+func (dict *Dict) ReplaceClone(widgetName string, inst string, input interface{}) (interface{}, error) {
+	ref := reflect.ValueOf(input)
+	kind := ref.Kind()
+
+	if kind == reflect.Interface {
+		ref = ref.Elem()
+		kind = ref.Kind()
+	}
+
+	switch kind {
+
+	case reflect.Pointer:
+
+		newPtr := reflect.New(ref.Type())
+
+		ref = reflect.Indirect(ref)
+		new, err := dict.ReplaceClone(widgetName, inst, ref.Interface())
+		if err != nil {
+			return nil, err
+		}
+
+		newSt := reflect.New(ref.Type())
+		newSt.Elem().Set(reflect.ValueOf(new))
+		newPtr.Elem().Set(newSt)
+		return newPtr.Elem().Interface(), nil
+
+	case reflect.String:
+		new := ref.String()
+		dict.replaceString(widgetName, inst, &new)
+		return new, nil
+
+	case reflect.Map:
+		new := reflect.MakeMap(ref.Type())
+		keys := ref.MapKeys()
+		for _, key := range keys {
+			val, err := dict.ReplaceClone(widgetName, inst, ref.MapIndex(key).Interface())
+			if err == nil {
+				new.SetMapIndex(key, reflect.ValueOf(val))
+			}
+		}
+		return new.Interface(), nil
+
+	case reflect.Slice:
+		values := []interface{}{}
+		for i := 0; i < ref.Len(); i++ {
+			val, err := dict.ReplaceClone(widgetName, inst, ref.Index(i).Interface())
+			if err == nil {
+				values = append(values, val)
+			}
+		}
+		return values, nil
+
+	case reflect.Struct:
+		value := copyStruct(ref)
+		for i := 0; i < ref.NumField(); i++ {
+			if value.Field(i).CanSet() {
+				val, err := dict.ReplaceClone(widgetName, inst, ref.Field(i).Interface())
+				if err == nil {
+					value.Field(i).Set(reflect.ValueOf(val).Convert(ref.Field(i).Type()))
+				}
+			}
+		}
+		return value.Interface(), nil
+	}
+
+	return ref.Interface(), nil
+}
+
+// ReplaceAll replace the value in dictionary
+func (dict *Dict) ReplaceAll(widgetName string, inst string, ptr interface{}) error {
+
+	ptrRef := reflect.ValueOf(ptr)
+	if ptrRef.Kind() != reflect.Pointer {
+		return fmt.Errorf("the value is %s, should be a pointer", ptrRef.Kind().String())
+	}
+
+	ref := reflect.Indirect(ptrRef)
+	kind := ref.Kind()
+	if kind == reflect.Interface {
+		ref = ref.Elem()
+		kind = ref.Kind()
+	}
+
+	switch kind {
+
+	case reflect.Pointer:
+		new := ref.Interface()
+		if err := dict.ReplaceAll(widgetName, inst, new); err == nil {
+			ptrRef.Elem().Set(reflect.ValueOf(new))
+		}
+		break
+
+	case reflect.String:
+		new := ref.String()
+		if dict.replaceString(widgetName, inst, &new) {
+			ptrRef.Elem().Set(reflect.ValueOf(new))
+		}
+		break
+
+	case reflect.Map:
+		keys := ref.MapKeys()
+		for _, key := range keys {
+			val := ref.MapIndex(key).Interface()
+			if err := dict.ReplaceAll(widgetName, inst, &val); err == nil {
+				ref.SetMapIndex(key, reflect.ValueOf(val))
+			}
+		}
+		ptrRef.Elem().Set(ref)
+		break
+
+	case reflect.Slice:
+		values := []interface{}{}
+		for i := 0; i < ref.Len(); i++ {
+			val := ref.Index(i).Interface()
+			if err := dict.ReplaceAll(widgetName, inst, &val); err == nil {
+				values = append(values, val)
+			}
+		}
+		ptrRef.Elem().Set(reflect.ValueOf(values))
+		break
+
+	case reflect.Struct:
+		value := copyStruct(ref)
+		for i := 0; i < ref.NumField(); i++ {
+			if value.Field(i).CanSet() {
+				val := ref.Field(i).Interface()
+				if err := dict.ReplaceAll(widgetName, inst, &val); err == nil {
+					value.Field(i).Set(reflect.ValueOf(val).Convert(ref.Field(i).Type()))
+				}
+			}
+		}
+		ptrRef.Elem().Set(value)
+		break
+	}
+
+	return nil
+}
+
+func (dict *Dict) replaceString(widgetName string, inst string, ptr *string) bool {
+	if dict.Replace(widgetName, inst, ptr) {
+		return true
+	}
+	return dict.ReplaceMatch(widgetName, inst, ptr)
+}
+
+func copyStruct(ref reflect.Value) reflect.Value {
+	value := reflect.New(ref.Type()).Elem()
+	makeStruct(ref.Type(), value)
+	return value
+}
+
+func makeStruct(t reflect.Type, v reflect.Value) {
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		ft := t.Field(i)
+		switch ft.Type.Kind() {
+		case reflect.Map:
+			f.Set(reflect.MakeMap(ft.Type))
+		case reflect.Slice:
+			f.Set(reflect.MakeSlice(ft.Type, 0, 0))
+		case reflect.Chan:
+			f.Set(reflect.MakeChan(ft.Type, 0))
+		case reflect.Struct:
+			makeStruct(ft.Type, f)
+		case reflect.Ptr:
+			fv := reflect.New(ft.Type.Elem())
+			makeStruct(ft.Type.Elem(), fv.Elem())
+			f.Set(fv)
+		default:
+		}
+	}
 }
