@@ -56,7 +56,7 @@ func (runtime *Runtime) AddFunction(name string, fn func(global map[string]inter
 
 // AddRootFunction add a global JavaScript function (root only)
 func (runtime *Runtime) AddRootFunction(name string, fn func(global map[string]interface{}, sid string, args ...interface{}) interface{}) *Runtime {
-	err := runtime.Engine.AddFunction(name, fn)
+	err := runtime.Engine.AddRootFunction(name, fn)
 	if err != nil {
 		exception.New("runtime AddFunction %s: %s", 500, name, err.Error()).Throw()
 	}
