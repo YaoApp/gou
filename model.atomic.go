@@ -7,6 +7,7 @@ import (
 
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/log"
 	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/xun/capsule"
 	"github.com/yaoapp/xun/dbal"
@@ -278,6 +279,9 @@ func (mod *Model) Insert(columns []string, rows [][]interface{}) error {
 	}
 
 	if len(errs) > 0 {
+		for _, err := range errs {
+			log.Error("[Model] Insert %v", err)
+		}
 		exception.New("输入参数错误", 400).Ctx(errs).Throw()
 	}
 
