@@ -240,6 +240,38 @@ func (yao *Yao) AddFunction(name string, fn func(global map[string]interface{}, 
 	return nil
 }
 
+// AddRootFunction add a global function ( root only)
+func (yao *Yao) AddRootFunction(name string, fn func(global map[string]interface{}, sid string, args ...interface{}) interface{}) error {
+	jsFun := yao.goFunTemplateRoot(fn)
+	yao.template.Set(name, jsFun)
+	return nil
+}
+
+func (yao *Yao) goFunTemplateRoot(fn func(global map[string]interface{}, sid string, args ...interface{}) interface{}) *v8.FunctionTemplate {
+	return v8.NewFunctionTemplate(yao.iso, func(info *v8.FunctionCallbackInfo) *v8.Value {
+
+		v, err := info.Context().Global().Get("__YAO_SU_ROOT")
+		if err != nil {
+			return info.Context().Isolate().ThrowException(values.Error(info.Context(), err.Error()))
+		}
+
+		if !v.Boolean() {
+			return info.Context().Isolate().ThrowException(values.Error(info.Context(), "function is not allowed"))
+		}
+
+		global := map[string]interface{}{}
+		jsGlobal, _ := info.Context().Global().Get("__yao_global")
+		anyGlobal, _ := bridge.ToInterface(jsGlobal)
+		if iGlobal, ok := anyGlobal.(map[string]interface{}); ok {
+			global = iGlobal
+		}
+		jsSid, _ := info.Context().Global().Get("__yao_sid")
+		args := bridge.ValuesToArray(info.Args())
+		res := fn(global, jsSid.String(), args...)
+		return bridge.MustAnyToValue(info.Context(), res)
+	})
+}
+
 func (yao *Yao) goFunTemplate(fn func(global map[string]interface{}, sid string, args ...interface{}) interface{}) *v8.FunctionTemplate {
 	return v8.NewFunctionTemplate(yao.iso, func(info *v8.FunctionCallbackInfo) *v8.Value {
 		global := map[string]interface{}{}
