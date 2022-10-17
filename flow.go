@@ -62,7 +62,7 @@ func init() {
 
 			namer := strings.Split(name, ".")
 			last := len(namer) - 1
-			service := strings.ToLower(strings.Join(namer[1:last], "."))
+			service := strings.ToLower(strings.Join(namer[0:last], "."))
 			method := namer[last]
 			res, err := Yao.New(service, method).
 				WithGlobal(global).
