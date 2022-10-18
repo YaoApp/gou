@@ -388,6 +388,10 @@ func (dict *Dict) ReplaceClone(widgets []string, input interface{}) (interface{}
 		return value.Interface(), nil
 	}
 
+	// fmt.Printf("%#v %#v\n", ref.IsValid(), input)
+	if !ref.IsValid() {
+		return nil, nil
+	}
 	return ref.Interface(), nil
 }
 
