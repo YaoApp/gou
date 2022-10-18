@@ -342,6 +342,12 @@ func (dict *Dict) ReplaceClone(widgetName string, inst string, input interface{}
 		for _, key := range keys {
 			val, err := dict.ReplaceClone(widgetName, inst, ref.MapIndex(key).Interface())
 			if err == nil {
+				if key.Kind() == reflect.String {
+					newKey, err := dict.ReplaceClone(widgetName, inst, key.String())
+					if err == nil {
+						key = reflect.ValueOf(newKey)
+					}
+				}
 				new.SetMapIndex(key, reflect.ValueOf(val))
 			}
 		}
@@ -419,6 +425,12 @@ func (dict *Dict) ReplaceAll(widgetName string, inst string, ptr interface{}) er
 		for _, key := range keys {
 			val := ref.MapIndex(key).Interface()
 			if err := dict.ReplaceAll(widgetName, inst, &val); err == nil {
+				if key.Kind() == reflect.String {
+					newKey, err := dict.ReplaceClone(widgetName, inst, key.String())
+					if err == nil {
+						key = reflect.ValueOf(newKey)
+					}
+				}
 				ref.SetMapIndex(key, reflect.ValueOf(val))
 			}
 		}
