@@ -262,11 +262,23 @@ func (process *Process) ArgsArray(index int) []interface{} {
 }
 
 // Lang get lang
-func (process *Process) Lang() string {
+func (process *Process) Lang(defaults ...string) string {
 	if process.Sid != "" {
 		ss := session.Global().ID(process.Sid)
 		v, _ := ss.Get("__yao_lang")
-		return fmt.Sprintf("%v", v)
+		if len(defaults) > 0 && v == nil {
+			return defaults[0]
+		}
+
+		lang := ""
+		if v != nil {
+			lang = fmt.Sprintf("%v", v)
+		}
+		return lang
+	}
+
+	if len(defaults) > 0 {
+		return defaults[0]
 	}
 	return ""
 }

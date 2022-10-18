@@ -540,21 +540,21 @@ func TestModelLang(t *testing.T) {
 	modelFile := filepath.Join(root, "models", "demo.mod.json")
 	mod := LoadModel(fmt.Sprintf("file://%s", modelFile), "demo")
 	dict := lang.Pick("zh-cn")
-	dict.ReplaceAll("model", mod.ID, &mod)
+	dict.ReplaceAll([]string{fmt.Sprintf("model.%s", mod.ID)}, &mod)
 	assert.Equal(t, mod.MetaData.Name, "演示")
 	assert.Equal(t, mod.Columns["action"].Label, "动作")
 
 	// Reload
 	mod.Reload()
 	dict = lang.Pick("zh-hk")
-	dict.ReplaceAll("model", mod.ID, &mod)
+	dict.ReplaceAll([]string{fmt.Sprintf("model.%s", mod.ID)}, &mod)
 	assert.Equal(t, mod.MetaData.Name, "演示")
 	assert.Equal(t, mod.Columns["action"].Label, "動作")
 
 	// Reload
 	mod.Reload()
 	dict = lang.Pick("zh-cn")
-	new, err := dict.ReplaceClone("model", mod.ID, mod)
+	new, err := dict.ReplaceClone([]string{fmt.Sprintf("model.%s", mod.ID)}, mod)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -566,7 +566,7 @@ func TestModelLang(t *testing.T) {
 
 	mod.Reload()
 	dict = lang.Pick("zh-hk")
-	new, err = dict.ReplaceClone("model", mod.ID, mod)
+	new, err = dict.ReplaceClone([]string{fmt.Sprintf("model.%s", mod.ID)}, mod)
 	newMod = new.(*Model)
 	assert.Equal(t, newMod.MetaData.Name, "演示")
 	assert.Equal(t, newMod.Columns["action"].Label, "動作")
