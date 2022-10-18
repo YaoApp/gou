@@ -41,9 +41,9 @@ func TestLoadPick(t *testing.T) {
 
 	dict := Pick("zh-cn")
 	assert.Len(t, dict.Global, 5)
-	assert.Len(t, dict.Widgets, 2)
-	assert.Len(t, dict.Widgets["flow"]["hello"], 1)
-	assert.Len(t, dict.Widgets["model"]["demo"], 1)
+	assert.Len(t, dict.Widgets, 4)
+	assert.Len(t, dict.Widgets["flow.hello"], 1)
+	assert.Len(t, dict.Widgets["model.demo"], 1)
 	assert.Equal(t, dict.Name, "zh-cn")
 }
 
@@ -58,9 +58,9 @@ func TestLoadMerge(t *testing.T) {
 
 	dict := Pick("zh-cn")
 	assert.Len(t, dict.Global, 6)
-	assert.Len(t, dict.Widgets, 2)
-	assert.Len(t, dict.Widgets["flow"]["hello"], 2)
-	assert.Len(t, dict.Widgets["model"]["demo"], 2)
+	assert.Len(t, dict.Widgets, 4)
+	assert.Len(t, dict.Widgets["flow.hello"], 2)
+	assert.Len(t, dict.Widgets["model.demo"], 2)
 	assert.Equal(t, dict.Name, "zh-cn")
 }
 
@@ -174,69 +174,69 @@ func TestReplaceAll(t *testing.T) {
 	dict := Pick("zh-cn")
 
 	var intv = data["int"]
-	err = dict.ReplaceAll("model", "demo", &intv)
+	err = dict.ReplaceAll([]string{"model.demo"}, &intv)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	var floatv = data["float"]
-	err = dict.ReplaceAll("model", "demo", &floatv)
+	err = dict.ReplaceAll([]string{"model.demo"}, &floatv)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 0.618, floatv)
 
 	var s1 = data["s1"]
-	err = dict.ReplaceAll("model", "demo", &s1)
+	err = dict.ReplaceAll([]string{"model.demo"}, &s1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "邮政编码", s1)
 
 	var s2 = data["s2"]
-	err = dict.ReplaceAll("model", "demo", &s2)
+	err = dict.ReplaceAll([]string{"model.demo"}, &s2)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "编码", s2)
 
 	var s3 = data["s3"]
-	err = dict.ReplaceAll("model", "demo", &s3)
+	err = dict.ReplaceAll([]string{"model.demo"}, &s3)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "Latest", s3)
 
 	var s4 = data["s4"]
-	err = dict.ReplaceAll("model", "demo", &s4)
+	err = dict.ReplaceAll([]string{"model.demo"}, &s4)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "S4: 邮政编码", s4)
 
 	var s5 = data["s5"]
-	err = dict.ReplaceAll("model", "demo", &s5)
+	err = dict.ReplaceAll([]string{"model.demo"}, &s5)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "S5: 编码", s5)
 
 	var s6 = data["s6"]
-	err = dict.ReplaceAll("model", "demo", &s6)
+	err = dict.ReplaceAll([]string{"model.demo"}, &s6)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "S6: Latest", s6)
 
 	var s7 = data["s7"]
-	err = dict.ReplaceAll("model", "demo", &s7)
+	err = dict.ReplaceAll([]string{"model.demo"}, &s7)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "S7: 邮政编码 编码 Latest", s7)
 
 	var stru = data["struct"].(testVal)
-	err = dict.ReplaceAll("model", "demo", &stru)
+	err = dict.ReplaceAll([]string{"model.demo"}, &stru)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestReplaceAll(t *testing.T) {
 	assert.Equal(t, "ST: 邮政编码 编码 Latest", stru.Desc)
 
 	var struptr = data["structptr"].(*testVal)
-	err = dict.ReplaceAll("model", "demo", &struptr)
+	err = dict.ReplaceAll([]string{"model.demo"}, &struptr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +252,7 @@ func TestReplaceAll(t *testing.T) {
 	assert.Equal(t, "ST: 邮政编码 编码 Latest", struptr.Desc)
 
 	var arr = data["arr"]
-	err = dict.ReplaceAll("model", "demo", &arr)
+	err = dict.ReplaceAll([]string{"model.demo"}, &arr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +264,7 @@ func TestReplaceAll(t *testing.T) {
 	assert.NotContains(t, string(res), "$L")
 
 	var mapv = data["map"]
-	err = dict.ReplaceAll("model", "demo", &mapv)
+	err = dict.ReplaceAll([]string{"model.demo"}, &mapv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func TestReplaceAll(t *testing.T) {
 	assert.NotContains(t, string(res), "::")
 	assert.NotContains(t, string(res), "$L")
 
-	err = dict.ReplaceAll("model", "demo", &data)
+	err = dict.ReplaceAll([]string{"model.demo"}, &data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,7 +300,7 @@ func TestReplaceClone(t *testing.T) {
 	dict := Pick("zh-cn")
 
 	var stru = data["struct"].(testVal)
-	new, err := dict.ReplaceClone("model", "demo", stru)
+	new, err := dict.ReplaceClone([]string{"model.demo"}, stru)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +309,7 @@ func TestReplaceClone(t *testing.T) {
 	assert.Equal(t, "编码", new.(testVal).Name)
 	assert.Equal(t, "ST: 邮政编码 编码 Latest", new.(testVal).Desc)
 
-	new, err = dict.ReplaceClone("model", "demo", &stru)
+	new, err = dict.ReplaceClone([]string{"model.demo"}, &stru)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestReplaceClone(t *testing.T) {
 	assert.Equal(t, "ST: 邮政编码 编码 Latest", new.(*testVal).Desc)
 
 	var struptr = data["structptr"].(*testVal)
-	new, err = dict.ReplaceClone("model", "demo", struptr)
+	new, err = dict.ReplaceClone([]string{"model.demo"}, struptr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +329,7 @@ func TestReplaceClone(t *testing.T) {
 	assert.Equal(t, "ST: 邮政编码 编码 Latest", new.(*testVal).Desc)
 
 	var arr = data["arr"]
-	new, err = dict.ReplaceClone("model", "demo", arr)
+	new, err = dict.ReplaceClone([]string{"model.demo"}, arr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +348,7 @@ func TestReplaceClone(t *testing.T) {
 	assert.NotContains(t, string(res), "$L")
 
 	var mapv = data["map"]
-	new, err = dict.ReplaceClone("model", "demo", mapv)
+	new, err = dict.ReplaceClone([]string{"model.demo"}, mapv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -366,7 +366,7 @@ func TestReplaceClone(t *testing.T) {
 	assert.NotContains(t, string(res), "::")
 	assert.NotContains(t, string(res), "$L")
 
-	new, err = dict.ReplaceClone("model", "demo", data)
+	new, err = dict.ReplaceClone([]string{"model.demo"}, data)
 	if err != nil {
 		t.Fatal(err)
 	}

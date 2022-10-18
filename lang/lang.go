@@ -33,7 +33,7 @@ func RegisterWidget(path, name string) {
 }
 
 // Default the default language
-var Default *Dict = &Dict{Global: Words{}, Widgets: map[string]Widget{}}
+var Default *Dict = &Dict{Global: Words{}, Widgets: map[string]Words{}}
 
 // Pick get the dictionary by the ISO 639-1 standard language code
 func Pick(name string) *Dict {
@@ -42,7 +42,7 @@ func Pick(name string) *Dict {
 		return &Dict{
 			Name:    name,
 			Global:  Words{},
-			Widgets: map[string]Widget{},
+			Widgets: map[string]Words{},
 		}
 	}
 	return dict
@@ -86,7 +86,7 @@ func Open(langRoot string) (*Dict, error) {
 	dict := &Dict{
 		Name:    langName,
 		Global:  Words{},
-		Widgets: map[string]Widget{},
+		Widgets: map[string]Words{},
 	}
 
 	err := filepath.Walk(langRoot, func(filename string, info os.FileInfo, err error) error {
@@ -95,7 +95,11 @@ func Open(langRoot string) (*Dict, error) {
 			return err
 		}
 
-		if strings.HasSuffix(filename, "global.yml") {
+		if !strings.HasSuffix(filename, ".yml") {
+			return nil
+		}
+
+		if filepath.Base(filename) == "global.yml" {
 			words, err := OpenYaml(filename)
 			if err != nil {
 				return err
@@ -104,18 +108,22 @@ func Open(langRoot string) (*Dict, error) {
 			return nil
 		}
 
-		if strings.HasSuffix(filename, ".yml") {
-			widget, inst := getWidgetName(langRoot, filename)
-			words, err := OpenYaml(filename)
-			if err != nil {
-				return err
-			}
-			if _, has := dict.Widgets[widget]; !has {
-				dict.Widgets[widget] = map[string]Words{}
-			}
-			dict.Widgets[widget][inst] = words
+		name, inst := getWidgetName(langRoot, filename)
+		words, err := OpenYaml(filename)
+		if err != nil {
+			return err
+		}
+		if _, has := dict.Widgets[name]; !has {
+			dict.Widgets[name] = Words{}
 		}
 
+		if strings.HasSuffix(filename, ".global.yml") {
+			dict.Widgets[name] = words
+			return nil
+		}
+
+		fullname := fmt.Sprintf("%s.%s", name, inst)
+		dict.Widgets[fullname] = words
 		return nil
 	})
 
@@ -184,12 +192,12 @@ func (dict *Dict) AsDefault() *Dict {
 // Apply Replace the words in the dictionary
 // if was replaced return true else return false
 func (dict *Dict) Apply(lang Lang) {
-	lang.Lang(func(widgetName string, inst string, value *string) bool {
-		res := dict.Replace(widgetName, inst, value)
+	lang.Lang(func(widgetName string, instance string, value *string) bool {
+		res := dict.Replace([]string{fmt.Sprintf("%s.%s", widgetName, instance)}, value)
 		if res {
 			return res
 		}
-		return dict.ReplaceMatch(widgetName, inst, value)
+		return dict.ReplaceMatch([]string{fmt.Sprintf("%s.%s", widgetName, instance)}, value)
 	})
 }
 
@@ -209,21 +217,14 @@ func (dict *Dict) Merge(new *Dict) {
 	// Merge Widgets
 	if new.Widgets != nil {
 		if dict.Widgets == nil {
-			dict.Widgets = map[string]Widget{}
+			dict.Widgets = map[string]Words{}
 		}
-
-		for name, widget := range new.Widgets {
-			if dict.Widgets[name] == nil {
-				dict.Widgets[name] = Widget{}
+		for name, words := range new.Widgets {
+			if _, has := dict.Widgets[name]; !has {
+				dict.Widgets[name] = Words{}
 			}
-
-			for inst, words := range widget {
-				if dict.Widgets[name][inst] == nil {
-					dict.Widgets[name][inst] = Words{}
-				}
-				for k, v := range words {
-					dict.Widgets[name][inst][k] = v
-				}
+			for key, val := range words {
+				dict.Widgets[name][key] = val
 			}
 		}
 	}
@@ -232,7 +233,7 @@ func (dict *Dict) Merge(new *Dict) {
 
 // Replace replace the value in the dictionary
 // if was replaced return true else return false
-func (dict *Dict) Replace(widgetName string, inst string, value *string) bool {
+func (dict *Dict) Replace(names []string, value *string) bool {
 	if value == nil {
 		return false
 	}
@@ -248,8 +249,8 @@ func (dict *Dict) Replace(widgetName string, inst string, value *string) bool {
 	}
 
 	val := strings.TrimLeft(*value, "::")
-	if widget, has := dict.Widgets[widgetName]; has {
-		if words, has := widget[inst]; has {
+	for _, name := range names {
+		if words, has := dict.Widgets[name]; has {
 			if v, has := words[val]; has {
 				*value = v
 				return true
@@ -267,7 +268,7 @@ func (dict *Dict) Replace(widgetName string, inst string, value *string) bool {
 }
 
 // ReplaceMatch replace the value in the dictionary
-func (dict *Dict) ReplaceMatch(widgetName string, inst string, value *string) bool {
+func (dict *Dict) ReplaceMatch(names []string, value *string) bool {
 	if value == nil {
 		return false
 	}
@@ -282,14 +283,19 @@ func (dict *Dict) ReplaceMatch(widgetName string, inst string, value *string) bo
 			continue
 		}
 
-		if widget, has := dict.Widgets[widgetName]; has {
-			if words, has := widget[inst]; has {
+		next := false
+		for _, name := range names {
+			if words, has := dict.Widgets[name]; has {
 				if v, has := words[key]; has {
 					*value = strings.ReplaceAll(*value, old, v)
 					res = true
+					next = true
 					continue
 				}
 			}
+		}
+		if next {
+			continue
 		}
 
 		if v, has := dict.Global[key]; has {
@@ -306,7 +312,7 @@ func (dict *Dict) ReplaceMatch(widgetName string, inst string, value *string) bo
 }
 
 // ReplaceClone replace the value in dictionary
-func (dict *Dict) ReplaceClone(widgetName string, inst string, input interface{}) (interface{}, error) {
+func (dict *Dict) ReplaceClone(widgets []string, input interface{}) (interface{}, error) {
 	ref := reflect.ValueOf(input)
 	kind := ref.Kind()
 
@@ -314,14 +320,14 @@ func (dict *Dict) ReplaceClone(widgetName string, inst string, input interface{}
 
 	case reflect.Interface:
 
-		return dict.ReplaceClone(widgetName, inst, ref.Elem())
+		return dict.ReplaceClone(widgets, ref.Elem())
 
 	case reflect.Pointer:
 
 		newPtr := reflect.New(ref.Type())
 
 		ref = reflect.Indirect(ref)
-		new, err := dict.ReplaceClone(widgetName, inst, ref.Interface())
+		new, err := dict.ReplaceClone(widgets, ref.Interface())
 		if err != nil {
 			return nil, err
 		}
@@ -333,17 +339,17 @@ func (dict *Dict) ReplaceClone(widgetName string, inst string, input interface{}
 
 	case reflect.String:
 		new := ref.String()
-		dict.replaceString(widgetName, inst, &new)
+		dict.replaceString(widgets, &new)
 		return new, nil
 
 	case reflect.Map:
 		new := reflect.MakeMap(ref.Type())
 		keys := ref.MapKeys()
 		for _, key := range keys {
-			val, err := dict.ReplaceClone(widgetName, inst, ref.MapIndex(key).Interface())
+			val, err := dict.ReplaceClone(widgets, ref.MapIndex(key).Interface())
 			if err == nil {
 				if key.Kind() == reflect.String {
-					newKey, err := dict.ReplaceClone(widgetName, inst, key.String())
+					newKey, err := dict.ReplaceClone(widgets, key.String())
 					if err == nil {
 						key = reflect.ValueOf(newKey)
 					}
@@ -356,7 +362,7 @@ func (dict *Dict) ReplaceClone(widgetName string, inst string, input interface{}
 	case reflect.Slice:
 		values := reflect.MakeSlice(ref.Type(), 0, 0)
 		for i := 0; i < ref.Len(); i++ {
-			val, err := dict.ReplaceClone(widgetName, inst, ref.Index(i).Interface())
+			val, err := dict.ReplaceClone(widgets, ref.Index(i).Interface())
 			if val == nil {
 				values = reflect.Append(values, reflect.ValueOf(nil))
 				continue
@@ -372,7 +378,7 @@ func (dict *Dict) ReplaceClone(widgetName string, inst string, input interface{}
 		for i := 0; i < ref.NumField(); i++ {
 			if value.Field(i).CanSet() {
 				if value.Field(i).Interface() != nil {
-					val, err := dict.ReplaceClone(widgetName, inst, ref.Field(i).Interface())
+					val, err := dict.ReplaceClone(widgets, ref.Field(i).Interface())
 					if err == nil && val != nil {
 						value.Field(i).Set(reflect.ValueOf(val).Convert(ref.Field(i).Type()))
 					}
@@ -382,15 +388,11 @@ func (dict *Dict) ReplaceClone(widgetName string, inst string, input interface{}
 		return value.Interface(), nil
 	}
 
-	if ref.IsZero() {
-		return nil, nil
-	}
-
 	return ref.Interface(), nil
 }
 
 // ReplaceAll replace the value in dictionary
-func (dict *Dict) ReplaceAll(widgetName string, inst string, ptr interface{}) error {
+func (dict *Dict) ReplaceAll(widgets []string, ptr interface{}) error {
 
 	ptrRef := reflect.ValueOf(ptr)
 	if ptrRef.Kind() != reflect.Pointer {
@@ -408,14 +410,14 @@ func (dict *Dict) ReplaceAll(widgetName string, inst string, ptr interface{}) er
 
 	case reflect.Pointer:
 		new := ref.Interface()
-		if err := dict.ReplaceAll(widgetName, inst, new); err == nil {
+		if err := dict.ReplaceAll(widgets, new); err == nil {
 			ptrRef.Elem().Set(reflect.ValueOf(new))
 		}
 		break
 
 	case reflect.String:
 		new := ref.String()
-		if dict.replaceString(widgetName, inst, &new) {
+		if dict.replaceString(widgets, &new) {
 			ptrRef.Elem().Set(reflect.ValueOf(new))
 		}
 		break
@@ -424,9 +426,9 @@ func (dict *Dict) ReplaceAll(widgetName string, inst string, ptr interface{}) er
 		keys := ref.MapKeys()
 		for _, key := range keys {
 			val := ref.MapIndex(key).Interface()
-			if err := dict.ReplaceAll(widgetName, inst, &val); err == nil {
+			if err := dict.ReplaceAll(widgets, &val); err == nil {
 				if key.Kind() == reflect.String {
-					newKey, err := dict.ReplaceClone(widgetName, inst, key.String())
+					newKey, err := dict.ReplaceClone(widgets, key.String())
 					if err == nil {
 						key = reflect.ValueOf(newKey)
 					}
@@ -446,7 +448,7 @@ func (dict *Dict) ReplaceAll(widgetName string, inst string, ptr interface{}) er
 				continue
 			}
 
-			if err := dict.ReplaceAll(widgetName, inst, &itemVal); err == nil {
+			if err := dict.ReplaceAll(widgets, &itemVal); err == nil {
 				values = reflect.Append(values, reflect.ValueOf(itemVal))
 			}
 		}
@@ -459,7 +461,7 @@ func (dict *Dict) ReplaceAll(widgetName string, inst string, ptr interface{}) er
 			if value.Field(i).CanSet() {
 				val := ref.Field(i).Interface()
 				if val != nil {
-					if err := dict.ReplaceAll(widgetName, inst, &val); err == nil {
+					if err := dict.ReplaceAll(widgets, &val); err == nil {
 						value.Field(i).Set(reflect.ValueOf(val).Convert(ref.Field(i).Type()))
 					}
 				}
@@ -472,11 +474,11 @@ func (dict *Dict) ReplaceAll(widgetName string, inst string, ptr interface{}) er
 	return nil
 }
 
-func (dict *Dict) replaceString(widgetName string, inst string, ptr *string) bool {
-	if dict.Replace(widgetName, inst, ptr) {
+func (dict *Dict) replaceString(widgets []string, ptr *string) bool {
+	if dict.Replace(widgets, ptr) {
 		return true
 	}
-	return dict.ReplaceMatch(widgetName, inst, ptr)
+	return dict.ReplaceMatch(widgets, ptr)
 }
 
 func copyStruct(ref reflect.Value) reflect.Value {
