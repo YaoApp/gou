@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/yaoapp/gou/lang"
 	"github.com/yaoapp/gou/runtime/yao/bridge"
@@ -322,7 +323,7 @@ func (yao *Yao) jsLang(info *v8.FunctionCallbackInfo) *v8.Value {
 		return args[0]
 	}
 
-	value := args[0].String()
+	value := strings.TrimPrefix(args[0].String(), "::")
 	lang.Replace(&value)
 
 	iso := info.Context().Isolate()
