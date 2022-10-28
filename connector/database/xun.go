@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/helper"
@@ -84,11 +83,17 @@ func (x *Xun) makeConnections() (err error) {
 	for i, host := range x.Options.Hosts {
 		name := fmt.Sprintf("%s_%d", x.Name, i)
 		if host.Primary {
-			manager.AddConn(name, x.Driver, host.dsn, time.Duration(x.Options.Timeout)*time.Second)
+			_, err := manager.Add(name, x.Driver, host.dsn, false)
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
-		manager.AddReadConn(name, x.Driver, host.dsn, time.Duration(x.Options.Timeout)*time.Second)
+		_, err := manager.Add(name, x.Driver, host.dsn, true)
+		if err != nil {
+			return err
+		}
 	}
 
 	x.Manager = manager
