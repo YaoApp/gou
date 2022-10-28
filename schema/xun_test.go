@@ -5,7 +5,6 @@ import (
 	"os"
 	"path"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/schema/types"
@@ -285,9 +284,12 @@ func TestXunIndexAdd(t *testing.T) {
 func newXunSchema(t *testing.T) types.Schema {
 	dsn := os.Getenv("GOU_TEST_DSN")
 	driver := os.Getenv("GOU_TEST_DB_DRIVER")
-	manager := capsule.AddConn("primary", driver, dsn, 5*time.Second)
+	manager, err := capsule.Add("primary", driver, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
 	sch := Use("tests")
-	err := sch.SetOption(xun.Option{Manager: manager})
+	err = sch.SetOption(xun.Option{Manager: manager})
 	if err != nil {
 		t.Fatal(err)
 	}
