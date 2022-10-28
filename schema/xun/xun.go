@@ -42,8 +42,13 @@ func (x *Xun) Close() error {
 
 // Create create a schema (temporary, move to @xun in the next version)
 func (x *Xun) Create(name string) error {
-	db := x.Manager.GetPrimary().DB
-	driver := x.Manager.GetPrimary().Config.Driver
+	m, err := x.Manager.Primary()
+	if err != nil {
+		return err
+	}
+
+	db := m.DB
+	driver := m.Config.Driver
 	collation := "utf8mb4"
 	if x.Manager.Option.Collation != "" {
 		collation = x.Manager.Option.Collation
@@ -74,8 +79,13 @@ func (x *Xun) Create(name string) error {
 
 // Drop drop a schema (temporary, move to @xun in the next version)
 func (x *Xun) Drop(name string) error {
-	db := x.Manager.GetPrimary().DB
-	driver := x.Manager.GetPrimary().Config.Driver
+	m, err := x.Manager.Primary()
+	if err != nil {
+		return err
+	}
+
+	db := m.DB
+	driver := m.Config.Driver
 	switch driver {
 	case "mysql":
 		_, err := db.Exec(
