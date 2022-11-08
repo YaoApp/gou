@@ -83,20 +83,23 @@ func DialContext() func(ctx context.Context, network, addr string) (net.Conn, er
 		if err != nil {
 			return nil, err
 		}
+
 		ips, err := LookupIP(host, true)
 		if err != nil {
 			return nil, err
 		}
+
 		for _, ip := range ips {
 			var dialer net.Dialer
 			conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(ip, port))
-			if err == nil {
-				return conn, err
+			if err != nil {
+				return nil, err
 			}
+			return conn, nil
 		}
 
-		log.Error("DNS resolve fail: %v", ips)
-		return nil, fmt.Errorf("DNS resolve fail: %v", ips)
+		log.Error("DNS resolve fail: %v %s", ips, addr)
+		return nil, fmt.Errorf("DNS resolve fail: %v %s", ips, addr)
 	}
 }
 

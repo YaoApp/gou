@@ -1,5 +1,9 @@
 package service
 
+// *******************************************************
+// * DEPRECATED											 *
+// *******************************************************
+
 import "github.com/takama/daemon"
 
 // Service embedded daemon
