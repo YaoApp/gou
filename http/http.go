@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/cast"
 	"github.com/yaoapp/gou/dns"
 )
 
@@ -52,7 +53,7 @@ func (r *Request) DelHeader(name string) *Request {
 	return r
 }
 
-// SetHeader unset the request header
+// SetHeader set the request header
 func (r *Request) SetHeader(name string, value string) *Request {
 	r.headers.Set(name, value)
 	return r
@@ -63,9 +64,15 @@ func (r *Request) HasHeader(name string) bool {
 	return r.headers.Get(name) != ""
 }
 
+// WithHeader set the request headers
+func (r *Request) WithHeader(headers http.Header) *Request {
+	r.headers = headers
+	return r
+}
+
 // WithQuery set the request query params
-func (r *Request) WithQuery(query neturl.Values) *Request {
-	r.query = query
+func (r *Request) WithQuery(values neturl.Values) *Request {
+	r.query = values
 	return r
 }
 
@@ -126,6 +133,10 @@ func (r *Request) Send(method string, data interface{}) *Response {
 	}
 
 	if method != "GET" && method != "HEAD" {
+		if r.headers.Get("Content-Type") == "" {
+			r.headers.Set("Content-Type", "text/plain")
+		}
+
 		body, res = r.body()
 		if res != nil {
 			return res
@@ -133,6 +144,18 @@ func (r *Request) Send(method string, data interface{}) *Response {
 	}
 
 	url := r.url
+
+	// URL Parse
+	if strings.Contains(url, "?") {
+		uri := strings.Split(url, "?")
+		url = uri[0]
+		query, err := neturl.ParseQuery(uri[1])
+		if err != nil {
+			return ResponseError(0, err.Error())
+		}
+		cast.MergeURLValues(r.query, query)
+	}
+
 	if r.query != nil && len(r.query) > 0 {
 		url = fmt.Sprintf("%s?%s", url, r.query.Encode())
 	}
@@ -256,10 +279,12 @@ func (r *Request) body() ([]byte, *Response) {
 			return data, nil
 		case string:
 			return []byte(data), nil
+		default:
+			return r.jsonBody()
 		}
 	}
 
-	return nil, ResponseError(0, "Content-Type Error")
+	return nil, ResponseError(0, fmt.Sprintf("Content-Type Error: %#v", r.headers.Get("Content-Type")))
 }
 
 // json check if the content-type is application/json

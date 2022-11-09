@@ -153,10 +153,6 @@ func TestOthers(t *testing.T) {
 	assert.Equal(t, nil, res.Data)
 }
 
-func setup() (chan bool, chan bool, string) {
-	return make(chan bool, 1), make(chan bool, 1), ""
-}
-
 func tmpfile(t *testing.T, content string) string {
 	file, err := os.CreateTemp("", "-data")
 	if err != nil {
@@ -168,6 +164,10 @@ func tmpfile(t *testing.T, content string) string {
 		t.Fatal(err)
 	}
 	return file.Name()
+}
+
+func setup() (chan bool, chan bool, string) {
+	return make(chan bool, 1), make(chan bool, 1), ""
 }
 
 func start(t *testing.T, host *string, shutdown, ready chan bool) {
@@ -234,6 +234,12 @@ func start(t *testing.T, host *string, shutdown, ready chan bool) {
 		fmt.Println("[TestServer] Error:", err.Error())
 		break
 	}
+}
+
+func stop(shutdown, ready chan bool) {
+	ready <- false
+	shutdown <- true
+	time.Sleep(50 * time.Millisecond)
 }
 
 func testGet(c *gin.Context) {
@@ -375,10 +381,4 @@ func testPost(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"payload": payload})
 	c.Done()
-}
-
-func stop(shutdown, ready chan bool) {
-	ready <- false
-	shutdown <- true
-	time.Sleep(50 * time.Millisecond)
 }
