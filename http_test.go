@@ -32,7 +32,7 @@ func TestHTTPGet(t *testing.T) {
 
 	resp, ok := v.(*http.Response)
 	if !ok {
-		t.Fatal(fmt.Errorf("reponse error %#v", v))
+		t.Fatal(fmt.Errorf("response error %#v", v))
 	}
 	assert.Equal(t, 200, resp.Status)
 	res := any.Of(resp.Data).MapStr().Dot()
@@ -46,7 +46,7 @@ func TestHTTPGet(t *testing.T) {
 	).Run()
 	resp, ok = v.(*http.Response)
 	if !ok {
-		t.Fatal(fmt.Errorf("reponse error %#v", v))
+		t.Fatal(fmt.Errorf("response error %#v", v))
 	}
 	assert.Equal(t, 400, resp.Status)
 	assert.NotNil(t, resp.Message)
@@ -67,7 +67,7 @@ func TestHTTPHead(t *testing.T) {
 
 	resp, ok := v.(*http.Response)
 	if !ok {
-		t.Fatal(fmt.Errorf("reponse error %#v", v))
+		t.Fatal(fmt.Errorf("response error %#v", v))
 	}
 	assert.Equal(t, 200, resp.Status)
 
@@ -79,7 +79,7 @@ func TestHTTPHead(t *testing.T) {
 
 	resp, ok = v.(*http.Response)
 	if !ok {
-		t.Fatal(fmt.Errorf("reponse error %#v", v))
+		t.Fatal(fmt.Errorf("response error %#v", v))
 	}
 	assert.Equal(t, 400, resp.Status)
 	assert.NotNil(t, resp.Message)
@@ -102,7 +102,7 @@ func TestHTTPOthers(t *testing.T) {
 
 		resp, ok := v.(*http.Response)
 		if !ok {
-			t.Fatal(fmt.Errorf("reponse error %#v", v))
+			t.Fatal(fmt.Errorf("response error %#v", v))
 		}
 		assert.Equal(t, 200, resp.Status)
 		res := any.Of(resp.Data).MapStr().Dot()
@@ -119,7 +119,7 @@ func TestHTTPOthers(t *testing.T) {
 
 		resp, ok = v.(*http.Response)
 		if !ok {
-			t.Fatal(fmt.Errorf("reponse error %#v", v))
+			t.Fatal(fmt.Errorf("response error %#v", v))
 		}
 		assert.Equal(t, 400, resp.Status)
 		assert.NotNil(t, resp.Message)
@@ -141,7 +141,7 @@ func TestHTTPSend(t *testing.T) {
 
 	resp, ok := v.(*http.Response)
 	if !ok {
-		t.Fatal(fmt.Errorf("reponse error %#v", v))
+		t.Fatal(fmt.Errorf("response error %#v", v))
 	}
 	if resp.Status == 0 {
 		fmt.Println(resp.Message)
@@ -162,7 +162,7 @@ func TestHTTPSend(t *testing.T) {
 
 	resp, ok = v.(*http.Response)
 	if !ok {
-		t.Fatal(fmt.Errorf("reponse error %#v", v))
+		t.Fatal(fmt.Errorf("response error %#v", v))
 	}
 	assert.Equal(t, 400, resp.Status)
 	assert.NotNil(t, resp.Message)
