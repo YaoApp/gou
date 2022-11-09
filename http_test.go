@@ -7,6 +7,7 @@ import (
 	nethttp "net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
@@ -85,6 +86,99 @@ func TestHTTPHead(t *testing.T) {
 	assert.NotNil(t, resp.Message)
 }
 
+func TestHTTPPost(t *testing.T) {
+
+	shutdown, ready, host := setup()
+	go start(t, &host, shutdown, ready)
+	defer stop(shutdown, ready)
+	<-ready
+	v := NewProcess("http.Post", fmt.Sprintf("%s/path?foo=bar", host),
+		map[string]string{"name": "Lucy"},
+		nil,
+		map[string]string{"hello": "world"},
+		map[string]string{"Auth": "Test"},
+	).Run()
+
+	resp, ok := v.(*http.Response)
+	if !ok {
+		t.Fatal(fmt.Errorf("response error %#v", v))
+	}
+	assert.Equal(t, 200, resp.Status)
+	res := any.Of(resp.Data).MapStr().Dot()
+	assert.Equal(t, "bar", res.Get("query.foo[0]"))
+	assert.Equal(t, "world", res.Get("query.hello[0]"))
+	assert.Equal(t, "Test", res.Get("headers.Auth[0]"))
+	assert.Equal(t, `{"name":"Lucy"}`, res.Get("payload"))
+
+	// Post File via payload
+	root, file := tmpfile(t, "Hello World via payload")
+	err := SetFileRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v = NewProcess("http.Post", fmt.Sprintf("%s/path?foo=bar", host),
+		file,
+		nil,
+		map[string]string{"hello": "world"},
+		map[string]string{"Auth": "Test", "Content-Type": "multipart/form-data"},
+	).Run()
+
+	resp, ok = v.(*http.Response)
+	if !ok {
+		t.Fatal(fmt.Errorf("response error %#v", v))
+	}
+
+	assert.Equal(t, 200, resp.Status)
+	res = any.Of(resp.Data).MapStr().Dot()
+	assert.Equal(t, "bar", res.Get("query.foo[0]"))
+	assert.Equal(t, "world", res.Get("query.hello[0]"))
+	assert.Equal(t, "Test", res.Get("headers.Auth[0]"))
+	assert.Contains(t, res.Get("payload"), "Hello World via payload")
+
+	// Post File via files
+	root, file = tmpfile(t, "Hello World via files")
+	err = SetFileRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v = NewProcess("http.Post", fmt.Sprintf("%s/path?foo=bar", host),
+		map[string]string{"name": "Lucy"},
+		map[string]interface{}{"file": file},
+		map[string]string{"hello": "world"},
+		map[string]string{"Auth": "Test", "Content-Type": "multipart/form-data"},
+	).Run()
+
+	resp, ok = v.(*http.Response)
+	if !ok {
+		t.Fatal(fmt.Errorf("response error %#v", v))
+	}
+
+	assert.Equal(t, 200, resp.Status)
+	res = any.Of(resp.Data).MapStr().Dot()
+	assert.Equal(t, "bar", res.Get("query.foo[0]"))
+	assert.Equal(t, "world", res.Get("query.hello[0]"))
+	assert.Equal(t, "Test", res.Get("headers.Auth[0]"))
+	assert.Contains(t, res.Get("payload"), "Hello World via files")
+	assert.Contains(t, res.Get("payload"), "Lucy")
+
+	// Post Error
+	v = NewProcess("http.Post", fmt.Sprintf("%s/path?foo=bar", host),
+		map[string]string{"name": "Lucy"},
+		nil,
+		map[int]int{1: 2},
+		map[string]string{"Auth": "Test"},
+	).Run()
+
+	resp, ok = v.(*http.Response)
+	if !ok {
+		t.Fatal(fmt.Errorf("response error %#v", v))
+	}
+	assert.Equal(t, 400, resp.Status)
+	assert.NotNil(t, resp.Message)
+}
+
 func TestHTTPOthers(t *testing.T) {
 
 	shutdown, ready, host := setup()
@@ -92,7 +186,7 @@ func TestHTTPOthers(t *testing.T) {
 	defer stop(shutdown, ready)
 	<-ready
 
-	methods := []string{"http.Post", "http.Put", "http.Patch", "http.Delete"}
+	methods := []string{"http.Put", "http.Patch", "http.Delete"}
 	for _, method := range methods {
 		v := NewProcess(method, fmt.Sprintf("%s/path?foo=bar", host),
 			map[string]string{"name": "Lucy"},
@@ -242,6 +336,19 @@ func stop(shutdown, ready chan bool) {
 	ready <- false
 	shutdown <- true
 	time.Sleep(50 * time.Millisecond)
+}
+
+func tmpfile(t *testing.T, content string) (string, string) {
+	file, err := os.CreateTemp("", "-data")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = os.WriteFile(file.Name(), []byte(content), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return filepath.Dir(file.Name()), filepath.Base(file.Name())
 }
 
 func testHanlder(c *gin.Context) {

@@ -53,6 +53,11 @@ func (r *Request) DelHeader(name string) *Request {
 	return r
 }
 
+// GetHeader get the request header
+func (r *Request) GetHeader(name string) string {
+	return r.headers.Get(name)
+}
+
 // SetHeader set the request header
 func (r *Request) SetHeader(name string, value string) *Request {
 	r.headers.Set(name, value)

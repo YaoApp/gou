@@ -2,10 +2,13 @@ package gou
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/yaoapp/gou/cast"
 	"github.com/yaoapp/gou/http"
 )
+
+var fileRoot = ""
 
 // HTTPHandlers the http handlers
 var HTTPHandlers = map[string]ProcessHandler{
@@ -20,6 +23,16 @@ var HTTPHandlers = map[string]ProcessHandler{
 
 func init() {
 	RegisterProcessGroup("http", HTTPHandlers)
+}
+
+// SetFileRoot SetFileRoot
+func SetFileRoot(root string) error {
+	path, err := filepath.Abs(root)
+	if err != nil {
+		return err
+	}
+	fileRoot = path
+	return nil
 }
 
 // http.Get
@@ -37,13 +50,14 @@ func processHTTPGet(process *Process) interface{} {
 
 // http.Post
 // args[0] URL
-// args[1] Payload <Optional> "Foo", {"foo":"bar"}, ["foo", "bar", {"k1":"v1"}], "/root/path", "k1=v1&k2=v2" ...
-// args[2] Query Params <Optional> {"k1":"v1", "k2":"v2"}, ["k1=v1","k1"="v11","k2"="v2"], [{"k1":"v1"},{"k1":"v11"},{"k2":"v2"}], k1=v1&k1=v11&k2=k2
-// args[3] Headers <Optional> {"K1":"V1","K2":"V2"}  [{"K1":"V1"},{"K1":"V11"},{"K2":"V2"}]
+// args[1] Payload <Optional> {"foo":"bar"} ["foo", "bar", {"k1":"v1"}], "k1=v1&k2=v2", "/path/root/file", ...
+// args[2] Files   <Optional> {"foo":"/path/root/file"}
+// args[3] Query Params <Optional> {"k1":"v1", "k2":"v2"}, ["k1=v1","k1"="v11","k2"="v2"], [{"k1":"v1"},{"k1":"v11"},{"k2":"v2"}], k1=v1&k1=v11&k2=k2
+// args[4] Headers <Optional> {"K1":"V1","K2":"V2"}  [{"K1":"V1"},{"K1":"V11"},{"K2":"V2"}]
 func processHTTPPost(process *Process) interface{} {
 
 	process.ValidateArgNums(1)
-	req, err := processHTTPNew(process, 2)
+	req, err := processHTTPNew(process, 3)
 	if err != nil {
 		return err
 	}
@@ -51,6 +65,50 @@ func processHTTPPost(process *Process) interface{} {
 	var payload interface{}
 	if process.NumOfArgs() > 1 {
 		payload = process.Args[1]
+	}
+
+	// Upload a file via payload
+	if req.GetHeader("Content-Type") == "multipart/form-data" {
+
+		if file, ok := payload.(string); ok {
+			if fileRoot != "" {
+				file = filepath.Join(fileRoot, file)
+			}
+
+			fileAbs, err := filepath.Abs(file)
+			if err != nil {
+				return &http.Response{
+					Status:  400,
+					Code:    400,
+					Message: fmt.Sprintf("args[%d] parameter error: %s", 2, err.Error()),
+					Headers: map[string][]string{},
+					Data:    nil,
+				}
+			}
+			payload = fileAbs
+		}
+	}
+
+	// Upload files via files
+	files := process.ArgsMap(2, map[string]interface{}{})
+	for name, val := range files {
+		if file, ok := val.(string); ok {
+			if fileRoot != "" {
+				file = filepath.Join(fileRoot, file)
+			}
+
+			file, err := filepath.Abs(file)
+			if err != nil {
+				return &http.Response{
+					Status:  400,
+					Code:    400,
+					Message: fmt.Sprintf("args[%d] parameter error: %s", 2, err.Error()),
+					Headers: map[string][]string{},
+					Data:    nil,
+				}
+			}
+			req.AddFile(name, file)
+		}
 	}
 
 	return req.Post(payload)
