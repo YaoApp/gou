@@ -5,11 +5,11 @@ import "time"
 // FileSystem the filesystem io interface
 type FileSystem interface {
 	ReadFile(file string) ([]byte, error)
-	WriteFile(file string, data []byte, pterm int) (int, error)
+	WriteFile(file string, data []byte, perm int) (int, error)
 
 	ReadDir(dir string, recursive bool) ([]string, error)
-	Mkdir(dir string, pterm int) error
-	MkdirAll(dir string, pterm int) error
+	Mkdir(dir string, perm int) error
+	MkdirAll(dir string, perm int) error
 	MkdirTemp(dir string, pattern string) (string, error)
 
 	Remove(name string) error

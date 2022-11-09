@@ -28,7 +28,7 @@ func TestLang(t *testing.T) {
 	lang.Pick("zh-cn").AsDefault()
 	jsfile := filepath.Join(root, "scripts", "lang.js")
 
-	yao := New(1)
+	yao := New(1, "")
 	err = yao.Load(jsfile, "lang")
 	if err != nil {
 		t.Fatal(err)

@@ -44,7 +44,7 @@ func load(t *testing.T) *Widget {
 }
 
 func yao() *runtime.Runtime {
-	return runtime.Yao(1024).
+	return runtime.Yao(runtime.Option{}).
 		AddFunction("UnitTestFn", func(global map[string]interface{}, sid string, args ...interface{}) interface{} {
 			utils.Dump(global, sid, args)
 			return args

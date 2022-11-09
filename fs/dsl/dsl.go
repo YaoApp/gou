@@ -19,13 +19,13 @@ func New(root ...string) *File {
 // WriteFile writes data to the named file, creating it if necessary.
 //
 //	If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
-func (f *File) WriteFile(file string, data []byte, pterm int) (int, error) {
+func (f *File) WriteFile(file string, data []byte, perm int) (int, error) {
 	data, err := f.Fmt(data)
 	if err != nil {
 		return 0, err
 	}
-	pterm = 0644
-	return f.File.WriteFile(file, data, pterm)
+	perm = 0644
+	return f.File.WriteFile(file, data, perm)
 }
 
 // Allow allow rel path

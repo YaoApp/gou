@@ -18,7 +18,7 @@ import (
 )
 
 // New create a pure ES6 engine (v8)
-func New(numOfContexts int) *Yao {
+func New(numOfContexts int, fileRoot string) *Yao {
 	iso := v8.NewIsolate()
 	global := v8.NewObjectTemplate(iso)
 
@@ -33,6 +33,7 @@ func New(numOfContexts int) *Yao {
 
 	yao.template.Set("$L", v8.NewFunctionTemplate(yao.iso, yao.jsLang))
 	yao.AddObjectTemplate("log", objects.NewLog().ExportObject(yao.iso))
+	yao.AddObjectTemplate("http", objects.NewHTTP(fileRoot).ExportObject(yao.iso))
 	yao.AddFunctionTemplates(map[string]*v8.FunctionTemplate{
 		"Exception": objects.NewException().ExportFunction(yao.iso),
 		"WebSocket": objects.NewWebSocket().ExportFunction(yao.iso),
@@ -40,6 +41,7 @@ func New(numOfContexts int) *Yao {
 		"Query":     objects.NewQuery().ExportFunction(yao.iso),
 		"FS":        objects.NewFS().ExportFunction(yao.iso),
 	})
+
 	return yao
 }
 

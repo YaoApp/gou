@@ -76,7 +76,7 @@ func (f *File) ReadFile(file string) ([]byte, error) {
 // WriteFile writes data to the named file, creating it if necessary.
 //
 //	If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
-func (f *File) WriteFile(file string, data []byte, pterm int) (int, error) {
+func (f *File) WriteFile(file string, data []byte, perm int) (int, error) {
 	file, err := f.absPath(file)
 	if err != nil {
 		return 0, err
@@ -88,7 +88,7 @@ func (f *File) WriteFile(file string, data []byte, pterm int) (int, error) {
 		return 0, err
 	}
 
-	err = os.WriteFile(file, data, fs.FileMode(pterm))
+	err = os.WriteFile(file, data, fs.FileMode(perm))
 	if err != nil {
 		return 0, err
 	}
@@ -128,22 +128,22 @@ func (f *File) ReadDir(dir string, recursive bool) ([]string, error) {
 
 // Mkdir creates a new directory with the specified name and permission bits (before umask).
 // If there is an error, it will be of type *PathError.
-func (f *File) Mkdir(dir string, pterm int) error {
+func (f *File) Mkdir(dir string, perm int) error {
 	dir, err := f.absPath(dir)
 	if err != nil {
 		return err
 	}
-	return os.Mkdir(dir, fs.FileMode(pterm))
+	return os.Mkdir(dir, fs.FileMode(perm))
 }
 
 // MkdirAll creates a directory named path, along with any necessary parents, and returns nil, or else returns an error.
 // The permission bits perm (before umask) are used for all directories that MkdirAll creates. If path is already a directory, MkdirAll does nothing and returns nil.
-func (f *File) MkdirAll(dir string, pterm int) error {
+func (f *File) MkdirAll(dir string, perm int) error {
 	dir, err := f.absPath(dir)
 	if err != nil {
 		return err
 	}
-	return os.MkdirAll(dir, fs.FileMode(pterm))
+	return os.MkdirAll(dir, fs.FileMode(perm))
 }
 
 // MkdirTemp creates a new temporary directory in the directory dir and returns the pathname of the new directory.

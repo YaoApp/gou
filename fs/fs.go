@@ -96,8 +96,8 @@ func ReadFile(xfs FileSystem, file string) ([]byte, error) {
 // WriteFile writes data to the named file, creating it if necessary.
 //
 //	If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
-func WriteFile(xfs FileSystem, file string, data []byte, pterm int) (int, error) {
-	return xfs.WriteFile(file, data, pterm)
+func WriteFile(xfs FileSystem, file string, data []byte, perm int) (int, error) {
+	return xfs.WriteFile(file, data, perm)
 }
 
 // ReadDir reads the named directory, returning all its directory entries sorted by filename.
@@ -108,14 +108,14 @@ func ReadDir(xfs FileSystem, dir string, recursive bool) ([]string, error) {
 
 // Mkdir creates a new directory with the specified name and permission bits (before umask).
 // If there is an error, it will be of type *PathError.
-func Mkdir(xfs FileSystem, dir string, pterm int) error {
-	return xfs.Mkdir(dir, pterm)
+func Mkdir(xfs FileSystem, dir string, perm int) error {
+	return xfs.Mkdir(dir, perm)
 }
 
 // MkdirAll creates a directory named path, along with any necessary parents, and returns nil, or else returns an error.
 // The permission bits perm (before umask) are used for all directories that MkdirAll creates. If path is already a directory, MkdirAll does nothing and returns nil.
-func MkdirAll(xfs FileSystem, dir string, pterm int) error {
-	return xfs.MkdirAll(dir, pterm)
+func MkdirAll(xfs FileSystem, dir string, perm int) error {
+	return xfs.MkdirAll(dir, perm)
 }
 
 // MkdirTemp creates a new temporary directory in the directory dir and returns the pathname of the new directory.
