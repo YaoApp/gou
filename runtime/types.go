@@ -43,3 +43,9 @@ type Request struct {
 	global  map[string]interface{}
 	context context.Context
 }
+
+// Option the runtime option
+type Option struct {
+	FileRoot   string `json:"fileRoot,omitempty"`   // fileRoot
+	WorkerNums int    `json:"workerNums,omitempty"` // workerNums
+}

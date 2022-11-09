@@ -82,7 +82,13 @@ func (process *Process) make() (err error) {
 func (process *Process) extraProcess() {
 	namer := strings.Split(process.Name, ".")
 	last := len(namer) - 1
-	if last < 2 && namer[0] != "flows" && namer[0] != "session" && namer[0] != "ssl" && namer[0] != "websocket" {
+
+	if last < 2 &&
+		namer[0] != "flows" &&
+		namer[0] != "session" &&
+		namer[0] != "ssl" &&
+		namer[0] != "websocket" &&
+		namer[0] != "http" {
 		exception.New("Process:%s format error", 400, process.Name).Throw()
 	}
 
@@ -97,8 +103,13 @@ func (process *Process) extraProcess() {
 
 	// Handler groups
 	if handlers, has := HandlerGroups[process.Type]; has {
+		method := process.Method
+		if method == "" {
+			method = process.Class
+		}
+
 		process.Name = strings.ToLower(process.Name)
-		handler, has := handlers[process.Method]
+		handler, has := handlers[method]
 		if !has {
 			exception.New("%s: %s %s does not exist", 404, process.Type, process.Name, process.Method).Throw()
 		}

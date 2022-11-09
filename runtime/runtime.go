@@ -9,8 +9,8 @@ import (
 )
 
 // Yao create a pure javascript ES6 javascript runtime
-func Yao(numOfContexts int) *Runtime {
-	engine := yao.New(numOfContexts)
+func Yao(option Option) *Runtime {
+	engine := yao.New(option.WorkerNums, option.FileRoot)
 	return &Runtime{Name: "yao", Scripts: map[string]Script{}, Engine: engine}
 }
 
