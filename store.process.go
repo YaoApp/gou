@@ -1,6 +1,10 @@
 package gou
 
-import "github.com/yaoapp/kun/log"
+import (
+	"time"
+
+	"github.com/yaoapp/kun/log"
+)
 
 // StoreHandlers store process handlers
 var StoreHandlers = map[string]ProcessHandler{
@@ -30,7 +34,8 @@ func processStoreGet(process *Process) interface{} {
 func processStoreSet(process *Process) interface{} {
 	process.ValidateArgNums(2)
 	store := SelectStore(process.Class)
-	store.Set(process.ArgsString(0), process.Args[1], 0)
+	duration := process.ArgsInt(2, 0)
+	store.Set(process.ArgsString(0), process.Args[1], time.Duration(duration)*time.Second)
 	return nil
 }
 
