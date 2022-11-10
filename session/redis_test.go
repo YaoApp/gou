@@ -73,7 +73,7 @@ func TestRedisMustSetWithEx(t *testing.T) {
 	assert.Equal(t, "world", ss.MustGet("hello"))
 	assert.Equal(t, "gou", ss.MustGet("hi"))
 
-	time.Sleep(201 * time.Millisecond)
+	time.Sleep(210 * time.Millisecond)
 	assert.Nil(t, ss.MustGet("foo"))
 	assert.Nil(t, ss.MustGet("hello"))
 	assert.Nil(t, ss.MustGet("hi"))
