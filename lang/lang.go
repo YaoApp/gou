@@ -327,6 +327,10 @@ func (dict *Dict) ReplaceClone(widgets []string, input interface{}) (interface{}
 		newPtr := reflect.New(ref.Type())
 
 		ref = reflect.Indirect(ref)
+		if !ref.IsValid() {
+			return nil, nil
+		}
+
 		new, err := dict.ReplaceClone(widgets, ref.Interface())
 		if err != nil {
 			return nil, err
