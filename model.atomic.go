@@ -241,7 +241,7 @@ func (mod *Model) MustDelete(id interface{}) {
 
 // Destroy 真删除单条记录
 func (mod *Model) Destroy(id interface{}) error {
-	_, err := capsule.Query().Table(mod.MetaData.Table.Name).Where("id", id).Limit(1).Delete()
+	_, err := capsule.Query().Table(mod.MetaData.Table.Name).Where(mod.PrimaryKey, id).Limit(1).Delete()
 	return err
 }
 
@@ -439,8 +439,15 @@ func (mod *Model) sqlite3DeleteWhere(param QueryParam) (int, error) {
 
 	// 删除数据
 	// field := fmt.Sprintf("%s.%s", mod.MetaData.Table.Name, "deleted_at")
-	data["deleted_at"] = dbal.Raw("CURRENT_TIMESTAMP")
 	// data[field] = dbal.Raw("CURRENT_TIMESTAMP")
+	data["deleted_at"] = dbal.Raw("CURRENT_TIMESTAMP")
+	for _, col := range mod.UniqueColumns {
+		typ := strings.ToLower(col.Type)
+		if typ == "string" {
+			data[col.Name] = dbal.Raw(fmt.Sprintf("'_' ||  %s  || '%d'", col.Name, time.Now().UnixNano()))
+		}
+	}
+
 	effect, err := qb.Update(data)
 	if err != nil {
 		return 0, err
