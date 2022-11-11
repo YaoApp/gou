@@ -143,8 +143,8 @@ func TestProcessSave(t *testing.T) {
 		"status":   "enabled",
 		"extra":    maps.MapStr{"sex": "女"},
 	}
-	id := NewProcess("models.user.Save", row).Run().(int)
-	assert.Greater(t, id, 0)
+	id := NewProcess("models.user.Save", row).Run()
+	assert.Greater(t, any.Of(id).CInt(), 0)
 
 	// 清空数据
 	capsule.Query().Table(Select("user").MetaData.Table.Name).Where("id", id).Delete()
@@ -370,7 +370,7 @@ func TestProcessMustEachSaveWithIndex(t *testing.T) {
 
 	process := NewProcess("models.user.EachSave", args...)
 	res := process.Run()
-	ids, ok := res.([]int)
+	ids, ok := res.([]interface{})
 	assert.True(t, ok)
 	assert.Equal(t, 2, len(ids))
 	row := user.MustFind(ids[0], QueryParam{})
@@ -396,10 +396,10 @@ func TestProcessMustEachSaveAfterDelete(t *testing.T) {
 		"status":   "enabled",
 		"extra":    maps.MapStr{"sex": "女"},
 	})
-	assert.True(t, id > 0)
+	assert.True(t, any.Of(id).CInt() > 0)
 
 	args := []interface{}{
-		[]int{id},
+		[]int{any.Of(id).CInt()},
 		[]map[string]interface{}{
 			{
 				"name":     "用户创建",
@@ -434,14 +434,14 @@ func TestProcessMustEachSaveAfterDelete(t *testing.T) {
 	_, err := user.Find(id, QueryParam{})
 	assert.NotNil(t, err)
 
-	ids, ok := res.([]int)
+	ids, ok := res.([]interface{})
 	assert.True(t, ok)
 	assert.Equal(t, 2, len(ids))
 	row := user.MustFind(ids[0], QueryParam{})
 	row1 := user.MustFind(ids[1], QueryParam{})
 
 	// 恢复数据
-	ids = append(ids, id)
+	ids = append(ids, any.Of(id).CInt())
 	capsule.Query().Table(user.MetaData.Table.Name).WhereIn("id", ids).Delete()
 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 0)
 	assert.Equal(t, any.Of(row1.Get("balance")).CInt(), 1)

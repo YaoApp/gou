@@ -31,6 +31,7 @@ func TestModelReload(t *testing.T) {
 
 func TestModelMigrate(t *testing.T) {
 	for _, mod := range Models {
+		mod.DropTable()
 		err := mod.Migrate(true)
 		if err != nil {
 			t.Fatal(err)
@@ -253,9 +254,40 @@ func TestModelMustSaveNew(t *testing.T) {
 
 	// 清空数据
 	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
-
 	assert.Equal(t, row.Get("name"), "用户创建")
 	assert.Equal(t, row.Dot().Get("extra.sex"), "女")
+
+}
+
+func TestModelWithStringPrimary(t *testing.T) {
+	store := Select("store")
+
+	assert.Equal(t, 2, len(store.MustGet(QueryParam{})))
+
+	key := "key-test"
+	store.MustCreate(maps.MapStr{"key": key, "data": []string{"value-test"}})
+	row := store.MustFind(key, QueryParam{})
+	assert.Equal(t, []interface{}{"value-test"}, row.Get("data"))
+	assert.Equal(t, 3, len(store.MustGet(QueryParam{})))
+
+	keyReturn := store.MustSave(maps.MapStr{"key": key, "data": []string{"value-test"}})
+	assert.Equal(t, key, keyReturn)
+	assert.Equal(t, 3, len(store.MustGet(QueryParam{})))
+
+	store.MustDelete(key)
+	assert.Equal(t, 2, len(store.MustGet(QueryParam{})))
+
+	res, err := store.EachSave([]map[string]interface{}{
+		{"key": key, "data": []string{"value-test"}},
+		{"key": "key-1", "data": []string{"value-key-1"}},
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 3, len(store.MustGet(QueryParam{})))
+	assert.Equal(t, 2, len(res))
+	capsule.Query().Table(store.MetaData.Table.Name).Where("key", key).Delete()
 
 }
 
