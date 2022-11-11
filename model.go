@@ -98,11 +98,12 @@ func LoadModel(source string, name string) *Model {
 		mod.MetaData.Columns[i].model = mod // 链接所属模型
 		columns[column.Name] = &mod.MetaData.Columns[i]
 		columnNames = append(columnNames, column.Name)
-		if strings.ToLower(column.Type) == "id" {
+		if strings.ToLower(column.Type) == "id" || column.Primary == true {
 			PrimaryKey = column.Name
 		}
+
 		// 唯一字段
-		if column.Unique {
+		if column.Unique || column.Primary {
 			uniqueColumns = append(uniqueColumns, columns[column.Name])
 		}
 	}
@@ -113,6 +114,14 @@ func LoadModel(source string, name string) *Model {
 			for _, name := range index.Columns {
 				col, has := columns[name]
 				if has {
+					uniqueColumns = append(uniqueColumns, col)
+				}
+			}
+		} else if strings.ToLower(index.Type) == "primary" {
+			for _, name := range index.Columns {
+				col, has := columns[name]
+				if has {
+					PrimaryKey = col.Name
 					uniqueColumns = append(uniqueColumns, col)
 				}
 			}
