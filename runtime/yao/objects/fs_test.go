@@ -515,7 +515,7 @@ func testFsMakeData(t *testing.T) {
 	f := testFsFiles(t)
 	data := testFsData(t)
 
-	err := fs.MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
+	err := fs.MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,7 +585,7 @@ func testFsClear(t *testing.T) {
 	if err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
-	err = fs.MkdirAll(stor, root, int(os.ModePerm))
+	err = fs.MkdirAll(stor, root, uint32(os.ModePerm))
 	if err != nil {
 		t.Fatal(err)
 	}
