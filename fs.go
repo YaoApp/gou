@@ -334,7 +334,7 @@ func processUpload(process *Process) interface{} {
 	ext := filepath.Ext(tmpfile.Name)
 	filename := filepath.Join(dir, fmt.Sprintf("%s%s", fingerprint, ext))
 	stor := stor(process)
-	err := stor.MkdirAll(filename, uint32(os.ModePerm))
+	err := stor.MkdirAll(dir, uint32(os.ModePerm))
 	if err != nil {
 		exception.New("create directory error:  %v", 500, process.Args[0]).Throw()
 	}
