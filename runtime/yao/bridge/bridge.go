@@ -76,13 +76,13 @@ func MustAnyToValue(ctx *v8go.Context, value interface{}) *v8go.Value {
 // AnyToValue JS->GO Convert data to *v8go.Value
 func AnyToValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
-	switch value.(type) {
+	switch v := value.(type) {
 	case []byte:
-		return v8go.NewValue(ctx.Isolate(), string(value.([]byte)))
+		return v8go.NewValue(ctx.Isolate(), string(v))
 
 	case bridge.Uint8Array:
-		// should be change in next version
-		hexstr := hex.EncodeToString(value.(bridge.Uint8Array))
+		// will be refactored next version
+		hexstr := hex.EncodeToString(v)
 		res, err := ctx.RunScript(fmt.Sprintf(`
 			function _yao_hexToBytes(hex) {
 				for (var bytes = [], c = 0; c < hex.length; c += 2) {
@@ -98,10 +98,18 @@ func AnyToValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 		}
 		return res, nil
 
-	case string, int32, uint32, int64, uint64, bool, float64, *big.Int:
-		return v8go.NewValue(ctx.Isolate(), value)
+	case string, int32, uint32, bool, float32, float64, *big.Int:
+		return v8go.NewValue(ctx.Isolate(), v)
+
+	// force cast int64 -> int32 ( will be refactored next version )
+	case int64:
+		return v8go.NewValue(ctx.Isolate(), int32(v))
+
+	case uint64:
+		return v8go.NewValue(ctx.Isolate(), int32(v))
+
 	case int:
-		return v8go.NewValue(ctx.Isolate(), int32(value.(int)))
+		return v8go.NewValue(ctx.Isolate(), int32(v))
 	}
 
 	v, err := jsoniter.Marshal(value)
