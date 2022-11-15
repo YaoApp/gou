@@ -1,8 +1,13 @@
 package gou
 
 import (
+	"crypto/md5"
+	"encoding/hex"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/yaoapp/gou/fs"
 	"github.com/yaoapp/gou/runtime/bridge"
@@ -36,6 +41,7 @@ var FileSystemHandlers = map[string]ProcessHandler{
 	"mimetype":        processMimeType,
 	"move":            processMove,
 	"copy":            processCopy,
+	"upload":          processUpload,
 }
 
 func init() {
@@ -310,4 +316,38 @@ func processCopy(process *Process) interface{} {
 		exception.New(err.Error(), 500).Throw()
 	}
 	return nil
+}
+
+func processUpload(process *Process) interface{} {
+
+	process.ValidateArgNums(1)
+	tmpfile, ok := process.Args[0].(UploadFile)
+	if !ok {
+		exception.New("parameters error: %v", 400, process.Args[0]).Throw()
+	}
+
+	hash := md5.Sum([]byte(time.Now().Format("20060102-15:04:05")))
+	fingerprint := string(hex.EncodeToString(hash[:]))
+	fingerprint = strings.ToUpper(fingerprint)
+
+	dir := time.Now().Format("20060102")
+	ext := filepath.Ext(tmpfile.Name)
+	filename := filepath.Join(dir, fmt.Sprintf("%s%s", fingerprint, ext))
+	stor := stor(process)
+	err := stor.MkdirAll(dir, uint32(os.ModePerm))
+	if err != nil {
+		exception.New("create directory error:  %v", 500, process.Args[0]).Throw()
+	}
+
+	content, err := stor.ReadFile(tmpfile.TempFile)
+	if err != nil {
+		exception.New("unable to read uploaded file %s", 500, err.Error()).Throw()
+	}
+
+	_, err = stor.WriteFile(filename, content, uint32(os.ModePerm))
+	if err != nil {
+		exception.New("failed to save file %s", 500, err.Error()).Throw()
+	}
+
+	return filename
 }
