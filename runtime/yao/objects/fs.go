@@ -305,9 +305,9 @@ func (obj *FSOBJ) chmod(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		}
 
 		name := args[0].String()
-		pterm := int(args[1].Int32())
+		perm := args[1].Uint32()
 
-		err = fs.Chmod(stor, name, pterm)
+		err = fs.Chmod(stor, name, perm)
 		if err != nil {
 			return obj.error(info, err)
 		}
@@ -470,12 +470,12 @@ func (obj *FSOBJ) mkdir(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		}
 
 		name := args[0].String()
-		pterm := int(os.ModePerm)
+		perm := uint32(os.ModePerm)
 		if len(args) > 1 {
-			pterm = int(args[1].Int32())
+			perm = args[1].Uint32()
 		}
 
-		err = fs.Mkdir(stor, name, pterm)
+		err = fs.Mkdir(stor, name, perm)
 		if err != nil {
 			return obj.error(info, err)
 		}
@@ -497,12 +497,12 @@ func (obj *FSOBJ) mkdirAll(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		}
 
 		name := args[0].String()
-		pterm := int(os.ModePerm)
+		perm := uint32(os.ModePerm)
 		if len(args) > 1 {
-			pterm = int(args[1].Int32())
+			perm = args[1].Uint32()
 		}
 
-		err = fs.MkdirAll(stor, name, pterm)
+		err = fs.MkdirAll(stor, name, perm)
 		if err != nil {
 			return obj.error(info, err)
 		}
@@ -594,12 +594,12 @@ func (obj *FSOBJ) writeFile(iso *v8go.Isolate) *v8go.FunctionTemplate {
 
 		name := args[0].String()
 		data := []byte(args[1].String())
-		pterm := int(os.ModePerm)
+		perm := uint32(os.ModePerm)
 		if len(args) > 2 {
-			pterm = int(args[2].Int32())
+			perm = args[2].Uint32()
 		}
 
-		length, err := fs.WriteFile(stor, name, data, pterm)
+		length, err := fs.WriteFile(stor, name, data, perm)
 		if err != nil {
 			return obj.error(info, err)
 		}
@@ -635,12 +635,12 @@ func (obj *FSOBJ) writeFileBuffer(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			data = []byte(info.Args()[1].String())
 		}
 
-		pterm := int(os.ModePerm)
+		perm := uint32(os.ModePerm)
 		if len(args) > 2 {
-			pterm = int(args[2].Int32())
+			perm = args[2].Uint32()
 		}
 
-		length, err := fs.WriteFile(stor, name, data, pterm)
+		length, err := fs.WriteFile(stor, name, data, perm)
 		if err != nil {
 			return obj.error(info, err)
 		}

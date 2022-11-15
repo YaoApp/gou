@@ -70,12 +70,12 @@ func processReadFileBuffer(process *Process) interface{} {
 }
 
 func processWirteFile(process *Process) interface{} {
-	process.ValidateArgNums(3)
+	process.ValidateArgNums(2)
 	stor := stor(process)
 	file := process.ArgsString(0)
 	content := process.ArgsString(1)
-	pterm := process.ArgsInt(2)
-	length, err := fs.WriteFile(stor, file, []byte(content), pterm)
+	perm := process.ArgsUint32(2, uint32(os.ModePerm))
+	length, err := fs.WriteFile(stor, file, []byte(content), perm)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
@@ -83,26 +83,27 @@ func processWirteFile(process *Process) interface{} {
 }
 
 func processWriteFileBuffer(process *Process) interface{} {
-	process.ValidateArgNums(3)
+	process.ValidateArgNums(2)
 	stor := stor(process)
 	file := process.ArgsString(0)
 	content := process.Args[1]
-	pterm := process.ArgsInt(2)
+	perm := process.ArgsUint32(2, uint32(os.ModePerm))
+
 	data := []byte{}
-	switch content.(type) {
+	switch v := content.(type) {
 	case []byte:
-		data = content.([]byte)
+		data = v
 		break
 
 	case bridge.Uint8Array:
-		data = []byte(content.(bridge.Uint8Array))
+		data = []byte(v)
 		break
 
 	default:
 		exception.New("file content type error", 400).Throw()
 	}
 
-	length, err := fs.WriteFile(stor, file, data, pterm)
+	length, err := fs.WriteFile(stor, file, data, perm)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
@@ -125,9 +126,9 @@ func processMkdir(process *Process) interface{} {
 	process.ValidateArgNums(1)
 	stor := stor(process)
 	dir := process.ArgsString(0)
-	pterm := process.ArgsInt(1, int(os.ModePerm))
+	perm := process.ArgsUint32(1, uint32(os.ModePerm))
 
-	err := fs.Mkdir(stor, dir, pterm)
+	err := fs.Mkdir(stor, dir, perm)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
@@ -138,9 +139,9 @@ func processMkdirAll(process *Process) interface{} {
 	process.ValidateArgNums(1)
 	stor := stor(process)
 	dir := process.ArgsString(0)
-	pterm := process.ArgsInt(1, int(os.ModePerm))
+	perm := process.ArgsUint32(1, uint32(os.ModePerm))
 
-	err := fs.MkdirAll(stor, dir, pterm)
+	err := fs.MkdirAll(stor, dir, perm)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
@@ -217,8 +218,8 @@ func processChmod(process *Process) interface{} {
 	process.ValidateArgNums(2)
 	stor := stor(process)
 	name := process.ArgsString(0)
-	pterm := process.ArgsInt(1)
-	err := fs.Chmod(stor, name, pterm)
+	perm := process.ArgsUint32(1)
+	err := fs.Chmod(stor, name, perm)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}

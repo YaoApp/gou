@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"strconv"
 
 	"github.com/yaoapp/gou/query/share"
 	"github.com/yaoapp/gou/session"
@@ -113,6 +114,66 @@ func (process *Process) ArgsInt(i int, defaults ...int) int {
 	value, ok = process.Args[i].(int)
 	if !ok {
 		value = any.Of(process.Args[i]).CInt()
+	}
+
+	return value
+}
+
+// ArgsUint32 get Uint32
+func (process *Process) ArgsUint32(i int, defaults ...uint32) uint32 {
+	value := uint32(0)
+	if len(defaults) > 0 {
+		value = defaults[0]
+	}
+
+	if len(process.Args) <= i || process.Args[i] == nil {
+		return value
+	}
+
+	switch v := process.Args[i].(type) {
+
+	case uint32:
+		return v
+
+	case string:
+		val, err := strconv.ParseInt(v, 0, 32)
+		if err != nil {
+			return value
+		}
+		return uint32(val)
+
+	case int:
+		return uint32(v)
+
+	case int8:
+		return uint32(v)
+
+	case int16:
+		return uint32(v)
+
+	case int32:
+		return uint32(v)
+
+	case int64:
+		return uint32(v)
+
+	case uint:
+		return uint32(v)
+
+	case uint8:
+		return uint32(v)
+
+	case uint16:
+		return uint32(v)
+
+	case uint64:
+		return uint32(v)
+
+	case float32:
+		return uint32(v)
+
+	case float64:
+		return uint32(v)
 	}
 
 	return value

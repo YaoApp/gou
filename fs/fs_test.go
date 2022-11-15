@@ -44,10 +44,10 @@ func TestMkdir(t *testing.T) {
 	f := testFiles(t)
 	for name, stor := range stores {
 		clear(stor, t)
-		err := Mkdir(stor, f["D1_D2"], int(os.ModePerm))
+		err := Mkdir(stor, f["D1_D2"], uint32(os.ModePerm))
 		assert.NotNil(t, err, name)
 
-		err = Mkdir(stor, f["D1"], int(os.ModePerm))
+		err = Mkdir(stor, f["D1"], uint32(os.ModePerm))
 		assert.Nil(t, err, name)
 	}
 }
@@ -57,10 +57,10 @@ func TestMkdirAll(t *testing.T) {
 	f := testFiles(t)
 	for name, stor := range stores {
 		clear(stor, t)
-		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
 		assert.Nil(t, err, name)
 
-		err = Mkdir(stor, f["D1"], int(os.ModePerm))
+		err = Mkdir(stor, f["D1"], uint32(os.ModePerm))
 		assert.NotNil(t, err, name)
 	}
 }
@@ -117,7 +117,7 @@ func TestReadDir(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
@@ -184,7 +184,7 @@ func TestWriteFile(t *testing.T) {
 		assert.NotNil(t, err, name)
 		assert.Equal(t, l31, 0)
 
-		err = MkdirAll(stor, f["D1"], int(os.ModePerm))
+		err = MkdirAll(stor, f["D1"], uint32(os.ModePerm))
 		assert.Nil(t, err, name)
 		err = Chmod(stor, f["D1"], 0400)
 		assert.Nil(t, err, name)
@@ -219,7 +219,7 @@ func TestReadFile(t *testing.T) {
 		assert.NotNil(t, err, name)
 
 		// file is a directory
-		err = MkdirAll(stor, f["D1"], int(os.ModePerm))
+		err = MkdirAll(stor, f["D1"], uint32(os.ModePerm))
 		assert.Nil(t, err, name)
 		content, err = ReadFile(stor, f["D1"])
 		assert.NotNil(t, err, name)
@@ -234,7 +234,7 @@ func TestRemove(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
@@ -273,7 +273,7 @@ func TestRemoveAll(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
@@ -308,7 +308,7 @@ func TestFileInfo(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
@@ -331,7 +331,7 @@ func TestFileInfo(t *testing.T) {
 		// Mode
 		mode, err := Mode(stor, f["F1"])
 		assert.Nil(t, err, name)
-		assert.Equal(t, 0644, mode)
+		assert.Equal(t, uint32(0644), mode)
 
 		// ModTime Time
 		modTime, err := ModTime(stor, f["F1"])
@@ -348,7 +348,7 @@ func TestChmod(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
@@ -361,25 +361,25 @@ func TestChmod(t *testing.T) {
 		// Chmod file
 		mode, err := Mode(stor, f["F1"])
 		assert.Nil(t, err, name)
-		assert.Equal(t, 0644, mode)
+		assert.Equal(t, uint32(0644), mode)
 
-		err = Chmod(stor, f["F1"], 0755)
+		err = Chmod(stor, f["F1"], uint32(0755))
 		assert.Nil(t, err, name)
 
 		mode, err = Mode(stor, f["F1"])
 		assert.Nil(t, err, name)
-		assert.Equal(t, 0755, mode)
+		assert.Equal(t, uint32(0755), mode)
 
 		// Chmod Dir
 		mode, err = Mode(stor, f["D1_D2"])
 		assert.Nil(t, err, name)
 
-		err = Chmod(stor, f["D1"], 0755)
+		err = Chmod(stor, f["D1"], uint32(0755))
 		assert.Nil(t, err, name)
 
 		mode, err = Mode(stor, f["D1_D2"])
 		assert.Nil(t, err, name)
-		assert.Equal(t, 0755, mode)
+		assert.Equal(t, uint32(0755), mode)
 	}
 }
 
@@ -391,7 +391,7 @@ func TestMove(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
@@ -434,7 +434,7 @@ func TestCopy(t *testing.T) {
 		data := testData(t)
 
 		// Mkdir
-		err := MkdirAll(stor, f["D1_D2"], int(os.ModePerm))
+		err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
 		assert.Nil(t, err, name)
 		checkFileExists(stor, t, f["D1"], name)
 		checkFileExists(stor, t, f["D1_D2"], name)
@@ -562,7 +562,7 @@ func checkFileSize(stor FileSystem, t assert.TestingT, path string, size int, na
 	assert.Equal(t, size, realSize, name)
 }
 
-func checkFileMode(stor FileSystem, t assert.TestingT, path string, mode int, name string) {
+func checkFileMode(stor FileSystem, t assert.TestingT, path string, mode uint32, name string) {
 	realMode, _ := Mode(stor, path)
 	assert.Equal(t, mode, realMode, name)
 }
@@ -575,7 +575,7 @@ func clear(stor FileSystem, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = MkdirAll(stor, root, int(os.ModePerm))
+	err = MkdirAll(stor, root, uint32(os.ModePerm))
 	if err != nil {
 		t.Fatal(err)
 	}

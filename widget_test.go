@@ -34,15 +34,15 @@ func TestWidgetCustomProcess(t *testing.T) {
 
 func moduleRegister() widget.ModuleRegister {
 	return widget.ModuleRegister{
-		"Models": func(name string, source []byte) error {
+		"Models": func(name string, _ []byte) error {
 			fmt.Printf("Model %s Registered\n", name)
 			return nil
 		},
-		"Flows": func(name string, source []byte) error {
+		"Flows": func(name string, _ []byte) error {
 			fmt.Printf("Flow %s Registered\n", name)
 			return nil
 		},
-		"Apis": func(name string, source []byte) error {
+		"Apis": func(name string, _ []byte) error {
 			fmt.Printf("API %s Registered\n", name)
 			return nil
 		},

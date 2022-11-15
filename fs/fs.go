@@ -96,7 +96,7 @@ func ReadFile(xfs FileSystem, file string) ([]byte, error) {
 // WriteFile writes data to the named file, creating it if necessary.
 //
 //	If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
-func WriteFile(xfs FileSystem, file string, data []byte, perm int) (int, error) {
+func WriteFile(xfs FileSystem, file string, data []byte, perm uint32) (int, error) {
 	return xfs.WriteFile(file, data, perm)
 }
 
@@ -108,13 +108,13 @@ func ReadDir(xfs FileSystem, dir string, recursive bool) ([]string, error) {
 
 // Mkdir creates a new directory with the specified name and permission bits (before umask).
 // If there is an error, it will be of type *PathError.
-func Mkdir(xfs FileSystem, dir string, perm int) error {
+func Mkdir(xfs FileSystem, dir string, perm uint32) error {
 	return xfs.Mkdir(dir, perm)
 }
 
 // MkdirAll creates a directory named path, along with any necessary parents, and returns nil, or else returns an error.
 // The permission bits perm (before umask) are used for all directories that MkdirAll creates. If path is already a directory, MkdirAll does nothing and returns nil.
-func MkdirAll(xfs FileSystem, dir string, perm int) error {
+func MkdirAll(xfs FileSystem, dir string, perm uint32) error {
 	return xfs.MkdirAll(dir, perm)
 }
 
@@ -132,7 +132,7 @@ func MkdirTemp(xfs FileSystem, dir string, pattern string) (string, error) {
 // On Windows, only the 0200 bit (owner writable) of mode is used; it controls whether the file's read-only attribute is set or cleared. The other bits are currently unused.
 // For compatibility with Go 1.12 and earlier, use a non-zero mode. Use mode 0400 for a read-only file and 0600 for a readable+writable file.
 // On Plan 9, the mode's permission bits, ModeAppend, ModeExclusive, and ModeTemporary are used.
-func Chmod(xfs FileSystem, name string, mode int) error {
+func Chmod(xfs FileSystem, name string, mode uint32) error {
 	return xfs.Chmod(name, mode)
 }
 
@@ -168,7 +168,7 @@ func Size(xfs FileSystem, name string) (int, error) {
 }
 
 // Mode return the file mode bits
-func Mode(xfs FileSystem, name string) (int, error) {
+func Mode(xfs FileSystem, name string) (uint32, error) {
 	return xfs.Mode(name)
 }
 

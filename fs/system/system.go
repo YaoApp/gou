@@ -76,7 +76,7 @@ func (f *File) ReadFile(file string) ([]byte, error) {
 // WriteFile writes data to the named file, creating it if necessary.
 //
 //	If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
-func (f *File) WriteFile(file string, data []byte, perm int) (int, error) {
+func (f *File) WriteFile(file string, data []byte, perm uint32) (int, error) {
 	file, err := f.absPath(file)
 	if err != nil {
 		return 0, err
@@ -128,7 +128,7 @@ func (f *File) ReadDir(dir string, recursive bool) ([]string, error) {
 
 // Mkdir creates a new directory with the specified name and permission bits (before umask).
 // If there is an error, it will be of type *PathError.
-func (f *File) Mkdir(dir string, perm int) error {
+func (f *File) Mkdir(dir string, perm uint32) error {
 	dir, err := f.absPath(dir)
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func (f *File) Mkdir(dir string, perm int) error {
 
 // MkdirAll creates a directory named path, along with any necessary parents, and returns nil, or else returns an error.
 // The permission bits perm (before umask) are used for all directories that MkdirAll creates. If path is already a directory, MkdirAll does nothing and returns nil.
-func (f *File) MkdirAll(dir string, perm int) error {
+func (f *File) MkdirAll(dir string, perm uint32) error {
 	dir, err := f.absPath(dir)
 	if err != nil {
 		return err
@@ -238,7 +238,7 @@ func (f *File) Size(name string) (int, error) {
 }
 
 // Mode return the file mode bits
-func (f *File) Mode(name string) (int, error) {
+func (f *File) Mode(name string) (uint32, error) {
 	name, err := f.absPath(name)
 	if err != nil {
 		return 0, err
@@ -248,7 +248,7 @@ func (f *File) Mode(name string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return int(info.Mode().Perm()), nil
+	return uint32(info.Mode().Perm()), nil
 }
 
 // Chmod changes the mode of the named file to mode. If the file is a symbolic link, it changes the mode of the link's target. If there is an error, it will be of type *PathError.
@@ -257,7 +257,7 @@ func (f *File) Mode(name string) (int, error) {
 // On Windows, only the 0200 bit (owner writable) of mode is used; it controls whether the file's read-only attribute is set or cleared. The other bits are currently unused.
 // For compatibility with Go 1.12 and earlier, use a non-zero mode. Use mode 0400 for a read-only file and 0600 for a readable+writable file.
 // On Plan 9, the mode's permission bits, ModeAppend, ModeExclusive, and ModeTemporary are used.
-func (f *File) Chmod(name string, mode int) error {
+func (f *File) Chmod(name string, mode uint32) error {
 	name, err := f.absPath(name)
 	if err != nil {
 		return err
