@@ -330,15 +330,11 @@ func processUpload(process *Process) interface{} {
 	fingerprint := string(hex.EncodeToString(hash[:]))
 	fingerprint = strings.ToUpper(fingerprint)
 
-	dir := time.Now().Format("20060102")
+	dir := strings.Join([]string{string(os.PathSeparator), time.Now().Format("20060102")}, "")
 	ext := filepath.Ext(tmpfile.Name)
 	filename := filepath.Join(dir, fmt.Sprintf("%s%s", fingerprint, ext))
-	stor := stor(process)
-	err := stor.MkdirAll(dir, uint32(os.ModePerm))
-	if err != nil {
-		exception.New("create directory error:  %v", 500, process.Args[0]).Throw()
-	}
 
+	stor := stor(process)
 	content, err := stor.ReadFile(tmpfile.TempFile)
 	if err != nil {
 		exception.New("unable to read uploaded file %s", 500, err.Error()).Throw()
