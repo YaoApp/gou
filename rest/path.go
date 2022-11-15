@@ -15,7 +15,6 @@ import (
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
-	"github.com/yaoapp/xun"
 )
 
 var getHandlers = map[string]func(c *gin.Context, name string) interface{}{
@@ -86,7 +85,7 @@ var getHandlers = map[string]func(c *gin.Context, name string) interface{}{
 		if err != nil {
 			exception.New("Can't save temp file %s", 500, err).Throw()
 		}
-		return xun.UploadFile{
+		return gou.UploadFile{
 			Name:     file.Filename,
 			TempFile: tmpfile.Name(),
 			Size:     file.Size,

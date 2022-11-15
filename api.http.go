@@ -17,7 +17,6 @@ import (
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
-	"github.com/yaoapp/xun"
 )
 
 // HTTPGuards 支持的中间件
@@ -399,7 +398,7 @@ func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
 				if err != nil {
 					exception.New("保存文件出错 %s", 500, err).Throw()
 				}
-				return xun.UploadFile{
+				return UploadFile{
 					Name:     file.Filename,
 					TempFile: tmpfile.Name(),
 					Size:     file.Size,

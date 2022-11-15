@@ -1,7 +1,10 @@
 package gou
 
+import "net/textproto"
+
 // API 数据接口
 type API struct {
+	ID     string `jsong:"id"`
 	Name   string
 	Source string
 	Type   string
@@ -44,4 +47,12 @@ type Server struct {
 	Host   string   `json:"host,omitempty"`
 	Root   string   `json:"root,omitempty"`   // API 根目录
 	Allows []string `json:"allows,omitempty"` // 许可跨域访问域名
+}
+
+// UploadFile upload file
+type UploadFile struct {
+	Name     string               `json:"name"`
+	TempFile string               `json:"tempFile"`
+	Size     int64                `json:"size"`
+	Header   textproto.MIMEHeader `json:"mimeType"`
 }

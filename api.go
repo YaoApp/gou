@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/yaoapp/kun/log"
-	"github.com/yaoapp/kun/maps"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yaoapp/gou/helper"
@@ -26,14 +25,14 @@ import (
 var APIs = map[string]*API{}
 
 // LoadAPIReturn 加载API
-func LoadAPIReturn(source string, name string, guard ...string) (api *API, err error) {
+func LoadAPIReturn(source string, id string, guard ...string) (api *API, err error) {
 	defer func() { err = exception.Catch(recover()) }()
-	api = LoadAPI(source, name, guard...)
+	api = LoadAPI(source, id, guard...)
 	return api, nil
 }
 
 // LoadAPI 加载API
-func LoadAPI(source string, name string, guard ...string) *API {
+func LoadAPI(source string, id string, guard ...string) *API {
 	var input io.Reader = nil
 	if strings.HasPrefix(source, "file://") {
 		filename := strings.TrimPrefix(source, "file://")
@@ -50,7 +49,12 @@ func LoadAPI(source string, name string, guard ...string) *API {
 	http := HTTP{}
 	err := helper.UnmarshalFile(input, &http)
 	if err != nil {
-		exception.Err(err, 400).Ctx(maps.Map{"name": name}).Throw()
+		exception.New("[API] %s %s", 400, id, err.Error()).Throw()
+	}
+
+	// Filesystem Router
+	if http.Group == "" {
+		http.Group = strings.ReplaceAll(strings.ToLower(id), ".", "/")
 	}
 
 	// Validate API
@@ -58,7 +62,7 @@ func LoadAPI(source string, name string, guard ...string) *API {
 	for _, path := range http.Paths {
 		unique := fmt.Sprintf("%s.%s", path.Method, path.Path)
 		if _, has := uniquePathCheck[unique]; has {
-			exception.New("%s %s %s is already registered", 400, name, path.Method, path.Path).Throw()
+			exception.New("[API] %s %s %s is already registered", 400, id, path.Method, path.Path).Throw()
 		}
 		uniquePathCheck[unique] = true
 	}
@@ -68,24 +72,21 @@ func LoadAPI(source string, name string, guard ...string) *API {
 		http.Guard = guard[0]
 	}
 
-	APIs[name] = &API{
-		Name:   name,
+	APIs[id] = &API{
+		ID:     id,
 		Source: source,
 		HTTP:   http,
 		Type:   "http",
 	}
 
-	return APIs[name]
+	return APIs[id]
 }
 
 // SelectAPI 读取已加载API
-func SelectAPI(name string) *API {
-	api, has := APIs[name]
+func SelectAPI(id string) *API {
+	api, has := APIs[id]
 	if !has {
-		exception.New(
-			fmt.Sprintf("API:%s; 尚未加载", name),
-			500,
-		).Throw()
+		exception.New("[API] %s not loaded", 500, id).Throw()
 	}
 	return api
 }
