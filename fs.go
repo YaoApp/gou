@@ -42,6 +42,7 @@ var FileSystemHandlers = map[string]ProcessHandler{
 	"move":            processMove,
 	"copy":            processCopy,
 	"upload":          processUpload,
+	"download":        processDownload,
 }
 
 func init() {
@@ -346,4 +347,25 @@ func processUpload(process *Process) interface{} {
 	}
 
 	return filename
+}
+
+func processDownload(process *Process) interface{} {
+
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	file := process.ArgsString(0)
+	data, err := fs.ReadFile(stor, file)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+
+	mimeType, err := fs.MimeType(stor, file)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+
+	return map[string]interface{}{
+		"content": data,
+		"type":    mimeType,
+	}
 }
