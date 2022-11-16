@@ -247,6 +247,7 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 
 		case []byte:
 			c.Data(status, contentType, data)
+			c.Done()
 			return
 
 		default:
