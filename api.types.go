@@ -1,6 +1,8 @@
 package gou
 
-import "net/textproto"
+import (
+	"net/textproto"
+)
 
 // API 数据接口
 type API struct {
@@ -35,9 +37,17 @@ type Path struct {
 
 // Out http 输出
 type Out struct {
-	Status  int               `json:"status"`
-	Type    string            `json:"type,omitempty"`
-	Headers map[string]string `json:"headers,omitempty"`
+	Status   int               `json:"status"`
+	Type     string            `json:"type,omitempty"`
+	Body     interface{}       `json:"body,omitempty"`
+	Headers  map[string]string `json:"headers,omitempty"`
+	Redirect *Redirect         `json:"redirect,omitempty"`
+}
+
+// Redirect out redirect
+type Redirect struct {
+	Code     int    `json:"code,omitempty"`
+	Location string `json:"location,omitempty"`
 }
 
 // Server API 服务配置

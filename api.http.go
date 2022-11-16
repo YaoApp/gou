@@ -206,8 +206,22 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 			} else {
 				for name, value := range path.Out.Headers {
 					c.Writer.Header().Set(name, value)
+					if name == "Content-Type" {
+						contentType = value
+					}
 				}
 			}
+		}
+
+		// Redirect
+		if path.Out.Redirect != nil {
+			code := path.Out.Redirect.Code
+			if code == 0 {
+				code = 301
+			}
+			c.Redirect(code, path.Out.Redirect.Location)
+			c.Done()
+			return
 		}
 
 		if resp == nil {
@@ -215,16 +229,31 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 			return
 		}
 
-		switch resp.(type) {
+		// Format Body
+		body := resp
+		if path.Out.Body != nil {
+			res := any.Of(resp)
+			if res.IsMap() {
+				data := res.Map().MapStrAny.Dot()
+				body = share.Bind(path.Out.Body, data)
+			}
+		}
+
+		switch data := body.(type) {
 		case maps.Map, map[string]interface{}, []interface{}, []maps.Map, []map[string]interface{}:
-			c.JSON(status, resp)
+			c.JSON(status, data)
 			c.Done()
 			return
+
+		case []byte:
+			c.Data(status, contentType, data)
+			return
+
 		default:
 			if contentType == "application/json" {
-				c.JSON(status, resp)
+				c.JSON(status, body)
 			} else {
-				c.String(status, "%v", resp)
+				c.String(status, "%v", body)
 			}
 			c.Done()
 			return

@@ -19,6 +19,52 @@ var FileSystems = map[string]FileSystem{
 // RootFileSystems high-level filesystem
 var RootFileSystems = map[string]FileSystem{}
 
+// DownloadWhitelist the file system allow download
+var DownloadWhitelist = map[string]bool{
+	"pdf":    true,
+	"ppt":    true,
+	"pptx":   true,
+	"xls":    true,
+	"xlsx":   true,
+	"doc":    true,
+	"docx":   true,
+	"png":    true,
+	"jpg":    true,
+	"bmp":    true,
+	"svg":    true,
+	"tif":    true,
+	"mp3":    true,
+	"mid":    true,
+	"wma":    true,
+	"wav":    true,
+	"mp4":    true,
+	"swf":    true,
+	"rm":     true,
+	"rmvb":   true,
+	"mpg":    true,
+	"mpeg":   true,
+	"avi":    true,
+	"mov":    true,
+	"wmv":    true,
+	"rar":    true,
+	"zip":    true,
+	"tar":    true,
+	"gz":     true,
+	"tar.gz": true,
+	"7z":     true,
+	"pkg":    true,
+	"dmg":    true,
+	"dep":    true,
+	"txt":    true,
+	"json":   true,
+	"jsonc":  true,
+	"html":   true,
+	"conf":   true,
+	"css":    true,
+	"js":     true,
+	"htm":    true,
+}
+
 // RegisterConnector register a fileSystem via connector
 func RegisterConnector(c connector.Connector) error {
 	// if c.Is(connector.DATABASE) {
