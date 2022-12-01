@@ -50,7 +50,13 @@ func ProcessGuard(name string) gin.HandlerFunc {
 			c.Request.Header,      // Request headers
 		}
 
-		var process = NewProcess(name, args...)
+		process, err := ProcessOf(name, args...)
+		if err != nil {
+			c.JSON(400, gin.H{"code": 400, "message": fmt.Sprintf("Guard: %s %s", name, err.Error())})
+			c.Abort()
+			return
+		}
+
 		if sid, has := c.Get("__sid"); has { // 设定会话ID
 			if sid, ok := sid.(string); ok {
 				process.WithSID(sid)
@@ -62,7 +68,13 @@ func ProcessGuard(name string) gin.HandlerFunc {
 				process.WithGlobal(global)
 			}
 		}
-		process.Run()
+
+		_, err = process.Exec()
+		if err != nil {
+			c.JSON(500, gin.H{"code": 500, "message": fmt.Sprintf("Guard: %s %s", name, err.Error())})
+			c.Abort()
+			return
+		}
 	}
 }
 
