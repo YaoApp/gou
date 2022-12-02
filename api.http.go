@@ -69,12 +69,7 @@ func ProcessGuard(name string) gin.HandlerFunc {
 			}
 		}
 
-		_, err = process.Exec()
-		if err != nil {
-			c.JSON(500, gin.H{"code": 500, "message": fmt.Sprintf("Guard: %s %s", name, err.Error())})
-			c.Abort()
-			return
-		}
+		process.Run()
 	}
 }
 
