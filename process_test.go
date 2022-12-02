@@ -337,6 +337,22 @@ func TestProcessSession(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"foo": "bar"}, data)
 }
 
+func TestProcessSessionWithID(t *testing.T) {
+	id := session.ID()
+
+	global := map[string]interface{}{"hello": "world"}
+	process := NewProcess("session.Set", "foo", "bar", 3600, id).WithGlobal(global)
+	process.Run()
+
+	process = NewProcess("session.Get", "foo", id).WithGlobal(global)
+	foo := process.Run()
+	assert.Equal(t, "bar", foo)
+
+	process = NewProcess("session.Dump", id).WithGlobal(global)
+	data := process.Run()
+	assert.Equal(t, map[string]interface{}{"foo": "bar"}, data)
+}
+
 func TestProcessMustEachSaveWithIndex(t *testing.T) {
 	user := Select("user")
 	args := []interface{}{

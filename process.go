@@ -262,7 +262,8 @@ func processScript(process *Process) interface{} {
 	return res
 }
 
-// processSession 运行Session函数
+// processSession
+// **WARN** refactor in the next version
 func processSession(process *Process) interface{} {
 
 	if process.Method == "start" {
@@ -270,34 +271,57 @@ func processSession(process *Process) interface{} {
 		return process.Sid
 	}
 
-	if process.Sid == "" {
-		return nil
+	ss := session.Global()
+
+	if process.Sid != "" {
+		ss = ss.ID(process.Sid)
 	}
 
-	ss := session.Global().ID(process.Sid)
 	switch process.Method {
+
 	case "id":
 		return process.Sid
+
 	case "get":
 		process.ValidateArgNums(1)
+		if process.NumOfArgs() == 2 {
+			ss = session.Global().ID(process.ArgsString(1))
+			return ss.MustGet(process.ArgsString(0))
+		}
 		return ss.MustGet(process.ArgsString(0))
+
 	case "set":
 		process.ValidateArgNums(2)
 		if process.NumOfArgs() == 3 {
 			ss.MustSetWithEx(process.ArgsString(0), process.Args[1], time.Duration(process.ArgsInt(2))*time.Second)
 			return nil
+
+		} else if process.NumOfArgs() == 4 {
+			ss = session.Global().ID(process.ArgsString(3))
+			ss.MustSetWithEx(process.ArgsString(0), process.Args[1], time.Duration(process.ArgsInt(2))*time.Second)
 		}
+
 		ss.MustSet(process.ArgsString(0), process.Args[1])
 		return nil
+
 	case "setmany":
 		process.ValidateArgNums(1)
 		if process.NumOfArgs() == 2 {
+			ss.MustSetManyWithEx(process.ArgsMap(0), time.Duration(process.ArgsInt(1))*time.Second)
+			return nil
+
+		} else if process.NumOfArgs() == 3 {
+			ss = session.Global().ID(process.ArgsString(2))
 			ss.MustSetManyWithEx(process.ArgsMap(0), time.Duration(process.ArgsInt(1))*time.Second)
 			return nil
 		}
 		ss.MustSetMany(process.ArgsMap(0))
 		return nil
 	case "dump":
+		if process.NumOfArgs() == 1 {
+			ss = session.Global().ID(process.ArgsString(0))
+			return ss.MustDump()
+		}
 		return ss.MustDump()
 	}
 	return nil
