@@ -79,17 +79,24 @@ jobs:
           repository: yaoapp/demo-wms
           path: demo-wms
 
-      - name: Move Kun, Xun, V8go
+      - name: Move Kun, Xun, V8go, Application
         run: |
           mv kun ../
           mv xun ../
           mv v8go ../
           mv demo-wms ../
+          mv gou-dev-app ../
           ls -l .
           ls -l ../
 
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Move Application
+        run: |
+          mv ../gou-dev-app .
+          ls -l .
+          ls -l ../
 
       - name: Start Redis
         uses: supercharge/redis-github-action@1.4.0
