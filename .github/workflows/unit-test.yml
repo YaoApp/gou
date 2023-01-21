@@ -20,7 +20,7 @@ env:
   SEND_MAIL_TEST_MAIL: max@iqka.com
   REPO_KUN: ${{ github.repository_owner }}/kun
   REPO_XUN: ${{ github.repository_owner }}/xun
-  REPO_APP: github.com/YaoApp/gou-dev-app
+  REPO_APP: YaoApp/gou-dev-app
 
   MYSQL_TEST_HOST: "127.0.0.1"
   MYSQL_TEST_PORT: "3308"

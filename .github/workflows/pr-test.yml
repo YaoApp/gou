@@ -18,7 +18,7 @@ env:
   GOU_TEST_APPLICATION: ${{ github.WORKSPACE }}/../gou-dev-app
   SEND_MAIL_WORKER_NUMS: 2
   SEND_MAIL_TEST_MAIL: max@iqka.com
-  REPO_APP: github.com/YaoApp/gou-dev-app
+  REPO_APP: YaoApp/gou-dev-app
 
   MYSQL_TEST_HOST: "127.0.0.1"
   MYSQL_TEST_PORT: "3308"
