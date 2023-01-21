@@ -136,6 +136,9 @@ func TestWatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	data, _ := app.Read(filepath.Join("models", "tmp", "temp.mod.yao"))
+	log.Info("DATA: %s", data)
+
 	// REMOVE
 	app.Remove(filepath.Join("models", "tmp", "temp.mod.yao"))
 	if err != nil {
