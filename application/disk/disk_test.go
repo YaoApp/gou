@@ -1,0 +1,164 @@
+package disk
+
+import (
+	"os"
+	"os/signal"
+	"path/filepath"
+	"sync"
+	"syscall"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestOpen(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	_, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = Open("/path/not-exists")
+	assert.NotNil(t, err)
+}
+
+func TestWalk(t *testing.T) {
+	app := prepare(t)
+	err := app.Walk("models", func(root, filename string, isdir bool) error {
+		assert.IsType(t, true, isdir)
+		assert.IsType(t, "string", filename)
+		assert.Equal(t, "models", root)
+		return nil
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWalkWithPatterns(t *testing.T) {
+	app := prepare(t)
+	err := app.Walk("scripts", func(root, filename string, isdir bool) error {
+		assert.IsType(t, true, isdir)
+		assert.IsType(t, "string", filename)
+		assert.Equal(t, "scripts", root)
+		if !isdir {
+			ext := filepath.Ext(filename)
+			assert.True(t, ext == ".ts" || ext == ".js")
+		}
+		return nil
+	}, "*.js", "*.ts")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRead(t *testing.T) {
+	app := prepare(t)
+	data, err := app.Read(filepath.Join("models", "user.mod.yao"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Greater(t, len(data), 1)
+
+	data, err = app.Read(filepath.Join("/", "models", "user.mod.yao"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Greater(t, len(data), 1)
+
+	_, err = app.Read(filepath.Join("/", "models", "user.mod.yao-not-exists"))
+	assert.NotNil(t, err)
+}
+
+func TestWrite(t *testing.T) {
+	app := prepare(t)
+	data := []byte(`{"name":"test"}`)
+	err := app.Write(filepath.Join("models", "temp.mod.yao"), data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exists, _ := app.Exists(filepath.Join("models", "temp.mod.yao"))
+	assert.True(t, exists)
+
+	err = app.Remove(filepath.Join("models", "temp.mod.yao"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exists, _ = app.Exists(filepath.Join("models", "temp.mod.yao"))
+	assert.False(t, exists)
+}
+
+func TestWatch(t *testing.T) {
+	app := prepare(t)
+	interrupt := make(chan uint8, 1)
+	done := make(chan bool, 1)
+
+	// recive interrupt signal
+	onInterrupt := make(chan os.Signal, 1)
+	signal.Notify(onInterrupt, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+
+	trace := sync.Map{}
+
+	go func() {
+		err := app.Watch(func(event string, name string) {
+			if event == "CHMOD" {
+				return
+			}
+
+			trace.Store(event, name)
+		}, interrupt)
+		if err != nil {
+			done <- true
+			return
+		}
+
+		done <- true
+	}()
+
+	time.Sleep(1 * time.Second)
+
+	// CREATE
+	app.Write(filepath.Join("models", "tmp", "temp.mod.yao"), []byte("{}"))
+
+	// CHANGE
+	app.Write(filepath.Join("models", "tmp", "temp.mod.yao"), []byte(`{"foo":"bar"}`))
+
+	// REMOVE
+	app.Remove(filepath.Join("models", "tmp", "temp.mod.yao"))
+
+	time.Sleep(2 * time.Second)
+
+	CREATE, _ := trace.Load("CREATE")
+	WRITE, _ := trace.Load("WRITE")
+	REMOVE, _ := trace.Load("REMOVE")
+	assert.Equal(t, CREATE, "/models/tmp/temp.mod.yao")
+	assert.Equal(t, WRITE, "/models/tmp/temp.mod.yao")
+	assert.Equal(t, REMOVE, "/models/tmp/temp.mod.yao")
+
+	interrupt <- 0
+
+	for {
+		select {
+		case <-done:
+			return
+
+		case <-onInterrupt:
+			interrupt <- 0
+			break
+		}
+	}
+}
+
+func prepare(t *testing.T) *Disk {
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	app, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return app
+}
