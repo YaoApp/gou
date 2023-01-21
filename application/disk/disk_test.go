@@ -120,7 +120,7 @@ func TestWatch(t *testing.T) {
 		done <- true
 	}()
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	// CREATE
 	app.Write(filepath.Join("models", "tmp", "temp.mod.yao"), []byte("{}"))
@@ -131,7 +131,7 @@ func TestWatch(t *testing.T) {
 	// REMOVE
 	app.Remove(filepath.Join("models", "tmp", "temp.mod.yao"))
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	CREATE, _ := trace.Load("CREATE")
 	WRITE, _ := trace.Load("WRITE")
