@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/kun/log"
 )
 
 func TestOpen(t *testing.T) {
@@ -108,7 +109,7 @@ func TestWatch(t *testing.T) {
 			if event == "CHMOD" {
 				return
 			}
-
+			log.Info("[Watch] UnitTests %s %s", event, name)
 			trace.Store(event, name)
 		}, interrupt)
 		if err != nil {
@@ -142,8 +143,7 @@ func TestWatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(2 * time.Second)
-
+	time.Sleep(5 * time.Second)
 	CREATE, _ := trace.Load("CREATE")
 	WRITE, _ := trace.Load("WRITE")
 	REMOVE, _ := trace.Load("REMOVE")
