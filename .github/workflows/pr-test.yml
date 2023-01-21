@@ -15,7 +15,7 @@ env:
   GOU_TEST_GITHUB_TOKEN: ${{ secrets.GOU_TEST_GITHUB_TOKEN }}
   GOU_TEST_GITHUB_REPO: github.com/YaoApp/workshop-tests-private
   GOU_TEST_DSL_TABLE_NAME: test_env
-  GOU_TEST_APPLICATION: ${{ github.WORKSPACE }}/../gou-dev-app
+  GOU_TEST_APPLICATION: ${{ github.WORKSPACE }}/gou-dev-app
   SEND_MAIL_WORKER_NUMS: 2
   SEND_MAIL_TEST_MAIL: max@iqka.com
   REPO_APP: YaoApp/gou-dev-app
@@ -136,7 +136,6 @@ jobs:
           mv kun ../
           mv xun ../
           mv v8go ../
-          mv gou-dev-app ../
           mv demo-wms ../
           ls -l .
           ls -l ../

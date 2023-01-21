@@ -103,7 +103,6 @@ func TestWatch(t *testing.T) {
 	signal.Notify(onInterrupt, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
 	trace := sync.Map{}
-
 	go func() {
 		err := app.Watch(func(event string, name string) {
 			if event == "CHMOD" {
@@ -120,22 +119,35 @@ func TestWatch(t *testing.T) {
 		done <- true
 	}()
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// CREATE
-	app.Write(filepath.Join("models", "tmp", "temp.mod.yao"), []byte("{}"))
+	err := app.Write(filepath.Join("models", "tmp", "temp.mod.yao"), []byte("{}"))
+	if err != nil {
+		interrupt <- 0
+		t.Fatal(err)
+	}
 
 	// CHANGE
 	app.Write(filepath.Join("models", "tmp", "temp.mod.yao"), []byte(`{"foo":"bar"}`))
+	if err != nil {
+		interrupt <- 0
+		t.Fatal(err)
+	}
 
 	// REMOVE
 	app.Remove(filepath.Join("models", "tmp", "temp.mod.yao"))
+	if err != nil {
+		interrupt <- 0
+		t.Fatal(err)
+	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	CREATE, _ := trace.Load("CREATE")
 	WRITE, _ := trace.Load("WRITE")
 	REMOVE, _ := trace.Load("REMOVE")
+
 	assert.Equal(t, CREATE, "/models/tmp/temp.mod.yao")
 	assert.Equal(t, WRITE, "/models/tmp/temp.mod.yao")
 	assert.Equal(t, REMOVE, "/models/tmp/temp.mod.yao")
