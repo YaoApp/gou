@@ -148,9 +148,9 @@ func TestWatch(t *testing.T) {
 	WRITE, _ := trace.Load("WRITE")
 	REMOVE, _ := trace.Load("REMOVE")
 
-	assert.Equal(t, CREATE, "/models/tmp/temp.mod.yao")
-	assert.Equal(t, WRITE, "/models/tmp/temp.mod.yao")
-	assert.Equal(t, REMOVE, "/models/tmp/temp.mod.yao")
+	assert.Equal(t, "/models/tmp/temp.mod.yao", CREATE)
+	assert.Equal(t, "/models/tmp/temp.mod.yao", WRITE)
+	assert.Equal(t, "/models/tmp/temp.mod.yao", REMOVE)
 
 	interrupt <- 0
 

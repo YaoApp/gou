@@ -178,6 +178,7 @@ func (disk *Disk) Watch(handler func(event string, name string), interrupt chan 
 			if err != nil {
 				return err
 			}
+			log.Info("[Watch] Watching: %s", filename)
 			disk.watched.Store(filename, true)
 		}
 		return nil
