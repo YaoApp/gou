@@ -15,10 +15,12 @@ env:
   GOU_TEST_GITHUB_TOKEN: ${{ secrets.GOU_TEST_GITHUB_TOKEN }}
   GOU_TEST_GITHUB_REPO: github.com/YaoApp/workshop-tests-private
   GOU_TEST_DSL_TABLE_NAME: test_env
+  GOU_TEST_APPLICATION: ${{ github.WORKSPACE }}/gou-dev-app
   SEND_MAIL_WORKER_NUMS: 2
   SEND_MAIL_TEST_MAIL: max@iqka.com
   REPO_KUN: ${{ github.repository_owner }}/kun
   REPO_XUN: ${{ github.repository_owner }}/xun
+  REPO_APP: YaoApp/gou-dev-app
 
   MYSQL_TEST_HOST: "127.0.0.1"
   MYSQL_TEST_PORT: "3308"
@@ -58,6 +60,12 @@ jobs:
           repository: ${{ env.REPO_XUN }}
           path: xun
 
+      - name: Checkout Application
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ env.REPO_APP }}
+          path: gou-dev-app
+
       - name: Checkout V8Go
         uses: actions/checkout@v2
         with:
@@ -71,17 +79,24 @@ jobs:
           repository: yaoapp/demo-wms
           path: demo-wms
 
-      - name: Move Kun, Xun, V8go
+      - name: Move Kun, Xun, V8go, Application
         run: |
           mv kun ../
           mv xun ../
           mv v8go ../
           mv demo-wms ../
+          mv gou-dev-app ../
           ls -l .
           ls -l ../
 
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Move Application
+        run: |
+          mv ../gou-dev-app .
+          ls -l .
+          ls -l ../
 
       - name: Start Redis
         uses: supercharge/redis-github-action@1.4.0
