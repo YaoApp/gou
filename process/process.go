@@ -11,17 +11,17 @@ import (
 var Handlers = map[string]Handler{}
 
 // New make a new process
-func New(id string, args ...interface{}) *Process {
-	process, err := Of(id, args...)
+func New(name string, args ...interface{}) *Process {
+	process, err := Of(name, args...)
 	if err != nil {
-		exception.New("%s", 500, id, err.Error()).Throw()
+		exception.New("%s", 500, err.Error()).Throw()
 	}
 	return process
 }
 
 // Of make a new process and return error
-func Of(id string, args ...interface{}) (*Process, error) {
-	process := &Process{ID: id, Args: args, Global: map[string]interface{}{}}
+func Of(name string, args ...interface{}) (*Process, error) {
+	process := &Process{Name: name, Args: args, Global: map[string]interface{}{}}
 	err := process.make()
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func Of(id string, args ...interface{}) (*Process, error) {
 func (process *Process) Run() interface{} {
 	hd, err := process.handler()
 	if err != nil {
-		exception.New("[Process] %s Error: %s", 500, process.Name, err.Error()).Throw()
+		exception.New("%s", 500, err.Error()).Throw()
 		return nil
 	}
 	return hd(process)
@@ -41,13 +41,16 @@ func (process *Process) Run() interface{} {
 
 // Exec execute the process and return error
 func (process *Process) Exec() (value interface{}, err error) {
-	defer func() { err = exception.Catch(recover()) }()
-	hd, err := process.handler()
+
+	var hd Handler
+	hd, err = process.handler()
 	if err != nil {
-		return nil, err
+		return
 	}
+
+	defer func() { err = exception.Catch(recover()) }()
 	value = hd(process)
-	return value, nil
+	return
 }
 
 // Register register a process handler
@@ -88,14 +91,14 @@ func (process *Process) handler() (Handler, error) {
 	if hander, has := Handlers[process.Handler]; has {
 		return hander, nil
 	}
-	return nil, fmt.Errorf("[Process] %s %s not found", process.Name, process.Handler)
+	return nil, fmt.Errorf("Exception|404:%s (%s) not found", process.Name, process.Handler)
 }
 
 // make parse the process
 func (process *Process) make() error {
 	fields := strings.Split(strings.ToLower(process.Name), ".")
 	if len(fields) < 2 {
-		return fmt.Errorf("Exception|400:%s does not exist", process.Name)
+		return fmt.Errorf("Exception|404:%s not found", process.Name)
 	}
 
 	process.Group = fields[0]
