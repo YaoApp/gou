@@ -2,17 +2,14 @@ package model
 
 import (
 	"fmt"
-	"io"
-	"os"
 	"strings"
 
-	"github.com/yaoapp/gou/helper"
-	"github.com/yaoapp/kun/exception"
+	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // Encryptors 已加载加密器
-var Encryptors = map[string]Encryptor{}
+var Encryptors = map[string]*Encryptor{}
 
 // IEncryptors 加密码器接口映射
 var IEncryptors = map[string]IEncryptor{
@@ -20,56 +17,37 @@ var IEncryptors = map[string]IEncryptor{
 	"PASSWORD": &EncryptorPassword{},
 }
 
-// LoadCrypt 载入数据模型
-func LoadCrypt(source string, name string) Encryptor {
-	var input io.Reader = nil
-	if strings.HasPrefix(source, "file://") {
-		filename := strings.TrimPrefix(source, "file://")
-		file, err := os.Open(filename)
-		if err != nil {
-			exception.Err(err, 400).Throw()
-		}
-		defer file.Close()
-		input = file
-	} else {
-		input = strings.NewReader(source)
-	}
-
+// LoadCrypt 载入数据加密器
+func LoadCrypt(data []byte, name string) (*Encryptor, error) {
 	encryptor := Encryptor{}
-	err := helper.UnmarshalFile(input, &encryptor)
+	err := jsoniter.Unmarshal(data, &encryptor)
 	if err != nil {
-		panic(err)
+		return nil, err
+
 	}
 	encryptor.Name = name
-	encryptor.Source = source
-	Encryptors[name] = encryptor
-	return encryptor
+	Encryptors[name] = &encryptor
+	return Encryptors[name], nil
 }
 
 // SelectCrypt 选择加密器
-func SelectCrypt(name string) IEncryptor {
+func SelectCrypt(name string) (IEncryptor, error) {
 	encryptor, has := Encryptors[name]
 	if !has {
-		exception.New(
-			fmt.Sprintf("加密器:%s; 尚未加载", name),
-			400,
-		).Throw()
+		return nil, fmt.Errorf("加密器:%s; 尚未加载", name)
 	}
 
 	iencryptor, has := IEncryptors[name]
 	if !has {
-		exception.New(
-			fmt.Sprintf("加密器:%s; 上未定义", name),
-			400,
-		).Throw()
+		return nil, fmt.Errorf("加密器:%s; 尚不支持", name)
 	}
 
 	iencryptor.Set(encryptor)
-	return iencryptor
+	return iencryptor, nil
 }
 
 // EncryptorAES AES
-type EncryptorAES struct{ Encryptor }
+type EncryptorAES struct{ *Encryptor }
 
 // EncryptorAES256 AES 256
 type EncryptorAES256 struct{ Encryptor }
@@ -78,10 +56,10 @@ type EncryptorAES256 struct{ Encryptor }
 type EncryptorAES128 struct{ Encryptor }
 
 // EncryptorPassword 密码加密
-type EncryptorPassword struct{ Encryptor }
+type EncryptorPassword struct{ *Encryptor }
 
 // Set AES Encode
-func (aes *EncryptorAES) Set(crypt Encryptor) {
+func (aes *EncryptorAES) Set(crypt *Encryptor) {
 	aes.Encryptor = crypt
 }
 
@@ -109,7 +87,7 @@ func (aes EncryptorAES) Validate(hash string, field string) bool {
 }
 
 // Set AES Encode
-func (pwd *EncryptorPassword) Set(crypt Encryptor) {
+func (pwd *EncryptorPassword) Set(crypt *Encryptor) {
 	pwd.Encryptor = crypt
 }
 

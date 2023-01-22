@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/yaoapp/gou/application"
@@ -14,12 +13,6 @@ import (
 
 // Models 已载入模型
 var Models = map[string]*Model{}
-
-// SetModelLogger 设定模型 Logger
-func SetModelLogger(output io.Writer, level log.Level) {
-	log.SetLevel(level)
-	log.SetOutput(output)
-}
 
 // Load 载入数据模型
 func Load(file string, name string) (*Model, error) {
@@ -116,7 +109,10 @@ func Load(file string, name string) (*Model, error) {
 	mod.ColumnNames = columnNames
 	mod.PrimaryKey = PrimaryKey
 	mod.UniqueColumns = uniqueColumns
-	mod.Driver = capsule.Schema().MustGetConnection().Config.Driver
+
+	if capsule.Global != nil {
+		mod.Driver = capsule.Schema().MustGetConnection().Config.Driver
+	}
 
 	Models[name] = mod
 	return mod, nil

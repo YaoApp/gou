@@ -67,7 +67,10 @@ func (mod *Model) Filterselect(alias string, columns []interface{}, cmap map[str
 
 		// 加密字段
 		if column.Crypt == "AES" && column.model.Driver == "mysql" {
-			icrypt := SelectCrypt(column.Crypt)
+			icrypt, err := SelectCrypt(column.Crypt)
+			if err != nil {
+				exception.New(err.Error(), 400).Throw()
+			}
 			raw, err := icrypt.Decode(field)
 			if err != nil {
 				exception.Err(err, 500).Throw()
@@ -105,7 +108,10 @@ func (mod *Model) FliterWhere(alias string, col interface{}) interface{} {
 
 	// 加密字段
 	if column.Crypt == "AES" && column.model.Driver == "mysql" {
-		icrypt := SelectCrypt(column.Crypt)
+		icrypt, err := SelectCrypt(column.Crypt)
+		if err != nil {
+			exception.New(err.Error(), 400).Throw()
+		}
 		raw, err := icrypt.Decode(name)
 		if err != nil {
 			exception.Err(err, 500).Throw()

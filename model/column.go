@@ -67,7 +67,10 @@ func (column *Column) fliterInCrypt(value interface{}, row maps.MapStrAny) {
 		return
 	}
 
-	icrypt := SelectCrypt(column.Crypt)
+	icrypt, err := SelectCrypt(column.Crypt)
+	if err != nil {
+		exception.New(err.Error(), 400).Throw()
+	}
 
 	valuestr, ok := value.(string)
 	if !ok {
