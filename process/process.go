@@ -112,6 +112,7 @@ func (process *Process) make() error {
 
 	case "flows", "scripts", "plugins":
 		process.Handler = process.Group
+		process.ID = strings.Join(fields[1:], ".")
 		break
 
 	case "session":

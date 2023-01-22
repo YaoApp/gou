@@ -58,6 +58,26 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, "widget.id", p.ID)
 	assert.Equal(t, []interface{}{"foo", "bar"}, p.Args)
 
+	// flows.widget
+	assert.NotPanics(t, func() {
+		p = New("flows.widget", "foo", "bar")
+	})
+	assert.Equal(t, "flows.widget", p.Name)
+	assert.Equal(t, "flows", p.Group)
+	assert.Equal(t, "", p.Method)
+	assert.Equal(t, "widget", p.ID)
+	assert.Equal(t, []interface{}{"foo", "bar"}, p.Args)
+
+	// flows.widget.Id
+	assert.NotPanics(t, func() {
+		p = New("flows.widget.Id", "foo", "bar")
+	})
+	assert.Equal(t, "flows.widget.Id", p.Name)
+	assert.Equal(t, "flows", p.Group)
+	assert.Equal(t, "", p.Method)
+	assert.Equal(t, "widget.id", p.ID)
+	assert.Equal(t, []interface{}{"foo", "bar"}, p.Args)
+
 	// session.Get
 	assert.NotPanics(t, func() {
 		p = New("session.Get", "foo", "bar")
@@ -99,6 +119,18 @@ func TestRun(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, "models", data["group"])
 		assert.Equal(t, "test", data["method"])
+		assert.Equal(t, "widget", data["id"])
+		assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
+	})
+
+	// flows.widget
+	p = New("flows.widget", "foo", "bar")
+	assert.NotPanics(t, func() {
+		res := p.Run()
+		data, ok := res.(map[string]interface{})
+		assert.True(t, ok)
+		assert.Equal(t, "flows", data["group"])
+		assert.Equal(t, "", data["method"])
 		assert.Equal(t, "widget", data["id"])
 		assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
 	})
@@ -147,6 +179,16 @@ func TestExec(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "models", data["group"])
 	assert.Equal(t, "test", data["method"])
+	assert.Equal(t, "widget", data["id"])
+	assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
+
+	// flows.widget
+	p = New("flows.widget", "foo", "bar")
+	res, err = p.Exec()
+	data, ok = res.(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, "flows", data["group"])
+	assert.Equal(t, "", data["method"])
 	assert.Equal(t, "widget", data["id"])
 	assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
 
@@ -200,6 +242,7 @@ func TestWithGlobal(t *testing.T) {
 
 func prepare(t *testing.T) {
 	Register("unit.test.prepare", processTest)
+	Register("flows", processTest)
 	RegisterGroup("models", map[string]Handler{"Test": processTest})
 	RegisterGroup("session", map[string]Handler{"Get": processTest})
 }
@@ -220,6 +263,7 @@ func checkHandlers(t *testing.T) {
 	for key := range Handlers {
 		keys[key] = true
 	}
+	assert.True(t, keys["flows"])
 	assert.True(t, keys["models.test"])
 	assert.True(t, keys["session.get"])
 	assert.True(t, keys["unit.test.prepare"])
