@@ -7,10 +7,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/query"
+	"github.com/yaoapp/gou/query/gou"
+	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/xun/capsule"
 )
 
 func TestLoad(t *testing.T) {
 	prepare(t)
+	defer clean()
 	check(t)
 
 	_, err := Load("not-found", "not-found")
@@ -20,9 +25,23 @@ func TestLoad(t *testing.T) {
 	assert.False(t, has)
 }
 
+func TestLoadWithoutDB(t *testing.T) {
+	prepare(t)
+	defer clean()
+	dbclose()
+	capsule.Global = nil
+
+	check(t)
+	_, err := Load("not-found", "not-found")
+	assert.NotNil(t, err)
+
+	_, has := Models["not-found"]
+	assert.False(t, has)
+}
+
 // prepare test suit
 func prepare(t *testing.T) {
-
+	dbconnect(t)
 	root := os.Getenv("GOU_TEST_APPLICATION")
 	mods := map[string]string{
 		"user":     filepath.Join("models", "user.mod.yao"),
@@ -47,6 +66,16 @@ func prepare(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+
+	// Migrate
+	for id := range mods {
+		mod := Select(id)
+		err := mod.Migrate(true)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
 }
 
 func check(t *testing.T) {
@@ -59,6 +88,51 @@ func check(t *testing.T) {
 		_, has := keys[id]
 		assert.True(t, has)
 	}
+}
+
+func clean() {
+	dbclose()
+}
+
+func dbclose() {
+	if capsule.Global != nil {
+		capsule.Global.Connections.Range(func(key, value any) bool {
+			if conn, ok := value.(*capsule.Connection); ok {
+				conn.Close()
+			}
+			return true
+		})
+	}
+}
+
+func dbconnect(t *testing.T) {
+
+	TestDriver := os.Getenv("GOU_TEST_DB_DRIVER")
+	TestDSN := os.Getenv("GOU_TEST_DSN")
+	TestAESKey := os.Getenv("GOU_TEST_AES_KEY")
+
+	// connect db
+	switch TestDriver {
+	case "sqlite3":
+		capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
+		break
+	default:
+		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
+		break
+	}
+
+	// query engine
+	query.Register("query-test", &gou.Query{
+		Query: capsule.Query(),
+		GetTableName: func(s string) string {
+			if mod, has := Models[s]; has {
+				return mod.MetaData.Table.Name
+			}
+			exception.New("[query] %s not found", 404).Throw()
+			return s
+		},
+		AESKey: TestAESKey,
+	})
 }
 
 // func TestLoadModel(t *testing.T) {

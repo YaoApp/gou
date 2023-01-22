@@ -15,7 +15,7 @@ import (
 var Models = map[string]*Model{}
 
 // Load 载入数据模型
-func Load(file string, name string) (*Model, error) {
+func Load(file string, id string) (*Model, error) {
 	data, err := application.App.Read(file)
 	if err != nil {
 		return nil, err
@@ -28,8 +28,8 @@ func Load(file string, name string) (*Model, error) {
 	}
 
 	mod := &Model{
-		ID:       name,
-		Name:     name,
+		ID:       id,
+		Name:     id,
 		File:     file,
 		MetaData: metadata,
 	}
@@ -43,10 +43,10 @@ func Load(file string, name string) (*Model, error) {
 	// 补充字段(软删除)
 	if mod.MetaData.Option.SoftDeletes {
 		mod.MetaData.Columns = append(mod.MetaData.Columns, Column{
-			Label:    "删除标记",
+			Label:    "::Delete At",
 			Name:     "deleted_at",
 			Type:     "timestamp",
-			Comment:  "删除标记",
+			Comment:  "::Delete At",
 			Nullable: true,
 		})
 	}
@@ -55,17 +55,17 @@ func Load(file string, name string) (*Model, error) {
 	if mod.MetaData.Option.Timestamps {
 		mod.MetaData.Columns = append(mod.MetaData.Columns,
 			Column{
-				Label:    "创建时间",
+				Label:    "::Created At",
 				Name:     "created_at",
 				Type:     "timestamp",
-				Comment:  "创建时间",
+				Comment:  "::Created At",
 				Nullable: true,
 			},
 			Column{
-				Label:    "更新时间",
+				Label:    "Updated At",
 				Name:     "updated_at",
 				Type:     "timestamp",
-				Comment:  "更新时间",
+				Comment:  "Updated At",
 				Nullable: true,
 			},
 		)
@@ -114,7 +114,7 @@ func Load(file string, name string) (*Model, error) {
 		mod.Driver = capsule.Schema().MustGetConnection().Config.Driver
 	}
 
-	Models[name] = mod
+	Models[id] = mod
 	return mod, nil
 }
 
@@ -162,11 +162,11 @@ func (mod *Model) Migrate(force bool) error {
 }
 
 // Select 读取已加载模型
-func Select(name string) *Model {
-	mod, has := Models[name]
+func Select(id string) *Model {
+	mod, has := Models[id]
 	if !has {
 		exception.New(
-			fmt.Sprintf("Model:%s; 尚未加载", name),
+			fmt.Sprintf("Model:%s; 尚未加载", id),
 			400,
 		).Throw()
 	}
