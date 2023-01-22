@@ -123,7 +123,7 @@ func TestWatch(t *testing.T) {
 	exists, _ := app.Exists(filepath.Join("models", "tmp", "temp.mod.yao"))
 	log.Info("CHECK: %v", exists)
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	// CREATE
 	err := app.Write(filepath.Join("models", "tmp", "temp.mod.yao"), []byte("{}"))
@@ -152,7 +152,7 @@ func TestWatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	// CREATE, _ := trace.Load("CREATE")
 	// WRITE, _ := trace.Load("WRITE")
 	// REMOVE, _ := trace.Load("REMOVE")
