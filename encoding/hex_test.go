@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	"github.com/go-playground/assert/v2"
-	"github.com/yaoapp/gou"
+	"github.com/yaoapp/gou/process"
 )
 
 func TestHexEncode(t *testing.T) {
 	data := "SomeData"
-	res, err := gou.NewProcess("encoding.hex.Encode", data).Exec()
+	res, err := process.New("encoding.hex.Encode", data).Exec()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func TestHexEncode(t *testing.T) {
 
 func TestHexDecode(t *testing.T) {
 	data := hex.EncodeToString([]byte("SomeData"))
-	res, err := gou.NewProcess("encoding.hex.Decode", data).Exec()
+	res, err := process.New("encoding.hex.Decode", data).Exec()
 	if err != nil {
 		t.Fatal(err)
 	}

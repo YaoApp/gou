@@ -1,17 +1,17 @@
 package ssl
 
 import (
-	"github.com/yaoapp/gou"
+	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/kun/exception"
 )
 
 func init() {
-	gou.RegisterProcessHandler("ssl.Sign", ProcessSign)
-	gou.RegisterProcessHandler("ssl.Verify", ProcessVerify)
+	process.Register("ssl.Sign", ProcessSign)
+	process.Register("ssl.Verify", ProcessVerify)
 }
 
 // ProcessSign computes a signature for the specified data by generating a cryptographic digital signature
-func ProcessSign(process *gou.Process) interface{} {
+func ProcessSign(process *process.Process) interface{} {
 	process.ValidateArgNums(3)
 	data := process.ArgsString(0)
 	certName := process.ArgsString(1)
@@ -31,7 +31,7 @@ func ProcessSign(process *gou.Process) interface{} {
 }
 
 // ProcessVerify verifies that the signature is correct for the specified data
-func ProcessVerify(process *gou.Process) interface{} {
+func ProcessVerify(process *process.Process) interface{} {
 	process.ValidateArgNums(4)
 	data := process.ArgsString(0)
 	sign := process.ArgsString(1)
