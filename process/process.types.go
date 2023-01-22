@@ -12,5 +12,5 @@ type Process struct {
 	Sid     string                 // Session ID
 }
 
-// Handler the process hanlder
+// Handler the process handler
 type Handler func(process *Process) interface{}

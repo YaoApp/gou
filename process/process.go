@@ -31,7 +31,7 @@ func Of(id string, args ...interface{}) (*Process, error) {
 
 // Run the process
 func (process *Process) Run() interface{} {
-	hd, err := process.hanlder()
+	hd, err := process.handler()
 	if err != nil {
 		exception.New("[Process] %s Error: %s", 500, process.Name, err.Error()).Throw()
 		return nil
@@ -42,7 +42,7 @@ func (process *Process) Run() interface{} {
 // Exec execute the process and return error
 func (process *Process) Exec() (value interface{}, err error) {
 	defer func() { err = exception.Catch(recover()) }()
-	hd, err := process.hanlder()
+	hd, err := process.handler()
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +83,8 @@ func (process *Process) WithGlobal(global map[string]interface{}) *Process {
 	return process
 }
 
-// hanlder get the process hanlder
-func (process *Process) hanlder() (Handler, error) {
+// handler get the process handler
+func (process *Process) handler() (Handler, error) {
 	if hander, has := Handlers[process.Handler]; has {
 		return hander, nil
 	}

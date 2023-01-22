@@ -32,7 +32,7 @@ func TestOpen(t *testing.T) {
 	defer srv.Stop()
 
 	var ws *WSClient = nil
-	var hanlders = Handlers{
+	var handlers = Handlers{
 		Connected: func(option WSClientOption) error {
 			fmt.Println("onConnected", option)
 			fmt.Println("Online", srv.Online())
@@ -58,7 +58,7 @@ func TestOpen(t *testing.T) {
 			fmt.Printf("Error: %s\n", err)
 		},
 	}
-	ws = NewWSClient(WSClientOption{URL: url, Protocols: []string{"po"}}, hanlders)
+	ws = NewWSClient(WSClientOption{URL: url, Protocols: []string{"po"}}, handlers)
 	err := ws.Open()
 	if err != nil {
 		t.Fatal(err)
