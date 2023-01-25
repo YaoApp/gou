@@ -108,5 +108,5 @@ func TestRuntimeExecES6(t *testing.T) {
 }
 
 func prepare(t *testing.T) (*Runtime, string) {
-	return LoadRuntime(Option{}), "/scripts"
+	return LoadRuntime(Option{}), "scripts"
 }
