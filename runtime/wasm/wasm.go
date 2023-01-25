@@ -14,6 +14,7 @@ import (
 
 // Instances the wams instance
 var Instances = map[string]*Instance{}
+var heap = []byte{}
 
 func init() {
 	err := wamr.Runtime().FullInit(false, nil, 1)
@@ -39,7 +40,7 @@ func Load(file string, id string) (*Instance, error) {
 		return nil, err
 	}
 
-	wasmInstance, err := wamr.NewInstance(module, 8092, 8092)
+	wasmInstance, err := wamr.NewInstance(module, 10240, 10240)
 	if err != nil {
 		return nil, err
 	}
