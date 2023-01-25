@@ -21,9 +21,11 @@ func NewScript(file string, id string, timeout ...time.Duration) *Script {
 		t = timeout[0]
 	}
 	return &Script{
-		ID:      id,
-		File:    file,
-		Timeout: t,
+		ID:       id,
+		File:     file,
+		Timeout:  t,
+		Instance: map[*Isolate]*v8go.UnboundScript{},
+		Cache:    map[*Isolate]*v8go.Context{},
 	}
 }
 
@@ -40,27 +42,17 @@ func (script *Script) NewContent(sid string, global map[string]interface{}) (*Co
 		return nil, err
 	}
 
-	ctx := v8go.NewContext(iso)
-	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{CachedData: script.Cache}) // compile script in new isolate with cached data
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = instance.Run(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Context{
-		Context: ctx,
+		Context: script.Cache[iso],
 		SID:     sid,
 		Data:    global,
 		Iso:     iso,
 	}, nil
+
 }
 
 // Compile the javascript
-func (script *Script) Compile(timeout time.Duration) error {
+func (script *Script) Compile(iso *Isolate, timeout time.Duration) error {
 
 	source, err := application.App.Read(script.File)
 	if err != nil {
@@ -71,22 +63,20 @@ func (script *Script) Compile(timeout time.Duration) error {
 		timeout = time.Second * 5
 	}
 
-	iso, err := SelectIso(timeout)
-	if err != nil {
-		return err
-	}
-	defer iso.Unlock()
-
 	ctx := v8go.NewContext(iso)
-	defer ctx.Close()
-
 	script.Source = string(source)
 
-	data, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
+	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
 	if err != nil {
 		return err
 	}
 
-	script.Cache = data.CreateCodeCache()
+	_, err = instance.Run(ctx)
+	if err != nil {
+		return err
+	}
+
+	script.Instance[iso] = instance
+	script.Cache[iso] = ctx
 	return nil
 }

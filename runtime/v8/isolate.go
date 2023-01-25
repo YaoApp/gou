@@ -51,6 +51,24 @@ func NewIsolate() (*Isolate, error) {
 
 	// create instance
 	new := &Isolate{Isolate: iso, status: IsoReady}
+
+	// Compile Scirpts
+	for _, script := range Scripts {
+		timeout := script.Timeout
+		if timeout == 0 {
+			timeout = time.Millisecond * 100
+		}
+		script.Compile(new, timeout)
+	}
+
+	for _, script := range RootScripts {
+		timeout := script.Timeout
+		if timeout == 0 {
+			timeout = time.Millisecond * 100
+		}
+		script.Compile(new, timeout)
+	}
+
 	isolates = append(isolates, new)
 	chIsoReady <- new
 	return new, nil

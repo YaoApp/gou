@@ -9,17 +9,6 @@ import (
 )
 
 func prepare(t *testing.T) {
-	isolates = []*Isolate{}
-	chIsoReady = make(chan *Isolate, isoMaxSize)
-	err := Setup(2, 10)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	prepareScripts(t)
-}
-
-func prepareScripts(t *testing.T) {
 	root := os.Getenv("GOU_TEST_APPLICATION")
 
 	// Load app
@@ -51,5 +40,16 @@ func prepareScripts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+
+	prepareSetup(t)
+}
+
+func prepareSetup(t *testing.T) {
+	isolates = []*Isolate{}
+	chIsoReady = make(chan *Isolate, isoMaxSize)
+	err := Setup(2, 10)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

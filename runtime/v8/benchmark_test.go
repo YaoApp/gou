@@ -22,6 +22,22 @@ func BenchmarkSelect(b *testing.B) {
 	}
 }
 
+func BenchmarkSelectIso(b *testing.B) {
+	var t *testing.T
+	prepare(t)
+	// Setup(10, 100)
+	log.SetLevel(log.FatalLevel)
+
+	// run the Call function b.N times
+	for n := 0; n < b.N; n++ {
+		iso, err := SelectIso(100 * time.Millisecond)
+		if err != nil {
+			b.Fatal(err)
+		}
+		iso.Unlock()
+	}
+}
+
 func BenchmarkNewContent(b *testing.B) {
 	var t *testing.T
 	prepare(t)

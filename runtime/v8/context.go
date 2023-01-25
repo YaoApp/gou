@@ -24,7 +24,7 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 
 // Close Context
 func (ctx *Context) Close() error {
-	ctx.Context.Close()
+	// ctx.Context.Close()
 	ctx.Iso.Unlock()
 	ctx.Context = nil
 	ctx.Data = nil

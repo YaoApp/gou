@@ -8,11 +8,12 @@ import (
 
 // Script v8 scripts
 type Script struct {
-	ID      string
-	File    string
-	Cache   *v8go.CompilerCachedData
-	Source  string
-	Timeout time.Duration
+	ID       string
+	File     string
+	Instance map[*Isolate]*v8go.UnboundScript
+	Cache    map[*Isolate]*v8go.Context
+	Source   string
+	Timeout  time.Duration
 }
 
 // Isolate v8 Isolate
