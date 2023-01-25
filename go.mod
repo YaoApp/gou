@@ -24,7 +24,7 @@ require (
 	github.com/yaoapp/xun v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	gopkg.in/yaml.v3 v3.0.1
-	rogchap.com/v8go v0.7.0
+	rogchap.com/v8go v0.8.0
 )
 
 require (
@@ -84,5 +84,3 @@ require (
 replace github.com/yaoapp/kun => ../kun
 
 replace github.com/yaoapp/xun => ../xun
-
-replace rogchap.com/v8go => ../v8go

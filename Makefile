@@ -5,7 +5,7 @@ VETPACKAGES ?= $(shell $(GO) list ./... | grep -v /examples/)
 GOFILES := $(shell find . -name "*.go")
 
 # ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-TESTFOLDER := $(shell $(GO) list ./... | grep -E 'process|model|wasm' | grep -v 'wamr')
+TESTFOLDER := $(shell $(GO) list ./... | grep -E 'process|model|wasm|v8' | grep -v 'wamr')
 TESTTAGS ?= ""
 
 .PHONY: test
@@ -31,6 +31,12 @@ test:
 			cat profile.out | grep -v "mode:" >> coverage.out; \
 			rm profile.out; \
 		fi; \
+	done
+
+.PHONY: bench
+bench:
+	for d in $(TESTFOLDER); do \
+		$(GO) test -run Benchmark -v -bench=. $$d; \
 	done
 
 .PHONY: fmt
