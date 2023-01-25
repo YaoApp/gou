@@ -1,6 +1,7 @@
 package v8
 
 import (
+	"sync"
 	"time"
 
 	"rogchap.com/v8go"
@@ -8,12 +9,11 @@ import (
 
 // Script v8 scripts
 type Script struct {
-	ID       string
-	File     string
-	Instance map[*Isolate]*v8go.UnboundScript
-	Cache    map[*Isolate]*v8go.Context
-	Source   string
-	Timeout  time.Duration
+	ID      string
+	File    string
+	Context sync.Map
+	Source  string
+	Timeout time.Duration
 }
 
 // Isolate v8 Isolate

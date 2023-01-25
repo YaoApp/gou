@@ -1,6 +1,8 @@
 package v8
 
 import (
+	"fmt"
+	"sync"
 	"time"
 
 	"github.com/yaoapp/gou/application"
@@ -21,11 +23,10 @@ func NewScript(file string, id string, timeout ...time.Duration) *Script {
 		t = timeout[0]
 	}
 	return &Script{
-		ID:       id,
-		File:     file,
-		Timeout:  t,
-		Instance: map[*Isolate]*v8go.UnboundScript{},
-		Cache:    map[*Isolate]*v8go.Context{},
+		ID:      id,
+		File:    file,
+		Timeout: t,
+		Context: sync.Map{},
 	}
 }
 
@@ -42,8 +43,13 @@ func (script *Script) NewContent(sid string, global map[string]interface{}) (*Co
 		return nil, err
 	}
 
+	ctx, ok := script.Context.Load(iso)
+	if !ok {
+		return nil, fmt.Errorf("[v8] get content error")
+	}
+
 	return &Context{
-		Context: script.Cache[iso],
+		Context: ctx.(*v8go.Context),
 		SID:     sid,
 		Data:    global,
 		Iso:     iso,
@@ -76,7 +82,6 @@ func (script *Script) Compile(iso *Isolate, timeout time.Duration) error {
 		return err
 	}
 
-	script.Instance[iso] = instance
-	script.Cache[iso] = ctx
+	script.Context.Store(iso, ctx)
 	return nil
 }
