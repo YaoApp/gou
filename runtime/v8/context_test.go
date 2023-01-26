@@ -17,7 +17,7 @@ func TestCall(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx, err := basic.NewContent("SID_1010", map[string]interface{}{"name": "testing"})
+	ctx, err := basic.NewContext("SID_1010", map[string]interface{}{"name": "testing"})
 	if err != nil {
 		t.Fatal(err)
 	}

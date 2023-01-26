@@ -59,7 +59,7 @@ func BenchmarkSelectIso(b *testing.B) {
 	b.StopTimer()
 }
 
-func BenchmarkNewContent(b *testing.B) {
+func BenchmarkNewContext(b *testing.B) {
 	b.ResetTimer()
 	var t *testing.T
 	prepare(t)
@@ -75,7 +75,7 @@ func BenchmarkNewContent(b *testing.B) {
 
 	// run the Call function b.N times
 	for n := 0; n < b.N; n++ {
-		ctx, err := basic.NewContent("SID_1010", map[string]interface{}{"name": "testing"})
+		ctx, err := basic.NewContext("SID_1010", map[string]interface{}{"name": "testing"})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -100,7 +100,7 @@ func BenchmarkNewContentPB(b *testing.B) {
 	// run the Call function b.N times
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			ctx, err := basic.NewContent("SID_1010", map[string]interface{}{"name": "testing"})
+			ctx, err := basic.NewContext("SID_1010", map[string]interface{}{"name": "testing"})
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -124,7 +124,7 @@ func BenchmarkCall(b *testing.B) {
 	}
 
 	basic.Timeout = time.Minute * 5
-	ctx, err := basic.NewContent("SID_1010", map[string]interface{}{"name": "testing"})
+	ctx, err := basic.NewContext("SID_1010", map[string]interface{}{"name": "testing"})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func BenchmarkCallPB(b *testing.B) {
 	}
 
 	basic.Timeout = time.Minute * 5
-	ctx, err := basic.NewContent("SID_1010", map[string]interface{}{"name": "testing"})
+	ctx, err := basic.NewContext("SID_1010", map[string]interface{}{"name": "testing"})
 	if err != nil {
 		b.Fatal(err)
 	}

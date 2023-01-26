@@ -53,6 +53,7 @@ func NewIsolate() (*Isolate, error) {
 	new := &Isolate{Isolate: iso, status: IsoReady}
 
 	// Compile Scirpts
+	contexts[new] = map[string]*v8go.Context{}
 	for _, script := range Scripts {
 		timeout := script.Timeout
 		if timeout == 0 {

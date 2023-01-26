@@ -1,7 +1,6 @@
 package v8
 
 import (
-	"sync"
 	"time"
 
 	"rogchap.com/v8go"
@@ -11,7 +10,6 @@ import (
 type Script struct {
 	ID      string
 	File    string
-	Context sync.Map
 	Source  string
 	Timeout time.Duration
 }
@@ -24,6 +22,7 @@ type Isolate struct {
 
 // Context v8 Context
 type Context struct {
+	ID      string                 // the script id
 	SID     string                 // set the session id
 	Data    map[string]interface{} // set the global data
 	Timeout time.Duration          // terminate the execution after this time
