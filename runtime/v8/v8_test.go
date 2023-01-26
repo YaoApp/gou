@@ -47,6 +47,8 @@ func prepare(t *testing.T) {
 
 func prepareSetup(t *testing.T) {
 
+	EnablePrecompile()
+
 	chIsoReady = make(chan *Isolate, runtimeOption.MaxSize)
 	isolates.Range(func(iso *Isolate) bool {
 		isolates.Remove(iso)

@@ -32,21 +32,22 @@ func NewIsolate() (*Isolate, error) {
 	new := &Isolate{Isolate: iso, status: IsoReady, contexts: map[*Script]*v8go.Context{}}
 
 	// Compile Scirpts
-	// contexts[new] = map[string]*v8go.Context{}
-	for _, script := range Scripts {
-		timeout := script.Timeout
-		if timeout == 0 {
-			timeout = time.Millisecond * 100
+	if runtimeOption.Precompile {
+		for _, script := range Scripts {
+			timeout := script.Timeout
+			if timeout == 0 {
+				timeout = time.Millisecond * 100
+			}
+			script.Compile(new, timeout)
 		}
-		script.Compile(new, timeout)
-	}
 
-	for _, script := range RootScripts {
-		timeout := script.Timeout
-		if timeout == 0 {
-			timeout = time.Millisecond * 100
+		for _, script := range RootScripts {
+			timeout := script.Timeout
+			if timeout == 0 {
+				timeout = time.Millisecond * 100
+			}
+			script.Compile(new, timeout)
 		}
-		script.Compile(new, timeout)
 	}
 
 	isolates.Add(new)

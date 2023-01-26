@@ -7,6 +7,16 @@ func SetHeapAvailableSize(size uint) {
 	runtimeOption.HeapAvailableSize = uint64(size)
 }
 
+// DisablePrecompile disable the precompile
+func DisablePrecompile() {
+	runtimeOption.Precompile = false
+}
+
+// EnablePrecompile enable the precompile feature
+func EnablePrecompile() {
+	runtimeOption.Precompile = true
+}
+
 // Validate the option
 func (option *Option) Validate() {
 

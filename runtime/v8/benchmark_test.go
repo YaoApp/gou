@@ -119,6 +119,9 @@ func BenchmarkNewContentPBRelease(b *testing.B) {
 	SetHeapAvailableSize(2018051350)
 	defer SetHeapAvailableSize(524288000)
 
+	DisablePrecompile()
+	defer EnablePrecompile()
+
 	basic, err := Select("runtime.basic")
 	if err != nil {
 		b.Fatal(err)
