@@ -44,7 +44,7 @@ func TestNew(t *testing.T) {
 	})
 	assert.Equal(t, "models.widget.Test", p.Name)
 	assert.Equal(t, "models", p.Group)
-	assert.Equal(t, "test", p.Method)
+	assert.Equal(t, "Test", p.Method)
 	assert.Equal(t, "widget", p.ID)
 	assert.Equal(t, []interface{}{"foo", "bar"}, p.Args)
 
@@ -54,7 +54,7 @@ func TestNew(t *testing.T) {
 	})
 	assert.Equal(t, "models.widget.Id.Test", p.Name)
 	assert.Equal(t, "models", p.Group)
-	assert.Equal(t, "test", p.Method)
+	assert.Equal(t, "Test", p.Method)
 	assert.Equal(t, "widget.id", p.ID)
 	assert.Equal(t, []interface{}{"foo", "bar"}, p.Args)
 
@@ -84,7 +84,7 @@ func TestNew(t *testing.T) {
 	})
 	assert.Equal(t, "session.Get", p.Name)
 	assert.Equal(t, "session", p.Group)
-	assert.Equal(t, "get", p.Method)
+	assert.Equal(t, "Get", p.Method)
 	assert.Equal(t, "", p.ID)
 	assert.Equal(t, []interface{}{"foo", "bar"}, p.Args)
 
@@ -118,7 +118,7 @@ func TestRun(t *testing.T) {
 		data, ok := res.(map[string]interface{})
 		assert.True(t, ok)
 		assert.Equal(t, "models", data["group"])
-		assert.Equal(t, "test", data["method"])
+		assert.Equal(t, "Test", data["method"])
 		assert.Equal(t, "widget", data["id"])
 		assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
 	})
@@ -142,7 +142,7 @@ func TestRun(t *testing.T) {
 		data, ok := res.(map[string]interface{})
 		assert.True(t, ok)
 		assert.Equal(t, "session", data["group"])
-		assert.Equal(t, "get", data["method"])
+		assert.Equal(t, "Get", data["method"])
 		assert.Equal(t, "", data["id"])
 		assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
 	})
@@ -178,7 +178,7 @@ func TestExec(t *testing.T) {
 	data, ok = res.(map[string]interface{})
 	assert.True(t, ok)
 	assert.Equal(t, "models", data["group"])
-	assert.Equal(t, "test", data["method"])
+	assert.Equal(t, "Test", data["method"])
 	assert.Equal(t, "widget", data["id"])
 	assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
 
@@ -198,7 +198,7 @@ func TestExec(t *testing.T) {
 	data, ok = res.(map[string]interface{})
 	assert.True(t, ok)
 	assert.Equal(t, "session", data["group"])
-	assert.Equal(t, "get", data["method"])
+	assert.Equal(t, "Get", data["method"])
 	assert.Equal(t, "", data["id"])
 	assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
 
