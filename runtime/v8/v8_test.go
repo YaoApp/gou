@@ -52,8 +52,8 @@ func prepareSetup(t *testing.T) {
 		return true
 	})
 
-	chIsoReady = make(chan *Isolate, isoMaxSize)
-	err := Setup(2, 10)
+	chIsoReady = make(chan *Isolate, runtimeOption.MaxSize)
+	err := New(&Option{})
 	if err != nil {
 		t.Fatal(err)
 	}

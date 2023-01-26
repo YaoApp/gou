@@ -28,11 +28,11 @@ func NewScript(file string, id string, timeout ...time.Duration) *Script {
 }
 
 // Compile the javascript
-func (script *Script) Compile(iso *Isolate, timeout time.Duration) error {
+func (script *Script) Compile(iso *Isolate, timeout time.Duration) (*v8go.Context, error) {
 
 	source, err := application.App.Read(script.File)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if timeout == 0 {
@@ -44,14 +44,14 @@ func (script *Script) Compile(iso *Isolate, timeout time.Duration) error {
 
 	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = instance.Run(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	contexts[iso][script.ID] = ctx
-	return nil
+	iso.contexts[script] = ctx // cache
+	return ctx, nil
 }

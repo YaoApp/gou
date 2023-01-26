@@ -11,52 +11,28 @@ import (
 
 var isolates = &Isolates{Data: &sync.Map{}, Len: 0}
 var chIsoReady chan *Isolate
-
-var isoMaxSize = 10
-var isoInitSize = 2
-var isoHeapSizeLimit uint64 = 1518338048 // 1.5G
-var isoHeapSizeRelease uint64 = 52428800 //52428800 // 50M
-
-// Setup Initialize the v8 virtual machines
-func Setup(size int, maxSize int) error {
-
-	// Initialize the channels
-	isoMaxSize = maxSize
-	isoInitSize = size
-	chIsoReady = make(chan *Isolate, isoMaxSize)
-
-	for i := 0; i < isoInitSize; i++ {
-		_, err := NewIsolate()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
+var newIsolateLock = &sync.RWMutex{}
 
 // NewIsolate create a new Isolate
 func NewIsolate() (*Isolate, error) {
-	var lock sync.Mutex
-	lock.Lock()
-	defer lock.Unlock()
 
-	if isolates.Len >= isoMaxSize {
-		log.Warn("[V8] The maximum number of v8 vm has been reached (%d)", isoMaxSize)
-		return nil, fmt.Errorf("The maximum number of v8 vm has been reached (%d)", isoMaxSize)
+	newIsolateLock.Lock()
+	defer newIsolateLock.Unlock()
+
+	if isolates.Len >= runtimeOption.MaxSize {
+		log.Warn("[V8] The maximum number of v8 vm has been reached (%d)", runtimeOption.MaxSize)
+		return nil, fmt.Errorf("The maximum number of v8 vm has been reached (%d)", runtimeOption.MaxSize)
 	}
-
-	log.Info("[V8] Add a new v8 vm")
 
 	iso := v8go.NewIsolate()
 
 	// add yao javascript apis
 
 	// create instance
-	new := &Isolate{Isolate: iso, status: IsoReady}
+	new := &Isolate{Isolate: iso, status: IsoReady, contexts: map[*Script]*v8go.Context{}}
 
 	// Compile Scirpts
-	contexts[new] = map[string]*v8go.Context{}
+	// contexts[new] = map[string]*v8go.Context{}
 	for _, script := range Scripts {
 		timeout := script.Timeout
 		if timeout == 0 {
@@ -95,6 +71,33 @@ func SelectIso(timeout time.Duration) (*Isolate, error) {
 	}
 }
 
+// Resize set the maxSize
+func (list *Isolates) Resize(initSize, maxSize int) error {
+	if maxSize > 100 {
+		log.Warn("[V8] the maximum value of maxSize is 100")
+		maxSize = 100
+	}
+
+	// Remove iso
+	isolates.Range(func(iso *Isolate) bool {
+		isolates.Remove(iso)
+		return true
+	})
+
+	runtimeOption.InitSize = initSize
+	runtimeOption.MaxSize = maxSize
+	runtimeOption.Validate()
+	chIsoReady = make(chan *Isolate, runtimeOption.MaxSize)
+	for i := 0; i < runtimeOption.InitSize; i++ {
+		_, err := NewIsolate()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Add a isolate
 func (list *Isolates) Add(iso *Isolate) {
 	list.Data.Store(iso, true)
@@ -131,8 +134,9 @@ func (iso *Isolate) Unlock() error {
 		return nil
 	}
 
-	// Remove the iso and create new
+	// Remove the iso and create new one
 	go func() {
+		log.Info("[Unlock] iso will be removed")
 		isolates.Remove(iso)
 		NewIsolate()
 	}()
@@ -162,11 +166,11 @@ func (iso *Isolate) health() bool {
 	// }
 
 	stat := iso.GetHeapStatistics()
-	if stat.TotalHeapSize > isoHeapSizeRelease {
+	if stat.TotalHeapSize > runtimeOption.HeapSizeRelease {
 		return false
 	}
 
-	if stat.TotalAvailableSize < 524288000 { // 500M
+	if stat.TotalAvailableSize < runtimeOption.HeapAvailableSize { // 500M
 		return false
 	}
 

@@ -4,6 +4,22 @@ import (
 	"fmt"
 )
 
+var runtimeOption = &Option{}
+
+// New make a new v8 runtime
+func New(option *Option) error {
+	option.Validate()
+	runtimeOption = option
+	chIsoReady = make(chan *Isolate, option.MaxSize)
+	for i := 0; i < option.InitSize; i++ {
+		_, err := NewIsolate()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Load load the script
 func Load(file string, id string) (*Script, error) {
 	script := NewScript(file, id)

@@ -86,8 +86,8 @@ func BenchmarkNewContentPB(b *testing.B) {
 	b.ResetTimer()
 	var t *testing.T
 	prepare(t)
-	Setup(100, 100)
-	log.SetLevel(log.FatalLevel)
+	isolates.Resize(100, 100)
+	log.SetLevel(log.TraceLevel)
 
 	basic, err := Select("runtime.basic")
 	if err != nil {
@@ -141,7 +141,7 @@ func BenchmarkCallPB(b *testing.B) {
 	b.ResetTimer()
 	var t *testing.T
 	prepare(t)
-	Setup(100, 100)
+	isolates.Resize(100, 100)
 	log.SetLevel(log.FatalLevel)
 
 	basic, err := Select("runtime.basic")
@@ -192,7 +192,7 @@ func BenchmarkProcessScriptsPB(b *testing.B) {
 	b.ResetTimer()
 	var t *testing.T
 	prepare(t)
-	Setup(100, 100)
+	isolates.Resize(100, 100)
 
 	p, err := process.Of("scripts.runtime.basic.Hello", "world")
 	if err != nil {

@@ -1,13 +1,10 @@
 package v8
 
 import (
-	"fmt"
 	"time"
 
 	"rogchap.com/v8go"
 )
-
-var contexts = map[*Isolate]map[string]*v8go.Context{}
 
 // NewContext create a new context
 func (script *Script) NewContext(sid string, global map[string]interface{}) (*Context, error) {
@@ -22,19 +19,27 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 		return nil, err
 	}
 
-	ctx, ok := contexts[iso][script.ID]
-	if !ok {
-		return nil, fmt.Errorf("context not compiled")
+	var context *v8go.Context
+	var has bool
+
+	// load from cache
+	context, has = iso.contexts[script]
+
+	// re-compile and save to cache
+	if !has {
+		context, err = script.Compile(iso, timeout)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &Context{
 		ID:      script.ID,
-		Context: ctx,
+		Context: context,
 		SID:     sid,
 		Data:    global,
 		Iso:     iso,
 	}, nil
-
 }
 
 // Call call the script function
@@ -56,10 +61,11 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 
 // Close Context
 func (ctx *Context) Close() error {
+	defer ctx.Iso.Unlock()
 	// ctx.Context.Close()
 	ctx.Context = nil
 	ctx.Data = nil
 	ctx.SID = ""
-	ctx.Iso.Unlock()
+
 	return nil
 }
