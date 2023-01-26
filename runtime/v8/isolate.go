@@ -136,7 +136,7 @@ func (iso *Isolate) Unlock() error {
 
 	// Remove the iso and create new one
 	go func() {
-		log.Info("[Unlock] iso will be removed")
+		log.Info("[V8] iso %p will be removed", iso)
 		isolates.Remove(iso)
 		NewIsolate()
 	}()

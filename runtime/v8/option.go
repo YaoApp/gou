@@ -2,6 +2,11 @@ package v8
 
 import "github.com/yaoapp/kun/log"
 
+// SetHeapAvailableSize set runtime Available
+func SetHeapAvailableSize(size uint) {
+	runtimeOption.HeapAvailableSize = uint64(size)
+}
+
 // Validate the option
 func (option *Option) Validate() {
 

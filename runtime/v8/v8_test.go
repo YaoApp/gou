@@ -47,14 +47,11 @@ func prepare(t *testing.T) {
 
 func prepareSetup(t *testing.T) {
 
+	chIsoReady = make(chan *Isolate, runtimeOption.MaxSize)
 	isolates.Range(func(iso *Isolate) bool {
 		isolates.Remove(iso)
 		return true
 	})
 
-	chIsoReady = make(chan *Isolate, runtimeOption.MaxSize)
-	err := New(&Option{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	New(&Option{})
 }

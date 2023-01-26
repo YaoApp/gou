@@ -33,6 +33,17 @@ func TestSelectIso(t *testing.T) {
 	assert.NotNil(t, res)
 }
 
+func TestResize(t *testing.T) {
+	prepare(t)
+	assert.Equal(t, 2, isolates.Len)
+	assert.Equal(t, 2, len(chIsoReady))
+
+	isolates.Resize(10, 20)
+	assert.Equal(t, 10, isolates.Len)
+	assert.Equal(t, 10, len(chIsoReady))
+	assert.Equal(t, 20, runtimeOption.MaxSize)
+}
+
 func TestUnlock(t *testing.T) {
 	prepare(t)
 	iso, err := SelectIso(time.Millisecond * 100)

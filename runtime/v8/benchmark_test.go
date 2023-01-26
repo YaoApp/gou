@@ -87,7 +87,37 @@ func BenchmarkNewContentPB(b *testing.B) {
 	var t *testing.T
 	prepare(t)
 	isolates.Resize(100, 100)
-	log.SetLevel(log.TraceLevel)
+	log.SetLevel(log.FatalLevel)
+
+	basic, err := Select("runtime.basic")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	basic.Timeout = time.Millisecond * 500
+	// run the Call function b.N times
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			ctx, err := basic.NewContext("SID_1010", map[string]interface{}{"name": "testing"})
+			if err != nil {
+				b.Fatal(err)
+			}
+			ctx.Close()
+		}
+	})
+
+	b.StopTimer()
+}
+
+func BenchmarkNewContentPBRelease(b *testing.B) {
+	b.ResetTimer()
+	var t *testing.T
+	prepare(t)
+	isolates.Resize(100, 100)
+	log.SetLevel(log.FatalLevel)
+
+	SetHeapAvailableSize(2018051350)
+	defer SetHeapAvailableSize(524288000)
 
 	basic, err := Select("runtime.basic")
 	if err != nil {
