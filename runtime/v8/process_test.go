@@ -9,7 +9,7 @@ import (
 
 func TestProcessScripts(t *testing.T) {
 	prepare(t)
-	assert.Equal(t, 2, len(isolates))
+	assert.Equal(t, 2, isolates.Len)
 	assert.Equal(t, 2, len(chIsoReady))
 
 	p, err := process.Of("scripts.runtime.basic.Hello", "world")
@@ -27,7 +27,7 @@ func TestProcessScripts(t *testing.T) {
 
 func TestProcessScriptsRoot(t *testing.T) {
 	prepare(t)
-	assert.Equal(t, 2, len(isolates))
+	assert.Equal(t, 2, isolates.Len)
 	assert.Equal(t, 2, len(chIsoReady))
 
 	p, err := process.Of("studio.runtime.basic.Hello", "world")

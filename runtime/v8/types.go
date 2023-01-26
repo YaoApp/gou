@@ -1,6 +1,7 @@
 package v8
 
 import (
+	"sync"
 	"time"
 
 	"rogchap.com/v8go"
@@ -18,6 +19,12 @@ type Script struct {
 type Isolate struct {
 	*v8go.Isolate
 	status uint8
+}
+
+// Isolates loaded isolate
+type Isolates struct {
+	Len  int
+	Data *sync.Map
 }
 
 // Context v8 Context

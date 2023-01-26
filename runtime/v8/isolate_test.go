@@ -10,7 +10,7 @@ import (
 
 func TestSetup(t *testing.T) {
 	prepare(t)
-	assert.Equal(t, 2, len(isolates))
+	assert.Equal(t, 2, isolates.Len)
 	assert.Equal(t, 2, len(chIsoReady))
 }
 
@@ -22,7 +22,7 @@ func TestSelectIso(t *testing.T) {
 			t.Fatal(fmt.Errorf("%d %s", i, err.Error()))
 		}
 	}
-	assert.Equal(t, 10, len(isolates))
+	assert.Equal(t, 10, isolates.Len)
 
 	var res error
 	for i := 0; i < 5; i++ {

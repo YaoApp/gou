@@ -46,10 +46,12 @@ func prepare(t *testing.T) {
 }
 
 func prepareSetup(t *testing.T) {
-	for _, iso := range isolates {
-		iso.Dispose()
-	}
-	isolates = []*Isolate{}
+
+	isolates.Range(func(iso *Isolate) bool {
+		isolates.Remove(iso)
+		return true
+	})
+
 	chIsoReady = make(chan *Isolate, isoMaxSize)
 	err := Setup(2, 10)
 	if err != nil {
