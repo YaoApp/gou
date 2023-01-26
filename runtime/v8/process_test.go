@@ -2,6 +2,7 @@ package v8
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/process"
@@ -9,6 +10,7 @@ import (
 
 func TestProcessScripts(t *testing.T) {
 	prepare(t)
+	time.Sleep(20 * time.Millisecond)
 	assert.Equal(t, 2, isolates.Len)
 	assert.Equal(t, 2, len(chIsoReady))
 
@@ -27,6 +29,7 @@ func TestProcessScripts(t *testing.T) {
 
 func TestProcessScriptsRoot(t *testing.T) {
 	prepare(t)
+	time.Sleep(20 * time.Millisecond)
 	assert.Equal(t, 2, isolates.Len)
 	assert.Equal(t, 2, len(chIsoReady))
 

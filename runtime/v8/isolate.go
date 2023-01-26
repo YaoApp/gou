@@ -103,7 +103,7 @@ func (list *Isolates) Resize(initSize, maxSize int) error {
 func (list *Isolates) Add(iso *Isolate) {
 	list.Data.Store(iso, true)
 	list.Len = list.Len + 1
-	chIsoReady <- iso
+	go func() { chIsoReady <- iso }()
 }
 
 // Remove a isolate

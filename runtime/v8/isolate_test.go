@@ -10,6 +10,7 @@ import (
 
 func TestSetup(t *testing.T) {
 	prepare(t)
+	time.Sleep(20 * time.Millisecond)
 	assert.Equal(t, 2, isolates.Len)
 	assert.Equal(t, 2, len(chIsoReady))
 }
@@ -35,10 +36,12 @@ func TestSelectIso(t *testing.T) {
 
 func TestResize(t *testing.T) {
 	prepare(t)
+	time.Sleep(20 * time.Millisecond)
 	assert.Equal(t, 2, isolates.Len)
 	assert.Equal(t, 2, len(chIsoReady))
 
 	isolates.Resize(10, 20)
+	time.Sleep(20 * time.Millisecond)
 	assert.Equal(t, 10, isolates.Len)
 	assert.Equal(t, 10, len(chIsoReady))
 	assert.Equal(t, 20, runtimeOption.MaxSize)
