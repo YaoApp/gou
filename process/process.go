@@ -96,7 +96,7 @@ func (process *Process) handler() (Handler, error) {
 
 // make parse the process
 func (process *Process) make() error {
-	fields := strings.Split(strings.ToLower(process.Name), ".")
+	fields := strings.Split(process.Name, ".")
 	if len(fields) < 2 {
 		return fmt.Errorf("Exception|404:%s not found", process.Name)
 	}
@@ -105,19 +105,30 @@ func (process *Process) make() error {
 	switch process.Group {
 
 	case "models", "schemas", "stores", "tasks", "schedules", "widgets":
+		// models.user.pet.Find
 		process.Method = fields[len(fields)-1]
-		process.ID = strings.Join(fields[1:len(fields)-1], ".")
-		process.Handler = fmt.Sprintf("%s.%s", process.Group, process.Method)
+		process.ID = strings.ToLower(strings.Join(fields[1:len(fields)-1], "."))
+		process.Handler = strings.ToLower(fmt.Sprintf("%s.%s", process.Group, process.Method))
 		break
 
-	case "flows", "scripts", "plugins":
+	case "flows", "plugins":
 		process.Handler = process.Group
 		process.ID = strings.Join(fields[1:], ".")
 		break
 
+	case "scripts", "studio":
+		if len(fields) < 3 {
+			return fmt.Errorf("Exception|404:%s not found", process.Name)
+		}
+		// scripts.runtime.basic.Hello
+		process.Handler = strings.ToLower(process.Group)
+		process.ID = strings.ToLower(strings.ToLower(strings.Join(fields[1:len(fields)-1], ".")))
+		process.Method = fields[len(fields)-1]
+		break
+
 	case "session":
 		process.Method = fields[len(fields)-1]
-		process.Handler = fmt.Sprintf("%s.%s", process.Group, process.Method)
+		process.Handler = strings.ToLower(fmt.Sprintf("%s.%s", process.Group, process.Method))
 		break
 
 	default:

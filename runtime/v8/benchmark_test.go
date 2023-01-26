@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/kun/log"
 )
 
@@ -28,7 +29,6 @@ func BenchmarkSelect(b *testing.B) {
 	b.ResetTimer()
 	var t *testing.T
 	prepare(t)
-	// Setup(10, 100)
 	log.SetLevel(log.FatalLevel)
 
 	// run the Call function b.N times
@@ -45,7 +45,6 @@ func BenchmarkSelectIso(b *testing.B) {
 	b.ResetTimer()
 	var t *testing.T
 	prepare(t)
-	// Setup(10, 100)
 	log.SetLevel(log.FatalLevel)
 
 	// run the Call function b.N times
@@ -63,7 +62,6 @@ func BenchmarkNewContext(b *testing.B) {
 	b.ResetTimer()
 	var t *testing.T
 	prepare(t)
-	// Setup(50, 100)
 	log.SetLevel(log.FatalLevel)
 
 	basic, err := Select("runtime.basic")
@@ -88,7 +86,7 @@ func BenchmarkNewContentPB(b *testing.B) {
 	b.ResetTimer()
 	var t *testing.T
 	prepare(t)
-	Setup(50, 50)
+	Setup(100, 100)
 	log.SetLevel(log.FatalLevel)
 
 	basic, err := Select("runtime.basic")
@@ -115,7 +113,6 @@ func BenchmarkCall(b *testing.B) {
 	b.ResetTimer()
 	var t *testing.T
 	prepare(t)
-	// Setup(100, 300)
 	log.SetLevel(log.FatalLevel)
 
 	basic, err := Select("runtime.basic")
@@ -144,7 +141,7 @@ func BenchmarkCallPB(b *testing.B) {
 	b.ResetTimer()
 	var t *testing.T
 	prepare(t)
-	// Setup(100, 300)
+	Setup(100, 100)
 	log.SetLevel(log.FatalLevel)
 
 	basic, err := Select("runtime.basic")
@@ -164,6 +161,49 @@ func BenchmarkCallPB(b *testing.B) {
 			_, err = ctx.Call("Hello", "world")
 			if err != nil {
 				b.Fatal(err)
+			}
+		}
+	})
+
+	b.StopTimer()
+}
+
+func BenchmarkProcessScripts(b *testing.B) {
+	b.ResetTimer()
+	var t *testing.T
+	prepare(t)
+
+	p, err := process.Of("scripts.runtime.basic.Hello", "world")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// run the Call function b.N times
+	for n := 0; n < b.N; n++ {
+		_, err := p.Exec()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkProcessScriptsPB(b *testing.B) {
+	b.ResetTimer()
+	var t *testing.T
+	prepare(t)
+	Setup(100, 100)
+
+	p, err := process.Of("scripts.runtime.basic.Hello", "world")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_, err := p.Exec()
+			if err != nil {
+				t.Fatal(err)
 			}
 		}
 	})

@@ -19,11 +19,27 @@ func LoadRoot(file string, id string) (*Script, error) {
 	return script, nil
 }
 
-// Select a warm intance
+// Select a script
 func Select(id string) (*Script, error) {
 	script, has := Scripts[id]
 	if !has {
-		return nil, fmt.Errorf("[V8] script %s does not exist", id)
+		return nil, fmt.Errorf("script %s not exists", id)
 	}
+	return script, nil
+}
+
+// SelectRoot a script with root privileges
+func SelectRoot(id string) (*Script, error) {
+
+	script, has := RootScripts[id]
+	if has {
+		return script, nil
+	}
+
+	script, has = Scripts[id]
+	if !has {
+		return nil, fmt.Errorf("script %s not exists", id)
+	}
+
 	return script, nil
 }

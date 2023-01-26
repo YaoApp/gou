@@ -46,6 +46,9 @@ func prepare(t *testing.T) {
 }
 
 func prepareSetup(t *testing.T) {
+	for _, iso := range isolates {
+		iso.Dispose()
+	}
 	isolates = []*Isolate{}
 	chIsoReady = make(chan *Isolate, isoMaxSize)
 	err := Setup(2, 10)

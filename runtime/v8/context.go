@@ -24,7 +24,7 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 
 	ctx, ok := contexts[iso][script.ID]
 	if !ok {
-		return nil, fmt.Errorf("[v8] get context error")
+		return nil, fmt.Errorf("context not compiled")
 	}
 
 	return &Context{
@@ -56,7 +56,7 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 
 // Close Context
 func (ctx *Context) Close() error {
-	ctx.Context.Close()
+	// ctx.Context.Close()
 	ctx.Context = nil
 	ctx.Data = nil
 	ctx.SID = ""
