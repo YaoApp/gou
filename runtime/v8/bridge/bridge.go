@@ -128,22 +128,22 @@ func jsValueParse(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 // GoValue cast JavasScript value to Golang value
 //
 // *  JavaScript -> Golang
-// *  ---------------------------------------------------
-// *  | JavaScript            | Golang                  |
-// *  ---------------------------------------------------
-// *  | null                  | nil                     |
-// *  | undefined             | bridge.Undefined        |
-// *  | boolean               | bool                    |
-// *  | number(int)           | int                     |
-// *  | number(float)         | float64                 |
-// *  | bigint                | int64                   |
-// *  | string                | string                  |
-// *  | object                | map[string]interface{}  |
-// *  | array                 | []interface{}           |
-// *  | object(Int8Array)     | []byte                  |
-// *  | object(Promise)       | bridge.Promise          |
-// *  | function              | bridge.Function         |
-// *  ---------------------------------------------------
+// *  |--------------------------------------------------------
+// *  |    | JavaScript            | Golang                   |
+// *  |--------------------------------------------------------
+// *  | ✅ | null                  | nil                     |
+// *  | ✅ | undefined             | bridge.Undefined        |
+// *  | ✅ | boolean               | bool                    |
+// *  | ✅ | number(int)           | int                     |
+// *  | ✅ | number(float)         | float64                 |
+// *  | ✅ | bigint                | int64                   |
+// *  | ✅ | string                | string                  |
+// *  | ✅ | object(Int8Array)     | []byte                  |
+// *  | ✅ | object                | map[string]interface{}  |
+// *  | ✅ | array                 | []interface{}           |
+// *  | ❌ | object(Promise)       | bridge.Promise          |
+// *  | ❌ | function              | bridge.Function         |
+// *  |-------------------------------------------------------
 func GoValue(value *v8go.Value) (interface{}, error) {
 
 	if value.IsNull() {
@@ -164,25 +164,15 @@ func GoValue(value *v8go.Value) (interface{}, error) {
 
 	if value.IsNumber() {
 
-		obj, err := value.AsObject()
-		if err != nil {
-			return nil, err
-		}
-
-		jsValue, err := obj.MethodCall("isInteger")
-		if err != nil {
-			return nil, err
-		}
-
-		if jsValue.Boolean() {
-			return value.Int32(), nil
+		if value.IsInt32() {
+			return int(value.Int32()), nil
 		}
 
 		return value.Number(), nil
 	}
 
 	if value.IsBigInt() {
-		return value.BigInt().Uint64(), nil
+		return value.BigInt().Int64(), nil
 	}
 
 	if value.IsUint8Array() { // bytes
