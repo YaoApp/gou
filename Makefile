@@ -36,7 +36,7 @@ test:
 .PHONY: bench
 bench:
 	for d in $(TESTFOLDER); do \
-		$(GO) test -run Benchmark -v -bench=. $$d; \
+		$(GO) test -run Benchmark -v -bench=. -benchtime=5s -benchmem $$d; \
 	done
 
 .PHONY: fmt

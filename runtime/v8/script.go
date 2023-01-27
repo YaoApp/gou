@@ -1,6 +1,7 @@
 package v8
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/yaoapp/gou/application"
@@ -39,7 +40,11 @@ func (script *Script) Compile(iso *Isolate, timeout time.Duration) (*v8go.Contex
 		timeout = time.Second * 5
 	}
 
-	ctx := v8go.NewContext(iso)
+	if iso.Isolate == nil {
+		return nil, fmt.Errorf("Isolate was removed")
+	}
+
+	ctx := v8go.NewContext(iso.Isolate)
 	script.Source = string(source)
 
 	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})

@@ -73,7 +73,7 @@ func SelectIso(timeout time.Duration) (*Isolate, error) {
 }
 
 // Resize set the maxSize
-func (list *Isolates) Resize(initSize, maxSize int) error {
+func (list *Isolates) Resize(minSize, maxSize int) error {
 	if maxSize > 100 {
 		log.Warn("[V8] the maximum value of maxSize is 100")
 		maxSize = 100
@@ -85,7 +85,7 @@ func (list *Isolates) Resize(initSize, maxSize int) error {
 		return true
 	})
 
-	runtimeOption.MinSize = initSize
+	runtimeOption.MinSize = minSize
 	runtimeOption.MaxSize = maxSize
 	runtimeOption.Validate()
 	chIsoReady = make(chan *Isolate, runtimeOption.MaxSize)
@@ -108,7 +108,8 @@ func (list *Isolates) Add(iso *Isolate) {
 
 // Remove a isolate
 func (list *Isolates) Remove(iso *Isolate) {
-	iso.Dispose()
+	iso.Isolate.Dispose()
+	iso.Isolate = nil
 	list.Data.Delete(iso)
 	list.Len = list.Len - 1
 }
