@@ -129,6 +129,45 @@ func TestValueOfObject(t *testing.T) {
 	checkValueOf(t, res, "object", value)
 }
 
+func TestValueOfArray(t *testing.T) {
+	ctx := prepare(t)
+	defer close(ctx)
+	value := []interface{}{}
+	vMap := map[string]interface{}{
+		"string": "foo",
+		"int":    99,
+		"bigint": int64(99),
+		"float":  float64(0.618),
+		"nests": map[string]interface{}{
+			"string": "foo",
+			"int":    99,
+			"float":  float64(0.618),
+			"bigint": int64(99),
+		},
+	}
+
+	vArr := []interface{}{"foo", 99, 0.618, int64(99), vMap}
+	value = append(value, vArr...)
+	value = append(value, value)
+	res, err := call(ctx, "ValueOfArray", value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkValueOf(t, res, "object", value)
+}
+
+func TestValueOfInt32Array(t *testing.T) {
+	ctx := prepare(t)
+	defer close(ctx)
+
+	value := []byte{0x2a}
+	res, err := call(ctx, "ValueOfInt32Array", value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkValueOf(t, res, "object", value)
+}
+
 func checkValueOf(t *testing.T, res interface{}, typeof string, goValue interface{}) {
 	value, ok := res.(map[string]interface{})
 	if !ok {

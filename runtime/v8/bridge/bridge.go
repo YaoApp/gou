@@ -1,7 +1,6 @@
 package bridge
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -63,7 +62,7 @@ func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
 	switch v := value.(type) {
 
-	case string, int32, uint32, int64, uint64, bool, *big.Int, float64:
+	case string, int32, uint32, int64, uint64, bool, *big.Int, float64, []byte:
 		return v8go.NewValue(ctx.Isolate(), v)
 
 	case int:
@@ -87,31 +86,12 @@ func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 	case float32:
 		return v8go.NewValue(ctx.Isolate(), float64(v))
 
-	case []byte:
-		return jsNewBytes(ctx, v)
-
 	case UndefinedT:
 		return v8go.Undefined(ctx.Isolate()), nil
 
 	default:
 		return jsValueParse(ctx, v)
 	}
-}
-
-func jsNewBytes(ctx *v8go.Context, value []byte) (*v8go.Value, error) {
-
-	hexstr := hex.EncodeToString(value)
-	jsString, err := v8go.NewValue(ctx.Isolate(), hexstr)
-	if err != nil {
-		return nil, err
-	}
-
-	jsValue, err := ctx.Global().MethodCall("__yao_bridge.hexToBytes", jsString)
-	if err != nil {
-		return nil, err
-	}
-
-	return jsValue, nil
 }
 
 func jsValueParse(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
@@ -189,27 +169,8 @@ func GoValue(value *v8go.Value) (interface{}, error) {
 		return value.BigInt().Uint64(), nil
 	}
 
-	if value.IsInt8Array() {
-		goValue := []byte{}
-		obj, err := value.AsObject()
-		if err != nil {
-			return nil, err
-		}
-
-		length, err := obj.Get("length")
-		if err != nil {
-			return nil, err
-		}
-
-		for i := 0; i < int(length.Int32()); i++ {
-			b, err := obj.GetIdx(uint32(i))
-			if err != nil {
-				return nil, err
-			}
-			goValue = append(goValue, byte(b.Uint32()))
-		}
-
-		return goValue, nil
+	if value.IsUint8Array() { // bytes
+		return value.Uint8Array(), nil
 	}
 
 	if value.IsArray() {
