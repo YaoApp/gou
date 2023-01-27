@@ -37,6 +37,11 @@ func Load(file string, id string) (*Script, error) {
 // LoadRoot load the script with root privileges
 func LoadRoot(file string, id string) (*Script, error) {
 	script := NewScript(file, id)
+	source, err := application.App.Read(file)
+	if err != nil {
+		return nil, err
+	}
+	script.Source = string(source)
 	RootScripts[id] = script
 	return script, nil
 }

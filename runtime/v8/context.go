@@ -1,6 +1,7 @@
 package v8
 
 import (
+	"fmt"
 	"time"
 
 	"rogchap.com/v8go"
@@ -53,6 +54,8 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 	// fmt.Println("method:", method, arg)
 	res, err := global.MethodCall("Hello", arg)
 	if err != nil {
+
+		fmt.Println("---", err)
 		return nil, err
 	}
 
