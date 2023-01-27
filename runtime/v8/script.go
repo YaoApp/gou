@@ -41,7 +41,7 @@ func (script *Script) Compile(iso *Isolate, timeout time.Duration) (*v8go.Contex
 	}
 
 	if iso.Isolate == nil {
-		return nil, fmt.Errorf("Isolate was removed")
+		return nil, fmt.Errorf("isolate was removed")
 	}
 
 	ctx := v8go.NewContext(iso.Isolate)

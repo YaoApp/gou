@@ -19,9 +19,13 @@ func BenchmarkStd(b *testing.B) {
 
 func BenchmarkStdPB(b *testing.B) {
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		var _ string = fmt.Sprint(i)
-	}
+	i := 0
+	b.RunParallel(func(pb *testing.PB) {
+		i++
+		for pb.Next() {
+			var _ string = fmt.Sprint(i)
+		}
+	})
 	b.StopTimer()
 }
 
@@ -55,6 +59,25 @@ func BenchmarkSelectIso(b *testing.B) {
 		}
 		iso.Unlock()
 	}
+	b.StopTimer()
+}
+
+func BenchmarkSelectIsoPB(b *testing.B) {
+	b.ResetTimer()
+	var t *testing.T
+	prepare(t)
+	log.SetLevel(log.FatalLevel)
+
+	// run the Call function b.N times
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			iso, err := SelectIso(100 * time.Millisecond)
+			if err != nil {
+				b.Fatal(err)
+			}
+			iso.Unlock()
+		}
+	})
 	b.StopTimer()
 }
 
