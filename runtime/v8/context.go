@@ -3,6 +3,7 @@ package v8
 import (
 	"time"
 
+	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"rogchap.com/v8go"
 )
 
@@ -47,18 +48,22 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error) {
 
 	global := ctx.Context.Global()
-	arg, err := v8go.NewValue(ctx.Isolate(), "world")
+	jsArgs, err := bridge.JsValues(ctx.Context, args)
 	if err != nil {
 		return nil, err
 	}
 
-	// fmt.Println("method:", method, arg)
-	res, err := global.MethodCall("Hello", arg)
+	jsRes, err := global.MethodCall(method, jsArgs...)
 	if err != nil {
 		return nil, err
 	}
 
-	return res.String(), nil
+	goRes, err := bridge.GoValue(jsRes)
+	if err != nil {
+		return nil, err
+	}
+
+	return goRes, nil
 }
 
 // Close Context
