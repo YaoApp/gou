@@ -52,8 +52,9 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
+	defer bridge.FreeJsValues(jsArgs)
 
-	jsRes, err := global.MethodCall(method, jsArgs...)
+	jsRes, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
 	if err != nil {
 		return nil, err
 	}

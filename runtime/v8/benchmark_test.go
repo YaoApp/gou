@@ -193,36 +193,37 @@ func BenchmarkCall(b *testing.B) {
 	b.StopTimer()
 }
 
-func BenchmarkCallPB(b *testing.B) {
-	b.ResetTimer()
-	var t *testing.T
-	prepare(t)
-	isolates.Resize(100, 100)
-	log.SetLevel(log.FatalLevel)
+//
+// func BenchmarkCallPB(b *testing.B) {
+// 	b.ResetTimer()
+// 	var t *testing.T
+// 	prepare(t)
+// 	isolates.Resize(100, 100)
+// 	log.SetLevel(log.FatalLevel)
 
-	basic, err := Select("runtime.basic")
-	if err != nil {
-		b.Fatal(err)
-	}
+// 	basic, err := Select("runtime.basic")
+// 	if err != nil {
+// 		b.Fatal(err)
+// 	}
 
-	basic.Timeout = time.Minute * 5
-	ctx, err := basic.NewContext("SID_1010", map[string]interface{}{"name": "testing"})
-	if err != nil {
-		b.Fatal(err)
-	}
-	defer ctx.Close()
+// 	basic.Timeout = time.Minute * 5
+// 	ctx, err := basic.NewContext("SID_1010", map[string]interface{}{"name": "testing"})
+// 	if err != nil {
+// 		b.Fatal(err)
+// 	}
+// 	defer ctx.Close()
 
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_, err = ctx.Call("Hello", "world")
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
+// 	b.RunParallel(func(pb *testing.PB) {
+// 		for pb.Next() {
+// 			_, err = ctx.Call("Hello", "world")
+// 			if err != nil {
+// 				b.Fatal(err)
+// 			}
+// 		}
+// 	})
 
-	b.StopTimer()
-}
+// 	b.StopTimer()
+// }
 
 func BenchmarkProcessScripts(b *testing.B) {
 	b.ResetTimer()

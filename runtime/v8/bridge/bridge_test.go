@@ -156,12 +156,12 @@ func TestValueOfArray(t *testing.T) {
 	checkValueOf(t, res, "object", value)
 }
 
-func TestValueOfInt32Array(t *testing.T) {
+func TestValueOfUint8Array(t *testing.T) {
 	ctx := prepare(t)
 	defer close(ctx)
 
 	value := []byte{0x2a}
-	res, err := call(ctx, "ValueOfInt32Array", value)
+	res, err := call(ctx, "ValueOfUint8Array", value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,8 +185,9 @@ func call(ctx *v8go.Context, method string, args ...interface{}) (interface{}, e
 	if err != nil {
 		return nil, err
 	}
+	defer FreeJsValues(jsArgs)
 
-	jsRes, err := global.MethodCall(method, jsArgs...)
+	jsRes, err := global.MethodCall(method, Valuers(jsArgs)...)
 	if err != nil {
 		return nil, err
 	}

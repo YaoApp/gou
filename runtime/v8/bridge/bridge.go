@@ -15,8 +15,8 @@ type UndefinedT byte
 var Undefined UndefinedT = 0x00
 
 // JsValues cast golang values to JavasScript values
-func JsValues(ctx *v8go.Context, values []interface{}) ([]v8go.Valuer, error) {
-	res := []v8go.Valuer{}
+func JsValues(ctx *v8go.Context, values []interface{}) ([]*v8go.Value, error) {
+	res := []*v8go.Value{}
 	for _, value := range values {
 		jsValue, err := JsValue(ctx, value)
 		if err != nil {
@@ -25,6 +25,22 @@ func JsValues(ctx *v8go.Context, values []interface{}) ([]v8go.Valuer, error) {
 		res = append(res, jsValue)
 	}
 	return res, nil
+}
+
+// Valuers to interface
+func Valuers(values []*v8go.Value) []v8go.Valuer {
+	valuers := []v8go.Valuer{}
+	for _, value := range values {
+		valuers = append(valuers, value)
+	}
+	return valuers
+}
+
+// FreeJsValues release js values
+func FreeJsValues(values []*v8go.Value) {
+	for i := range values {
+		values[i].Release()
+	}
 }
 
 // JsValue cast golang value to JavasScript value
