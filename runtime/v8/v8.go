@@ -11,7 +11,7 @@ func New(option *Option) error {
 	option.Validate()
 	runtimeOption = option
 	chIsoReady = make(chan *Isolate, option.MaxSize)
-	for i := 0; i < option.InitSize; i++ {
+	for i := 0; i < option.MinSize; i++ {
 		_, err := NewIsolate()
 		if err != nil {
 			return err

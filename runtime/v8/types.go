@@ -14,8 +14,8 @@ import (
 
 // Option runtime option
 type Option struct {
-	InitSize          int    `json:"initSize,omitempty"`          // the number of isolates when runtime start max value is 100, the default value is 2
-	MaxSize           int    `json:"maxSize,omitempty"`           // the maximum of isolates should be smaller than initSize, the default value is 10
+	MinSize           int    `json:"minSize,omitempty"`           // the number of V8 VM when runtime start. max value is 100, the default value is 2
+	MaxSize           int    `json:"maxSize,omitempty"`           // the maximum of V8 VM should be smaller than minSize, the default value is 10
 	HeapSizeLimit     uint64 `json:"heapSizeLimit,omitempty"`     // the isolate heap size limit should be smaller than 1.5G, and the default value is 1518338048 (1.5G)
 	HeapSizeRelease   uint64 `json:"heapSizeRelease,omitempty"`   // the isolate will be re-created when reaching this value, and the default value is 52428800 (50M)
 	HeapAvailableSize uint64 `json:"heapAvailableSize,omitempty"` // the isolate will be re-created when the available size is smaller than this value, and the default value is 524288000 (500M)

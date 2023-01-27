@@ -85,11 +85,11 @@ func (list *Isolates) Resize(initSize, maxSize int) error {
 		return true
 	})
 
-	runtimeOption.InitSize = initSize
+	runtimeOption.MinSize = initSize
 	runtimeOption.MaxSize = maxSize
 	runtimeOption.Validate()
 	chIsoReady = make(chan *Isolate, runtimeOption.MaxSize)
-	for i := 0; i < runtimeOption.InitSize; i++ {
+	for i := 0; i < runtimeOption.MinSize; i++ {
 		_, err := NewIsolate()
 		if err != nil {
 			return err
@@ -129,7 +129,7 @@ func (iso *Isolate) Lock() error {
 // Unlock the isolate
 func (iso *Isolate) Unlock() error {
 
-	if iso.health() {
+	if iso.health() && len(chIsoReady) <= (runtimeOption.MinSize-1) {
 		iso.status = IsoReady
 		chIsoReady <- iso
 		return nil
@@ -139,7 +139,10 @@ func (iso *Isolate) Unlock() error {
 	go func() {
 		log.Info("[V8] iso %p will be removed", iso)
 		isolates.Remove(iso)
-		NewIsolate()
+
+		if len(chIsoReady) <= (runtimeOption.MinSize - 1) {
+			NewIsolate()
+		}
 	}()
 
 	return nil
