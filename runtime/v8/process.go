@@ -29,8 +29,8 @@ func processScripts(process *process.Process) interface{} {
 		exception.New(message, 500).Throw()
 		return nil
 	}
-
 	defer ctx.Close()
+
 	res, err := ctx.Call(process.Method, process.Args...)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
@@ -55,8 +55,8 @@ func processStudio(process *process.Process) interface{} {
 		exception.New(message, 500).Throw()
 		return nil
 	}
-
 	defer ctx.Close()
+
 	res, err := ctx.Call(process.Method, process.Args...)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()

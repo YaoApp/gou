@@ -1,7 +1,6 @@
 package v8
 
 import (
-	"fmt"
 	"time"
 
 	"rogchap.com/v8go"
@@ -30,6 +29,7 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 	if !has {
 		context, err = script.Compile(iso, timeout)
 		if err != nil {
+			iso.Unlock() // unlock iso
 			return nil, err
 		}
 	}
@@ -45,7 +45,8 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 
 // Call call the script function
 func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error) {
-	global := ctx.Global()
+
+	global := ctx.Context.Global()
 	arg, err := v8go.NewValue(ctx.Isolate(), "world")
 	if err != nil {
 		return nil, err
@@ -54,8 +55,6 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 	// fmt.Println("method:", method, arg)
 	res, err := global.MethodCall("Hello", arg)
 	if err != nil {
-
-		fmt.Println("---", err)
 		return nil, err
 	}
 
@@ -65,10 +64,7 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 // Close Context
 func (ctx *Context) Close() error {
 	defer ctx.Iso.Unlock()
-	// ctx.Context.Close()
-	ctx.Context = nil
 	ctx.Data = nil
 	ctx.SID = ""
-
 	return nil
 }
