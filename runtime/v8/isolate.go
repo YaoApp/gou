@@ -109,6 +109,7 @@ func (list *Isolates) Add(iso *Isolate) {
 // Remove a isolate
 func (list *Isolates) Remove(iso *Isolate) {
 	iso.Isolate.Dispose()
+	iso.Isolate = nil
 	list.Data.Delete(iso)
 	list.Len = list.Len - 1
 }
@@ -166,7 +167,11 @@ func (iso *Isolate) health() bool {
 	// 	"UsedHeapSize": 713616
 	// }
 
-	stat := iso.GetHeapStatistics()
+	if iso.Isolate == nil {
+		return false
+	}
+
+	stat := iso.Isolate.GetHeapStatistics()
 	if stat.TotalHeapSize > runtimeOption.HeapSizeRelease {
 		return false
 	}

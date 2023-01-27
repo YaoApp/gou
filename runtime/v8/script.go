@@ -31,12 +31,12 @@ func NewScript(file string, id string, timeout ...time.Duration) *Script {
 // Compile the javascript
 func (script *Script) Compile(iso *Isolate, timeout time.Duration) (*v8go.Context, error) {
 
-	if timeout == 0 {
-		timeout = time.Second * 5
-	}
-
 	if iso.Isolate == nil {
 		return nil, fmt.Errorf("isolate was removed")
+	}
+
+	if timeout == 0 {
+		timeout = time.Second * 5
 	}
 
 	ctx := v8go.NewContext(iso.Isolate)
