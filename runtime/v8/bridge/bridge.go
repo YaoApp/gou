@@ -45,31 +45,31 @@ func FreeJsValues(values []*v8go.Value) {
 
 // JsValue cast golang value to JavasScript value
 //
-// *  ---------------------------------------------------
-// *  | Golang                  | Javascript            |
-// *  ---------------------------------------------------
-// *  | nil                     | null                  |
-// *  | bool                    | boolean               |
-// *  | int                     | number(int)           |
-// *  | uint                    | number(int)           |
-// *  | uint8                   | number(int)           |
-// *  | uint16                  | number(int)           |
-// *  | uint32                  | number(int)           |
-// *  | int8                    | number(int)           |
-// *  | int16                   | number(int)           |
-// *  | int32                   | number(int)           |
-// *  | float32                 | number(float)         |
-// *  | float64                 | number(float)         |
-// *  | int64                   | bigint                |
-// *  | uint64                  | bigint                |
-// *  | *big.Int                | bigint                |
-// *  | string                  | string                |
-// *  | map[string]interface{}  | object                |
-// *  | []interface{}           | array                 |
-// *  | []byte                  | object(Uint8Array)    |
-// *  | struct                  | object                |
-// *  | func                    | function              |
-// *  ---------------------------------------------------
+// * |-------------------------------------------------------
+// * |    | Golang                  | Javascript            |
+// * |-------------------------------------------------------
+// * | ✅ | nil                     | null                  |
+// * | ✅ | bool                    | boolean               |
+// * | ✅ | int                     | number(int)           |
+// * | ✅ | uint                    | number(int)           |
+// * | ✅ | uint8                   | number(int)           |
+// * | ✅ | uint16                  | number(int)           |
+// * | ✅ | uint32                  | number(int)           |
+// * | ✅ | int8                    | number(int)           |
+// * | ✅ | int16                   | number(int)           |
+// * | ✅ | int32                   | number(int)           |
+// * | ✅ | float32                 | number(float)         |
+// * | ✅ | float64                 | number(float)         |
+// * | ✅ | int64                   | bigint                |
+// * | ✅ | uint64                  | bigint                |
+// * | ✅ | *big.Int                | bigint                |
+// * | ✅ | string                  | string                |
+// * | ✅ | map[string]interface{}  | object                |
+// * | ✅ | []interface{}           | array                 |
+// * | ✅ | []byte                  | object(Uint8Array)    |
+// * | ✅ | struct                  | object                |
+// * | ❌ | ?func                   | function              |
+// * |-------------------------------------------------------
 func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
 	if value == nil {
