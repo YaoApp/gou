@@ -130,7 +130,7 @@ func (iso *Isolate) Lock() error {
 // Unlock the isolate
 func (iso *Isolate) Unlock() error {
 
-	if iso.health() {
+	if iso.health() && len(chIsoReady) <= runtimeOption.MinSize-1 { // the available isolates are less than min size
 		iso.status = IsoReady
 		chIsoReady <- iso
 		return nil
@@ -140,7 +140,9 @@ func (iso *Isolate) Unlock() error {
 	go func() {
 		log.Info("[V8] VM %p will be removed", iso)
 		isolates.Remove(iso)
-		NewIsolate()
+		if len(chIsoReady) <= runtimeOption.MinSize-1 { // the available isolates are less than min size
+			NewIsolate()
+		}
 	}()
 
 	return nil
