@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yaoapp/gou/application"
 	"rogchap.com/v8go"
 )
 
@@ -21,6 +20,7 @@ func NewScript(file string, id string, timeout ...time.Duration) *Script {
 	if len(timeout) > 0 {
 		t = timeout[0]
 	}
+
 	return &Script{
 		ID:      id,
 		File:    file,
@@ -31,11 +31,6 @@ func NewScript(file string, id string, timeout ...time.Duration) *Script {
 // Compile the javascript
 func (script *Script) Compile(iso *Isolate, timeout time.Duration) (*v8go.Context, error) {
 
-	source, err := application.App.Read(script.File)
-	if err != nil {
-		return nil, err
-	}
-
 	if timeout == 0 {
 		timeout = time.Second * 5
 	}
@@ -45,8 +40,6 @@ func (script *Script) Compile(iso *Isolate, timeout time.Duration) (*v8go.Contex
 	}
 
 	ctx := v8go.NewContext(iso.Isolate)
-	script.Source = string(source)
-
 	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
 	if err != nil {
 		return nil, err

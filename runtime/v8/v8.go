@@ -2,6 +2,8 @@ package v8
 
 import (
 	"fmt"
+
+	"github.com/yaoapp/gou/application"
 )
 
 var runtimeOption = &Option{}
@@ -23,7 +25,11 @@ func New(option *Option) error {
 // Load load the script
 func Load(file string, id string) (*Script, error) {
 	script := NewScript(file, id)
-
+	source, err := application.App.Read(file)
+	if err != nil {
+		return nil, err
+	}
+	script.Source = string(source)
 	Scripts[id] = script
 	return script, nil
 }
