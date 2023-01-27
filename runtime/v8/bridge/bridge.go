@@ -2,14 +2,18 @@ package bridge
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/big"
 
 	jsoniter "github.com/json-iterator/go"
 	"rogchap.com/v8go"
 )
 
-// Undefined v8go Undefined
-type Undefined byte
+// UndefinedT type of Undefined
+type UndefinedT byte
+
+// Undefined jsValue  Undefined
+var Undefined UndefinedT = 0x00
 
 // JsValues cast golang values to JavasScript values
 func JsValues(ctx *v8go.Context, values []interface{}) ([]v8go.Valuer, error) {
@@ -53,6 +57,10 @@ func JsValues(ctx *v8go.Context, values []interface{}) ([]v8go.Valuer, error) {
 // *  ---------------------------------------------------
 func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
+	if value == nil {
+		return v8go.Null(ctx.Isolate()), nil
+	}
+
 	switch v := value.(type) {
 
 	case string, int32, uint32, int64, uint64, bool, *big.Int, float64:
@@ -81,6 +89,9 @@ func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
 	case []byte:
 		return jsNewBytes(ctx, v)
+
+	case UndefinedT:
+		return v8go.Undefined(ctx.Isolate()), nil
 
 	default:
 		return jsValueParse(ctx, v)
@@ -144,7 +155,7 @@ func GoValue(value *v8go.Value) (interface{}, error) {
 	}
 
 	if value.IsUndefined() {
-		return Undefined(0x00), nil
+		return Undefined, nil
 	}
 
 	if value.IsString() {
@@ -226,6 +237,7 @@ func goValueParse(value *v8go.Value, v interface{}) (interface{}, error) {
 	ptr := &v
 	err = jsoniter.Unmarshal(data, ptr)
 	if err != nil {
+		fmt.Printf("---\n%s\n---\n", data)
 		return nil, err
 	}
 
