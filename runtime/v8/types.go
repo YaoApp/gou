@@ -20,6 +20,7 @@ type Option struct {
 	HeapSizeRelease   uint64 `json:"heapSizeRelease,omitempty"`   // the isolate will be re-created when reaching this value, and the default value is 52428800 (50M)
 	HeapAvailableSize uint64 `json:"heapAvailableSize,omitempty"` // the isolate will be re-created when the available size is smaller than this value, and the default value is 524288000 (500M)
 	Precompile        bool   `json:"precompile,omitempty"`        // if true compile scripts when the VM is created. this will increase the load time, but the script will run faster. the default value is false
+	DataRoot          string `json:"dataRoot,omitempty"`          // the data root path
 }
 
 // Script v8 scripts

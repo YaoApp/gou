@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/yaoapp/gou/runtime/v8/objects/exception"
+	httpT "github.com/yaoapp/gou/runtime/v8/objects/http"
 	logT "github.com/yaoapp/gou/runtime/v8/objects/log"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
@@ -35,6 +36,7 @@ func newIsolate() *Isolate {
 	iso := v8go.NewIsolate()
 	template := v8go.NewObjectTemplate(iso)
 	template.Set("log", logT.New().ExportObject(iso))
+	template.Set("http", httpT.New(runtimeOption.DataRoot).ExportObject(iso))
 	template.Set("Exception", exception.New().ExportFunction(iso))
 
 	new := &Isolate{
