@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	logT "github.com/yaoapp/gou/runtime/v8/objects/log"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
 )
@@ -24,12 +25,7 @@ func NewIsolate() (*Isolate, error) {
 		return nil, fmt.Errorf("The maximum number of v8 vm has been reached (%d)", runtimeOption.MaxSize)
 	}
 
-	iso := v8go.NewIsolate()
-
-	// add yao javascript apis
-
-	// create instance
-	new := &Isolate{Isolate: iso, status: IsoReady, contexts: map[*Script]*v8go.Context{}}
+	new := newIsolate()
 
 	// Compile Scirpts
 	if runtimeOption.Precompile {
@@ -52,6 +48,21 @@ func NewIsolate() (*Isolate, error) {
 
 	isolates.Add(new)
 	return new, nil
+}
+
+func newIsolate() *Isolate {
+	iso := v8go.NewIsolate()
+	objects := v8go.NewObjectTemplate(iso)
+	objects.Set("log", logT.New().ExportObject(iso))
+
+	new := &Isolate{
+		Isolate:  iso,
+		objects:  objects,
+		status:   IsoReady,
+		contexts: map[*Script]*v8go.Context{},
+	}
+
+	return new
 }
 
 // SelectIso one ready isolate

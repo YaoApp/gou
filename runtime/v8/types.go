@@ -35,6 +35,7 @@ type Isolate struct {
 	*v8go.Isolate
 	status   uint8
 	contexts map[*Script]*v8go.Context
+	objects  *v8go.ObjectTemplate
 }
 
 // Isolates loaded isolate

@@ -39,7 +39,7 @@ func (script *Script) Compile(iso *Isolate, timeout time.Duration) (*v8go.Contex
 		timeout = time.Second * 5
 	}
 
-	ctx := v8go.NewContext(iso.Isolate)
+	ctx := v8go.NewContext(iso.Isolate, iso.objects)
 	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
 	if err != nil {
 		return nil, err

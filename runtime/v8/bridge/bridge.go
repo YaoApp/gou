@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/kun/exception"
 	"rogchap.com/v8go"
 )
 
@@ -14,17 +15,62 @@ type UndefinedT byte
 // Undefined jsValue  Undefined
 var Undefined UndefinedT = 0x00
 
-// JsValues cast golang values to JavasScript values
-func JsValues(ctx *v8go.Context, values []interface{}) ([]*v8go.Value, error) {
+// JsValues Golang -> JavaScript
+func JsValues(ctx *v8go.Context, goValues []interface{}) ([]*v8go.Value, error) {
 	res := []*v8go.Value{}
-	for _, value := range values {
-		jsValue, err := JsValue(ctx, value)
+	for _, goValue := range goValues {
+		jsValue, err := JsValue(ctx, goValue)
 		if err != nil {
 			return nil, err
 		}
 		res = append(res, jsValue)
 	}
 	return res, nil
+}
+
+// JsError return javascript error object
+func JsError(ctx *v8go.Context, err interface{}) *v8go.Value {
+
+	var message string
+	switch v := err.(type) {
+	case string:
+		message = v
+		break
+
+	case error:
+		message = v.Error()
+		break
+
+	case *exception.Exception:
+		message = v.Message
+		break
+
+	case exception.Exception:
+		message = v.Message
+		break
+
+	default:
+		message = fmt.Sprintf("%v", err)
+	}
+
+	global := ctx.Global()
+	errorObj, _ := global.Get("Error")
+	if errorObj.IsFunction() {
+		fn, _ := errorObj.AsFunction()
+		m, _ := v8go.NewValue(ctx.Isolate(), message)
+		v, _ := fn.Call(v8go.Undefined(ctx.Isolate()), m)
+		return v
+	}
+
+	tmpl := v8go.NewObjectTemplate(ctx.Isolate())
+	inst, _ := tmpl.NewInstance(ctx)
+	inst.Set("message", message)
+	return inst.Value
+}
+
+// JsException throw javascript Exception
+func JsException(ctx *v8go.Context, message interface{}) *v8go.Value {
+	return ctx.Isolate().ThrowException(JsError(ctx, message))
 }
 
 // Valuers to interface
@@ -43,10 +89,23 @@ func FreeJsValues(values []*v8go.Value) {
 	}
 }
 
+// GoValues JavaScript -> Golang
+func GoValues(jsValues []*v8go.Value) ([]interface{}, error) {
+	goValues := []interface{}{}
+	for _, jsValue := range jsValues {
+		goValue, err := GoValue(jsValue)
+		if err != nil {
+			return nil, err
+		}
+		goValues = append(goValues, goValue)
+	}
+	return goValues, nil
+}
+
 // JsValue cast golang value to JavasScript value
 //
 // * |-------------------------------------------------------
-// * |    | Golang                  | Javascript            |
+// * |    | Golang                  | JavaScript            |
 // * |-------------------------------------------------------
 // * | ✅ | nil                     | null                  |
 // * | ✅ | bool                    | boolean               |
