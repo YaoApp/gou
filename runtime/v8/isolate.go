@@ -10,6 +10,7 @@ import (
 	logT "github.com/yaoapp/gou/runtime/v8/objects/log"
 	queryT "github.com/yaoapp/gou/runtime/v8/objects/query"
 	storeT "github.com/yaoapp/gou/runtime/v8/objects/store"
+	websocketT "github.com/yaoapp/gou/runtime/v8/objects/websocket"
 
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
@@ -43,9 +44,10 @@ func newIsolate() *Isolate {
 	template.Set("log", logT.New().ExportObject(iso))
 	template.Set("http", httpT.New(runtimeOption.DataRoot).ExportObject(iso))
 
+	template.Set("Exception", exceptionT.New().ExportFunction(iso))
 	template.Set("Store", storeT.New().ExportFunction(iso))
 	template.Set("Query", queryT.New().ExportFunction(iso))
-	template.Set("Exception", exceptionT.New().ExportFunction(iso))
+	template.Set("WebSocket", websocketT.New().ExportFunction(iso))
 
 	new := &Isolate{
 		Isolate:  iso,
