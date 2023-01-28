@@ -5,6 +5,9 @@ import (
 	"sync"
 	"time"
 
+	langT "github.com/yaoapp/gou/runtime/v8/functions/lang"
+	processT "github.com/yaoapp/gou/runtime/v8/functions/process"
+	studioT "github.com/yaoapp/gou/runtime/v8/functions/studio"
 	exceptionT "github.com/yaoapp/gou/runtime/v8/objects/exception"
 	fsT "github.com/yaoapp/gou/runtime/v8/objects/fs"
 	httpT "github.com/yaoapp/gou/runtime/v8/objects/http"
@@ -51,6 +54,9 @@ func newIsolate() *Isolate {
 	template.Set("Store", storeT.New().ExportFunction(iso))
 	template.Set("Query", queryT.New().ExportFunction(iso))
 	template.Set("WebSocket", websocketT.New().ExportFunction(iso))
+	template.Set("$L", langT.ExportFunction(iso))
+	template.Set("Process", processT.ExportFunction(iso))
+	template.Set("Studio", studioT.ExportFunction(iso))
 
 	new := &Isolate{
 		Isolate:  iso,
