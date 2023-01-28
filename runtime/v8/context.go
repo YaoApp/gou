@@ -56,26 +56,11 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 
 	defer bridge.FreeJsValues(jsArgs)
 
-	// su root privilege
-	global.Set("__YAO_SU_ROOT", ctx.Root)
-
-	// Set Global, SID, AND ROOT
-
-	// set global data
-	if ctx.Data != nil {
-		jsData, err := bridge.JsValue(ctx.Context, ctx.Data)
-		if err != nil {
-			return nil, err
-		}
-		defer jsData.Release()
-		global.Set("__yao_global", jsData)
-
-	} else {
-		global.Set("__yao_global", v8go.Undefined(ctx.Context.Isolate()))
+	jsData, err := ctx.setData(global)
+	if err != nil {
+		return nil, err
 	}
-
-	// Set session id
-	global.Set("__yao_sid", ctx.SID)
+	defer jsData.Release()
 
 	jsRes, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
 	if err != nil {
@@ -88,6 +73,26 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 	}
 
 	return goRes, nil
+}
+
+func (ctx *Context) setData(global *v8go.Object) (*v8go.Value, error) {
+	goData := map[string]interface{}{
+		"SID":  ctx.SID,
+		"ROOT": ctx.Root,
+		"DATA": ctx.Data,
+	}
+
+	jsData, err := bridge.JsValue(ctx.Context, goData)
+	if err != nil {
+		return nil, err
+	}
+
+	err = global.Set("__yao_data", jsData)
+	if err != nil {
+		return nil, err
+	}
+
+	return jsData, nil
 }
 
 // Close Context

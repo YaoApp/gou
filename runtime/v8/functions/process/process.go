@@ -14,26 +14,6 @@ func ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 // exec
 func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
-	jsGlobal, err := info.Context().Global().Get("__yao_global")
-	if err != nil {
-		return bridge.JsException(info.Context(), err)
-	}
-
-	jsSID, _ := info.Context().Global().Get("__yao_sid")
-	if err != nil {
-		return bridge.JsException(info.Context(), err)
-	}
-
-	goGlobal, err := bridge.GoValue(jsGlobal)
-	if err != nil {
-		return bridge.JsException(info.Context(), err)
-	}
-
-	global, ok := goGlobal.(map[string]interface{})
-	if !ok {
-		global = map[string]interface{}{}
-	}
-
 	jsArgs := info.Args()
 	if len(jsArgs) < 1 {
 		return bridge.JsException(info.Context(), "missing parameters")
@@ -43,6 +23,12 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		return bridge.JsException(info.Context(), "the first parameter should be a string")
 	}
 
+	_, global, sid, v := bridge.ShareData(info.Context())
+	if v != nil {
+		return v
+	}
+
+	var err error
 	goArgs := []interface{}{}
 	if len(jsArgs) > 1 {
 		goArgs, err = bridge.GoValues(jsArgs[1:])
@@ -53,7 +39,7 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
 	goRes, err := process.New(jsArgs[0].String(), goArgs...).
 		WithGlobal(global).
-		WithSID(jsSID.String()).
+		WithSID(sid).
 		Exec()
 
 	if err != nil {

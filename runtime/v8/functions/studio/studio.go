@@ -14,33 +14,13 @@ func ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 // exec
 func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
-	v, err := info.Context().Global().Get("__YAO_SU_ROOT")
-	if err != nil {
-		return bridge.JsException(info.Context(), err)
+	root, global, sid, v := bridge.ShareData(info.Context())
+	if v != nil {
+		return v
 	}
 
-	if !v.Boolean() {
+	if !root {
 		return bridge.JsException(info.Context(), "function is not allowed")
-	}
-
-	jsGlobal, err := info.Context().Global().Get("__yao_global")
-	if err != nil {
-		return bridge.JsException(info.Context(), err)
-	}
-
-	jsSID, _ := info.Context().Global().Get("__yao_sid")
-	if err != nil {
-		return bridge.JsException(info.Context(), err)
-	}
-
-	goGlobal, err := bridge.GoValue(jsGlobal)
-	if err != nil {
-		return bridge.JsException(info.Context(), err)
-	}
-
-	global, ok := goGlobal.(map[string]interface{})
-	if !ok {
-		global = map[string]interface{}{}
 	}
 
 	jsArgs := info.Args()
@@ -52,6 +32,7 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		return bridge.JsException(info.Context(), "the first parameter should be a string")
 	}
 
+	var err error
 	goArgs := []interface{}{}
 	if len(jsArgs) > 1 {
 		goArgs, err = bridge.GoValues(jsArgs[1:])
@@ -62,7 +43,7 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
 	goRes, err := process.New(jsArgs[0].String(), goArgs...).
 		WithGlobal(global).
-		WithSID(jsSID.String()).
+		WithSID(sid).
 		Exec()
 
 	if err != nil {

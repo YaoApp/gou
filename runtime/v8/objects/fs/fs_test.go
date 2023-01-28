@@ -14,7 +14,7 @@ import (
 	"github.com/yaoapp/gou/fs/system"
 	"github.com/yaoapp/gou/query"
 	"github.com/yaoapp/gou/query/gou"
-	"github.com/yaoapp/gou/runtime/yao/bridge"
+	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/xun/capsule"
 	"github.com/yaoapp/xun/dbal/schema"
 	"rogchap.com/v8go"
@@ -50,7 +50,7 @@ func TestFSObjectReadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.ToInterface(v)
+	res, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestFSObjectReadFile(t *testing.T) {
 
 	assert.True(t, v.IsUint8Array())
 
-	res, err = bridge.ToInterface(v)
+	res, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestFSObjectReadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err = bridge.ToInterface(v)
+	res, err = bridge.GoValue(v)
 	assert.True(t, v.IsUint8Array())
 	assert.Equal(t, data, res)
 }
@@ -105,11 +105,21 @@ func TestFSObjectRootFs(t *testing.T) {
 
 	fs := &Object{}
 	global := v8go.NewObjectTemplate(iso)
-	global.Set("__YAO_SU_ROOT", true)
 	global.Set("FS", fs.ExportFunction(iso))
 
 	ctx := v8go.NewContext(iso, global)
 	defer ctx.Close()
+
+	goData := map[string]interface{}{"ROOT": true}
+	jsData, err := bridge.JsValue(ctx, goData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ctx.Global().Set("__yao_data", jsData)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// WriteFile
 	v, err := ctx.RunScript(fmt.Sprintf(`
@@ -124,7 +134,7 @@ func TestFSObjectRootFs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.ToInterface(v)
+	res, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +170,7 @@ func TestFSObjectRootFsError(t *testing.T) {
 
 	// WriteFile SU root
 	v, err := ctx.RunScript(fmt.Sprintf(`
-	__YAO_SU_ROOT=true
+	__yao_data = { "ROOT": true }
 	function WriteFile() {
 		var fs = new FS("dsl")
 		return fs.WriteFile("%s", "%s", 0644);
@@ -172,7 +182,7 @@ func TestFSObjectRootFsError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.ToInterface(v)
+	res, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +219,7 @@ func TestFSObjectWriteFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.ToInterface(v)
+	res, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +238,7 @@ func TestFSObjectWriteFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err = bridge.ToInterface(v)
+	res, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,7 +295,7 @@ func TestFSObjectExistRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.ToInterface(v)
+	res, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,7 +357,7 @@ func TestFSObjectFileInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.ToInterface(v)
+	res, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -482,7 +492,7 @@ func TestFSObjectDir(t *testing.T) {
 	}
 
 	assert.True(t, v.IsArray())
-	res, err := bridge.ToInterface(v)
+	res, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
