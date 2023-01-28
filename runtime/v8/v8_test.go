@@ -55,5 +55,5 @@ func prepareSetup(t *testing.T) {
 		return true
 	})
 
-	New(&Option{})
+	Start(&Option{})
 }

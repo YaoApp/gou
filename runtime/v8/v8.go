@@ -8,8 +8,8 @@ import (
 
 var runtimeOption = &Option{}
 
-// New make a new v8 runtime
-func New(option *Option) error {
+// Start v8 runtime
+func Start(option *Option) error {
 	option.Validate()
 	runtimeOption = option
 	chIsoReady = make(chan *Isolate, option.MaxSize)
@@ -22,6 +22,16 @@ func New(option *Option) error {
 	return nil
 }
 
+// Stop v8 runtime
+func Stop() {
+	chIsoReady = make(chan *Isolate, runtimeOption.MaxSize)
+	// Remove iso
+	isolates.Range(func(iso *Isolate) bool {
+		isolates.Remove(iso)
+		return true
+	})
+}
+
 // Load load the script
 func Load(file string, id string) (*Script, error) {
 	script := NewScript(file, id)
@@ -30,6 +40,7 @@ func Load(file string, id string) (*Script, error) {
 		return nil, err
 	}
 	script.Source = string(source)
+	script.Root = false
 	Scripts[id] = script
 	return script, nil
 }
@@ -42,6 +53,7 @@ func LoadRoot(file string, id string) (*Script, error) {
 		return nil, err
 	}
 	script.Source = string(source)
+	script.Root = true
 	RootScripts[id] = script
 	return script, nil
 }

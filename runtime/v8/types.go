@@ -28,6 +28,7 @@ type Script struct {
 	ID      string
 	File    string
 	Source  string
+	Root    bool
 	Timeout time.Duration
 }
 
@@ -52,6 +53,7 @@ type Context struct {
 	Data    map[string]interface{} // set the global data
 	Timeout time.Duration          // terminate the execution after this time
 	Iso     *Isolate
+	Root    bool
 	*v8go.Context
 }
 

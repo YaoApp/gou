@@ -40,6 +40,7 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 		Context: context,
 		SID:     sid,
 		Data:    global,
+		Root:    script.Root,
 		Iso:     iso,
 	}, nil
 }
@@ -52,7 +53,29 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
+
 	defer bridge.FreeJsValues(jsArgs)
+
+	// su root privilege
+	global.Set("__YAO_SU_ROOT", ctx.Root)
+
+	// Set Global, SID, AND ROOT
+
+	// set global data
+	if ctx.Data != nil {
+		jsData, err := bridge.JsValue(ctx.Context, ctx.Data)
+		if err != nil {
+			return nil, err
+		}
+		defer jsData.Release()
+		global.Set("__yao_global", jsData)
+
+	} else {
+		global.Set("__yao_global", v8go.Undefined(ctx.Context.Isolate()))
+	}
+
+	// Set session id
+	global.Set("__yao_sid", ctx.SID)
 
 	jsRes, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
 	if err != nil {
