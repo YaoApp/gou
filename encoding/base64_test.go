@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	"github.com/go-playground/assert/v2"
-	"github.com/yaoapp/gou"
+	"github.com/yaoapp/gou/process"
 )
 
 func TestBase64Encode(t *testing.T) {
 	data := "SomeData"
-	res, err := gou.NewProcess("encoding.base64.Encode", data).Exec()
+	res, err := process.New("encoding.base64.Encode", data).Exec()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func TestBase64Encode(t *testing.T) {
 
 func TestBase64Decode(t *testing.T) {
 	data := base64.StdEncoding.EncodeToString([]byte("SomeData"))
-	res, err := gou.NewProcess("encoding.base64.Decode", data).Exec()
+	res, err := process.New("encoding.base64.Decode", data).Exec()
 	if err != nil {
 		t.Fatal(err)
 	}

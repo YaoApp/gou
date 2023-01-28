@@ -3,7 +3,9 @@ module github.com/yaoapp/gou
 go 1.19
 
 require (
-	github.com/dustin/go-humanize v1.0.0
+	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/fatih/color v1.13.0
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/gabriel-vasile/mimetype v1.4.1
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-errors/errors v1.4.2
@@ -17,16 +19,12 @@ require (
 	github.com/miekg/dns v1.1.48
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/stretchr/testify v1.7.1
-	github.com/takama/daemon v1.0.0
 	github.com/tidwall/buntdb v1.2.9
 	github.com/yaoapp/kun v0.9.0
 	github.com/yaoapp/xun v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	gopkg.in/yaml.v3 v3.0.1
-	rogchap.com/v8go v0.7.0
-	github.com/fsnotify/fsnotify v1.6.0 
-	github.com/blang/semver/v4 v4.0.0
-	github.com/fatih/color v1.13.0 
+	rogchap.com/v8go v0.8.0
 )
 
 require (

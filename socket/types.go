@@ -54,7 +54,7 @@ type Option struct {
 	Attempts     int           `json:"attempts,omitempty"`      // max times try to reconnect server when connection break (client mode only)
 }
 
-// Handlers the socket hanlders
+// Handlers the socket handlers
 type Handlers struct {
 	Data      DataHandler
 	Error     ErrorHandler

@@ -101,32 +101,32 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Checkout Kun
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: yaoapp/kun
           path: kun
 
       - name: Checkout Xun
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: yaoapp/xun
           path: xun
 
       - name: Checkout Application
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: ${{ env.REPO_APP }}
           path: gou-dev-app
 
       - name: Checkout V8Go
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
-          repository: rogchap/v8go
-          ref: 5e91d3d9dcabd2986f901b6b31590e49fc3c4dd8
+          repository: yaoapp/v8go
+          ref: aac4923ed74083e58ae7b42b1acb0fa0d11a26cb
           path: v8go
 
       - name: Checkout Demo WMS
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: yaoapp/demo-wms
           path: demo-wms
@@ -142,7 +142,7 @@ jobs:
           ls -l ../
 
       - name: Checkout pull request HEAD commit
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ env.HEAD }}
 
@@ -218,8 +218,12 @@ jobs:
           make migrate
           make test
 
+      - name: Run Benchmark
+        run: |
+          make bench
+
       - name: Codecov Report
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
 

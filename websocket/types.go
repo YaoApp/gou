@@ -105,7 +105,7 @@ type WSClientOption struct {
 	Port         int        `json:"port,omitempty"`
 }
 
-// Handlers the websocket hanlders
+// Handlers the websocket handlers
 type Handlers struct {
 	Data      DataHandler
 	Error     ErrorHandler
