@@ -269,3 +269,38 @@ func goValueParse(value *v8go.Value, v interface{}) (interface{}, error) {
 
 	return *ptr, nil
 }
+
+// ShareData get share data golang <-> javascript
+func ShareData(ctx *v8go.Context) (bool, map[string]interface{}, string, *v8go.Value) {
+	jsData, err := ctx.Global().Get("__yao_data")
+	if err != nil {
+		return false, nil, "", JsException(ctx, err)
+	}
+
+	goData, err := GoValue(jsData)
+	if err != nil {
+		return false, nil, "", JsException(ctx, err)
+	}
+
+	data, ok := goData.(map[string]interface{})
+	if !ok {
+		data = map[string]interface{}{}
+	}
+
+	global, ok := data["DATA"].(map[string]interface{})
+	if !ok {
+		global = map[string]interface{}{}
+	}
+
+	sid, ok := data["SID"].(string)
+	if !ok {
+		sid = ""
+	}
+
+	root, ok := data["ROOT"].(bool)
+	if !ok {
+		root = false
+	}
+
+	return root, global, sid, nil
+}

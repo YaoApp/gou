@@ -19,9 +19,9 @@ func TestStudio(t *testing.T) {
 			const result = Studio("unit.test.process", "foo", 99, 0.618);
 			return {
 				...result,
-				__yao_global:__yao_global,
-				__yao_sid: __yao_sid,
-				__YAO_SU_ROOT: __YAO_SU_ROOT,
+				__yao_global:__yao_data["DATA"],
+				__yao_sid:__yao_data["SID"],
+				__YAO_SU_ROOT:__yao_data["ROOT"],
 			}
 		}
 		test()
@@ -57,9 +57,9 @@ func TestStudioWithData(t *testing.T) {
 			const result = Studio("unit.test.process", "foo", 99, 0.618);
 			return {
 				...result,
-				__yao_global:__yao_global,
-				__yao_sid: __yao_sid,
-				__YAO_SU_ROOT: __YAO_SU_ROOT,
+				__yao_global:__yao_data["DATA"],
+				__yao_sid:__yao_data["SID"],
+				__YAO_SU_ROOT:__yao_data["ROOT"],
 			}
 		}
 		test()
@@ -97,9 +97,9 @@ func TestStudioNotRoot(t *testing.T) {
 			const result = Studio("unit.test.process", "foo", 99, 0.618);
 			return {
 				...result,
-				__yao_global:__yao_global,
-				__yao_sid: __yao_sid,
-				__YAO_SU_ROOT: __YAO_SU_ROOT,
+				__yao_global:__yao_data["DATA"],
+				__yao_sid:__yao_data["SID"],
+				__YAO_SU_ROOT:__yao_data["ROOT"],
 			}
 		}
 		test()
@@ -122,20 +122,18 @@ func prepare(t *testing.T, root bool, sid string, global map[string]interface{})
 	ctx := v8go.NewContext(iso, template)
 
 	var err error
-	jsGlobal := v8go.Undefined(ctx.Isolate())
-	jsGlobal, err = bridge.JsValue(ctx, global)
+	goData := map[string]interface{}{
+		"SID":  sid,
+		"ROOT": root,
+		"DATA": global,
+	}
+
+	jsData, err := bridge.JsValue(ctx, goData)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err = ctx.Global().Set("__YAO_SU_ROOT", root); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = ctx.Global().Set("__yao_global", jsGlobal); err != nil {
-		t.Fatal(err)
-	}
-	if err = ctx.Global().Set("__yao_sid", sid); err != nil {
+	if err = ctx.Global().Set("__yao_data", jsData); err != nil {
 		t.Fatal(err)
 	}
 
