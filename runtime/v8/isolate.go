@@ -26,43 +26,45 @@ func NewIsolate() (*Isolate, error) {
 	}
 
 	new := newIsolate()
-
-	// Compile Scirpts
-	if runtimeOption.Precompile {
-		for _, script := range Scripts {
-			timeout := script.Timeout
-			if timeout == 0 {
-				timeout = time.Millisecond * 100
-			}
-			script.Compile(new, timeout)
-		}
-
-		for _, script := range RootScripts {
-			timeout := script.Timeout
-			if timeout == 0 {
-				timeout = time.Millisecond * 100
-			}
-			script.Compile(new, timeout)
-		}
-	}
-
 	isolates.Add(new)
 	return new, nil
 }
 
 func newIsolate() *Isolate {
 	iso := v8go.NewIsolate()
-	objects := v8go.NewObjectTemplate(iso)
-	objects.Set("log", logT.New().ExportObject(iso))
+	template := v8go.NewObjectTemplate(iso)
+	template.Set("log", logT.New().ExportObject(iso))
 
 	new := &Isolate{
 		Isolate:  iso,
-		objects:  objects,
+		template: template,
 		status:   IsoReady,
 		contexts: map[*Script]*v8go.Context{},
 	}
 
+	if runtimeOption.Precompile {
+		new.Precompile()
+	}
 	return new
+}
+
+// Precompile compile the loaded scirpts
+func (iso *Isolate) Precompile() {
+	for _, script := range Scripts {
+		timeout := script.Timeout
+		if timeout == 0 {
+			timeout = time.Millisecond * 100
+		}
+		script.Compile(iso, timeout)
+	}
+
+	for _, script := range RootScripts {
+		timeout := script.Timeout
+		if timeout == 0 {
+			timeout = time.Millisecond * 100
+		}
+		script.Compile(iso, timeout)
+	}
 }
 
 // SelectIso one ready isolate

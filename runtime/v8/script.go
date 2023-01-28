@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/yaoapp/gou/runtime/v8/objects/console"
 	"rogchap.com/v8go"
 )
 
@@ -39,8 +40,14 @@ func (script *Script) Compile(iso *Isolate, timeout time.Duration) (*v8go.Contex
 		timeout = time.Second * 5
 	}
 
-	ctx := v8go.NewContext(iso.Isolate, iso.objects)
+	ctx := v8go.NewContext(iso.Isolate, iso.template)
 	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	// console.log("foo", "bar", 1, 2, 3, 4)
+	err = console.New().Set("console", ctx)
 	if err != nil {
 		return nil, err
 	}
