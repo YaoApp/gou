@@ -104,7 +104,7 @@ func (process *Process) make() error {
 	process.Group = fields[0]
 	switch process.Group {
 
-	case "models", "schemas", "stores", "tasks", "schedules", "widgets":
+	case "models", "schemas", "stores", "fs", "tasks", "schedules", "widgets":
 		// models.user.pet.Find
 		process.Method = fields[len(fields)-1]
 		process.ID = strings.ToLower(strings.Join(fields[1:len(fields)-1], "."))
