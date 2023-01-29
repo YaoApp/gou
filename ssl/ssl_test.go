@@ -2,17 +2,14 @@ package ssl
 
 import (
 	"encoding/hex"
-	"os"
-	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSignStrBase64(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	file := path.Join(root, "certs", "private.pem")
-	cert, err := LoadCertificateFrom(file, "private")
+	prepare(t)
+	cert, err := Load(certFile("private.pem"), "private")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,9 +22,8 @@ func TestSignStrBase64(t *testing.T) {
 }
 
 func TestSignHexBase64(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	file := path.Join(root, "certs", "private.pem")
-	cert, err := LoadCertificateFrom(file, "private")
+	prepare(t)
+	cert, err := Load(certFile("private.pem"), "private")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,9 +36,8 @@ func TestSignHexBase64(t *testing.T) {
 }
 
 func TestCertVerifyStrBase64(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	file := path.Join(root, "certs", "cert.pem")
-	cert, err := LoadCertificateFrom(file, "cert")
+	prepare(t)
+	cert, err := Load(certFile("cert.pem"), "cert")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,9 +52,8 @@ func TestCertVerifyStrBase64(t *testing.T) {
 }
 
 func TestCertVerifyStrBase64Public(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	file := path.Join(root, "certs", "public.pem")
-	cert, err := LoadCertificateFrom(file, "public")
+	prepare(t)
+	cert, err := Load(certFile("public.pem"), "public")
 	if err != nil {
 		t.Fatal(err)
 	}

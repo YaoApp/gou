@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/application"
 )
 
 func TestLoadCertificateFrom(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	file := path.Join(root, "certs", "cert.pem")
-	cert, err := LoadCertificateFrom(file, "cert")
+	prepare(t)
+	cert, err := Load(certFile("cert.pem"), "cert")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,9 +23,8 @@ func TestLoadCertificateFrom(t *testing.T) {
 }
 
 func TestLoadCertificateFromPrivate(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	file := path.Join(root, "certs", "private.pem")
-	cert, err := LoadCertificateFrom(file, "private")
+	prepare(t)
+	cert, err := Load(certFile("private.pem"), "private")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,9 +36,8 @@ func TestLoadCertificateFromPrivate(t *testing.T) {
 }
 
 func TestLoadCertificateFromPublic(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	file := path.Join(root, "certs", "public.pem")
-	cert, err := LoadCertificateFrom(file, "public")
+	prepare(t)
+	cert, err := Load(certFile("public.pem"), "public")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,4 +46,17 @@ func TestLoadCertificateFromPublic(t *testing.T) {
 
 	_, has := Certificates["public"]
 	assert.True(t, has)
+}
+
+func prepare(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	app, err := application.OpenFromDisk(root) // Load app
+	if err != nil {
+		t.Fatal(err)
+	}
+	application.Load(app)
+}
+
+func certFile(name string) string {
+	return path.Join("certs", name)
 }

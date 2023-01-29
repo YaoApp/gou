@@ -6,8 +6,8 @@ import (
 )
 
 func init() {
-	process.Register("ssl.Sign", ProcessSign)
-	process.Register("ssl.Verify", ProcessVerify)
+	process.Register("ssl.sign", ProcessSign)
+	process.Register("ssl.verify", ProcessVerify)
 }
 
 // ProcessSign computes a signature for the specified data by generating a cryptographic digital signature

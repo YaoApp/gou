@@ -4,15 +4,16 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+
+	"github.com/yaoapp/gou/application"
 )
 
 // Certificates loaded
 var Certificates = map[string]*Certificate{}
 
-// LoadCertificateFrom Load the certificate from the given file
-func LoadCertificateFrom(file string, name string) (*Certificate, error) {
-	data, err := ioutil.ReadFile(file)
+// Load Load the certificate from the given file
+func Load(file string, name string) (*Certificate, error) {
+	data, err := application.App.Read(file)
 	if err != nil {
 		return nil, fmt.Errorf("read certificate pem file err:%s", err.Error())
 	}
