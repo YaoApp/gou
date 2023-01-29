@@ -1,57 +1,91 @@
 package store
 
 import (
-	"fmt"
-	"strings"
+	"time"
 
-	"github.com/yaoapp/gou/application"
-	"github.com/yaoapp/gou/connector"
-	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/gou/process"
+	"github.com/yaoapp/kun/log"
 )
 
-// Load load kv store
-func Load(file string, name string) (Store, error) {
-
-	data, err := application.App.Read(file)
-	if err != nil {
-		return nil, err
-	}
-
-	inst := Instance{}
-	err = application.Parse(file, data, &inst)
-	if err != nil {
-		return nil, err
-	}
-
-	typ := strings.ToLower(inst.Type)
-	if typ == "lru" {
-		stor, err := New(nil, inst.Option)
-		if err != nil {
-			return nil, err
-		}
-		Pools[name] = stor
-		return Pools[name], nil
-	}
-
-	connector, has := connector.Connectors[inst.Connector]
-	if !has {
-		return nil, fmt.Errorf("Store %s Connector:%s was not loaded", name, inst.Connector)
-	}
-
-	stor, err := New(connector, inst.Option)
-	if err != nil {
-		return nil, err
-	}
-
-	Pools[name] = stor
-	return Pools[name], nil
+// StoreHandlers store process handlers
+var StoreHandlers = map[string]process.Handler{
+	"get":    processStoreGet,
+	"set":    processStoreSet,
+	"has":    processStoreHas,
+	"del":    processStoreDel,
+	"getdel": processStoreGetDel,
+	"len":    processStoreLen,
+	"keys":   processStoreKeys,
+	"clear":  processStoreClear,
 }
 
-// SelectStore Select loaded kv store
-func SelectStore(name string) Store {
-	store, has := Pools[name]
-	if !has {
-		exception.New("Store:%s does not load", 500, name).Throw()
+func init() {
+	process.RegisterGroup("stores", StoreHandlers)
+}
+
+// processStoreGet stores.<name>.Get
+func processStoreGet(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	store := Select(process.ID)
+	value, ok := store.Get(process.ArgsString(0))
+	if !ok {
+		log.Error("store %s Get return false", process.ID)
+		return nil
 	}
-	return store
+	return value
+}
+
+// processStoreSet stores.<name>.Set
+func processStoreSet(process *process.Process) interface{} {
+	process.ValidateArgNums(2)
+	store := Select(process.ID)
+	duration := process.ArgsInt(2, 0)
+	store.Set(process.ArgsString(0), process.Args[1], time.Duration(duration)*time.Second)
+	return nil
+}
+
+// processStoreHas stores.<name>.Has
+func processStoreHas(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	store := Select(process.ID)
+	return store.Has(process.ArgsString(0))
+}
+
+// processStoreDel stores.<name>.Del
+func processStoreDel(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	store := Select(process.ID)
+	store.Del(process.ArgsString(0))
+	return nil
+}
+
+// processStoreGetDel stores.<name>.GetDel
+func processStoreGetDel(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	store := Select(process.ID)
+	value, ok := store.GetDel(process.ArgsString(0))
+	if !ok {
+		log.Error("store %s GetDel return false", process.ID)
+		return nil
+	}
+	return value
+}
+
+// processStoreLen stores.<name>.Len
+func processStoreLen(process *process.Process) interface{} {
+	store := Select(process.ID)
+	return store.Len()
+}
+
+// processStoreKeys stores.<name>.Keys
+func processStoreKeys(process *process.Process) interface{} {
+	store := Select(process.ID)
+	return store.Keys()
+}
+
+// processStoreClear stores.<name>.Keys
+func processStoreClear(process *process.Process) interface{} {
+	store := Select(process.ID)
+	store.Clear()
+	return nil
 }

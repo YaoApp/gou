@@ -19,5 +19,14 @@ type Store interface {
 	GetSetMulti(keys []string, ttl time.Duration, getValue func(key string) (interface{}, error)) map[string]interface{}
 }
 
+// Instance the kv-store setting
+type Instance struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description,omitempty"`
+	Connector   string                 `json:"connector,omitempty"`
+	Type        string                 `json:"type,omitempty"` // warning: type is deprecated in the future new version
+	Option      map[string]interface{} `json:"option,omitempty"`
+}
+
 // Option the store option
 type Option map[string]interface{}

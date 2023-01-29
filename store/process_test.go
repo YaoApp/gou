@@ -2,18 +2,15 @@ package store
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/process"
 )
 
 func TestStoreProcess(t *testing.T) {
-	loadConnectors(t)
-	loadStores(t)
+	prepare(t)
+	prepareStores(t)
 	testStoreProcess(t, "cache")
 	testStoreProcess(t, "share")
 	testStoreProcess(t, "data")
@@ -50,38 +47,4 @@ func testStoreProcess(t *testing.T, name string) {
 	assert.Contains(t, value, "key4")
 	assert.Contains(t, value, "key1")
 	assert.NotContains(t, value, "key2")
-}
-
-func loadStores(t *testing.T) {
-	_, err := Load(source(t, "stores", "cache", "lru"), "cache")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = Load(source(t, "stores", "data", "mongo"), "data")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = Load(source(t, "stores", "share", "redis"), "share")
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func loadConnectors(t *testing.T) {
-	connector.Load(source(t, "connectors", "redis", "conn"), "redis")
-	connector.Load(source(t, "connectors", "mongo", "conn"), "mongo")
-}
-
-func source(t *testing.T, dir, name, ext string) string {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	path := filepath.Join(root, dir, fmt.Sprintf("%s.%s.json", name, ext))
-
-	return path
-	// content, err := ioutil.ReadFile(path)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// return string(content)
 }

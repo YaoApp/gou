@@ -2,15 +2,19 @@ package store
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/kun/any"
 )
+
+func TestLoad(t *testing.T) {
+
+}
 
 func TestLRU(t *testing.T) {
 	lru := newStore(t, nil)
@@ -19,13 +23,13 @@ func TestLRU(t *testing.T) {
 }
 
 func TestRedis(t *testing.T) {
-	redis := newStore(t, makeConnector(t, "redis"))
+	redis := newStore(t, getConnector(t, "redis"))
 	testBasic(t, redis)
 	testMulti(t, redis)
 }
 
 func TestMongo(t *testing.T) {
-	mongo := newStore(t, makeConnector(t, "mongo"))
+	mongo := newStore(t, getConnector(t, "mongo"))
 	testBasic(t, mongo)
 	testMulti(t, mongo)
 }
@@ -33,7 +37,7 @@ func TestMongo(t *testing.T) {
 func testBasic(t *testing.T, kv Store) {
 
 	var err error
-
+	kv.Clear()
 	kv.Set("key1", "bar", 0)
 	kv.Set("key2", 1024, 0)
 	kv.Set("key3", 0.618, 0)
@@ -61,6 +65,7 @@ func testBasic(t *testing.T, kv Store) {
 	assert.False(t, kv.Has("key1"))
 
 	assert.Equal(t, 2, kv.Len())
+
 	assert.False(t, kv.Has("key1"))
 	assert.True(t, kv.Has("key2"))
 	assert.True(t, kv.Has("key3"))
@@ -147,18 +152,43 @@ func newStore(t *testing.T, c connector.Connector) Store {
 	return store
 }
 
-func makeConnector(t *testing.T, name string) connector.Connector {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	path := filepath.Join(root, "connectors", fmt.Sprintf("%s.conn.json", name))
-
-	content, err := ioutil.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = connector.Load(string(content), name)
-	if err != nil {
-		t.Fatal(err)
-	}
+func getConnector(t *testing.T, name string) connector.Connector {
 	return connector.Connectors[name]
+}
+
+func prepareStores(t *testing.T) {
+	stores := map[string]string{
+		"cache": filepath.Join("stores", "cache.lru.yao"),
+		"share": filepath.Join("stores", "share.redis.yao"),
+		"data":  filepath.Join("stores", "data.mongo.yao"),
+	}
+	for id, file := range stores {
+		_, err := Load(file, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func prepare(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	app, err := application.OpenFromDisk(root) // Load app
+	if err != nil {
+		t.Fatal(err)
+	}
+	application.Load(app)
+
+	connectors := map[string]string{
+		"mysql":  filepath.Join("connectors", "mysql.conn.yao"),
+		"mongo":  filepath.Join("connectors", "mongo.conn.yao"),
+		"redis":  filepath.Join("connectors", "redis.conn.yao"),
+		"sqlite": filepath.Join("connectors", "sqlite.conn.yao"),
+	}
+
+	for id, file := range connectors {
+		_, err = connector.Load(file, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 }
