@@ -2,20 +2,20 @@ package connector
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/go-playground/assert/v2"
+	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector/database"
 	mongo "github.com/yaoapp/gou/connector/mongo"
 	"github.com/yaoapp/gou/connector/redis"
 )
 
 func TestLoadMysql(t *testing.T) {
-	content := source(t, "mysql")
-	_, err := Load(content, "mysql")
+	file := prepare(t, "mysql")
+	_, err := Load(file, "mysql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,8 +35,8 @@ func TestLoadMysql(t *testing.T) {
 }
 
 func TestLoadSQLite(t *testing.T) {
-	content := source(t, "sqlite")
-	_, err := Load(content, "sqlite")
+	file := prepare(t, "sqlite")
+	_, err := Load(file, "sqlite")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,8 +58,8 @@ func TestLoadSQLite(t *testing.T) {
 }
 
 func TestLoadRedis(t *testing.T) {
-	content := source(t, "redis")
-	_, err := Load(content, "redis")
+	file := prepare(t, "redis")
+	_, err := Load(file, "redis")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,8 +81,8 @@ func TestLoadRedis(t *testing.T) {
 }
 
 func TestLoadMongoDB(t *testing.T) {
-	content := source(t, "mongo")
-	_, err := Load(content, "mongo")
+	file := prepare(t, "mongo")
+	_, err := Load(file, "mongo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,13 +103,12 @@ func TestLoadMongoDB(t *testing.T) {
 	assert.Equal(t, "mongo", Connectors["mongo"].ID())
 }
 
-func source(t *testing.T, name string) string {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	path := filepath.Join(root, "connectors", fmt.Sprintf("%s.conn.json", name))
-
-	content, err := ioutil.ReadFile(path)
+func prepare(t *testing.T, name string) string {
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	app, err := application.OpenFromDisk(root) // Load app
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(content)
+	application.Load(app)
+	return filepath.Join("connectors", fmt.Sprintf("%s.conn.yao", name))
 }

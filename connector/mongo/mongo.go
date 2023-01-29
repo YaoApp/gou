@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -14,6 +14,7 @@ import (
 // Connector the ConnectorDB struct
 type Connector struct {
 	id       string
+	file     string
 	Name     string          `json:"name,omitempty"`
 	Version  string          `json:"version,omitempty"`
 	Options  Options         `json:"options"`
@@ -39,8 +40,8 @@ type Host struct {
 }
 
 // Register the connections from dsl
-func (m *Connector) Register(id string, dsl []byte) error {
-	err := jsoniter.Unmarshal(dsl, m)
+func (m *Connector) Register(file string, id string, dsl []byte) error {
+	err := application.Parse(file, dsl, m)
 	if err != nil {
 		return err
 	}
@@ -51,6 +52,7 @@ func (m *Connector) Register(id string, dsl []byte) error {
 	}
 
 	m.id = id
+	m.file = file
 	return m.makeConnection()
 }
 

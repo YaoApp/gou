@@ -36,7 +36,7 @@ var types = map[string]int{
 
 // Connector the connector interface
 type Connector interface {
-	Register(id string, dsl []byte) error
+	Register(file string, id string, dsl []byte) error
 	ID() string
 	Is(int) bool
 }
