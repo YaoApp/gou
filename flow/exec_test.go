@@ -17,18 +17,18 @@ func TestExec(t *testing.T) {
 
 	now := time.Now()
 	yesterday := now.AddDate(0, 0, -1).Format("2006-01-02")
-	tommorrow := now.AddDate(0, 0, 1).Format("2006-01-02")
-	res, err := flow.Exec(yesterday, tommorrow)
+	tomorrow := now.AddDate(0, 0, 1).Format("2006-01-02")
+	res, err := flow.Exec(yesterday, tomorrow)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	r := any.Of(res).MapStr().Dot()
 	assert.Equal(t, yesterday, r.Get("params[0]"))
-	assert.Equal(t, tommorrow, r.Get("params[1]"))
+	assert.Equal(t, tomorrow, r.Get("params[1]"))
 	assert.Equal(t, "U1", r.Get("data.query[0].name"))
 	assert.Equal(t, "Duck", r.Get("data.categories[2].name"))
-	assert.Equal(t, "U2", r.Get("data.users[1].name"))
+	assert.Equal(t, "U3", r.Get("data.users[1].name"))
 }
 
 // func TestExecQuery(t *testing.T) {
