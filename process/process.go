@@ -126,7 +126,7 @@ func (process *Process) make() error {
 		process.Method = fields[len(fields)-1]
 		break
 
-	case "session":
+	case "session", "http":
 		process.Method = fields[len(fields)-1]
 		process.Handler = strings.ToLower(fmt.Sprintf("%s.%s", process.Group, process.Method))
 		break
