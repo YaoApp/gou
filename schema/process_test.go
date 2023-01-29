@@ -1,16 +1,19 @@
 package schema
 
 import (
-	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/process"
 )
 
 func TestSchemaProcesses(t *testing.T) {
+
+	dbconnect(t)
+	defer clean()
 
 	// Create
 	_, err := process.New("schemas.default.Create", "unit_tests_schema_processes").Exec()
@@ -25,7 +28,7 @@ func TestSchemaProcesses(t *testing.T) {
 	}
 
 	// TableCreate
-	user := schemaTestData(t)
+	user := prepareData(t)
 	_, err = process.New("schemas.default.TableCreate", "unit_tests_schema_table_user", user).Exec()
 	if err != nil {
 		t.Fatal(err)
@@ -112,13 +115,19 @@ func TestSchemaProcesses(t *testing.T) {
 	}
 }
 
-func schemaTestData(t *testing.T) map[string]interface{} {
-	root := os.Getenv("GOU_TEST_MOD_ROOT")
-	file := path.Join(root, "user.json")
-	bytes, err := ioutil.ReadFile(file)
+func prepareData(t *testing.T) map[string]interface{} {
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	app, err := application.OpenFromDisk(root) // Load app
 	if err != nil {
 		t.Fatal(err)
 	}
+	application.Load(app)
+
+	bytes, err := application.App.Read(filepath.Join("models", "tests", "user.mod.yao"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	data := map[string]interface{}{}
 	err = jsoniter.Unmarshal(bytes, &data)
 	if err != nil {
