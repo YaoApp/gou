@@ -1,19 +1,23 @@
 package task
 
 import (
+	"os"
 	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/process"
+	v8 "github.com/yaoapp/gou/runtime/v8"
 	"github.com/yaoapp/kun/utils"
 )
 
 func TestLoadTask(t *testing.T) {
 	taskLoad(t)
 	assert.Equal(t, 1, len(Tasks))
-	assert.NotPanics(t, func() { SelectTask("mail") })
+	assert.NotPanics(t, func() { Select("mail") })
 }
 
 func TestTaskProcess(t *testing.T) {
@@ -36,13 +40,13 @@ func TestTaskProcess(t *testing.T) {
 	// 	t.Fatal(err)
 	// }
 
-	time.Sleep(50 * time.Millisecond)
+	// time.Sleep(100 * time.Millisecond)
 	s2, err := process.New("tasks.mail.Get", id).Exec()
 	// if err != nil {
 	// 	t.Fatal(err)
 	// }
 
-	// time.Sleep(500 * time.Millisecond)
+	// time.Sleep(100 * time.Millisecond)
 
 	utils.Dump(s1, s2, id, id2)
 	assert.Equal(t, 1025, id)
@@ -57,6 +61,8 @@ func TestTaskProcess(t *testing.T) {
 }
 
 func taskLoad(t *testing.T) *Task {
+	loadApp(t)
+	loadScripts(t)
 
 	process.Register("xiang.system.Sleep", func(process *process.Process) interface{} {
 		process.ValidateArgNums(1)
@@ -65,16 +71,41 @@ func taskLoad(t *testing.T) *Task {
 		return nil
 	})
 
-	// root := os.Getenv("GOU_TEST_APP_ROOT")
-	_, err := Load(path.Join("tasks", "mail.json"), "mail")
+	_, err := Load(path.Join("tasks", "mail.task.yao"), "mail")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// err = Yao.Load(path.Join(root, "scripts", "mail.js"), "mail")
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	t.Fatal(err)
-	// }
-	return SelectTask("mail")
+	return Select("mail")
+}
+
+func loadApp(t *testing.T) {
+
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	app, err := application.OpenFromDisk(root) // Load app
+	if err != nil {
+		t.Fatal(err)
+	}
+	application.Load(app)
+
+}
+
+func loadScripts(t *testing.T) {
+
+	scripts := map[string]string{
+		"tests.task.mail": filepath.Join("scripts", "tests", "task", "mail.js"),
+	}
+
+	for id, file := range scripts {
+		_, err := v8.Load(file, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	err := v8.Start(&v8.Option{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 }

@@ -16,6 +16,10 @@ var TaskHandlers = map[string]process.Handler{
 	"get":      processTaskGet,
 }
 
+func init() {
+	process.RegisterGroup("tasks", TaskHandlers)
+}
+
 // ProcessOption the task process option
 type ProcessOption struct {
 	Name         string      `json:"name"`
@@ -64,8 +68,8 @@ func Load(file string, name string) (*Task, error) {
 	return t, nil
 }
 
-// SelectTask select task by name
-func SelectTask(name string) *Task {
+// Select select task by name
+func Select(name string) *Task {
 	t, has := Tasks[name]
 	if !has {
 		exception.New("Task:%s does not load", 500, name).Throw()
@@ -75,7 +79,7 @@ func SelectTask(name string) *Task {
 
 // processTaskAdd
 func processTaskAdd(process *process.Process) interface{} {
-	t := SelectTask(process.ID)
+	t := Select(process.ID)
 	args := []interface{}{}
 	if process.NumOfArgs() > 0 {
 		args = process.Args
@@ -104,7 +108,7 @@ func processTaskProgress(process *process.Process) interface{} {
 // processTaskGet
 func processTaskGet(process *process.Process) interface{} {
 	id := process.ArgsInt(0)
-	t := SelectTask(process.ID)
+	t := Select(process.ID)
 
 	job, err := t.Get(id)
 	if err != nil {
