@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/xun/capsule"
@@ -16,6 +16,7 @@ import (
 // Xun the xun database ORM
 type Xun struct {
 	id      string
+	file    string
 	Manager *capsule.Manager `json:"-"`
 	Name    string           `json:"name,omitempty"`
 	Driver  string           `json:"type"`
@@ -47,8 +48,9 @@ type XunHost struct {
 }
 
 // Register the connections from dsl
-func (x *Xun) Register(id string, dsl []byte) error {
-	err := jsoniter.Unmarshal(dsl, x)
+func (x *Xun) Register(file string, id string, dsl []byte) error {
+
+	err := application.Parse(file, dsl, x)
 	if err != nil {
 		return err
 	}
@@ -57,7 +59,9 @@ func (x *Xun) Register(id string, dsl []byte) error {
 	if err != nil {
 		return err
 	}
+
 	x.id = id
+	x.file = file
 	return x.makeConnections()
 }
 
