@@ -3,9 +3,15 @@ package http
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -15,12 +21,12 @@ import (
 
 func TestHTTPGet(t *testing.T) {
 
-	shutdown, ready, host := setup()
-	go start(t, &host, shutdown, ready)
-	defer stop(shutdown, ready)
+	shutdown, ready, host := processSetup()
+	go processStart(t, &host, shutdown, ready)
+	defer processStop(shutdown, ready)
 	<-ready
 
-	v := process.New("Get", fmt.Sprintf("%s/get?foo=bar", host),
+	v := process.New("http.Get", fmt.Sprintf("%s/get?foo=bar", host),
 		map[string]string{"hello": "world"},
 		map[string]string{"Auth": "Test"},
 	).Run()
@@ -35,7 +41,7 @@ func TestHTTPGet(t *testing.T) {
 	assert.Equal(t, "world", res.Get("query.hello[0]"))
 	assert.Equal(t, "Test", res.Get("headers.Auth[0]"))
 
-	v = process.New("Get", fmt.Sprintf("%s/get?foo=bar", host),
+	v = process.New("http.Get", fmt.Sprintf("%s/get?foo=bar", host),
 		map[int]int{1: 2},
 		map[string]string{"Auth": "Test"},
 	).Run()
@@ -49,12 +55,12 @@ func TestHTTPGet(t *testing.T) {
 
 func TestHTTPHead(t *testing.T) {
 
-	shutdown, ready, host := setup()
-	go start(t, &host, shutdown, ready)
-	defer stop(shutdown, ready)
+	shutdown, ready, host := processSetup()
+	go processStart(t, &host, shutdown, ready)
+	defer processStop(shutdown, ready)
 	<-ready
 
-	v := process.New("Head", fmt.Sprintf("%s/head?foo=bar", host),
+	v := process.New("http.Head", fmt.Sprintf("%s/head?foo=bar", host),
 		map[string]string{"name": "Lucy"},
 		map[string]string{"hello": "world"},
 		map[string]string{"Auth": "Test"},
@@ -66,7 +72,7 @@ func TestHTTPHead(t *testing.T) {
 	}
 	assert.Equal(t, 200, resp.Status)
 
-	v = process.New("Head", fmt.Sprintf("%s/head?foo=bar", host),
+	v = process.New("http.Head", fmt.Sprintf("%s/head?foo=bar", host),
 		map[string]string{"name": "Lucy"},
 		map[int]int{1: 2},
 		map[string]string{"Auth": "Test"},
@@ -82,11 +88,11 @@ func TestHTTPHead(t *testing.T) {
 
 func TestHTTPPost(t *testing.T) {
 
-	shutdown, ready, host := setup()
-	go start(t, &host, shutdown, ready)
-	defer stop(shutdown, ready)
+	shutdown, ready, host := processSetup()
+	go processStart(t, &host, shutdown, ready)
+	defer processStop(shutdown, ready)
 	<-ready
-	v := process.New("Post", fmt.Sprintf("%s/path?foo=bar", host),
+	v := process.New("http.Post", fmt.Sprintf("%s/path?foo=bar", host),
 		map[string]string{"name": "Lucy"},
 		nil,
 		map[string]string{"hello": "world"},
@@ -111,7 +117,7 @@ func TestHTTPPost(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	v = process.New("Post", fmt.Sprintf("%s/path?foo=bar", host),
+	v = process.New("http.Post", fmt.Sprintf("%s/path?foo=bar", host),
 		file,
 		nil,
 		map[string]string{"hello": "world"},
@@ -137,7 +143,7 @@ func TestHTTPPost(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	v = process.New("Post", fmt.Sprintf("%s/path?foo=bar", host),
+	v = process.New("http.Post", fmt.Sprintf("%s/path?foo=bar", host),
 		map[string]string{"name": "Lucy"},
 		map[string]interface{}{"file": file},
 		map[string]string{"hello": "world"},
@@ -158,7 +164,7 @@ func TestHTTPPost(t *testing.T) {
 	assert.Contains(t, res.Get("payload"), "Lucy")
 
 	// Post Error
-	v = process.New("Post", fmt.Sprintf("%s/path?foo=bar", host),
+	v = process.New("http.Post", fmt.Sprintf("%s/path?foo=bar", host),
 		map[string]string{"name": "Lucy"},
 		nil,
 		map[int]int{1: 2},
@@ -175,12 +181,12 @@ func TestHTTPPost(t *testing.T) {
 
 func TestHTTPOthers(t *testing.T) {
 
-	shutdown, ready, host := setup()
-	go start(t, &host, shutdown, ready)
-	defer stop(shutdown, ready)
+	shutdown, ready, host := processSetup()
+	go processStart(t, &host, shutdown, ready)
+	defer processStop(shutdown, ready)
 	<-ready
 
-	methods := []string{"Put", "Patch", "Delete"}
+	methods := []string{"http.Put", "http.Patch", "http.Delete"}
 	for _, method := range methods {
 		v := process.New(method, fmt.Sprintf("%s/path?foo=bar", host),
 			map[string]string{"name": "Lucy"},
@@ -216,12 +222,12 @@ func TestHTTPOthers(t *testing.T) {
 
 func TestHTTPSend(t *testing.T) {
 
-	shutdown, ready, host := setup()
-	go start(t, &host, shutdown, ready)
-	defer stop(shutdown, ready)
+	shutdown, ready, host := processSetup()
+	go processStart(t, &host, shutdown, ready)
+	defer processStop(shutdown, ready)
 	<-ready
 
-	v := process.New("Send", "POST", fmt.Sprintf("%s/path?foo=bar", host),
+	v := process.New("http.Send", "POST", fmt.Sprintf("%s/path?foo=bar", host),
 		map[string]string{"name": "Lucy"},
 		map[string]string{"hello": "world"},
 		map[string]string{"Auth": "Test"},
@@ -242,7 +248,7 @@ func TestHTTPSend(t *testing.T) {
 	assert.Equal(t, "Test", res.Get("headers.Auth[0]"))
 	assert.Equal(t, `{"name":"Lucy"}`, res.Get("payload"))
 
-	v = process.New("Send", "POST", fmt.Sprintf("%s/path?foo=bar", host),
+	v = process.New("http.Send", "POST", fmt.Sprintf("%s/path?foo=bar", host),
 		map[string]string{"name": "Lucy"},
 		map[int]int{1: 2},
 		map[string]string{"Auth": "Test"},
@@ -254,6 +260,82 @@ func TestHTTPSend(t *testing.T) {
 	}
 	assert.Equal(t, 400, resp.Status)
 	assert.NotNil(t, resp.Message)
+}
+
+func processSetup() (chan bool, chan bool, string) {
+	return make(chan bool, 1), make(chan bool, 1), ""
+}
+
+func processStart(t *testing.T, host *string, shutdown, ready chan bool) {
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
+
+	errCh := make(chan error, 1)
+
+	// Set router
+	gin.SetMode(gin.ReleaseMode)
+	gin.DefaultWriter = ioutil.Discard
+	router := gin.New()
+
+	router.GET("/get", testHanlder)
+	router.HEAD("/head", testHanlder)
+	router.POST("/path", testHanlder)
+	router.PUT("/path", testHanlder)
+	router.PATCH("/path", testHanlder)
+	router.DELETE("/path", testHanlder)
+
+	// Listen
+	l, err := net.Listen("tcp4", ":0")
+	if err != nil {
+		errCh <- fmt.Errorf("Error: can't get port")
+	}
+
+	srv := &http.Server{Addr: ":0", Handler: router}
+	defer func() {
+		srv.Close()
+		l.Close()
+	}()
+
+	// start serve
+	go func() {
+		fmt.Println("[TestServer] Starting")
+		if err := srv.Serve(l); err != nil && err != http.ErrServerClosed {
+			fmt.Println("[TestServer] Error:", err)
+			errCh <- err
+		}
+	}()
+
+	addr := strings.Split(l.Addr().String(), ":")
+	if len(addr) != 2 {
+		errCh <- fmt.Errorf("Error: can't get port")
+	}
+
+	*host = fmt.Sprintf("http://127.0.0.1:%s", addr[1])
+	time.Sleep(50 * time.Millisecond)
+	ready <- true
+	fmt.Printf("[TestServer] %s", *host)
+
+	select {
+
+	case <-shutdown:
+		fmt.Println("[TestServer] Stop")
+		break
+
+	case <-interrupt:
+		fmt.Println("[TestServer] Interrupt")
+		break
+
+	case err := <-errCh:
+		fmt.Println("[TestServer] Error:", err.Error())
+		break
+	}
+}
+
+func processStop(shutdown, ready chan bool) {
+	ready <- false
+	shutdown <- true
+	time.Sleep(50 * time.Millisecond)
 }
 
 func processTmpfile(t *testing.T, content string) (string, string) {
