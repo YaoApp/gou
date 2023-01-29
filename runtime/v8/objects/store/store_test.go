@@ -2,12 +2,12 @@ package store
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/runtime/yao/bridge"
 	"github.com/yaoapp/gou/store"
@@ -235,15 +235,16 @@ func newStore(t *testing.T, c connector.Connector) store.Store {
 }
 
 func makeConnector(t *testing.T, id string) connector.Connector {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	path := filepath.Join(root, "connectors", fmt.Sprintf("%s.conn.json", id))
 
-	content, err := ioutil.ReadFile(path)
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	app, err := application.OpenFromDisk(root) // Load app
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = connector.Load(string(content), id)
+	application.Load(app)
+	file := filepath.Join("connectors", fmt.Sprintf("%s.conn.yao", id))
+	_, err = connector.Load(file, id)
 	if err != nil {
 		t.Fatal(err)
 	}
