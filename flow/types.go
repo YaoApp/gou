@@ -8,9 +8,9 @@ import (
 
 // Flow  工作流
 type Flow struct {
-	Name        string                 `json:"-"`
+	ID          string                 `json:"-"`
 	File        string                 `json:"-"`
-	Label       string                 `json:"label"`
+	Name        string                 `json:"name"`
 	Version     string                 `json:"version"`
 	Description string                 `json:"description,omitempty"`
 	Nodes       []Node                 `json:"nodes,omitempty"`

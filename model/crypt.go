@@ -17,8 +17,8 @@ var IEncryptors = map[string]IEncryptor{
 	"PASSWORD": &EncryptorPassword{},
 }
 
-// LoadCrypt 载入数据加密器
-func LoadCrypt(data []byte, name string) (*Encryptor, error) {
+// WithCrypt 载入数据加密器
+func WithCrypt(data []byte, name string) (*Encryptor, error) {
 	encryptor := Encryptor{}
 	err := jsoniter.Unmarshal(data, &encryptor)
 	if err != nil {

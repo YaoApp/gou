@@ -1,88 +1,187 @@
 package flow
 
 import (
-	"path"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yaoapp/gou/session"
-	"github.com/yaoapp/kun/maps"
-	"github.com/yaoapp/kun/utils"
+	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/model"
+	"github.com/yaoapp/gou/query"
+	"github.com/yaoapp/gou/query/gou"
+	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/xun/capsule"
 )
 
-func TestLoadFlow(t *testing.T) {
-	latestFlow, err := Load(path.Join("flows", "latest.flow.json"), "latest")
+func TestLoad(t *testing.T) {
+	prepare(t)
+	defer clean()
+	check(t)
+}
+
+func TestSelect(t *testing.T) {
+
+	prepare(t)
+	defer clean()
+
+	basic, err := Select("basic")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	latestFlow.Reload()
-	assert.Equal(t, latestFlow.Label, "最新信息")
-	assert.Equal(t, latestFlow.Name, "latest")
-	assert.Equal(t, len(latestFlow.Nodes), 4)
+	assert.Equal(t, "Basic", basic.Name)
+	assert.Equal(t, "basic", basic.ID)
+	assert.Equal(t, 3, len(basic.Nodes))
 }
 
-func TestSelect(t *testing.T) {
-	latestFlow := Select("latest")
-	latestFlow.Reload()
-	assert.Equal(t, latestFlow.Label, "最新信息")
-	assert.Equal(t, latestFlow.Name, "latest")
-	assert.Equal(t, len(latestFlow.Nodes), 4)
-}
+func prepare(t *testing.T) {
 
-func TestFlowExec(t *testing.T) {
-	flow := Select("latest")
-	res := maps.Of(flow.Exec("%公司%", "bar").(map[string]interface{}))
-
-	assert.Equal(t, res.Get("params"), []interface{}{"%公司%", "bar"})
-	assert.Equal(t, len(res.Dot().Get("data.users").([]maps.MapStrAny)), 3)
-	assert.Equal(t, len(res.Dot().Get("data.manus").([]interface{})), 4)
-	// assert.Equal(t, res.Dot().Get("data.users.0.id"), int64(3))
-	// assert.Equal(t, res.Dot().Get("data.manus.1.id"), int64(3))
-	assert.Equal(t, res.Dot().Get("data.count.plugin"), "github")
-}
-
-func TestFlowExecQuery(t *testing.T) {
-	flow := Select("stat")
-	res := maps.Of(flow.Exec("2000-01-02", "2050-12-31", 1, 2).(map[string]interface{}))
-	// utils.Dump(res)
-	assert.Equal(t, res.Dot().Get("data.manus.0.id"), int64(1))
-	assert.Equal(t, res.Dot().Get("data.manus.0.short_name"), "云道天成")
-	assert.Equal(t, res.Dot().Get("data.manus.0.type"), "服务商")
-	assert.Equal(t, res.Dot().Get("data.manus.1.id"), int64(8))
-	assert.Equal(t, res.Dot().Get("data.users.total"), 3)
-	assert.Equal(t, res.Dot().Get("data.address.city"), "丰台区")
-	assert.Equal(t, res.Dot().Get("params.0"), "2000-01-02")
-}
-
-func TestFlowExecArraySet(t *testing.T) {
-	args := []map[string]interface{}{
-		{"name": "hello", "value": "world"},
-		{"name": "foo", "value": "bar"},
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	app, err := application.OpenFromDisk(root) // Load app
+	if err != nil {
+		t.Fatal(err)
 	}
-	flow := Select("arrayset")
-	res := flow.Exec(args)
-	utils.Dump(res)
+	application.Load(app)
+
+	dbconnect(t)
+	loadModels(t)
+	loadQuery(t)
+	loadFlows(t)
+	prepareData(t)
 }
 
-func TestFlowExecGlobalSession(t *testing.T) {
-	sid := session.ID()
-	session.Global().ID(sid).Set("id", 1)
-	flow := Select("user.info").WithSID(sid).WithGlobal(map[string]interface{}{"foo": "bar"})
-	res := maps.Of(flow.Exec().(map[string]interface{})).Dot()
-	assert.Equal(t, float64(1), res.Get("ID"))
-	assert.Equal(t, float64(1), res.Get("会话信息.id"))
-	assert.Equal(t, "admin", res.Get("会话信息.type"))
-	assert.Equal(t, "bar", res.Get("全局信息.foo"))
-	assert.Equal(t, "bar", res.Get("全局信息.foo"))
-	assert.Equal(t, int64(1), res.Get("用户数据.id"))
-	assert.Equal(t, "管理员", res.Get("用户数据.name"))
-	assert.Equal(t, "admin", res.Get("用户数据.type"))
-	assert.Equal(t, "bar", res.Get("脚本数据.global.foo"))
-	assert.Equal(t, float64(1), res.Get("脚本数据.session.id"))
-	assert.Equal(t, "admin", res.Get("脚本数据.session.type"))
+func check(t *testing.T) {
+	keys := map[string]bool{}
+	for id := range Flows {
+		keys[id] = true
+	}
+	flows := []string{"basic"}
+	for _, id := range flows {
+		_, has := keys[id]
+		assert.True(t, has)
+	}
 }
 
-func prepare(t *testing.T) string {
-	return "/flows"
+func clean() {
+	dbclose()
+}
+
+func dbclose() {
+	if capsule.Global != nil {
+		capsule.Global.Connections.Range(func(key, value any) bool {
+			if conn, ok := value.(*capsule.Connection); ok {
+				conn.Close()
+			}
+			return true
+		})
+	}
+}
+
+func dbconnect(t *testing.T) {
+
+	TestDriver := os.Getenv("GOU_TEST_DB_DRIVER")
+	TestDSN := os.Getenv("GOU_TEST_DSN")
+
+	// connect db
+	switch TestDriver {
+	case "sqlite3":
+		capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
+		break
+	default:
+		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
+		break
+	}
+
+}
+
+func prepareData(t *testing.T) {
+	for id := range model.Models {
+		mod := model.Select(id)
+		err := mod.Migrate(true)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	user := model.Select("user")
+	user.Insert(
+		[]string{"name", "mobile", "status"},
+		[][]interface{}{
+			{"U1", "13911101001", "enabled"},
+			{"U2", "13911101002", "enabled"},
+			{"U3", "13911101003", "enabled"},
+			{"U4", "13911101004", "enabled"},
+		})
+
+	category := model.Select("category")
+	category.Insert(
+		[]string{"name"},
+		[][]interface{}{{"Cat"}, {"Dog"}, {"Duck"}, {"Tiger"}, {"Lion"}},
+	)
+
+}
+
+func loadFlows(t *testing.T) {
+
+	flows := map[string]string{
+		"basic": filepath.Join("flows", "tests", "basic.flow.yao"),
+	}
+
+	for id, file := range flows {
+		flow, err := Load(file, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = flow.Reload()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func loadModels(t *testing.T) {
+
+	TestAESKey := os.Getenv("GOU_TEST_AES_KEY")
+	_, err := model.WithCrypt([]byte(fmt.Sprintf(`{"key":"%s"}`, TestAESKey)), "AES")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mods := map[string]string{
+		"user":     filepath.Join("models", "user.mod.yao"),
+		"pet":      filepath.Join("models", "pet.mod.yao"),
+		"tag":      filepath.Join("models", "tag.mod.yao"),
+		"category": filepath.Join("models", "category.mod.yao"),
+		"user.pet": filepath.Join("models", "user", "pet.mod.yao"),
+		"pet.tag":  filepath.Join("models", "pet", "tag.mod.yao"),
+	}
+
+	// load mods
+	for id, file := range mods {
+		_, err := model.Load(file, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func loadQuery(t *testing.T) {
+
+	TestAESKey := os.Getenv("GOU_TEST_AES_KEY")
+
+	// query engine
+	query.Register("query-test", &gou.Query{
+		Query: capsule.Query(),
+		GetTableName: func(s string) string {
+			if mod, has := model.Models[s]; has {
+				return mod.MetaData.Table.Name
+			}
+			exception.New("[query] %s not found", 404).Throw()
+			return s
+		},
+		AESKey: TestAESKey,
+	})
 }
