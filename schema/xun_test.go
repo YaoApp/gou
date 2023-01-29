@@ -297,8 +297,8 @@ func newXunSchema(t *testing.T) types.Schema {
 }
 
 func newUserBlueprint(t *testing.T) types.Blueprint {
-	root := os.Getenv("GOU_TEST_MOD_ROOT")
-	file := path.Join(root, "user.json")
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	file := path.Join(root, "models", "tests", "user.mod.yao")
 
 	blueprint, err := types.NewFile(file)
 	if err != nil {
@@ -308,8 +308,8 @@ func newUserBlueprint(t *testing.T) types.Blueprint {
 }
 
 func newUser2Blueprint(t *testing.T) types.Blueprint {
-	root := os.Getenv("GOU_TEST_MOD_ROOT")
-	file := path.Join(root, "user.json")
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	file := path.Join(root, "models", "tests", "user.mod.yao")
 	user, err := types.NewFile(file)
 	if err != nil {
 		t.Fatal(err)
@@ -337,4 +337,36 @@ func createTable(t *testing.T, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func clean() {
+	dbclose()
+}
+
+func dbclose() {
+	if capsule.Global != nil {
+		capsule.Global.Connections.Range(func(key, value any) bool {
+			if conn, ok := value.(*capsule.Connection); ok {
+				conn.Close()
+			}
+			return true
+		})
+	}
+}
+
+func dbconnect(t *testing.T) {
+
+	TestDriver := os.Getenv("GOU_TEST_DB_DRIVER")
+	TestDSN := os.Getenv("GOU_TEST_DSN")
+
+	// connect db
+	switch TestDriver {
+	case "sqlite3":
+		capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
+		break
+	default:
+		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
+		break
+	}
+
 }
