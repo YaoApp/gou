@@ -11,7 +11,6 @@ import (
 
 	"github.com/yaoapp/gou/api"
 	"github.com/yaoapp/gou/process"
-	"github.com/yaoapp/gou/runtime/bridge"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
 )
@@ -74,7 +73,7 @@ func processReadFileBuffer(process *process.Process) interface{} {
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
-	return bridge.Uint8Array(data)
+	return data
 }
 
 func processWirteFile(process *process.Process) interface{} {
@@ -101,10 +100,6 @@ func processWriteFileBuffer(process *process.Process) interface{} {
 	switch v := content.(type) {
 	case []byte:
 		data = v
-		break
-
-	case bridge.Uint8Array:
-		data = []byte(v)
 		break
 
 	default:
