@@ -1,8 +1,6 @@
 package ssl
 
 import (
-	"os"
-	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,9 +8,8 @@ import (
 )
 
 func TestProcessSign(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	file := path.Join(root, "certs", "private.pem")
-	_, err := LoadCertificateFrom(file, "private")
+	prepare(t)
+	_, err := Load(certFile("private.pem"), "private")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,9 +23,7 @@ func TestProcessSign(t *testing.T) {
 }
 
 func TestProcessVerify(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	file := path.Join(root, "certs", "cert.pem")
-	_, err := LoadCertificateFrom(file, "cert")
+	_, err := Load(certFile("cert.pem"), "cert")
 	if err != nil {
 		t.Fatal(err)
 	}
