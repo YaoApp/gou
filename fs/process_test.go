@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/process"
-	"github.com/yaoapp/gou/runtime/bridge"
 )
 
 func TestProcessFsReadFile(t *testing.T) {
@@ -40,9 +39,7 @@ func TestProcessFsReadFileBuffer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	content, ok := res.(bridge.Uint8Array)
-	assert.True(t, ok)
-	assert.Equal(t, bridge.Uint8Array(data), content)
+	assert.Equal(t, data, res)
 }
 
 func TestProcessFsWriteFile(t *testing.T) {
@@ -73,7 +70,7 @@ func TestProcessFsWriteBuffer(t *testing.T) {
 	}
 
 	testFsClear(FileSystems["system"], t)
-	args = []interface{}{f["F1"], bridge.Uint8Array(data), 0644}
+	args = []interface{}{f["F1"], data, 0644}
 	res, err = process.New(processName, args...).Exec()
 	if err != nil {
 		t.Fatal(err)
