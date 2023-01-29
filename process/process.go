@@ -62,8 +62,8 @@ func Register(name string, handler Handler) {
 // RegisterGroup register a process handler group
 func RegisterGroup(name string, group map[string]Handler) {
 	for method, handler := range group {
-		name = fmt.Sprintf("%s.%s", strings.ToLower(name), strings.ToLower(method))
-		Handlers[name] = handler
+		id := fmt.Sprintf("%s.%s", strings.ToLower(name), strings.ToLower(method))
+		Handlers[id] = handler
 	}
 }
 

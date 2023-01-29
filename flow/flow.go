@@ -7,36 +7,32 @@ import (
 
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/query"
-
-	"github.com/yaoapp/kun/exception"
 )
 
 // Flows 已加载工作流列表
 var Flows = map[string]*Flow{}
 
 // Load the flow
-func Load(file string, name string) (*Flow, error) {
+func Load(file string, id string) (*Flow, error) {
 
 	data, err := application.App.Read(file)
 	if err != nil {
 		return nil, err
 	}
 
-	flow := Flow{Name: name,
-		File: file,
-	}
+	flow := Flow{ID: id, File: file}
 	err = application.Parse(file, data, &flow)
 	if err != nil {
 		return nil, err
 	}
 
-	flow.Prepare()
-	Flows[name] = &flow
-	return Flows[name], nil
+	flow.prepare()
+	Flows[id] = &flow
+	return Flows[id], nil
 }
 
 // Prepare 预加载 Query DSL
-func (flow *Flow) Prepare() {
+func (flow *Flow) prepare() {
 
 	for i, node := range flow.Nodes {
 		if node.Query == nil {
@@ -85,13 +81,10 @@ func (flow *Flow) WithGlobal(global map[string]interface{}) *Flow {
 }
 
 // Select 读取已加载Flow
-func Select(name string) *Flow {
+func Select(name string) (*Flow, error) {
 	flow, has := Flows[name]
 	if !has {
-		exception.New(
-			fmt.Sprintf("Flow:%s; 尚未加载", name),
-			400,
-		).Throw()
+		return nil, fmt.Errorf("flows.%s not loaded", name)
 	}
-	return flow
+	return flow, nil
 }

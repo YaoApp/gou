@@ -2,16 +2,16 @@ package flow
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/query/share"
-	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
 )
 
-// Exec 运行flow
-func (flow *Flow) Exec(args ...interface{}) interface{} {
+// Exec execute flow
+func (flow *Flow) Exec(args ...interface{}) (interface{}, error) {
 
 	res := map[string]interface{}{} // 结果集
 	ctx, cancel := context.WithCancel(context.Background())
@@ -23,24 +23,23 @@ func (flow *Flow) Exec(args ...interface{}) interface{} {
 		In:      args,
 	}
 
-	// 运行工作流节点，并处理数据
 	flowProcess := "flows." + flow.Name
 	for i, node := range flow.Nodes {
 
-		// 死循环检查
 		if strings.HasPrefix(node.Process, flowProcess) {
-			exception.New("不能调用自身工作流(%s)", 400, node.Process)
+			return nil, fmt.Errorf("cannot call self flow(%s)", node.Process)
 		}
 
-		// 执行解析器
-		flow.ExecNode(&node, flowCtx, i-1)
+		_, err := flow.ExecNode(&node, flowCtx, i-1)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// 结果集输出处理
 	return flow.FormatResult(flowCtx)
 }
 
-// ExtendIn 展开 in 参数
+// ExtendIn Extend params
 func (ctx *Context) ExtendIn(data maps.Map) maps.Map {
 	if len(ctx.In) < 1 {
 		return data
@@ -56,33 +55,34 @@ func (ctx *Context) ExtendIn(data maps.Map) maps.Map {
 	return data
 }
 
-// FormatResult 结果集格式化输出
-func (flow *Flow) FormatResult(ctx *Context) interface{} {
+// FormatResult format result
+func (flow *Flow) FormatResult(ctx *Context) (interface{}, error) {
 	if flow.Output == nil {
-		return ctx.Res
+		return ctx.Res, nil
 	}
 	data := maps.Map{"$in": ctx.In, "$res": ctx.Res, "$global": flow.Global}
 	data = ctx.ExtendIn(data).Dot()
-	return share.Bind(flow.Output, data)
+	return share.Bind(flow.Output, data), nil
 }
 
-// ExecNode 运行节点
-func (flow *Flow) ExecNode(node *Node, ctx *Context, prev int) []interface{} {
+// ExecNode Execute node
+func (flow *Flow) ExecNode(node *Node, ctx *Context, prev int) ([]interface{}, error) {
 	data := maps.Map{"$in": ctx.In, "$res": ctx.Res, "$global": flow.Global}
 	data = ctx.ExtendIn(data).Dot()
 	var outs = []interface{}{}
+	var err error
 
 	if node.DSL != nil {
-		_, outs = flow.RunQuery(node, ctx, data)
-		return outs
+		_, outs, err = flow.RunQuery(node, ctx, data)
+		return outs, err
 	}
 
-	_, outs = flow.RunProcess(node, ctx, data)
-	return outs
+	_, outs, err = flow.RunProcess(node, ctx, data)
+	return outs, err
 }
 
-// RunQuery 运行 Query DSL 查询
-func (flow *Flow) RunQuery(node *Node, ctx *Context, data maps.Map) (interface{}, []interface{}) {
+// RunQuery execute Query DSL
+func (flow *Flow) RunQuery(node *Node, ctx *Context, data maps.Map) (interface{}, []interface{}, error) {
 
 	var res interface{}
 	outs := []interface{}{}
@@ -102,11 +102,11 @@ func (flow *Flow) RunQuery(node *Node, ctx *Context, data maps.Map) (interface{}
 	if node.Name != "" {
 		ctx.Res[node.Name] = res
 	}
-	return resp, outs
+	return resp, outs, nil
 }
 
-// RunProcess 运行处理器
-func (flow *Flow) RunProcess(node *Node, ctx *Context, data maps.Map) (interface{}, []interface{}) {
+// RunProcess exec process
+func (flow *Flow) RunProcess(node *Node, ctx *Context, data maps.Map) (interface{}, []interface{}, error) {
 
 	args := []interface{}{}
 	outs := []interface{}{}
@@ -141,5 +141,5 @@ func (flow *Flow) RunProcess(node *Node, ctx *Context, data maps.Map) (interface
 	if node.Name != "" {
 		ctx.Res[node.Name] = res
 	}
-	return resp, outs
+	return resp, outs, nil
 }
