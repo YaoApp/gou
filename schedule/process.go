@@ -21,6 +21,10 @@ var ScheduleHandlers = map[string]process.Handler{
 	"stop":  processScheduleStop,
 }
 
+func init() {
+	process.RegisterGroup("schedules", ScheduleHandlers)
+}
+
 // Schedule the schedule struct
 type Schedule struct {
 	name     string

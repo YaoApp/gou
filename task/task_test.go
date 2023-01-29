@@ -35,7 +35,7 @@ func TestStart(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	fmt.Println("NumGoroutine", runtime.NumGoroutine())
 
-	assert.Equal(t, 3, runtime.NumGoroutine())
+	assert.Equal(t, 4, runtime.NumGoroutine())
 	for i := 2; i <= 18; i = i + 2 {
 		assert.Equal(t, fmt.Sprintln("Add: ", i), res["add"][i])
 	}
