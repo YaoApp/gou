@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-playground/assert/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector/database"
 	mongo "github.com/yaoapp/gou/connector/mongo"
@@ -53,7 +53,6 @@ func TestLoadSQLite(t *testing.T) {
 	if _, ok := Connectors["sqlite"].(*database.Xun); !ok {
 		t.Fatal("the sqlite connector is not a *database.Xun")
 	}
-
 	assert.Equal(t, "sqlite", Connectors["sqlite"].ID())
 }
 

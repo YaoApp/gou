@@ -15,10 +15,6 @@ import (
 )
 
 // TestAPIRoot
-var TestAPIRoot = "/data/apis"
-var TestFLWRoot = "/data/flows"
-var TestPLGRoot = "/data/plugins"
-var TestModRoot = "/data/models"
 var TestQueryRoot = "/data/querys"
 var TestDriver = "mysql"
 var TestDSN = "root:123456@tcp(127.0.0.1:3306)/gou?charset=utf8mb4&parseTime=True&loc=Local"
@@ -60,10 +56,6 @@ func ReadFile(name string) []byte {
 
 func TestMain(m *testing.M) {
 
-	TestAPIRoot = os.Getenv("GOU_TEST_API_ROOT")
-	TestFLWRoot = os.Getenv("GOU_TEST_FLW_ROOT")
-	TestModRoot = os.Getenv("GOU_TEST_MOD_ROOT")
-	TestPLGRoot = os.Getenv("GOU_TEST_PLG_ROOT")
 	TestQueryRoot = os.Getenv("GOU_TEST_QUERY_ROOT")
 	TestDriver = os.Getenv("GOU_TEST_DB_DRIVER")
 	TestDSN = os.Getenv("GOU_TEST_DSN")

@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-playground/assert/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/query"
 	"github.com/yaoapp/gou/query/gou"
 	"github.com/yaoapp/gou/runtime/yao/bridge"

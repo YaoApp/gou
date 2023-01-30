@@ -3,8 +3,8 @@ package encoding
 import (
 	"testing"
 
-	"github.com/go-playground/assert/v2"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/process"
 )
 
