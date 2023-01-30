@@ -2,11 +2,11 @@ package lang
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/application"
 )
 
 type TestSomeWidget struct {
@@ -31,9 +31,9 @@ func (w *TestSomeWidget) Lang(trans func(widget string, inst string, value *stri
 }
 
 func TestLoadPick(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	root = filepath.Join(root, "langs")
-	err := Load(root)
+
+	prepare(t)
+	err := Load("langs")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,9 +48,8 @@ func TestLoadPick(t *testing.T) {
 }
 
 func TestLoadMerge(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	root = filepath.Join(root, "langs-tests")
-	err := Load(root)
+	prepare(t)
+	err := Load("langs-tests")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,9 +64,8 @@ func TestLoadMerge(t *testing.T) {
 }
 
 func TestApply(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	root = filepath.Join(root, "langs")
-	err := Load(root)
+	prepare(t)
+	err := Load("langs")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,16 +98,14 @@ func TestApply(t *testing.T) {
 }
 
 func TestApplyMuti(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	root = filepath.Join(root, "langs")
-	err := Load(root)
+	prepare(t)
+	err := Load("langs")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	root = os.Getenv("GOU_TEST_APP_ROOT")
-	root = filepath.Join(root, "langs-tests")
-	err = Load(root)
+	prepare(t)
+	err = Load("langs-tests")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,9 +138,8 @@ func TestApplyMuti(t *testing.T) {
 }
 
 func TestReplace(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	root = filepath.Join(root, "langs")
-	err := Load(root)
+	prepare(t)
+	err := Load("langs")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,9 +158,8 @@ func TestReplace(t *testing.T) {
 }
 
 func TestReplaceAll(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	root = filepath.Join(root, "langs")
-	err := Load(root)
+	prepare(t)
+	err := Load("langs")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,9 +283,8 @@ func TestReplaceAll(t *testing.T) {
 
 func TestReplaceClone(t *testing.T) {
 
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	root = filepath.Join(root, "langs")
-	err := Load(root)
+	prepare(t)
+	err := Load("langs")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,6 +377,15 @@ func TestReplaceClone(t *testing.T) {
 	}
 	assert.NotContains(t, string(res), "::")
 	assert.NotContains(t, string(res), "$L")
+}
+
+func prepare(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	app, err := application.OpenFromDisk(root) // Load app
+	if err != nil {
+		t.Fatal(err)
+	}
+	application.Load(app)
 }
 
 func testData() map[string]interface{} {

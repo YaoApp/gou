@@ -2,8 +2,6 @@ package lang
 
 import (
 	"fmt"
-	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,8 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/yaoapp/kun/log"
-	"gopkg.in/yaml.v3"
+	"github.com/yaoapp/gou/application"
 )
 
 var regVar, _ = regexp.Compile(`([\\]*)\$L\(([^\)]+)\)`)
@@ -51,37 +48,36 @@ func Pick(name string) *Dict {
 // Load the language dictionaries from the path
 func Load(root string) error {
 	root = path.Join(root, string(os.PathSeparator))
-	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() {
+
+	return application.App.Walk(root, func(root, filename string, isdir bool) error {
+
+		if isdir {
+
+			if filename == string(os.PathSeparator) || strings.Count(strings.TrimPrefix(filename, root), string(os.PathSeparator)) != 1 {
+				return nil
+			}
+
+			dict, err := Open(filepath.Join(root, filename))
+			if err != nil {
+				return err
+			}
+
+			langName := strings.ToLower(filepath.Base(filename))
+			if _, has := Dicts[langName]; has {
+				Dicts[langName].Merge(dict)
+				return nil
+			}
+			Dicts[langName] = dict
 			return nil
 		}
 
-		if strings.Count(strings.TrimPrefix(path, root), string(os.PathSeparator)) != 1 {
-			return nil
-		}
-
-		dict, err := Open(path)
-		if err != nil {
-			return err
-		}
-
-		langName := filepath.Base(path)
-		if _, has := Dicts[langName]; has {
-			Dicts[langName].Merge(dict)
-			return nil
-		}
-
-		Dicts[langName] = dict
 		return nil
 	})
 }
 
 // Open the dictionary from the language dictionary root
 func Open(langRoot string) (*Dict, error) {
-	langRoot = path.Join(langRoot, "/")
+
 	langName := strings.ToLower(path.Base(langRoot))
 	dict := &Dict{
 		Name:    langName,
@@ -89,13 +85,9 @@ func Open(langRoot string) (*Dict, error) {
 		Widgets: map[string]Words{},
 	}
 
-	err := filepath.Walk(langRoot, func(filename string, info os.FileInfo, err error) error {
-		if err != nil {
-			log.With(log.F{"root": langRoot, "filename": filename}).Error(err.Error())
-			return err
-		}
+	err := application.App.Walk(langRoot, func(root, filename string, isdir bool) error {
 
-		if !strings.HasSuffix(filename, ".yml") {
+		if isdir {
 			return nil
 		}
 
@@ -125,7 +117,7 @@ func Open(langRoot string) (*Dict, error) {
 		fullname := fmt.Sprintf("%s.%s", name, inst)
 		dict.Widgets[fullname] = words
 		return nil
-	})
+	}, "*.yml", "*.yaml")
 
 	return dict, err
 }
@@ -152,12 +144,12 @@ func getWidgetName(root string, file string) (string, string) {
 
 // OpenYaml dict file
 func OpenYaml(file string) (Words, error) {
-	data, err := ioutil.ReadFile(file)
+	data, err := application.App.Read(file)
 	if err != nil {
 		return nil, err
 	}
 	words := Words{}
-	err = yaml.Unmarshal(data, &words)
+	err = application.Parse(file, data, &words)
 	if err != nil {
 		return nil, err
 	}
