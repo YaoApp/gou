@@ -1,6 +1,0 @@
-{
-  "name": "Global LRU Cache",
-  "description": "The global memory LRU cache",
-  "type": "lru",
-  "option": { "size": 1024 }
-}

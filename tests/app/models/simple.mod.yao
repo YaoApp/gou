@@ -1,6 +1,0 @@
-{
-  "LANG": "1.0.0",
-  "VERSION": "1.0.0",
-  "FROM": "@github.com/yaoapp/workshop-tests-crm/models/user",
-  "table": { "name": "simple_tab" }
-}

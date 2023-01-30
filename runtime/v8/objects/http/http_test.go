@@ -15,7 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"github.com/yaoapp/gou/runtime/yao/bridge"
+	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/kun/any"
 	"rogchap.com/v8go"
 )
@@ -45,7 +45,7 @@ func TestHTTPObjectGet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := bridge.ToInterface(v)
+	resp, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestHTTPObjectGet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err = bridge.ToInterface(v)
+	resp, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestHTTPObjectPost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := bridge.ToInterface(v)
+	resp, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestHTTPObjectPost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err = bridge.ToInterface(v)
+	resp, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestHTTPObjectPost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err = bridge.ToInterface(v)
+	resp, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestHTTPObjectPost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err = bridge.ToInterface(v)
+	resp, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestHTTPObjectOthers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp, err := bridge.ToInterface(v)
+		resp, err := bridge.GoValue(v)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -240,7 +240,7 @@ func TestHTTPObjectOthers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp, err = bridge.ToInterface(v)
+		resp, err = bridge.GoValue(v)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -276,7 +276,7 @@ func TestHTTPObjectSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := bridge.ToInterface(v)
+	resp, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,7 +296,7 @@ func TestHTTPObjectSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err = bridge.ToInterface(v)
+	resp, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
