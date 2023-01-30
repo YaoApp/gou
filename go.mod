@@ -9,7 +9,6 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.1
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-errors/errors v1.4.2
-	github.com/go-playground/assert/v2 v2.0.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.2.0

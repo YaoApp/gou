@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yaoapp/kun/utils"
 )
 
 func TestGouOpen(t *testing.T) {
@@ -13,5 +12,9 @@ func TestGouOpen(t *testing.T) {
 		GouOpen(path.Join(TestQueryRoot, "not-exists.json"))
 	})
 	gou := GouOpen(path.Join(TestQueryRoot, "full.json"))
-	utils.Dump(gou.QueryDSL)
+
+	assert.Equal(t, "user", gou.From.Name)
+	assert.Len(t, gou.Orders, 1)
+	assert.Len(t, gou.Select, 2)
+	assert.Len(t, gou.Wheres, 2)
 }
