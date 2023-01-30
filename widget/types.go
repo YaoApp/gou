@@ -1,7 +1,5 @@
 package widget
 
-import "github.com/yaoapp/gou/runtime"
-
 // Widget the widget structs
 type Widget struct {
 	Name            string
@@ -10,11 +8,10 @@ type Widget struct {
 	Description     string   `json:"description,omitempty"`
 	Version         string   `json:"version,omitempty"`
 	Root            string   `json:"root,omitempty"`
-	Extension       string   `json:"extension,omitempty"`
+	Extensions      []string `json:"extensions,omitempty"`
 	Modules         []string `json:"modules,omitempty"`
 	Handlers        map[string]Handler
 	Instances       map[string]*Instance
-	Runtime         *runtime.Runtime
 	ModuleRegister  ModuleRegister
 	ProcessRegister ProcessRegister
 }

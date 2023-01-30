@@ -42,6 +42,18 @@ func prepare(t *testing.T) {
 		}
 	}
 
+	// widget scripts
+	widgetScripts := map[string]string{
+		"dyform.compile": filepath.Join("widgets", "dyform", "compile.js"),
+	}
+
+	for id, file := range widgetScripts {
+		_, err := LoadWidget(file, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	prepareSetup(t)
 }
 

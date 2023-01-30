@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yaoapp/gou/runtime"
-	"github.com/yaoapp/kun/utils"
+	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/process"
+	v8 "github.com/yaoapp/gou/runtime/v8"
 )
 
 func TestLoad(t *testing.T) {
@@ -34,30 +36,23 @@ func TestInstanceLoad(t *testing.T) {
 }
 
 func load(t *testing.T) *Widget {
-	root := os.Getenv("GOU_TEST_APP_ROOT")
-	path := filepath.Join(root, "widgets", "dyform")
-	widget, err := Load(path, yao(), processRegister(), moduleRegister())
+
+	root := os.Getenv("GOU_TEST_APPLICATION")
+
+	// Load app
+	app, err := application.OpenFromDisk(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	application.Load(app)
+	v8.Start(&v8.Option{})
+
+	path := filepath.Join("widgets", "dyform")
+	widget, err := Load(path, processRegister(), moduleRegister())
 	if err != nil {
 		t.Fatal(err)
 	}
 	return widget
-}
-
-func yao() *runtime.Runtime {
-	return runtime.Yao(runtime.Option{}).
-		AddFunction("UnitTestFn", func(global map[string]interface{}, sid string, args ...interface{}) interface{} {
-			utils.Dump(global, sid, args)
-			return args
-		}).
-		AddFunction("Process", func(global map[string]interface{}, sid string, args ...interface{}) interface{} {
-			return map[string]interface{}{"global": global, "sid": sid, "args": args}
-		}).
-		AddObject("console", map[string]func(global map[string]interface{}, sid string, args ...interface{}) interface{}{
-			"log": func(_ map[string]interface{}, _ string, args ...interface{}) interface{} {
-				utils.Dump(args)
-				return nil
-			},
-		})
 }
 
 func moduleRegister() ModuleRegister {
@@ -78,8 +73,12 @@ func moduleRegister() ModuleRegister {
 }
 
 func processRegister() ProcessRegister {
-	return func(widget, name string, process func(args ...interface{}) interface{}) error {
+	return func(widget, name string, p func(args ...interface{}) interface{}) error {
 		fmt.Printf("PROCESS: widgets.%s.%s Registered\n", widget, name)
+		processName := strings.ToLower(fmt.Sprintf("widgets.%s.%s", widget, name))
+		process.Register(processName, func(process *process.Process) interface{} {
+			return map[string]interface{}{"instance": "pad", "payload": "foo"}
+		})
 		return nil
 	}
 }
