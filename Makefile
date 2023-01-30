@@ -5,7 +5,7 @@ VETPACKAGES ?= $(shell $(GO) list ./... | grep -v /examples/)
 GOFILES := $(shell find . -name "*.go")
 
 # ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-TESTFOLDER := $(shell $(GO) list ./... | grep -E 'process|model|schema|task|schedule|flow|session|store|fs|http|encoding|ssl|connector|wasm|v8' | grep -v 'wamr')
+TESTFOLDER := $(shell $(GO) list ./... | grep -E 'process|model|schema|task|schedule|flow|session|store|fs|http|encoding|ssl|connector|wasm|v8' | grep -v -E 'wamr|socket')
 TESTTAGS ?= ""
 
 .PHONY: test
