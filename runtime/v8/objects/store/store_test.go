@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector"
-	"github.com/yaoapp/gou/runtime/yao/bridge"
+	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/store"
 	"github.com/yaoapp/kun/any"
 	"rogchap.com/v8go"
@@ -80,7 +80,7 @@ func testStoreObject(t *testing.T, c store.Store) {
 		t.Fatal(err)
 	}
 
-	value, err := bridge.ToInterface(v)
+	value, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func testStoreObject(t *testing.T, c store.Store) {
 		t.Fatal(err)
 	}
 
-	value, err = bridge.ToInterface(v)
+	value, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func testStoreObject(t *testing.T, c store.Store) {
 	del()
 	`, "")
 
-	value, err = bridge.ToInterface(v)
+	value, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func testStoreObject(t *testing.T, c store.Store) {
 	keys()
 	`, "")
 
-	value, err = bridge.ToInterface(v)
+	value, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func testStoreObject(t *testing.T, c store.Store) {
 		len()
 		`, "")
 
-	value, err = bridge.ToInterface(v)
+	value, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,12 +210,12 @@ func testStoreObject(t *testing.T, c store.Store) {
 		clear()
 		`, "")
 
-	value, err = bridge.ToInterface(v)
+	value, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	value, err = bridge.ToInterface(v)
+	value, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,5 +1,0 @@
-{
-  "github.com": { "token": "~/.yao/github_token" },
-  "workshop.yaoapps.com": { "user": "max" },
-  "192.168.0.1": { "user": "max" }
-}

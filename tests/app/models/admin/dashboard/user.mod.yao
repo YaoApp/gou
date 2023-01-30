@@ -1,4 +1,0 @@
-{
-  "FROM": "@github.com/YaoApp/workshop-tests-erp/models/user", // inherited from github.com/YaoApp/workshop-tests-erp/models/user
-  "table": { "prefix": "yao_" }
-}

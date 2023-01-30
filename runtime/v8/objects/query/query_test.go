@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/query"
 	"github.com/yaoapp/gou/query/gou"
-	"github.com/yaoapp/gou/runtime/yao/bridge"
+	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/xun/capsule"
 	"github.com/yaoapp/xun/dbal/schema"
 	"rogchap.com/v8go"
@@ -43,7 +43,7 @@ func TestQueryObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.ToInterface(v)
+	res, err := bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestQueryObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err = bridge.ToInterface(v)
+	res, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestQueryObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err = bridge.ToInterface(v)
+	res, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestQueryObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err = bridge.ToInterface(v)
+	res, err = bridge.GoValue(v)
 	if err != nil {
 		t.Fatal(err)
 	}

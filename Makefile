@@ -81,22 +81,6 @@ tools:
 	go install golang.org/x/lint/golint@latest; \
 	go install github.com/client9/misspell/cmd/misspell@latest;
 
-.PHONY: plugin
-plugin: 
-	rm -rf $(HOME)/data/gou-unit/plugins
-	rm -rf $(HOME)/data/gou-unit/logs
-	mkdir -p $(HOME)/data/gou-unit/plugins
-	mkdir -p $(HOME)/data/gou-unit/logs
-	GOOS=linux GOARCH=amd64 go build -o $(HOME)/data/gou-unit/plugins/user ./app/plugins/user
-	chmod +x $(HOME)/data/gou-unit/plugins/user
-	ls -l $(HOME)/data/gou-unit/plugins
-	ls -l $(HOME)/data/gou-unit/logs
-	$(HOME)/data/gou-unit/plugins/user 2>&1 || true
-plugin-mac: 
-	rm -rf ./app/plugins/user/dist
-	go build -o ./app/plugins/dist/user ./app/plugins/user
-	chmod +x ./app/plugins/dist/user
-
 .PHONY: migrate
 migrate:
 	$(GO) test -tags $(TESTTAGS) -run TestModelMigrate$

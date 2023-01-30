@@ -48,7 +48,7 @@ jobs:
         mongo: ["6.0"]
     steps:
       - name: "Download artifact"
-        uses: actions/github-script@v3.1.0
+        uses: actions/github-script@v6.1.0
         with:
           script: |
             var artifacts = await github.actions.listWorkflowRunArtifacts({
@@ -77,7 +77,7 @@ jobs:
           echo NR=$(cat NR) >> $GITHUB_ENV
 
       - name: "Comment on PR"
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -92,7 +92,7 @@ jobs:
             });
 
       - name: Setup Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cache/go-build
@@ -215,8 +215,6 @@ jobs:
           make vet
           make fmt-check
           make misspell-check
-          make plugin
-          make migrate
           make test
 
       - name: Run Benchmark
@@ -229,7 +227,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
 
       - name: "Comment on PR"
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
