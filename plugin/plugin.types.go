@@ -9,6 +9,6 @@ import (
 type Plugin struct {
 	Client *plugin.Client
 	Model  grpc.Model
-	Name   string
-	Cmd    string
+	ID     string
+	File   string
 }

@@ -111,12 +111,12 @@ func (process *Process) make() error {
 		process.Handler = strings.ToLower(fmt.Sprintf("%s.%s", process.Group, process.Method))
 		break
 
-	case "flows", "plugins":
+	case "flows":
 		process.Handler = process.Group
 		process.ID = strings.ToLower(strings.Join(fields[1:], "."))
 		break
 
-	case "scripts", "studio":
+	case "scripts", "studio", "plugins":
 		if len(fields) < 3 {
 			return fmt.Errorf("Exception|404:%s not found", process.Name)
 		}

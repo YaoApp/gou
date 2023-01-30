@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/grpc"
 )
 
@@ -22,18 +21,11 @@ var pluginLogger = hclog.New(&hclog.LoggerOptions{
 	Level:  hclog.Error,
 })
 
-// LoadPluginReturn 加载插件
-func LoadPluginReturn(cmd string, name string) (plugin *Plugin, err error) {
-	defer func() { err = exception.Catch(recover()) }()
-	plugin = LoadPlugin(cmd, name)
-	return plugin, nil
-}
-
-// LoadPlugin 加载插件
-func LoadPlugin(cmd string, name string) *Plugin {
+// Load a plugin
+func Load(file string, id string) (*Plugin, error) {
 
 	// 已载入，如果进程存在杀掉重载
-	plug, has := Plugins[name]
+	plug, has := Plugins[id]
 	if has {
 		if !plug.Client.Exited() {
 			plug.Client.Kill()
@@ -44,7 +36,7 @@ func LoadPlugin(cmd string, name string) *Plugin {
 	client := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig:  grpc.Handshake,
 		Plugins:          grpc.PluginMap,
-		Cmd:              exec.Command(cmd),
+		Cmd:              exec.Command(file),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		Logger:           pluginLogger,
 	})
@@ -52,29 +44,29 @@ func LoadPlugin(cmd string, name string) *Plugin {
 	// Connect via RPC
 	rpcClient, err := client.Client()
 	if err != nil {
-		exception.Err(err, 500).Throw()
+		return nil, fmt.Errorf("%s(%s) %s", id, file, err.Error())
 	}
 
 	// Request the plugin
 	raw, err := rpcClient.Dispense("model")
 	if err != nil {
-		exception.Err(err, 500).Throw()
+		return nil, fmt.Errorf("%s(%s) %s", id, file, err.Error())
 	}
 
 	mod := raw.(grpc.Model)
 	p := &Plugin{
 		Client: client,
 		Model:  mod,
-		Name:   name,
-		Cmd:    cmd,
+		ID:     id,
+		File:   file,
 	}
 
-	Plugins[name] = p
-	return p
+	Plugins[id] = p
+	return p, nil
 }
 
-// KillPlugins 关闭插件进程
-func KillPlugins() {
+// KillAll kill all loaded plugins
+func KillAll() {
 	for _, plug := range Plugins {
 		if !plug.Client.Exited() {
 			plug.Client.Kill()
@@ -91,26 +83,26 @@ func SetPluginLogger(name string, output io.Writer, level hclog.Level) {
 	})
 }
 
-// SelectPlugin 选择插件
-func SelectPlugin(name string) *Plugin {
-	plug, has := Plugins[name]
+// Select a plugin
+func Select(id string) (grpc.Model, error) {
+	var err error
+	plug, has := Plugins[id]
 	if !has {
-		exception.New(
-			fmt.Sprintf("Plugin:%s; 尚未加载", name),
-			400,
-		).Throw()
+		return nil, fmt.Errorf("plugin %s not loaded", id)
+
 	}
 
 	// 如果进程已退出，重载
 	if plug.Client.Exited() {
-		plug = LoadPlugin(plug.Cmd, plug.Name)
+		plug, err = Load(plug.File, plug.ID)
+		if err != nil {
+			return nil, fmt.Errorf("%s %s", id, err)
+		}
 	}
-
-	return plug
+	return plug.Model, nil
 }
 
-// SelectPluginModel 选择插件
-func SelectPluginModel(name string) grpc.Model {
-	plug := SelectPlugin(name)
-	return plug.Model
+// Kill a plugin process
+func (plugin *Plugin) Kill() {
+	plugin.Client.Kill()
 }
