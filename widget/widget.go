@@ -1,11 +1,11 @@
 package widget
 
 import (
-	"io/ioutil"
+	"fmt"
 	"path/filepath"
 
-	jsoniter "github.com/json-iterator/go"
-	"github.com/yaoapp/gou/runtime"
+	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/kun/log"
 )
 
@@ -13,26 +13,26 @@ import (
 var Widgets = map[string]*Widget{}
 
 // Load load a widget
-func Load(path string, runtime *runtime.Runtime, processRegister ProcessRegister, moduleRegister ModuleRegister) (*Widget, error) {
+func Load(path string, processRegister ProcessRegister, moduleRegister ModuleRegister) (*Widget, error) {
 
 	w := &Widget{
 		Name:            filepath.Base(path),
 		Path:            path,
 		Instances:       map[string]*Instance{},
-		Runtime:         runtime,
 		ProcessRegister: processRegister,
 		ModuleRegister:  moduleRegister,
 	}
 
-	data, err := ioutil.ReadFile(filepath.Join(path, "widget.json"))
+	setting := filepath.Join(path, "widget.yao")
+	data, err := application.App.Read(setting)
 	if err != nil {
-		log.Error("[Widget] open widget.json error: %s", err.Error())
+		log.Error("[Widget] open widget.yao error: %s", err.Error())
 		return nil, err
 	}
 
-	err = jsoniter.Unmarshal(data, w)
+	err = application.Parse(setting, data, w)
 	if err != nil {
-		log.Error("[Widget] parse widget.json error: %s", err.Error())
+		log.Error("[Widget] parse widget.yao error: %s", err.Error())
 		return nil, err
 	}
 
@@ -53,6 +53,8 @@ func Load(path string, runtime *runtime.Runtime, processRegister ProcessRegister
 	if err != nil {
 		return nil, err
 	}
+
+	process.Register(fmt.Sprintf("widgets.%s.reload", w.Name), processReloadWidgetInstance)
 
 	// Register the widget
 	Widgets[w.Name] = w

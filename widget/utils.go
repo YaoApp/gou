@@ -1,27 +1,27 @@
 package widget
 
 import (
-	"os"
-	"path"
-	"path/filepath"
+	"fmt"
 	"strings"
 
-	"github.com/yaoapp/kun/log"
+	"github.com/yaoapp/gou/application"
 )
 
 // Walk the path
-func Walk(root string, typeName string, cb func(root, filename string) error) error {
-	root = path.Join(root, "/")
-	err := filepath.Walk(root, func(filename string, info os.FileInfo, err error) error {
-		if err != nil {
-			log.With(log.F{"root": root, "type": typeName, "filename": filename}).Error(err.Error())
-			return err
+func Walk(root string, extensions []string, cb func(root, filename string) error) error {
+
+	exts := []string{}
+	for _, ext := range extensions {
+		exts = append(exts, fmt.Sprintf("*.%s", ext))
+	}
+
+	err := application.App.Walk(root, func(root, filename string, isdir bool) error {
+		if isdir {
+			return nil
 		}
-		if strings.HasSuffix(filename, typeName) {
-			cb(root, filename)
-		}
+		cb(root, filename)
 		return nil
-	})
+	}, exts...)
 	return err
 }
 
@@ -32,14 +32,4 @@ func InstName(root string, file string) string {
 	nametypes := strings.Split(namer[0], "/")      // ["foo", "bar"]
 	name := strings.Join(nametypes, ".")           // "foo.bar"
 	return name
-}
-
-// DirNotExists validate the folder
-func DirNotExists(dir string) bool {
-	dir = strings.TrimPrefix(dir, "fs://")
-	dir = strings.TrimPrefix(dir, "file://")
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return true
-	}
-	return false
 }

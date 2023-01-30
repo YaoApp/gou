@@ -2,10 +2,10 @@ package widget
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/kun/log"
 )
 
@@ -15,7 +15,7 @@ func (w *Widget) Load() error {
 	// Load from the yao app path
 	root, err := w.InstanceRoot()
 	if err == nil {
-		err := Walk(root, w.Extension, func(root, filename string) error {
+		err := Walk(root, w.Extensions, func(root, filename string) error {
 			basename := filepath.Base(filename)
 			name := InstName(root, basename)
 			err := w.LoadInstanceFile(filename, name)
@@ -52,7 +52,7 @@ func (w *Widget) Load() error {
 
 // LoadInstanceFile load a instance from a file
 func (w *Widget) LoadInstanceFile(file string, name string) error {
-	data, err := ioutil.ReadFile(file)
+	data, err := application.App.Read(file)
 	if err != nil {
 		return err
 	}
@@ -129,14 +129,8 @@ func (w *Widget) InstanceRoot() (string, error) {
 		return "", err
 	}
 
-	if DirNotExists(root) {
-		err := fmt.Errorf("widget %s %s dose not exists", w.Name, root)
-		log.Warn("[Widget] %s ", err.Error())
-		return root, err
-	}
-
-	if w.Extension == "" {
-		w.Extension = ".json"
+	if w.Extensions == nil || len(w.Extensions) == 0 {
+		w.Extensions = []string{".yao"}
 	}
 
 	return root, nil

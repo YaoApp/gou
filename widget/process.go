@@ -1,6 +1,7 @@
 package widget
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/yaoapp/gou/process"
@@ -8,17 +9,9 @@ import (
 	"github.com/yaoapp/kun/log"
 )
 
-// WidgetHandlers widget process handlers
-var WidgetHandlers = map[string]process.Handler{
-	"reload": processReloadWidgetInstance,
-}
-
-// WidgetCustomHandlers custom widget handlers
-var WidgetCustomHandlers = map[string]map[string]process.Handler{}
-
 // LoadWidget load widgets
 func LoadWidget(path string, name string, register ModuleRegister) (*Widget, error) {
-	_, err := Load(path, nil, customProcessRegister(), register) // bug
+	_, err := Load(path, customProcessRegister(), register)
 	if err != nil {
 		return nil, err
 	}
@@ -26,17 +19,17 @@ func LoadWidget(path string, name string, register ModuleRegister) (*Widget, err
 }
 
 func customProcessRegister() ProcessRegister {
+
 	return func(widget, name string, handler func(args ...interface{}) interface{}) error {
+
 		widget = strings.ToLower(widget)
 		name = strings.ToLower(name)
 		log.Info("[Widget] Register Process widgets.%s.%s", widget, name)
-		if _, has := WidgetCustomHandlers[widget]; !has {
-			WidgetCustomHandlers[widget] = map[string]process.Handler{}
-		}
-
-		WidgetCustomHandlers[widget][name] = func(process *process.Process) interface{} {
+		processName := strings.ToLower(fmt.Sprintf("widgets.%s.%s", widget, name))
+		process.Register(processName, func(process *process.Process) interface{} {
 			return handler(process.Args...)
-		}
+		})
+
 		return nil
 	}
 }

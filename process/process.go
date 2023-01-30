@@ -104,7 +104,7 @@ func (process *Process) make() error {
 	process.Group = fields[0]
 	switch process.Group {
 
-	case "models", "schemas", "stores", "fs", "tasks", "schedules", "widgets":
+	case "models", "schemas", "stores", "fs", "tasks", "schedules":
 		// models.user.pet.Find
 		process.Method = fields[len(fields)-1]
 		process.ID = strings.ToLower(strings.Join(fields[1:len(fields)-1], "."))
@@ -131,6 +131,13 @@ func (process *Process) make() error {
 		process.Handler = strings.ToLower(fmt.Sprintf("%s.%s", process.Group, process.Method))
 		break
 
+	case "widgets":
+		// widgets.reload, widgets.dyform.save
+		process.Method = fields[len(fields)-1]
+		process.ID = strings.ToLower(strings.Join(fields[1:len(fields)-1], "."))
+		process.Handler = strings.ToLower(fmt.Sprintf("widgets.%s.%s", process.ID, process.Method))
+		fmt.Println("widgets:: ", process.Handler)
+		break
 	default:
 		process.Handler = strings.ToLower(process.Name)
 		break
