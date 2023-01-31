@@ -1,4 +1,4 @@
-package gou
+package schedule
 
 import (
 	"fmt"
