@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yaoapp/gou/websocket"
 )
 
 const (
@@ -40,13 +41,11 @@ type Option struct {
 
 // Server the http server opiton
 type Server struct {
-	router *gin.Engine
-	addr   net.Addr
-	signal chan uint8
-	event  chan uint8
-	status uint8
-	option *Option
+	router    *gin.Engine
+	addr      net.Addr
+	signal    chan uint8
+	event     chan uint8
+	status    uint8
+	option    *Option
+	upgraders map[string]*websocket.Upgrader
 }
-
-// StaticHandler the static file hanlders
-type StaticHandler struct{}

@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yaoapp/gou/schedule"
-	"github.com/yaoapp/gou/task"
 	"github.com/yaoapp/gou/websocket"
 	"github.com/yaoapp/kun/log"
 )
@@ -99,6 +97,25 @@ func (server *Server) Start() error {
 		server.event <- CLOSE
 	}()
 
+	// WebSocket
+	if len(websocket.Upgraders) > 0 {
+
+		// Start WebSocket Hub
+		for id, upgrader := range websocket.Upgraders {
+			upgrader.SetRouter(server.router)
+			go upgrader.Start()
+			log.Info("Websocket %s start", id)
+		}
+
+		// Stop WebSocket Hub
+		defer func() {
+			for id, upgrader := range websocket.Upgraders {
+				upgrader.Stop()
+				log.Info("Websocket %s quit", id)
+			}
+		}()
+	}
+
 	// start server
 	go func() {
 		server.status = READY
@@ -163,22 +180,10 @@ func (server *Server) Restart() error {
 	return nil
 }
 
-// WithStaticFiles with static files server
-func (server *Server) WithStaticFiles(handler []*StaticHandler) *Server {
-	return server
-}
-
-// WithUpgraders start websocket upgraders
-func (server *Server) WithUpgraders(upgraders []*websocket.Upgrader) *Server {
-	return server
-}
-
-// WithTasks start tasks daemon
-func (server *Server) WithTasks(tasks []*task.Task) *Server {
-	return server
-}
-
-// WithSchedules start schedules daemon
-func (server *Server) WithSchedules(schedules []*schedule.Schedule) *Server {
+// With middlewares
+func (server *Server) With(middlewares ...func(ctx *gin.Context)) *Server {
+	for _, middleware := range middlewares {
+		server.router.Use(middleware)
+	}
 	return server
 }
