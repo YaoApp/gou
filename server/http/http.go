@@ -75,12 +75,15 @@ func (server *Server) Start() error {
 	if err != nil {
 		log.Error("[Server] %s %s", addr, err.Error())
 		server.status = CREATED
+		server.event <- ERROR
 		return err
 	}
 
 	// network preparing
 	server.addr = listener.Addr()
 	srv := &http.Server{Addr: server.addr.String(), Handler: server.router}
+
+	// close server
 	defer func() {
 		if server.status == RESTARTING {
 			return
@@ -93,7 +96,7 @@ func (server *Server) Start() error {
 		}
 
 		server.status = CLOSED
-		server.event <- CLOSED
+		server.event <- CLOSE
 	}()
 
 	// start server
