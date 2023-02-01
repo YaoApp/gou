@@ -2,135 +2,44 @@ package api
 
 import (
 	"bytes"
-	"io/ioutil"
-	"log"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/flow"
+	"github.com/yaoapp/gou/model"
+	"github.com/yaoapp/gou/query"
+	"github.com/yaoapp/gou/query/gou"
+	v8 "github.com/yaoapp/gou/runtime/v8"
 	"github.com/yaoapp/gou/session"
-	"github.com/yaoapp/kun/any"
+	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
+	"github.com/yaoapp/xun/capsule"
 )
 
-func init() {
-	SetHTTPGuards(map[string]gin.HandlerFunc{"bearer-jwt": func(ctx *gin.Context) {}})
-}
-func TestLoadAPI(t *testing.T) {
-	user, err := Load("/apis/user.http.yao", "user")
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, user.ID, "user")
-}
+func TestSelect(t *testing.T) {
+	prepare(t)
+	defer clean()
+	var user *API
+	assert.NotPanics(t, func() {
+		user = Select("user")
+	})
 
-func TestSelectAPI(t *testing.T) {
-	user := SelectAPI("user")
 	user.Reload()
 	assert.Equal(t, user.ID, "user")
 }
 
-func TestServeHTTP(t *testing.T) {
-	shutdown := make(chan bool, 1)
-	go ServeHTTP(Server{
-		Debug:  true,
-		Host:   "127.0.0.1",
-		Port:   5001,
-		Allows: []string{"a.com", "b.com"},
-	}, shutdown, func(_ Server) {
-		log.Println("服务已关闭")
-	})
-	defer func() { shutdown <- true }()
-
-	// 发送请求
-	request := func() (maps.MapStr, error) {
-		time.Sleep(time.Microsecond * 100)
-		resp, err := http.Get("http://127.0.0.1:5001/user/info/1?select=id,name")
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		res := maps.MakeMapStr()
-		err = jsoniter.Unmarshal(body, &res)
-		if err != nil {
-			return nil, err
-		}
-		return res, nil
-	}
-
-	// 等待服务启动
-	times := 0
-	for times < 20 { // 2秒超时
-		times++
-		res, err := request()
-		if err != nil {
-			continue
-		}
-		assert.Equal(t, 1, any.Of(res.Get("id")).CInt())
-		assert.Equal(t, "管理员", res.Get("name"))
-		return
-	}
-
-	assert.True(t, false)
-}
-
-func TestServeHTTPShutDown(t *testing.T) {
-	shutdown := make(chan bool, 1)
-	go ServeHTTP(Server{
-		Debug:  true,
-		Host:   "127.0.0.1",
-		Port:   5001,
-		Allows: []string{"a.com", "b.com"},
-	}, shutdown, func(_ Server) {
-		log.Println("服务已关闭")
-	})
-
-	// 发送请求
-	request := func() (maps.MapStr, error) {
-		time.Sleep(time.Microsecond * 100)
-		resp, err := http.Get("http://127.0.0.1:5001/user/info/1?select=id,name")
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		res := maps.MakeMapStr()
-		err = jsoniter.Unmarshal(body, &res)
-		if err != nil {
-			return nil, err
-		}
-		return res, nil
-	}
-
-	// 等待服务启动
-	times := 0
-	for times < 20 { // 2秒超时
-		times++
-		res, err := request()
-		if err != nil {
-			continue
-		}
-		assert.Equal(t, 1, any.Of(res.Get("id")).CInt())
-		assert.Equal(t, "管理员", res.Get("name"))
-
-		// 测试关闭
-		shutdown <- true
-		time.Sleep(time.Second * 1)
-		_, err = request()
-		assert.NotNil(t, err)
-		return
-	}
-
-	assert.True(t, false)
-}
-
 func TestAPIUserHello(t *testing.T) {
-	router := GetTestRouter()
+	prepare(t)
+	defer clean()
+	router := testRouter(t)
 	response := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/user/hello", nil)
 	router.ServeHTTP(response, req)
@@ -138,7 +47,9 @@ func TestAPIUserHello(t *testing.T) {
 }
 
 func TestAPIUserAuth(t *testing.T) {
-	router := GetTestRouter()
+	prepare(t)
+	defer clean()
+	router := testRouter(t)
 	response := httptest.NewRecorder()
 	body := []byte(`{"response":"success"}`)
 	req, _ := http.NewRequest("POST", "/user/auth/hi?foo=bar&hello=world", bytes.NewBuffer(body))
@@ -149,7 +60,9 @@ func TestAPIUserAuth(t *testing.T) {
 }
 
 func TestAPIUserAuthSid(t *testing.T) {
-	router := GetTestRouter(func(c *gin.Context) {
+	prepare(t)
+	defer clean()
+	router := testRouter(t, func(c *gin.Context) {
 		c.Set("__sid", c.Query("sid"))
 		c.Set("__global", map[string]interface{}{"hello": "world"})
 	})
@@ -167,7 +80,9 @@ func TestAPIUserAuthSid(t *testing.T) {
 }
 
 func TestAPIUserAuthFail(t *testing.T) {
-	router := GetTestRouter()
+	prepare(t)
+	defer clean()
+	router := testRouter(t)
 	response := httptest.NewRecorder()
 	body := []byte(`{"response":"failure"}`)
 	req, _ := http.NewRequest("POST", "/user/auth/hi?foo=bar&hello=world", bytes.NewBuffer(body))
@@ -178,7 +93,9 @@ func TestAPIUserAuthFail(t *testing.T) {
 }
 
 func TestAPIUserSessionFlow(t *testing.T) {
-	router := GetTestRouter(func(c *gin.Context) {
+	prepare(t)
+	defer clean()
+	router := testRouter(t, func(c *gin.Context) {
 		c.Set("__sid", c.Query("sid"))
 		c.Set("__global", map[string]interface{}{"hello": "world"})
 	})
@@ -188,23 +105,22 @@ func TestAPIUserSessionFlow(t *testing.T) {
 	ss.Set("id", 1)
 	req, _ := http.NewRequest("GET", "/user/session/flow?sid="+id, nil)
 	router.ServeHTTP(response, req)
-	res := GetResponseMap(response).Dot()
+	res := responseMap(response).Dot()
 	assert.Equal(t, float64(1), res.Get("ID"))
-	assert.Equal(t, float64(1), res.Get("会话信息.id"))
-	assert.Equal(t, "admin", res.Get("会话信息.type"))
-	assert.Equal(t, "world", res.Get("全局信息.hello"))
-	assert.Equal(t, float64(1), res.Get("用户数据.id"))
-	assert.Equal(t, "管理员", res.Get("用户数据.name"))
-	assert.Equal(t, "admin", res.Get("用户数据.type"))
-	assert.Equal(t, "world", res.Get("脚本数据.global.hello"))
-	assert.Equal(t, float64(1), res.Get("脚本数据.session.id"))
-	assert.Equal(t, "admin", res.Get("脚本数据.session.type"))
+	assert.Equal(t, float64(1), res.Get("SessionData.id"))
+	assert.Equal(t, "admin", res.Get("SessionData.type"))
+	assert.Equal(t, "world", res.Get("Global.hello"))
+	assert.Equal(t, float64(1), res.Get("User.id"))
+	assert.Equal(t, "U1", res.Get("User.name"))
+	assert.Equal(t, "admin", res.Get("User.type"))
 	assert.Equal(t, "application/json", response.Header()["Content-Type"][0])
 	assert.Equal(t, "1", response.Header()["User-Agent"][0])
 }
 
 func TestAPIUserSessionIn(t *testing.T) {
-	router := GetTestRouter(func(c *gin.Context) {
+	prepare(t)
+	defer clean()
+	router := testRouter(t, func(c *gin.Context) {
 		c.Set("__sid", c.Query("sid"))
 		c.Set("__global", map[string]interface{}{"hello": "world"})
 	})
@@ -214,26 +130,162 @@ func TestAPIUserSessionIn(t *testing.T) {
 	ss.Set("id", 1)
 	req, _ := http.NewRequest("GET", "/user/session/in?sid="+id, nil)
 	router.ServeHTTP(response, req)
-	res := GetResponseMap(response).Dot()
+	res := responseMap(response).Dot()
 	assert.Equal(t, float64(1), res.Get("id"))
 }
 
-func GetTestRouter(middlewares ...gin.HandlerFunc) *gin.Engine {
-	srv := Server{
-		Debug:  true,
-		Host:   "127.0.0.1",
-		Port:   5001,
-		Allows: []string{"a.com", "b.com"},
-	}
-	router := gin.Default()
+func testRouter(t *testing.T, middlewares ...gin.HandlerFunc) *gin.Engine {
+	prepare(t)
+	router := gin.New()
 	gin.SetMode(gin.ReleaseMode)
-	SetHTTPRoutes(router, srv, middlewares...)
+	router.Use(middlewares...)
+	SetRoutes(router, "/", "a.com", "b.com")
 	return router
 }
 
-func GetResponseMap(resp *httptest.ResponseRecorder) maps.MapStrAny {
+func responseMap(resp *httptest.ResponseRecorder) maps.MapStrAny {
 	body := resp.Body.Bytes()
 	res := map[string]interface{}{}
 	jsoniter.Unmarshal(body, &res)
 	return maps.Of(res)
+}
+
+func prepare(t *testing.T) {
+
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	app, err := application.OpenFromDisk(root) // Load app
+	if err != nil {
+		t.Fatal(err)
+	}
+	application.Load(app)
+
+	loadModel(t)
+	loadQuery(t)
+	loadScripts(t)
+	loadFlows(t)
+
+	_, err = Load("/apis/user.http.yao", "user")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	SetGuards(map[string]gin.HandlerFunc{"bearer-jwt": func(ctx *gin.Context) {}})
+}
+
+func clean() {
+	dbclose()
+	v8.Stop()
+}
+
+func dbclose() {
+	if capsule.Global != nil {
+		capsule.Global.Connections.Range(func(key, value any) bool {
+			if conn, ok := value.(*capsule.Connection); ok {
+				conn.Close()
+			}
+			return true
+		})
+	}
+}
+
+func dbconnect(t *testing.T) {
+
+	TestDriver := os.Getenv("GOU_TEST_DB_DRIVER")
+	TestDSN := os.Getenv("GOU_TEST_DSN")
+
+	// connect db
+	switch TestDriver {
+	case "sqlite3":
+		capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
+		break
+	default:
+		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
+		break
+	}
+
+}
+
+func loadModel(t *testing.T) {
+	dbconnect(t)
+	TestAESKey := os.Getenv("GOU_TEST_AES_KEY")
+	_, err := model.WithCrypt([]byte(fmt.Sprintf(`{"key":"%s"}`, TestAESKey)), "AES")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mods := map[string]string{
+		"user": filepath.Join("models", "user.mod.yao"),
+	}
+
+	// load mods
+	for id, file := range mods {
+		_, err := model.Load(file, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Migrate
+	for id := range mods {
+		mod := model.Select(id)
+		err := mod.Migrate(true)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	model.Select("user").Save(map[string]interface{}{"name": "U1", "type": "admin"})
+}
+
+func loadQuery(t *testing.T) {
+
+	TestAESKey := os.Getenv("GOU_TEST_AES_KEY")
+
+	// query engine
+	query.Register("query-test", &gou.Query{
+		Query: capsule.Query(),
+		GetTableName: func(s string) string {
+			if mod, has := model.Models[s]; has {
+				return mod.MetaData.Table.Name
+			}
+			exception.New("[query] %s not found", 404).Throw()
+			return s
+		},
+		AESKey: TestAESKey,
+	})
+}
+
+func loadScripts(t *testing.T) {
+
+	scripts := map[string]string{
+		"test.api": filepath.Join("scripts", "tests", "api.js"),
+	}
+
+	for id, file := range scripts {
+		_, err := v8.Load(file, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	err := v8.Start(&v8.Option{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func loadFlows(t *testing.T) {
+
+	flows := map[string]string{
+		"tests.session": filepath.Join("flows", "tests", "session.flow.yao"),
+	}
+
+	for id, file := range flows {
+		_, err := flow.Load(file, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
 }

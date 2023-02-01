@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/process"
-	"github.com/yaoapp/gou/query/share"
 	"github.com/yaoapp/kun/maps"
 )
 
@@ -62,7 +62,7 @@ func (flow *Flow) FormatResult(ctx *Context) (interface{}, error) {
 	}
 	data := maps.Map{"$in": ctx.In, "$res": ctx.Res, "$global": flow.Global}
 	data = ctx.ExtendIn(data).Dot()
-	return share.Bind(flow.Output, data), nil
+	return helper.Bind(flow.Output, data), nil
 }
 
 // ExecNode Execute node
@@ -94,7 +94,7 @@ func (flow *Flow) RunQuery(node *Node, ctx *Context, data maps.Map) (interface{}
 		data["$out"] = resp
 		data = data.Dot()
 		for _, value := range node.Outs {
-			outs = append(outs, share.Bind(value, data))
+			outs = append(outs, helper.Bind(value, data))
 		}
 		res = outs
 	}
@@ -113,7 +113,7 @@ func (flow *Flow) RunProcess(node *Node, ctx *Context, data maps.Map) (interface
 	var resp interface{}
 	var res interface{}
 	for _, arg := range node.Args {
-		args = append(args, share.Bind(arg, data))
+		args = append(args, helper.Bind(arg, data))
 	}
 
 	if node.Process != "" {
@@ -133,7 +133,7 @@ func (flow *Flow) RunProcess(node *Node, ctx *Context, data maps.Map) (interface
 		data["$out"] = resp
 		data = data.Dot()
 		for _, value := range node.Outs {
-			outs = append(outs, share.Bind(value, data))
+			outs = append(outs, helper.Bind(value, data))
 		}
 		res = outs
 	}

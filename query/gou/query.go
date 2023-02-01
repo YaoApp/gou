@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-errors/errors"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/query/share"
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
@@ -188,7 +189,7 @@ func (gou Query) GetPage(data maps.Map) int {
 	case float64, float32, int, int64, int32:
 		return any.Of(gou.Page).CInt()
 	case string:
-		page := share.Bind(gou.Page, data)
+		page := helper.Bind(gou.Page, data)
 		return any.Of(page).CInt()
 	}
 	return 1
@@ -204,7 +205,7 @@ func (gou Query) GetPageSize(data maps.Map) int {
 		return any.Of(gou.PageSize).CInt()
 
 	case string:
-		pagesize := share.Bind(gou.PageSize, data)
+		pagesize := helper.Bind(gou.PageSize, data)
 		return any.Of(pagesize).CInt()
 	}
 	return 20
@@ -220,7 +221,7 @@ func (gou Query) SetOffset(qb query.Query, data maps.Map) {
 		qb.Offset(any.Of(gou.Offset).CInt())
 		break
 	case string:
-		offset := share.Bind(gou.Offset, data)
+		offset := helper.Bind(gou.Offset, data)
 		qb.Offset(any.Of(offset).CInt())
 		break
 	}
@@ -237,7 +238,7 @@ func (gou Query) SetLimit(qb query.Query, data maps.Map) {
 		qb.Limit(any.Of(gou.Limit).CInt())
 		return
 	case string:
-		limit := share.Bind(gou.Limit, data)
+		limit := helper.Bind(gou.Limit, data)
 		qb.Limit(any.Of(limit).CInt())
 		return
 	}
@@ -404,9 +405,9 @@ func (gou *Query) prepare(data maps.Map) (string, []interface{}) {
 	}
 	sql := gou.STMT
 	for i := range bindings {
-		bindings[i] = share.Bind(bindings[i], data)
+		bindings[i] = helper.Bind(bindings[i], data)
 	}
 
-	gou.DataOnly = share.Bind(gou.DataOnly, data)
+	gou.DataOnly = helper.Bind(gou.DataOnly, data)
 	return sql, bindings
 }

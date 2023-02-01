@@ -6,14 +6,13 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/process"
-	"github.com/yaoapp/gou/query/share"
 	"github.com/yaoapp/gou/session"
 	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/kun/any"
@@ -103,12 +102,12 @@ func IsAllowed(c *gin.Context, allowsMap map[string]bool) bool {
 }
 
 // Routes 配置转换为路由
-func (http HTTP) Routes(router *gin.Engine, root string, allows ...string) {
+func (http HTTP) Routes(router *gin.Engine, path string, allows ...string) {
 	var group gin.IRoutes = router
 	if http.Group != "" {
-		root = path.Join(root, "/", http.Group)
+		path = filepath.Join(path, "/", http.Group)
 	}
-	group = router.Group(root)
+	group = router.Group(path)
 	for _, path := range http.Paths {
 		path.Method = strings.ToUpper(path.Method)
 		http.Route(group, path, allows...)
@@ -207,7 +206,7 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 			if res.IsMap() { // 处理变量
 				data := res.Map().MapStrAny.Dot()
 				for name, value := range path.Out.Headers {
-					v := share.Bind(value, data)
+					v := helper.Bind(value, data)
 					if v != nil {
 						c.Writer.Header().Set(name, fmt.Sprintf("%v", v))
 					}
@@ -244,7 +243,7 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 			res := any.Of(resp)
 			if res.IsMap() {
 				data := res.Map().MapStrAny.Dot()
-				body = share.Bind(path.Out.Body, data)
+				body = helper.Bind(path.Out.Body, data)
 			}
 		}
 
@@ -317,9 +316,18 @@ func (http HTTP) crossDomain(path string, allows map[string]bool, router gin.IRo
 }
 
 // parseIn 接口传参解析 (这个函数应该重构)
-func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
+func (http HTTP) parseIn(in []interface{}) func(c *gin.Context) []interface{} {
+
 	getValues := []func(c *gin.Context) interface{}{}
-	for _, v := range in {
+	for _, value := range in {
+
+		v, ok := value.(string)
+		if !ok {
+			getValues = append(getValues, func(c *gin.Context) interface{} {
+				return v
+			})
+			continue
+		}
 
 		if v == ":body" {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
@@ -437,7 +445,7 @@ func (http HTTP) parseIn(in []string) func(c *gin.Context) []interface{} {
 				if err != nil {
 					exception.New("保存文件出错 %s", 500, err).Throw()
 				}
-				return UploadFile{
+				return types.UploadFile{
 					Name:     file.Filename,
 					TempFile: tmpfile.Name(),
 					Size:     file.Size,
