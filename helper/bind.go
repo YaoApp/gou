@@ -1,4 +1,4 @@
-package share
+package helper
 
 import (
 	"fmt"

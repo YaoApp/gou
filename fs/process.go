@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yaoapp/gou/api"
 	"github.com/yaoapp/gou/process"
+	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
 )
@@ -318,7 +318,7 @@ func processCopy(process *process.Process) interface{} {
 func processUpload(process *process.Process) interface{} {
 
 	process.ValidateArgNums(1)
-	tmpfile, ok := process.Args[0].(api.UploadFile)
+	tmpfile, ok := process.Args[0].(types.UploadFile)
 	if !ok {
 		exception.New("parameters error: %v", 400, process.Args[0]).Throw()
 	}
