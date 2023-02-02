@@ -48,10 +48,10 @@ jobs:
         mongo: ["6.0"]
     steps:
       - name: "Download artifact"
-        uses: actions/github-script@v3.1.0
+        uses: actions/github-script@v6
         with:
           script: |
-            var artifacts = await github.actions.listWorkflowRunArtifacts({
+            var artifacts = await github.rest.actions.runs.artifacts({
                owner: context.repo.owner,
                repo: context.repo.repo,
                run_id: ${{github.event.workflow_run.id }},
@@ -59,7 +59,7 @@ jobs:
             var matchArtifact = artifacts.data.artifacts.filter((artifact) => {
               return artifact.name == "pr"
             })[0];
-            var download = await github.actions.downloadArtifact({
+            var download = await github.rest.actions.artifacts({
                owner: context.repo.owner,
                repo: context.repo.repo,
                artifact_id: matchArtifact.id,
@@ -84,7 +84,7 @@ jobs:
             const { NR } = process.env
             var fs = require('fs');
             var issue_number = NR;
-            await github.issues.createComment({
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue_number,
@@ -234,7 +234,7 @@ jobs:
             const { NR } = process.env
             var fs = require('fs');
             var issue_number = NR;
-            await github.issues.createComment({
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue_number,
