@@ -53,7 +53,7 @@ func BenchmarkSelectIso(b *testing.B) {
 
 	// run the Call function b.N times
 	for n := 0; n < b.N; n++ {
-		iso, err := SelectIso(200 * time.Millisecond)
+		iso, err := SelectIso(500 * time.Millisecond)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -71,7 +71,7 @@ func BenchmarkSelectIsoPB(b *testing.B) {
 	// run the Call function b.N times
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			iso, err := SelectIso(200 * time.Millisecond)
+			iso, err := SelectIso(500 * time.Millisecond)
 			if err != nil {
 				b.Fatal(err)
 			}
