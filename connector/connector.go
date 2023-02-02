@@ -42,7 +42,20 @@ func Load(file string, id string) (Connector, error) {
 
 // Select a connector
 func Select(id string) (Connector, error) {
-	return nil, nil
+	connector, has := Connectors[id]
+	if !has {
+		return nil, fmt.Errorf("connector %s not loaded", id)
+	}
+	return connector, nil
+}
+
+// Remove a connector
+func Remove(id string) error {
+	connector, has := Connectors[id]
+	if !has {
+		return fmt.Errorf("connector %s not loaded", id)
+	}
+	return connector.Close()
 }
 
 func make(typ string) (Connector, error) {
