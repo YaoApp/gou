@@ -7,6 +7,7 @@ import (
 
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/xun/dbal/query"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -59,6 +60,16 @@ func (m *Connector) Register(file string, id string, dsl []byte) error {
 // ID get connector id
 func (m *Connector) ID() string {
 	return m.id
+}
+
+// Query get connector query interface
+func (m *Connector) Query() (query.Query, error) {
+	return nil, nil
+}
+
+// Close connections
+func (m *Connector) Close() error {
+	return m.Client.Disconnect(context.Background())
 }
 
 // Is the connections from dsl

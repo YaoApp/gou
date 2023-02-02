@@ -9,6 +9,7 @@ import (
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/kun/any"
+	"github.com/yaoapp/xun/dbal/query"
 )
 
 // Connector connector
@@ -56,6 +57,16 @@ func (r *Connector) Is(typ int) bool {
 // ID get connector id
 func (r *Connector) ID() string {
 	return r.id
+}
+
+// Query get connector query interface
+func (r *Connector) Query() (query.Query, error) {
+	return nil, nil
+}
+
+// Close connections
+func (r *Connector) Close() error {
+	return r.Rdb.Close()
 }
 
 func (r *Connector) setDefaults() error {
