@@ -24,8 +24,14 @@ func Load(file, id string, guard ...string) (*API, error) {
 		return nil, err
 	}
 
+	return LoadSource(file, data, id, guard...)
+}
+
+// LoadSource load api by source
+func LoadSource(file string, data []byte, id string, guard ...string) (*API, error) {
+
 	http := HTTP{}
-	err = application.Parse(file, data, &http)
+	err := application.Parse(file, data, &http)
 	if err != nil {
 		log.Error("[API] Load %s Error: %s", id, err.Error())
 		return nil, err
