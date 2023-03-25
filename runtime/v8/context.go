@@ -60,7 +60,11 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	defer jsData.Release()
+	defer func() {
+		if !jsData.IsNull() && !jsData.IsUndefined() {
+			jsData.Release()
+		}
+	}()
 
 	jsRes, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
 	if err != nil {
