@@ -29,6 +29,11 @@ func New(root ...string) *File {
 	return f
 }
 
+// Root get the root path
+func (f *File) Root() string {
+	return f.root
+}
+
 // Allow allow rel path
 func (f *File) Allow(patterns ...string) *File {
 	if f.root != "" {

@@ -29,4 +29,6 @@ type FileSystem interface {
 	Copy(src string, dest string) error
 
 	MimeType(name string) (string, error)
+
+	Root() string
 }
