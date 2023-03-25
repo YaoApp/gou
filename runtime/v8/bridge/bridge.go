@@ -84,8 +84,14 @@ func Valuers(values []*v8go.Value) []v8go.Valuer {
 
 // FreeJsValues release js values
 func FreeJsValues(values []*v8go.Value) {
+	if values == nil {
+		return
+	}
+
 	for i := range values {
-		values[i].Release()
+		if !values[i].IsNull() && !values[i].IsUndefined() {
+			values[i].Release()
+		}
 	}
 }
 
