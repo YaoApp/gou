@@ -130,6 +130,10 @@ func (server *Server) Start() error {
 	for {
 		select {
 		case <-time.After(server.option.Timeout):
+			if server.Ready() {
+				break
+			}
+
 			log.Error("[Server] %s start operation was canceled (timeout %d)", srv.Addr, server.option.Timeout)
 			return fmt.Errorf("canceled (timeout %d)", server.option.Timeout)
 
