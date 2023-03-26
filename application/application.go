@@ -22,13 +22,13 @@ func OpenFromDisk(root string) (Application, error) {
 	return disk.Open(root)
 }
 
-// OpenFromPack open the application from the .pkg file
-func OpenFromPack(file string) (Application, error) {
+// OpenFromPkg open the application from the .pkg file
+func OpenFromPkg(file string, pack Pack) (Application, error) {
 	return nil, nil
 }
 
 // OpenFromBin open the application from the binary .app file
-func OpenFromBin(file string, privateKey string) (Application, error) {
+func OpenFromBin(file string, pack Pack) (Application, error) {
 	return nil, nil
 }
 
