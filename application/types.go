@@ -9,3 +9,10 @@ type Application interface {
 	Exists(name string) (bool, error)
 	Watch(handler func(event string, name string), interrupt chan uint8) error
 }
+
+
+// Pack the application pack interface
+type Pack interface {
+	Decode(data []byte) ( []byte, error)
+	Encode( data []byte) ([]byte, error)
+}
