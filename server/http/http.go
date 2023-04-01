@@ -131,6 +131,7 @@ func (server *Server) Start() error {
 		select {
 		case <-time.After(server.option.Timeout):
 			if server.Ready() {
+				log.Info("[Server] %s is ready", srv.Addr)
 				break
 			}
 
@@ -141,16 +142,37 @@ func (server *Server) Start() error {
 			switch signal {
 
 			case CLOSE:
-				return nil
+				err = listener.Close()
+				if err != nil {
+					log.Error("[Server] %s close error (%s)", srv.Addr, err.Error())
+					return err
+				}
 
-			case RESTART:
-				log.Info("[Server] %s was closed (restarting)", srv.Addr)
-				server.status = RESTARTING
 				err = srv.Close()
 				if err != nil {
 					log.Error("[Server] %s restarting (%s)", srv.Addr, err.Error())
 					return err
 				}
+
+				log.Info("[Server] %s was closed", srv.Addr)
+				return nil
+
+			case RESTART:
+				log.Info("[Server] %s was closed (for restarting)", srv.Addr)
+				server.status = RESTARTING
+
+				err = listener.Close()
+				if err != nil {
+					log.Error("[Server] %s restarting (%s)", srv.Addr, err.Error())
+					return err
+				}
+
+				err = srv.Close()
+				if err != nil {
+					log.Error("[Server] %s restarting (%s)", srv.Addr, err.Error())
+					return err
+				}
+
 				defer server.Start()
 				return nil
 
