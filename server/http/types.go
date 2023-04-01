@@ -23,7 +23,7 @@ const (
 
 const (
 	// CLOSE close signal
-	CLOSE = uint8(iota)
+	CLOSE = uint8(iota) + 5
 	// RESTART restart signal
 	RESTART
 	// ERROR error signal
