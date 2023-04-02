@@ -98,13 +98,17 @@ func SelectIso(timeout time.Duration) (*Isolate, error) {
 		go NewIsolate()
 	}
 
+	// make a timer
+	timer := time.NewTimer(time.Duration(timeout))
+	defer timer.Stop()
+
 	select {
+	case <-timer.C:
+		return nil, fmt.Errorf("Select isolate timeout %v", timeout)
+
 	case iso := <-chIsoReady:
 		iso.Lock()
 		return iso, nil
-
-	case <-time.After(timeout):
-		return nil, fmt.Errorf("Select isolate timeout %v", timeout)
 	}
 }
 
