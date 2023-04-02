@@ -127,11 +127,15 @@ func (server *Server) Start() error {
 		}
 	}()
 
+	// make a timer
+	timer := time.NewTimer(time.Duration(server.option.Timeout))
+	defer timer.Stop()
+
 	for {
 		select {
-		case <-time.After(server.option.Timeout):
+		case <-timer.C:
 			if server.Ready() {
-				log.Info("[Server] %s is ready", srv.Addr)
+				timer.Stop()
 				break
 			}
 
@@ -140,6 +144,10 @@ func (server *Server) Start() error {
 
 		case signal := <-server.signal:
 			switch signal {
+
+			case READY:
+				log.Info("[Server] %s is ready", srv.Addr)
+				break
 
 			case CLOSE:
 				err = listener.Close()
