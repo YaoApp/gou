@@ -15,9 +15,7 @@ import (
 var Models = map[string]*Model{}
 
 // Load 载入数据模型
-func Load(file string, id string) (mod *Model, err error) {
-
-	defer func() { err = exception.Catch(recover()) }()
+func Load(file string, id string) (*Model, error) {
 
 	data, err := application.App.Read(file)
 	if err != nil {
@@ -30,7 +28,7 @@ func Load(file string, id string) (mod *Model, err error) {
 		exception.Err(err, 400).Throw()
 	}
 
-	mod = &Model{
+	mod := &Model{
 		ID:       id,
 		Name:     id,
 		File:     file,
