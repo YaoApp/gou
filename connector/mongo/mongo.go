@@ -42,6 +42,10 @@ type Host struct {
 
 // Register the connections from dsl
 func (m *Connector) Register(file string, id string, dsl []byte) error {
+
+	m.id = id
+	m.file = file
+
 	err := application.Parse(file, dsl, m)
 	if err != nil {
 		return err
@@ -52,8 +56,6 @@ func (m *Connector) Register(file string, id string, dsl []byte) error {
 		return err
 	}
 
-	m.id = id
-	m.file = file
 	return m.makeConnection()
 }
 
@@ -114,18 +116,18 @@ func (m *Connector) setDefaults() error {
 func (m *Connector) getDSN() (string, error) {
 
 	if m.Options.DB == "" {
-		return "", fmt.Errorf("options.db is required")
+		return "", fmt.Errorf("%s options.db is required", m.id)
 	}
 
 	if len(m.Options.Hosts) == 0 {
-		return "", fmt.Errorf("options.hosts is required")
+		return "", fmt.Errorf("%s options.hosts is required", m.id)
 	}
 
 	hosts := []string{}
 	for i := range m.Options.Hosts {
 		host := m.Options.Hosts[i]
 		if host.Host == "" {
-			return "", fmt.Errorf("hosts.%d.host is required", i)
+			return "", fmt.Errorf("%s hosts.%d.host is required", m.id, i)
 		}
 
 		if host.Port == "" {
@@ -133,11 +135,11 @@ func (m *Connector) getDSN() (string, error) {
 		}
 
 		if host.User == "" {
-			return "", fmt.Errorf("hosts.%d.user is required", i)
+			return "", fmt.Errorf("%s hosts.%d.user is required", m.id, i)
 		}
 
 		if host.Pass == "" {
-			return "", fmt.Errorf("hosts.%d.pass is required", i)
+			return "", fmt.Errorf("%s hosts.%d.pass is required", m.id, i)
 		}
 
 		hosts = append(hosts, fmt.Sprintf("%s:%s@%s:%s", host.User, host.Pass, host.Host, host.Port))

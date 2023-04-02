@@ -51,6 +51,9 @@ type XunHost struct {
 // Register the connections from dsl
 func (x *Xun) Register(file string, id string, dsl []byte) error {
 
+	x.id = id
+	x.file = file
+
 	err := application.Parse(file, dsl, x)
 	if err != nil {
 		return err
@@ -61,8 +64,6 @@ func (x *Xun) Register(file string, id string, dsl []byte) error {
 		return err
 	}
 
-	x.id = id
-	x.file = file
 	return x.makeConnections()
 }
 

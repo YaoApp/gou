@@ -34,6 +34,9 @@ type Options struct {
 // Register the connections from dsl
 func (r *Connector) Register(file string, id string, dsl []byte) error {
 
+	r.id = id
+	r.file = file
+
 	err := application.Parse(file, dsl, r)
 	if err != nil {
 		return err
@@ -44,8 +47,6 @@ func (r *Connector) Register(file string, id string, dsl []byte) error {
 		return err
 	}
 
-	r.id = id
-	r.file = file
 	return r.makeConnection()
 }
 
