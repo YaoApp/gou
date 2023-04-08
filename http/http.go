@@ -148,12 +148,12 @@ func (r *Request) Send(method string, data interface{}) *Response {
 		}
 	}
 
-	url := r.url
+	requestURL := r.url
 
 	// URL Parse
-	if strings.Contains(url, "?") {
-		uri := strings.Split(url, "?")
-		url = uri[0]
+	if strings.Contains(requestURL, "?") {
+		uri := strings.Split(requestURL, "?")
+		requestURL = uri[0]
 		query, err := neturl.ParseQuery(uri[1])
 		if err != nil {
 			return ResponseError(0, err.Error())
@@ -162,10 +162,10 @@ func (r *Request) Send(method string, data interface{}) *Response {
 	}
 
 	if r.query != nil && len(r.query) > 0 {
-		url = fmt.Sprintf("%s?%s", url, r.query.Encode())
+		requestURL = fmt.Sprintf("%s?%s", requestURL, r.query.Encode())
 	}
 
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+	req, err := http.NewRequest(method, requestURL, bytes.NewBuffer(body))
 	if err != nil {
 		return ResponseError(0, fmt.Sprintf("http.NewRequest: %s", err.Error()))
 	}
@@ -179,12 +179,39 @@ func (r *Request) Send(method string, data interface{}) *Response {
 	var tr = &http.Transport{DialContext: dialContext}
 	var client *http.Client = &http.Client{Transport: tr}
 
+	// check if the proxy is set
+	proxy := getProxy(false)
+	if proxy != "" {
+		proxyURL, err := url.Parse(proxy)
+		if err != nil {
+			return ResponseError(0, err.Error())
+		}
+		tr := &http.Transport{
+			Proxy:       http.ProxyURL(proxyURL),
+			DialContext: dialContext,
+		}
+
+		client = &http.Client{Transport: tr}
+	}
+
 	// Https SkipVerify false
 	if strings.HasPrefix(r.url, "https://") {
+
 		tr = &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			DialContext:     dialContext,
 		}
+
+		// check if the proxy is set
+		proxy := getProxy(true)
+		if proxy != "" {
+			proxyURL, err := url.Parse(proxy)
+			if err != nil {
+				return ResponseError(0, err.Error())
+			}
+			tr.Proxy = http.ProxyURL(proxyURL)
+		}
+
 		client = &http.Client{Transport: tr}
 	}
 	defer tr.CloseIdleConnections()
@@ -399,4 +426,20 @@ func (r *Request) formBody() ([]byte, string, *Response) {
 		return nil, "", ResponseError(0, err.Error())
 	}
 	return body.Bytes(), writer.FormDataContentType(), nil
+}
+
+func getProxy(https bool) string {
+	if https {
+		proxy := os.Getenv("HTTPS_PROXY")
+		if proxy != "" {
+			return proxy
+		}
+		return os.Getenv("https_proxy")
+	}
+
+	proxy := os.Getenv("HTTP_PROXY")
+	if proxy != "" {
+		return proxy
+	}
+	return os.Getenv("http_proxy")
 }
