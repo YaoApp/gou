@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	kv "github.com/yaoapp/gou/store"
@@ -86,7 +87,13 @@ func (store *Store) set(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			log.Error(msg)
 			return bridge.JsException(info.Context(), msg)
 		}
-		c.Set(args[0].String(), v, 0)
+
+		ttl := 0 * time.Second
+		if len(args) > 2 {
+			ttl = time.Duration(args[2].Integer()) * time.Second
+		}
+
+		c.Set(args[0].String(), v, ttl)
 		return nil
 	})
 }
@@ -114,7 +121,12 @@ func (store *Store) getSet(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), msg)
 		}
 
-		value, err := c.GetSet(args[0].String(), 0, func(key string) (interface{}, error) {
+		ttl := 0 * time.Second
+		if len(args) > 2 {
+			ttl = time.Duration(args[2].Integer()) * time.Second
+		}
+
+		value, err := c.GetSet(args[0].String(), ttl, func(key string) (interface{}, error) {
 			jsKey, err := bridge.JsValue(info.Context(), key)
 			if err != nil {
 				return nil, err
