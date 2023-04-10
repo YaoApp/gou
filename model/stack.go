@@ -299,5 +299,5 @@ func (stack *QueryStack) runHasMany(res *[][]maps.MapStrAny, builder QueryStackB
 		}
 	}
 
-	*res = append(*res, fmtRows)
+	stack.Next()
 }
