@@ -7,7 +7,7 @@ import (
 	"github.com/yaoapp/kun/exception"
 )
 
-// Handlers ProcessHanlders
+// Handlers ProcessHandlers
 var Handlers = map[string]Handler{}
 
 // New make a new process
@@ -88,8 +88,8 @@ func (process *Process) WithGlobal(global map[string]interface{}) *Process {
 
 // handler get the process handler
 func (process *Process) handler() (Handler, error) {
-	if hander, has := Handlers[process.Handler]; has {
-		return hander, nil
+	if handler, has := Handlers[process.Handler]; has {
+		return handler, nil
 	}
 	return nil, fmt.Errorf("Exception|404:%s (%s) not found", process.Name, process.Handler)
 }
@@ -216,8 +216,8 @@ func (process *Process) make() error {
 
 // case "widgets":
 
-// 	if widgetHanlders, has := WidgetCustomHandlers[strings.ToLower(process.Class)]; has {
-// 		if handler, has := widgetHanlders[strings.ToLower(process.Method)]; has {
+// 	if widgetHandlers, has := WidgetCustomHandlers[strings.ToLower(process.Class)]; has {
+// 		if handler, has := widgetHandlers[strings.ToLower(process.Method)]; has {
 // 			process.Name = strings.ToLower(process.Name)
 // 			process.Handler = handler
 // 			return
