@@ -59,7 +59,7 @@ import (
 // http.Stream(...args)
 // args[0] Method GET/POST/PUT/HEAD/PATCH/DELETE/...
 // args[1] URL
-// args[2] Callback function
+// args[2] Callback function ( data ) => { return 1 } / (data) => { return 0 } / (data) => { return -1 }
 // args[3] Payload <Optional> "Foo", {"foo":"bar"}, ["foo", "bar", {"k1":"v1"}], "/root/path"
 // args[4] Query Params <Optional> {"k1":"v1", "k2":"v2"}, ["k1=v1","k1"="v11","k2"="v2"], [{"k1":"v1"},{"k1":"v11"},{"k2":"v2"}], k1=v1&k1=v11&k2=k2
 // args[5] Headers <Optional> {"K1":"V1","K2":"V2"}  [{"K1":"V1"},{"K1":"V11"},{"K2":"V2"}]
