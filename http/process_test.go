@@ -2,6 +2,7 @@ package http
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -262,6 +263,32 @@ func TestHTTPSend(t *testing.T) {
 	assert.NotNil(t, resp.Message)
 }
 
+func TestHTTPStream(t *testing.T) {
+
+	shutdown, ready, host := processSetup()
+	go processStart(t, &host, shutdown, ready)
+	defer processStop(shutdown, ready)
+	<-ready
+	res := ""
+
+	process.Register("unit.test.StreamOk", func(process *process.Process) interface{} {
+		res = fmt.Sprintf("%s%s", res, process.ArgsString(0))
+		return HandlerReturnOk
+	})
+
+	process.New("http.Stream", "GET", fmt.Sprintf("%s/stream", host), "unit.test.StreamOk").Run()
+	assert.Equal(t, "event:messagedata:0event:messagedata:1event:messagedata:2event:messagedata:3event:messagedata:4", string(res))
+
+	// test break
+	res = ""
+	process.Register("unit.test.StreamBreak", func(process *process.Process) interface{} {
+		res = fmt.Sprintf("%s%s", res, process.ArgsString(0))
+		return HandlerReturnBreak
+	})
+	process.New("http.Stream", "GET", fmt.Sprintf("%s/stream", host), "unit.test.StreamBreak").Run()
+	assert.Equal(t, "event:message", string(res))
+}
+
 func processSetup() (chan bool, chan bool, string) {
 	return make(chan bool, 1), make(chan bool, 1), ""
 }
@@ -284,6 +311,24 @@ func processStart(t *testing.T, host *string, shutdown, ready chan bool) {
 	router.PUT("/path", testHanlder)
 	router.PATCH("/path", testHanlder)
 	router.DELETE("/path", testHanlder)
+
+	router.GET("/stream", func(c *gin.Context) {
+		chanStream := make(chan int, 10)
+		go func() {
+			defer close(chanStream)
+			for i := 0; i < 5; i++ {
+				chanStream <- i
+				time.Sleep(time.Millisecond * 200)
+			}
+		}()
+		c.Stream(func(w io.Writer) bool {
+			if msg, ok := <-chanStream; ok {
+				c.SSEvent("message", msg)
+				return true
+			}
+			return false
+		})
+	})
 
 	// Listen
 	l, err := net.Listen("tcp4", ":0")

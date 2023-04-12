@@ -1,7 +1,9 @@
 package http
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -274,6 +276,122 @@ func (r *Request) Send(method string, data interface{}) *Response {
 	}
 
 	return res
+}
+
+// Stream stream the request
+func (r *Request) Stream(method string, data interface{}, handler func(data []byte) int) error {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var res *Response
+	var body []byte
+
+	if data != nil {
+		r.data = data
+	}
+
+	if method != "GET" && method != "HEAD" {
+		if r.headers.Get("Content-Type") == "" {
+			r.headers.Set("Content-Type", "text/plain")
+		}
+
+		body, res = r.body()
+		if res != nil {
+			return nil
+		}
+	}
+
+	requestURL := r.url
+
+	// URL Parse
+	if strings.Contains(requestURL, "?") {
+		uri := strings.Split(requestURL, "?")
+		requestURL = uri[0]
+		query, err := neturl.ParseQuery(uri[1])
+		if err != nil {
+			return err
+		}
+		cast.MergeURLValues(r.query, query)
+	}
+
+	if r.query != nil && len(r.query) > 0 {
+		requestURL = fmt.Sprintf("%s?%s", requestURL, r.query.Encode())
+	}
+
+	req, err := http.NewRequest(method, requestURL, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+
+	// Request Header
+	req.Header = r.headers
+
+	// Force using system DSN resolver
+	// var dialer = &net.Dialer{Resolver: &net.Resolver{PreferGo: false}}
+	var dialContext = dns.DialContext()
+	var tr = &http.Transport{DialContext: dialContext}
+	var client *http.Client = &http.Client{Transport: tr}
+
+	// check if the proxy is set
+	proxy := getProxy(false)
+	if proxy != "" {
+		proxyURL, err := url.Parse(proxy)
+		if err != nil {
+			return err
+		}
+		tr := &http.Transport{
+			Proxy:       http.ProxyURL(proxyURL),
+			DialContext: dialContext,
+		}
+
+		client = &http.Client{Transport: tr}
+	}
+
+	// Https SkipVerify false
+	if strings.HasPrefix(r.url, "https://") {
+
+		tr = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			DialContext:     dialContext,
+		}
+
+		// check if the proxy is set
+		proxy := getProxy(true)
+		if proxy != "" {
+			proxyURL, err := url.Parse(proxy)
+			if err != nil {
+				return err
+			}
+			tr.Proxy = http.ProxyURL(proxyURL)
+		}
+
+		client = &http.Client{Transport: tr}
+	}
+	defer tr.CloseIdleConnections()
+
+	resp, err := client.Do(req.WithContext(ctx))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		res := handler(scanner.Bytes())
+		switch res {
+		case HandlerReturnOk:
+			break
+
+		case HandlerReturnBreak:
+			return nil
+
+		case HandlerReturnError:
+			break
+		}
+	}
+
+	return scanner.Err()
 }
 
 // Upload upload a big file
