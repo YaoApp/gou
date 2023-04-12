@@ -5,6 +5,18 @@ import (
 	"net/url"
 )
 
+const (
+
+	// HandlerReturnOk handler return ok
+	HandlerReturnOk = 1
+
+	// HandlerReturnBreak handler return break
+	HandlerReturnBreak = 0
+
+	// HandlerReturnError handler return error
+	HandlerReturnError = -1
+)
+
 // Request HTTP Request
 type Request struct {
 	url     string

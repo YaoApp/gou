@@ -8,6 +8,7 @@ import (
 	"github.com/yaoapp/gou/cast"
 	"github.com/yaoapp/gou/http"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
+	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
 )
 
@@ -55,6 +56,14 @@ import (
 // args[3] Query Params <Optional> {"k1":"v1", "k2":"v2"}, ["k1=v1","k1"="v11","k2"="v2"], [{"k1":"v1"},{"k1":"v11"},{"k2":"v2"}], k1=v1&k1=v11&k2=k2
 // args[4] Headers <Optional> {"K1":"V1","K2":"V2"}  [{"K1":"V1"},{"K1":"V11"},{"K2":"V2"}]
 //
+// http.Stream(...args)
+// args[0] Method GET/POST/PUT/HEAD/PATCH/DELETE/...
+// args[1] URL
+// args[2] Callback function ( data ) => { return 1 } / (data) => { return 0 } / (data) => { return -1 }
+// args[3] Payload <Optional> "Foo", {"foo":"bar"}, ["foo", "bar", {"k1":"v1"}], "/root/path"
+// args[4] Query Params <Optional> {"k1":"v1", "k2":"v2"}, ["k1=v1","k1"="v11","k2"="v2"], [{"k1":"v1"},{"k1":"v11"},{"k2":"v2"}], k1=v1&k1=v11&k2=k2
+// args[5] Headers <Optional> {"K1":"V1","K2":"V2"}  [{"K1":"V1"},{"K1":"V11"},{"K2":"V2"}]
+//
 
 // Object Javascript API
 type Object struct {
@@ -85,6 +94,7 @@ func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl.Set("Patch", obj.patch(iso))
 	tmpl.Set("Delete", obj.delete(iso))
 	tmpl.Set("Send", obj.send(iso))
+	tmpl.Set("Stream", obj.stream(iso))
 	return tmpl
 }
 
@@ -291,6 +301,78 @@ func (obj *Object) send(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		}
 		return obj.vReturn(info, req.Send(method, payload))
 	})
+}
+
+func (obj *Object) stream(iso *v8go.Isolate) *v8go.FunctionTemplate {
+
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		err := obj.validateArgNums(info, 2)
+		if err != nil {
+			return obj.vReturn(info, err)
+		}
+
+		args := info.Args()
+		method := args[0].String()
+		cb, v8err := args[2].AsFunction()
+
+		if v8err != nil {
+			return obj.vReturn(info, &http.Response{
+				Status:  400,
+				Code:    400,
+				Message: v8err.Error(),
+				Headers: map[string][]string{},
+				Data:    nil,
+			})
+		}
+
+		var payload interface{}
+		if len(args) > 3 {
+			payload = args[3]
+		}
+
+		req, err := obj.new(info, 1, 4)
+		if err != nil {
+			return obj.vReturn(info, err)
+		}
+
+		v8err = req.Stream(method, payload, func(data []byte) int {
+			v, err := v8go.NewValue(iso, string(data))
+			if err != nil {
+				log.Error("[http.Stream] %s %s %s", method, args[2].String(), err.Error())
+				return http.HandlerReturnError
+			}
+
+			ret, err := cb.Call(info.This(), v)
+			if err != nil {
+				log.Error("[http.Stream] %s %s %s", method, args[2].String(), err.Error())
+				return http.HandlerReturnError
+			}
+
+			return int(ret.Integer())
+		})
+
+		if v8err != nil {
+			return obj.vReturn(info, &http.Response{
+				Status:  400,
+				Code:    400,
+				Message: v8err.Error(),
+				Headers: map[string][]string{},
+				Data:    nil,
+			})
+		}
+
+		return obj.vReturn(info, &http.Response{
+			Status:  200,
+			Code:    200,
+			Message: "ok",
+			Headers: map[string][]string{},
+			Data:    nil,
+		})
+	})
+}
+
+func (obj *Object) callback(info *v8go.FunctionCallbackInfo) {
+
 }
 
 func (obj *Object) vReturn(info *v8go.FunctionCallbackInfo, resp *http.Response) *v8go.Value {

@@ -153,6 +153,28 @@ func TestOthers(t *testing.T) {
 	assert.Equal(t, nil, res.Data)
 }
 
+func TestStream(t *testing.T) {
+	shutdown, ready, host := setup()
+	go start(t, &host, shutdown, ready)
+	defer stop(shutdown, ready)
+	<-ready
+	res := []byte{}
+	req := New(fmt.Sprintf("%s/stream", host))
+	req.Stream("GET", nil, func(data []byte) int {
+		res = append(res, data...)
+		return 1
+	})
+	assert.Equal(t, "event:messagedata:0event:messagedata:1event:messagedata:2event:messagedata:3event:messagedata:4", string(res))
+
+	// test break
+	res = []byte{}
+	req.Stream("GET", nil, func(data []byte) int {
+		res = append(res, data...)
+		return 0
+	})
+	assert.Equal(t, "event:message", string(res))
+}
+
 func tmpfile(t *testing.T, content string) string {
 	file, err := os.CreateTemp("", "-data")
 	if err != nil {
@@ -188,6 +210,23 @@ func start(t *testing.T, host *string, shutdown, ready chan bool) {
 	router.PATCH("/patch", func(c *gin.Context) { c.Status(200) })
 	router.DELETE("/delete", func(c *gin.Context) { c.Status(200) })
 	router.HEAD("/head", func(c *gin.Context) { c.Status(302) })
+	router.GET("/stream", func(c *gin.Context) {
+		chanStream := make(chan int, 10)
+		go func() {
+			defer close(chanStream)
+			for i := 0; i < 5; i++ {
+				chanStream <- i
+				time.Sleep(time.Millisecond * 200)
+			}
+		}()
+		c.Stream(func(w io.Writer) bool {
+			if msg, ok := <-chanStream; ok {
+				c.SSEvent("message", msg)
+				return true
+			}
+			return false
+		})
+	})
 
 	// Listen
 	l, err := net.Listen("tcp4", ":0")

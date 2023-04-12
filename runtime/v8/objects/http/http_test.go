@@ -2,6 +2,7 @@ package http
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	nethttp "net/http"
@@ -306,6 +307,82 @@ func TestHTTPObjectSend(t *testing.T) {
 	assert.NotNil(t, mapv.Get("message"))
 }
 
+func TestHTTPObjectStream(t *testing.T) {
+
+	shutdown, ready, host := setup()
+	go start(t, &host, shutdown, ready)
+	defer stop(shutdown, ready)
+	<-ready
+
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	http := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("http", http.ExportObject(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// Stream
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function call() {
+		var res = ""
+		http.Stream("GET", "%s/stream", ( data )=>{
+			res = res + data
+			return 1
+		})
+		return res
+	}
+	call()
+	`, host), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := bridge.GoValue(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "event:messagedata:0event:messagedata:1event:messagedata:2event:messagedata:3event:messagedata:4", resp)
+
+	// Break
+	v, err = ctx.RunScript(fmt.Sprintf(`
+	function call() {
+		var res = ""
+		http.Stream("GET", "%s/stream", ( data )=>{
+			res = res + data
+			return 0
+		})
+		return res
+	}
+	call()
+	`, host), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err = bridge.GoValue(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "event:message", resp)
+
+	// Error
+	v, err = ctx.RunScript(fmt.Sprintf(`
+	function call() {
+		var res = ""
+		return http.Stream("GET", "%s/stream","xxx")
+	}
+	call()
+	`, host), "")
+
+	resp, err = bridge.GoValue(v)
+	mapv := any.Of(resp).MapStr()
+	assert.Equal(t, "v8go: value is not a Function", mapv.Get("message"))
+
+}
+
 func setup() (chan bool, chan bool, string) {
 	return make(chan bool, 1), make(chan bool, 1), ""
 }
@@ -328,6 +405,24 @@ func start(t *testing.T, host *string, shutdown, ready chan bool) {
 	router.PUT("/path", testHanlder)
 	router.PATCH("/path", testHanlder)
 	router.DELETE("/path", testHanlder)
+
+	router.GET("/stream", func(c *gin.Context) {
+		chanStream := make(chan int, 10)
+		go func() {
+			defer close(chanStream)
+			for i := 0; i < 5; i++ {
+				chanStream <- i
+				time.Sleep(time.Millisecond * 200)
+			}
+		}()
+		c.Stream(func(w io.Writer) bool {
+			if msg, ok := <-chanStream; ok {
+				c.SSEvent("message", msg)
+				return true
+			}
+			return false
+		})
+	})
 
 	// Listen
 	l, err := net.Listen("tcp4", ":0")

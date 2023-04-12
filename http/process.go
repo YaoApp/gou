@@ -6,6 +6,7 @@ import (
 
 	"github.com/yaoapp/gou/cast"
 	"github.com/yaoapp/gou/process"
+	"github.com/yaoapp/kun/log"
 )
 
 var fileRoot = ""
@@ -19,6 +20,7 @@ var HTTPHandlers = map[string]process.Handler{
 	"delete": processHTTPDelete,
 	"head":   processHTTPHead,
 	"send":   processHTTPSend,
+	"stream": processHTTPStream,
 }
 
 func init() {
@@ -244,6 +246,75 @@ func processHTTPSend(process *process.Process) interface{} {
 	}
 
 	return req.Send(method, payload)
+}
+
+// http.Stream
+// args[0] Method GET/POST/PUT/PATCH/DELETE/...
+// args[1] URL
+// args[2] Handler procsss name
+// args[3] Payload <Optional> "Foo", {"foo":"bar"}, ["foo", "bar", {"k1":"v1"}], "/root/path"
+// args[4] Query Params <Optional> {"k1":"v1", "k2":"v2"}, ["k1=v1","k1"="v11","k2"="v2"], [{"k1":"v1"},{"k1":"v11"},{"k2":"v2"}], k1=v1&k1=v11&k2=k2
+// args[5] Headers <Optional> {"K1":"V1","K2":"V2"}  [{"K1":"V1"},{"K1":"V11"},{"K2":"V2"}]
+func processHTTPStream(p *process.Process) interface{} {
+	p.ValidateArgNums(3)
+	method := p.ArgsString(0)
+	url := p.ArgsString(1)
+	handler := p.ArgsString(2)
+
+	var payload interface{}
+	if p.NumOfArgs() > 3 {
+		payload = p.Args[3]
+	}
+
+	req := New(url)
+	if p.NumOfArgs() > 4 {
+		values, err := cast.AnyToURLValues(p.Args[4])
+		if err != nil {
+			return &Response{
+				Status:  400,
+				Code:    400,
+				Message: fmt.Sprintf("args[%d] parameter error: %s", 4, err.Error()),
+				Headers: map[string][]string{},
+				Data:    nil,
+			}
+		}
+		req.WithQuery(values)
+	}
+
+	if p.NumOfArgs() > 5 {
+		headers, err := cast.AnyToHeaders(p.Args[5])
+		if err != nil {
+			return &Response{
+				Status:  400,
+				Code:    400,
+				Message: fmt.Sprintf("args[%d] parameter error: %s", 5, err.Error()),
+				Headers: map[string][]string{},
+				Data:    nil,
+			}
+		}
+		req.WithHeader(headers)
+	}
+
+	return req.Stream(method, payload, func(data []byte) int {
+
+		procesHandler, err := process.Of(handler, string(data))
+		if err != nil {
+			log.Error("[http.Stream] %s %s", handler, err.Error())
+			return HandlerReturnError
+		}
+
+		res, err := procesHandler.WithSID(p.Sid).WithGlobal(p.Global).Exec()
+		if err != nil {
+			log.Error("[http.Stream] %s %s", handler, err.Error())
+			return HandlerReturnError
+		}
+
+		if v, ok := res.(int); ok {
+			return v
+		}
+
+		return HandlerReturnOk
+	})
 }
 
 // make a *Request
