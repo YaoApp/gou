@@ -186,7 +186,7 @@ func (path Path) runStreamScript(c *gin.Context, getArgs func(c *gin.Context) []
 	}
 	defer ctx.Close()
 
-	// make a new bridge fucntion
+	// make a new bridge function
 	ssEventT := v8go.NewFunctionTemplate(ctx.Isolate(), func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		args := info.Args()
 		if len(args) != 2 {
