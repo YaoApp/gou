@@ -14,6 +14,7 @@ import (
 	logT "github.com/yaoapp/gou/runtime/v8/objects/log"
 	queryT "github.com/yaoapp/gou/runtime/v8/objects/query"
 	storeT "github.com/yaoapp/gou/runtime/v8/objects/store"
+	timeT "github.com/yaoapp/gou/runtime/v8/objects/time"
 	websocketT "github.com/yaoapp/gou/runtime/v8/objects/websocket"
 
 	"github.com/yaoapp/kun/log"
@@ -46,6 +47,7 @@ func newIsolate() *Isolate {
 	// set objects
 	template := v8go.NewObjectTemplate(iso)
 	template.Set("log", logT.New().ExportObject(iso))
+	template.Set("time", timeT.New().ExportObject(iso))
 	template.Set("http", httpT.New(runtimeOption.DataRoot).ExportObject(iso))
 
 	// set functions

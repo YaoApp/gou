@@ -37,6 +37,7 @@ type Out struct {
 	Type     string            `json:"type,omitempty"`
 	Body     interface{}       `json:"body,omitempty"`
 	Headers  map[string]string `json:"headers,omitempty"`
+	Stream   string            `json:"stream,omitempty"`
 	Redirect *Redirect         `json:"redirect,omitempty"`
 }
 
@@ -44,4 +45,9 @@ type Out struct {
 type Redirect struct {
 	Code     int    `json:"code,omitempty"`
 	Location string `json:"location,omitempty"`
+}
+
+type ssEventData struct {
+	Name    string
+	Message interface{}
 }

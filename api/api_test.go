@@ -3,17 +3,21 @@ package api
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/flow"
+	httpTest "github.com/yaoapp/gou/http"
 	"github.com/yaoapp/gou/model"
 	"github.com/yaoapp/gou/query"
 	"github.com/yaoapp/gou/query/gou"
@@ -134,6 +138,52 @@ func TestAPIUserSessionIn(t *testing.T) {
 	assert.Equal(t, float64(1), res.Get("id"))
 }
 
+func TestAPIStreamUnitTest(t *testing.T) {
+	prepare(t)
+	defer clean()
+	router := testRouter(t)
+
+	// Listen
+	l, err := net.Listen("tcp4", ":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	srv := &http.Server{Addr: ":0", Handler: router}
+	defer func() {
+		srv.Close()
+		l.Close()
+	}()
+
+	// start serve
+	go func() {
+		fmt.Println("[TestServer] Starting")
+		if err := srv.Serve(l); err != nil && err != http.ErrServerClosed {
+			fmt.Println("[TestServer] Error:", err)
+			return
+		}
+	}()
+
+	addr := strings.Split(l.Addr().String(), ":")
+	if len(addr) != 2 {
+		t.Fatal("invalid address")
+	}
+
+	host := fmt.Sprintf("http://127.0.0.1:%s", addr[1])
+	time.Sleep(50 * time.Millisecond)
+
+	res := []byte{}
+	req := httpTest.New(fmt.Sprintf("%s/stream/unit/test", host)).
+		WithHeader(http.Header{"Content-Type": []string{"application/json"}})
+
+	req.Stream("POST", map[string]interface{}{"foo": "bar"}, func(data []byte) int {
+		res = append(res, data...)
+		return 1
+	})
+
+	assert.Equal(t, `event:messagedata:{"foo":"bar0"}event:messagedata:{"foo":"bar1"}event:messagedata:{"foo":"bar2"}event:messagedata:{"foo":"bar3"}event:messagedata:{"foo":"bar4"}`, string(res))
+}
+
 func testRouter(t *testing.T, middlewares ...gin.HandlerFunc) *gin.Engine {
 	prepare(t)
 	router := gin.New()
@@ -165,6 +215,11 @@ func prepare(t *testing.T) {
 	loadFlows(t)
 
 	_, err = Load("/apis/user.http.yao", "user")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = Load("/apis/stream.http.yao", "stream")
 	if err != nil {
 		t.Fatal(err)
 	}
