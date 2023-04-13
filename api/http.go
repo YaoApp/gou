@@ -20,6 +20,7 @@ import (
 
 // HTTPGuards 支持的中间件
 var HTTPGuards = map[string]gin.HandlerFunc{}
+var registeredOptions = map[string]bool{}
 
 // ProcessGuard guard process
 func ProcessGuard(name string) gin.HandlerFunc {
@@ -110,6 +111,7 @@ func (http HTTP) Routes(router *gin.Engine, path string, allows ...string) {
 		path.Method = strings.ToUpper(path.Method)
 		http.Route(group, path, allows...)
 	}
+	registeredOptions = map[string]bool{}
 }
 
 // Route 路径配置转换为路由
@@ -185,6 +187,10 @@ func (http HTTP) guard(handlers *[]gin.HandlerFunc, guard string, defaults strin
 
 // crossDomain 跨域许可
 func (http HTTP) crossDomain(path string, allows map[string]bool, router gin.IRoutes) {
+	if _, has := registeredOptions[fmt.Sprintf("%s.%s", http.Name, path)]; has {
+		return
+	}
+	registeredOptions[fmt.Sprintf("%s.%s", http.Name, path)] = true
 	http.method("OPTIONS", path, router, func(c *gin.Context) {
 		referer := c.Request.Referer()
 		if referer != "" {
