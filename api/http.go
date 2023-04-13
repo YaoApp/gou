@@ -11,11 +11,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/session"
 	"github.com/yaoapp/gou/types"
-	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
 )
@@ -148,127 +146,19 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 		})
 	}
 
-	// 中间件
+	// set middlewares
 	http.guard(&handlers, path.Guard, http.Guard)
 
-	// API响应逻辑
-	handlers = append(handlers, func(c *gin.Context) {
+	// set http handler
+	if path.Out.Redirect != nil {
+		handlers = append(handlers, path.redirectHandler(getArgs))
 
-		if strings.HasPrefix(strings.ToLower(c.GetHeader("content-type")), "application/json") {
-			bytes, err := ioutil.ReadAll(c.Request.Body)
-			if err != nil {
-				panic(err)
-			}
+	} else if path.Out.Stream != "" {
+		handlers = append(handlers, path.streamHandler(getArgs))
 
-			if bytes == nil || len(bytes) == 0 {
-				c.Set("__payloads", map[string]interface{}{})
-			} else {
-				payloads := map[string]interface{}{}
-				err = jsoniter.Unmarshal(bytes, &payloads)
-				if err != nil {
-					panic(err)
-				}
-				c.Set("__payloads", payloads)
-			}
-		}
-
-		// 运行 Process
-		var args []interface{} = getArgs(c)
-
-		// 如果 path.Guard == "in-process" 在调用中鉴权
-		// if path.Guard == "in-process" || (path.Guard == "" && http.Guard == "in-process") {
-		// 	args = append(args, c)
-		// }
-
-		var process = process.New(path.Process, args...)
-		if sid, has := c.Get("__sid"); has { // 设定会话ID
-			if sid, ok := sid.(string); ok {
-				process.WithSID(sid)
-			}
-		}
-		if global, has := c.Get("__global"); has { // 设定全局变量
-			if global, ok := global.(map[string]interface{}); ok {
-				process.WithGlobal(global)
-			}
-		}
-
-		var resp interface{} = process.Run()
-		var status int = path.Out.Status
-		var contentType string = path.Out.Type
-
-		if contentType != "" {
-			c.Writer.Header().Set("Content-Type", contentType)
-		}
-
-		// Response Headers
-		if len(path.Out.Headers) > 0 {
-			res := any.Of(resp)
-			if res.IsMap() { // 处理变量
-				data := res.Map().MapStrAny.Dot()
-				for name, value := range path.Out.Headers {
-					v := helper.Bind(value, data)
-					if v != nil {
-						c.Writer.Header().Set(name, fmt.Sprintf("%v", v))
-					}
-				}
-			} else {
-				for name, value := range path.Out.Headers {
-					c.Writer.Header().Set(name, value)
-					if name == "Content-Type" {
-						contentType = value
-					}
-				}
-			}
-		}
-
-		// Redirect
-		if path.Out.Redirect != nil {
-			code := path.Out.Redirect.Code
-			if code == 0 {
-				code = 301
-			}
-			c.Redirect(code, path.Out.Redirect.Location)
-			c.Done()
-			return
-		}
-
-		if resp == nil {
-			c.Done()
-			return
-		}
-
-		// Format Body
-		body := resp
-		if path.Out.Body != nil {
-			res := any.Of(resp)
-			if res.IsMap() {
-				data := res.Map().MapStrAny.Dot()
-				body = helper.Bind(path.Out.Body, data)
-			}
-		}
-
-		switch data := body.(type) {
-		case maps.Map, map[string]interface{}, []interface{}, []maps.Map, []map[string]interface{}:
-			c.JSON(status, data)
-			c.Done()
-			return
-
-		case []byte:
-			c.Data(status, contentType, data)
-			c.Done()
-			return
-
-		default:
-			if contentType == "application/json" {
-				c.JSON(status, body)
-			} else {
-				c.String(status, "%v", body)
-			}
-			c.Done()
-			return
-		}
-
-	})
+	} else {
+		handlers = append(handlers, path.defaultHandler(getArgs))
+	}
 
 	http.method(path.Method, path.Path, router, handlers...)
 }
