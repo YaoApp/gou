@@ -153,7 +153,7 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 	if path.Out.Redirect != nil {
 		handlers = append(handlers, path.redirectHandler(getArgs))
 
-	} else if path.Out.Stream != "" {
+	} else if path.Out.Stream {
 		handlers = append(handlers, path.streamHandler(getArgs))
 
 	} else {
