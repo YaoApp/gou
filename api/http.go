@@ -69,7 +69,16 @@ func ProcessGuard(name string) gin.HandlerFunc {
 			}
 		}
 
-		process.Run()
+		v := process.Run()
+		if data, ok := v.(map[string]interface{}); ok {
+			if sid, ok := data["__sid"].(string); ok {
+				c.Set("__sid", sid)
+			}
+
+			if global, ok := data["__global"].(map[string]interface{}); ok {
+				c.Set("__global", global)
+			}
+		}
 	}
 }
 
