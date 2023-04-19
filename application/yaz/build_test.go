@@ -1,17 +1,24 @@
 package yaz
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application/yaz/ciphers"
 )
 
-func TestBuildSaveTo(t *testing.T) {
+func TestCompress(t *testing.T) {
+	vars := prepare(t)
+	file, err := Compress(vars["root"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(file)
+}
+
+func TestCompressTo(t *testing.T) {
 	vars := prepare(t)
 	tempDir, err := ioutil.TempDir(os.TempDir(), "pack-*")
 	if err != nil {
@@ -19,86 +26,55 @@ func TestBuildSaveTo(t *testing.T) {
 	}
 
 	file := filepath.Join(tempDir, "test.yaz")
-	err = BuildSaveTo(vars["root"], file)
+	err = CompressTo(vars["root"], file)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.Remove(file)
 }
 
-func TestEncryptAndDecryptBytes(t *testing.T) {
-
+func TestPackUnpack(t *testing.T) {
 	vars := prepare(t)
-	file, err := Build(vars["root"])
+	aesCipher := ciphers.NewAES([]byte(vars["aseKey"]))
+	file, err := Pack(vars["root"], aesCipher)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.Remove(file)
 
-	data, err := os.ReadFile(file)
+	dir, err := Unpack(file, aesCipher)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	aesCipher := ciphers.NewAES([]byte(vars["aseKey"]))
-	dataEncrypt, err := EncryptBytes(aesCipher, data)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	dataDecrypt, err := DecryptBytes(aesCipher, dataEncrypt)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, data, dataDecrypt)
-	assert.NotEqual(t, dataEncrypt, dataDecrypt)
+	defer os.RemoveAll(dir)
 }
 
-func TestEncryptAndDecryptFile(t *testing.T) {
-
+func TestPackToUnpackTo(t *testing.T) {
 	vars := prepare(t)
-	file, err := Build(vars["root"])
+	tempDir, err := ioutil.TempDir(os.TempDir(), "pack-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	file := filepath.Join(tempDir, "test.yaz")
+	aesCipher := ciphers.NewAES([]byte(vars["aseKey"]))
+	err = PackTo(vars["root"], file, aesCipher)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.Remove(file)
-	fmt.Println(file)
 
-	tempDir := filepath.Dir(file)
-
-	aesCipher := ciphers.NewAES([]byte(vars["aseKey"]))
-	fileEncrypt := filepath.Join(tempDir, "test.yax")
-	err = EncryptFile(aesCipher, file, fileEncrypt)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(fileEncrypt)
-
-	fileDecrypt := filepath.Join(tempDir, "test-new.yaz")
-	err = DecryptFile(aesCipher, fileEncrypt, fileDecrypt)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(fileDecrypt)
-
-	dataEncrypt, err := os.ReadFile(fileEncrypt)
+	dir, err := ioutil.TempDir(os.TempDir(), "unpack-*")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dataDecrypt, err := os.ReadFile(fileDecrypt)
+	dir = filepath.Join(dir, "unpack")
+	err = UnpackTo(file, dir, aesCipher)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	data, err := os.ReadFile(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, data, dataDecrypt)
-	assert.NotEqual(t, dataEncrypt, dataDecrypt)
+	os.RemoveAll(dir)
 }
 
 func prepare(t *testing.T) map[string]string {
