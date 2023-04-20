@@ -10,9 +10,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/yaoapp/gou/application/ignore"
 )
 
-var ignores = []string{"/data", "/db", "/logs", "/tmp", "/vendor", ".github", ".git", "/.gitignore", "/.gitmodules", "/.gitattributes", "/.gitkeep", "/.gitlab-ci.yml"}
+var ignores = []string{"data", "db", "logs", "tmp", "vendor", "dist", ".github", "plugins", "wasms", ".git", ".gitignore", ".gitmodules", ".gitattributes", ".gitkeep", ".gitlab-ci.yml"}
 var encryptFiles = map[string]bool{"js": true, "yao": true, "jsonc": true, "json": true, "html": true, "htm": true, "css": true, "txt": true, "md": true, "go": true, "yml": true, "yaml": true, "xml": true, "conf": true, "ini": true, "toml": true, "sql": true, "tpl": true, "tmpl": true, "tmpl.html": true, "tmpl.js": true, "tmpl.css": true, "tmpl.txt": true, "tmpl.yml": true, "tmpl.yaml": true, "tmpl.xml": true, "tmpl.conf": true, "tmpl.ini": true, "tmpl.toml": true, "tmpl.sql": true, "tmpl.tpl": true, "tmpl.tmpl": true, "tmpl.tmpl.html": true, "tmpl.tmpl.js": true, "tmpl.tmpl.css": true, "tmpl.tmpl.txt": true, "tmpl.tmpl.yml": true, "tmpl.tmpl.yaml": true, "tmpl.tmpl.xml": true, "tmpl.tmpl.conf": true, "tmpl.tmpl.ini": true, "tmpl.tmpl.toml": true, "tmpl.tmpl.sql": true, "tmpl.tmpl.tpl": true, "tmpl.tmpl.tmpl": true}
 
 // Pack a package
@@ -191,6 +193,10 @@ func compress(root string, target string, cipher Cipher) error {
 	tw := tar.NewWriter(gz)
 	defer tw.Close()
 
+	// add gitignore patterns
+	ignorePatterns := ignores
+	gitignore := ignore.Compile(filepath.Join(root, ".gitignore"), ignorePatterns...)
+
 	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 
 		if err != nil {
@@ -202,10 +208,8 @@ func compress(root string, target string, cipher Cipher) error {
 			return err
 		}
 
-		for _, ignore := range ignores {
-			if strings.HasPrefix(relPath, ignore) {
-				return nil
-			}
+		if gitignore.MatchesPath(relPath) {
+			return nil
 		}
 
 		header, err := tar.FileInfoHeader(info, info.Name())

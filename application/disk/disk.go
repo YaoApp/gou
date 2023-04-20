@@ -9,6 +9,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
+	"github.com/yaoapp/gou/application/ignore"
 	"github.com/yaoapp/kun/log"
 )
 
@@ -19,7 +20,7 @@ type Disk struct {
 }
 
 var defaultPatterns = []string{"*.yao", "*.json", "*.jsonc", "*.yaml", "*.so", "*.dll", "*.js", "*.py", "*.ts", "*.wasm"}
-var ignoreWatchPatterns = []string{"/public", "/data", "/db", "/logs"}
+var ignoreWatchPatterns = []string{"public", "data", "db", "logs", "dist"}
 
 // Open the application
 func Open(root string) (*Disk, error) {
@@ -159,16 +160,18 @@ func (disk *Disk) Watch(handler func(event string, name string), interrupt chan 
 	}
 	defer watcher.Close()
 	shutdown := make(chan bool, 1)
+	gitignore := ignore.Compile(filepath.Join(disk.root, ".gitignore"), ignoreWatchPatterns...)
 
 	// Add path
 	err = disk.Walk("/", func(root, file string, isdir bool) error {
-		if isdir {
-			for _, pattern := range ignoreWatchPatterns {
 
-				if matched, _ := filepath.Match(pattern, file); matched {
-					return nil
-				}
-			}
+		rel := strings.TrimPrefix(file, string(os.PathSeparator))
+		if gitignore.MatchesPath(rel) {
+			return nil
+		}
+
+		if isdir {
+
 			filename, err := disk.abs(file)
 			if err != nil {
 				return err
