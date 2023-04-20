@@ -1,6 +1,7 @@
 package yaz
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,7 +23,8 @@ func TestCompressUncompress(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer os.RemoveAll(dir)
+	// defer os.RemoveAll(dir)
+	fmt.Println(dir)
 }
 
 func TestCompressToUncompressTo(t *testing.T) {
