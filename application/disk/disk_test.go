@@ -25,7 +25,10 @@ func TestOpen(t *testing.T) {
 
 func TestWalk(t *testing.T) {
 	app := prepare(t)
+
+	files := []string{}
 	err := app.Walk("models", func(root, filename string, isdir bool) error {
+		files = append(files, filepath.Join(filename))
 		assert.IsType(t, true, isdir)
 		assert.IsType(t, "string", filename)
 		assert.Equal(t, "models", root)
@@ -35,11 +38,15 @@ func TestWalk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	assert.Greater(t, len(files), 1)
 }
 
 func TestWalkWithPatterns(t *testing.T) {
 	app := prepare(t)
+
+	files := []string{}
 	err := app.Walk("scripts", func(root, filename string, isdir bool) error {
+		files = append(files, filepath.Join(filename))
 		assert.IsType(t, true, isdir)
 		assert.IsType(t, "string", filename)
 		assert.Equal(t, "scripts", root)
@@ -53,6 +60,7 @@ func TestWalkWithPatterns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	assert.Greater(t, len(files), 1)
 }
 
 func TestRead(t *testing.T) {

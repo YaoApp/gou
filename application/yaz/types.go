@@ -1,11 +1,13 @@
 package yaz
 
-import (
-	"io"
-)
+import "io"
 
-// Package is a type that represents a package.
-type Package struct{}
+// Yaz is a type that represents a package.
+type Yaz struct {
+	file   string // the package file
+	root   string // the app root (temp dir)
+	cipher Cipher // the cipher interface
+}
 
 // Cipher is a type that represents a cipher.
 type Cipher interface {

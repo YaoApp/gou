@@ -87,6 +87,28 @@ func CompressTo(root string, output string) error {
 	return nil
 }
 
+// Uncompress a package
+func Uncompress(file string) (string, error) {
+
+	tempDir, err := ioutil.TempDir(os.TempDir(), "uncompress-*")
+	if err != nil {
+		return "", err
+	}
+
+	if err := uncompress(file, tempDir, nil); err != nil {
+		return "", err
+	}
+	return tempDir, nil
+}
+
+// UncompressTo uncompress a package to a specified directory.
+func UncompressTo(file string, output string) error {
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		return fmt.Errorf("directory %s already exists", output)
+	}
+	return uncompress(file, output, nil)
+}
+
 // Encrypt a package
 func Encrypt(cipher Cipher, reader io.Reader, writer io.Writer) error {
 	return cipher.Encrypt(reader, writer)

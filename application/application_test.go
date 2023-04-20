@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/application/yaz"
+	"github.com/yaoapp/gou/application/yaz/ciphers"
 	"github.com/yaoapp/kun/maps"
 )
 
@@ -20,21 +22,38 @@ func TestLoad(t *testing.T) {
 
 func TestOpenFromDisk(t *testing.T) {
 	root := os.Getenv("GOU_TEST_APPLICATION")
-	_, err := OpenFromDisk(root)
+	app, err := OpenFromDisk(root)
 	if err != nil {
 		t.Fatal(err)
 	}
+	testParse(t, app)
 
 	_, err = OpenFromDisk("/path/not-exists")
 	assert.NotNil(t, err)
 }
 
-func TestParse(t *testing.T) {
+func TestOpenFromYaz(t *testing.T) {
 	root := os.Getenv("GOU_TEST_APPLICATION")
-	app, err := OpenFromDisk(root)
+	aesCipher := ciphers.NewAES([]byte("0123456789123456"))
+
+	file, err := yaz.Pack(root, aesCipher)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer os.Remove(file)
+
+	app, err := OpenFromYaz(file, aesCipher)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testParse(t, app)
+
+	_, err = OpenFromYaz("/path/not-exists", nil)
+	assert.NotNil(t, err)
+}
+
+func testParse(t *testing.T, app Application) {
 
 	data, err := app.Read("app.yao")
 	if err != nil {

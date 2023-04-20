@@ -6,6 +6,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/application/disk"
+	"github.com/yaoapp/gou/application/yaz"
 	"gopkg.in/yaml.v3"
 )
 
@@ -20,6 +21,11 @@ func Load(app Application) {
 // OpenFromDisk open the application from disk
 func OpenFromDisk(root string) (Application, error) {
 	return disk.Open(root)
+}
+
+// OpenFromYaz open the application from the .yaz file
+func OpenFromYaz(file string, cipher yaz.Cipher) (Application, error) {
+	return yaz.Open(file, cipher)
 }
 
 // OpenFromPkg open the application from the .pkg file

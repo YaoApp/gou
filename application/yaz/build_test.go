@@ -9,16 +9,23 @@ import (
 	"github.com/yaoapp/gou/application/yaz/ciphers"
 )
 
-func TestCompress(t *testing.T) {
+func TestCompressUncompress(t *testing.T) {
 	vars := prepare(t)
 	file, err := Compress(vars["root"])
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.Remove(file)
+
+	dir, err := Uncompress(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.RemoveAll(dir)
 }
 
-func TestCompressTo(t *testing.T) {
+func TestCompressToUncompressTo(t *testing.T) {
 	vars := prepare(t)
 	tempDir, err := ioutil.TempDir(os.TempDir(), "pack-*")
 	if err != nil {
@@ -31,6 +38,18 @@ func TestCompressTo(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Remove(file)
+
+	dir, err := ioutil.TempDir(os.TempDir(), "uncompress-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir = filepath.Join(dir, "uncompress")
+	err = UncompressTo(file, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.RemoveAll(dir)
 }
 
 func TestPackUnpack(t *testing.T) {
