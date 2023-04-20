@@ -28,13 +28,8 @@ func OpenFromYaz(file string, cipher yaz.Cipher) (Application, error) {
 	return yaz.Open(file, cipher)
 }
 
-// OpenFromPkg open the application from the .pkg file
-func OpenFromPkg(file string, pack Pack) (Application, error) {
-	return nil, nil
-}
-
 // OpenFromBin open the application from the binary .app file
-func OpenFromBin(file string, pack Pack) (Application, error) {
+func OpenFromBin(file string, cipher yaz.Cipher) (Application, error) {
 	return nil, nil
 }
 
