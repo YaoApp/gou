@@ -3,20 +3,22 @@ package yaz
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/yaoapp/kun/log"
+	"golang.org/x/crypto/md4"
 )
 
 var defaultPatterns = []string{"*.yao", "*.json", "*.jsonc", "*.yaml", "*.so", "*.dll", "*.js", "*.py", "*.ts", "*.wasm"}
 
 // Open opens a package file.
-func Open(file string, cipher Cipher) (*Yaz, error) {
+func Open(file string, cipher Cipher, cache ...bool) (*Yaz, error) {
 
 	// uncompress
-	path, err := Uncompress(file)
+	path, err := uncompressYazFile(file, cache...)
 	if err != nil {
 		return nil, err
 	}
@@ -149,6 +151,7 @@ func (yaz *Yaz) Watch(handler func(event string, name string), interrupt chan ui
 	return fmt.Errorf("yaz does not support watch")
 }
 
+// abs returns the absolute path of the file.
 func (yaz *Yaz) abs(root string) (string, error) {
 	root = filepath.Join(yaz.root, root)
 	root, err := filepath.Abs(root)
@@ -156,4 +159,64 @@ func (yaz *Yaz) abs(root string) (string, error) {
 		return "", err
 	}
 	return root, nil
+}
+
+func uncompressYazFile(file string, cache ...bool) (string, error) {
+
+	loadCache := false
+
+	if len(cache) == 0 {
+		loadCache = true
+	}
+
+	// load from cache
+	if len(cache) > 0 {
+		loadCache = cache[0]
+	}
+
+	if loadCache {
+
+		path, err := cachePath(file)
+		if err != nil {
+			return Uncompress(file)
+		}
+
+		fileInfo, err := os.Stat(path)
+		if err == nil && fileInfo.IsDir() {
+			return path, nil
+		}
+
+		err = UncompressTo(file, path)
+		if err != nil {
+			return "", err
+		}
+
+		return path, nil
+	}
+
+	// uncompress
+	return Uncompress(file)
+}
+
+func cachePath(file string) (string, error) {
+
+	// get file info
+	fileInfo, err := os.Stat(file)
+	if err != nil {
+		return "", err
+	}
+	modTime := fileInfo.ModTime()
+
+	// cache
+	hash := md4.New()
+	data := fmt.Sprintf("%s.%d", file, modTime.UnixMilli())
+
+	io.WriteString(hash, data)
+	name := fmt.Sprintf("%x", hash.Sum(nil))
+	cacheRoot, err := os.UserHomeDir()
+	if err != nil {
+		cacheRoot = os.TempDir()
+	}
+
+	return filepath.Join(cacheRoot, ".yaoapps", "cache", name), nil
 }
