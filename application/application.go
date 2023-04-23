@@ -25,7 +25,7 @@ func OpenFromDisk(root string) (Application, error) {
 
 // OpenFromYaz open the application from the .yaz file
 func OpenFromYaz(file string, cipher yaz.Cipher) (Application, error) {
-	return yaz.Open(file, cipher)
+	return yaz.OpenFile(file, cipher)
 }
 
 // OpenFromBin open the application from the binary .app file

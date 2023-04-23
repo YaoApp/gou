@@ -1,7 +1,6 @@
 package yaz
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -18,13 +17,18 @@ func TestCompressUncompress(t *testing.T) {
 	}
 	defer os.Remove(file)
 
-	dir, err := Uncompress(file)
+	compress, err := os.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer compress.Close()
+
+	dir, err := Uncompress(compress)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// defer os.RemoveAll(dir)
-	fmt.Println(dir)
+	defer os.RemoveAll(dir)
 }
 
 func TestCompressToUncompressTo(t *testing.T) {
@@ -46,8 +50,57 @@ func TestCompressToUncompressTo(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	compress, err := os.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer compress.Close()
+
 	dir = filepath.Join(dir, "uncompress")
-	err = UncompressTo(file, dir)
+	err = UncompressTo(compress, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.RemoveAll(dir)
+}
+
+func TestCompressUncompressFile(t *testing.T) {
+	vars := prepare(t)
+	file, err := Compress(vars["root"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(file)
+
+	dir, err := UncompressFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer os.RemoveAll(dir)
+}
+
+func TestCompressToUncompressFileTo(t *testing.T) {
+	vars := prepare(t)
+	tempDir, err := ioutil.TempDir(os.TempDir(), "pack-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	file := filepath.Join(tempDir, "test.yaz")
+	err = CompressTo(vars["root"], file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(file)
+
+	dir, err := ioutil.TempDir(os.TempDir(), "uncompress-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir = filepath.Join(dir, "uncompress")
+	err = UncompressFileTo(file, dir)
 	if err != nil {
 		t.Fatal(err)
 	}

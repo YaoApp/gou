@@ -49,7 +49,7 @@ func Unpack(file string, cipher Cipher) (string, error) {
 		return "", err
 	}
 
-	if err := uncompress(file, tempDir, cipher); err != nil {
+	if err := uncompressFile(file, tempDir, cipher); err != nil {
 		return "", err
 	}
 	return tempDir, nil
@@ -60,7 +60,7 @@ func UnpackTo(file string, output string, cipher Cipher) error {
 	if _, err := os.Stat(output); !os.IsNotExist(err) {
 		return fmt.Errorf("directory %s already exists", output)
 	}
-	return uncompress(file, output, cipher)
+	return uncompressFile(file, output, cipher)
 }
 
 // Compress a package
@@ -90,26 +90,48 @@ func CompressTo(root string, output string) error {
 	return nil
 }
 
-// Uncompress a package
-func Uncompress(file string) (string, error) {
+// UncompressFile a package
+func UncompressFile(file string) (string, error) {
 
 	tempDir, err := ioutil.TempDir(os.TempDir(), "uncompress-*")
 	if err != nil {
 		return "", err
 	}
 
-	if err := uncompress(file, tempDir, nil); err != nil {
+	if err := uncompressFile(file, tempDir, nil); err != nil {
 		return "", err
 	}
 	return tempDir, nil
 }
 
-// UncompressTo uncompress a package to a specified directory.
-func UncompressTo(file string, output string) error {
+// UncompressFileTo uncompress a package to a specified directory.
+func UncompressFileTo(file string, output string) error {
 	if _, err := os.Stat(output); !os.IsNotExist(err) {
 		return fmt.Errorf("directory %s already exists", output)
 	}
-	return uncompress(file, output, nil)
+	return uncompressFile(file, output, nil)
+}
+
+// UncompressTo uncompress a package to a specified directory.
+func UncompressTo(reader io.Reader, output string) error {
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
+		return fmt.Errorf("directory %s already exists", output)
+	}
+	return uncompress(reader, output, nil)
+}
+
+// Uncompress a package
+func Uncompress(reader io.Reader) (string, error) {
+
+	tempDir, err := ioutil.TempDir(os.TempDir(), "uncompress-*")
+	if err != nil {
+		return "", err
+	}
+
+	if err := uncompress(reader, tempDir, nil); err != nil {
+		return "", err
+	}
+	return tempDir, nil
 }
 
 // Encrypt a package
@@ -269,13 +291,18 @@ func compress(root string, target string, cipher Cipher) error {
 	return err
 }
 
-func uncompress(file string, dest string, cipher Cipher) error {
+func uncompressFile(file string, dest string, cipher Cipher) error {
 
 	tarFile, err := os.Open(file)
 	if err != nil {
 		return err
 	}
 	defer tarFile.Close()
+
+	return uncompress(tarFile, dest, cipher)
+}
+
+func uncompress(tarFile io.Reader, dest string, cipher Cipher) error {
 
 	gzr, err := gzip.NewReader(tarFile)
 	if err != nil {
