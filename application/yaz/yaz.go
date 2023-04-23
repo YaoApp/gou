@@ -99,7 +99,7 @@ func (yaz *Yaz) Read(name string) ([]byte, error) {
 
 	// decrypt file
 	ext := strings.TrimPrefix(filepath.Ext(name), ".")
-	if yaz.cipher != nil && encryptFiles[ext] {
+	if !yaz.cipherIsNull() && encryptFiles[ext] {
 		reader, err := os.Open(file)
 		if err != nil {
 			return nil, err
@@ -219,4 +219,8 @@ func cachePath(file string) (string, error) {
 	}
 
 	return filepath.Join(cacheRoot, ".yaoapps", "cache", name), nil
+}
+
+func (yaz *Yaz) cipherIsNull() bool {
+	return cipherIsNull(yaz.cipher)
 }
