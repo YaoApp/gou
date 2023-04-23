@@ -15,7 +15,24 @@ import (
 var defaultPatterns = []string{"*.yao", "*.json", "*.jsonc", "*.yaml", "*.so", "*.dll", "*.js", "*.py", "*.ts", "*.wasm"}
 
 // Open opens a package file.
-func Open(file string, cipher Cipher, cache ...bool) (*Yaz, error) {
+func Open(reader io.Reader, file string, cipher Cipher, cache ...bool) (*Yaz, error) {
+
+	// uncompress
+	path, err := uncompressYaz(reader, file, cache...)
+	if err != nil {
+		return nil, err
+	}
+
+	yaz := &Yaz{
+		cipher: cipher,
+		root:   path,
+	}
+
+	return yaz, nil
+}
+
+// OpenFile opens a package file.
+func OpenFile(file string, cipher Cipher, cache ...bool) (*Yaz, error) {
 
 	// uncompress
 	path, err := uncompressYazFile(file, cache...)
@@ -24,7 +41,6 @@ func Open(file string, cipher Cipher, cache ...bool) (*Yaz, error) {
 	}
 
 	yaz := &Yaz{
-		file:   file,
 		cipher: cipher,
 		root:   path,
 	}
@@ -161,6 +177,43 @@ func (yaz *Yaz) abs(root string) (string, error) {
 	return root, nil
 }
 
+func uncompressYaz(reader io.Reader, file string, cache ...bool) (string, error) {
+
+	loadCache := false
+
+	if len(cache) == 0 {
+		loadCache = true
+	}
+
+	// load from cache
+	if len(cache) > 0 {
+		loadCache = cache[0]
+	}
+
+	if loadCache {
+
+		path, err := cachePath(file)
+		if err != nil {
+			return Uncompress(reader)
+		}
+
+		fileInfo, err := os.Stat(path)
+		if err == nil && fileInfo.IsDir() {
+			return path, nil
+		}
+
+		err = UncompressTo(reader, path)
+		if err != nil {
+			return "", err
+		}
+
+		return path, nil
+	}
+
+	// uncompress
+	return Uncompress(reader)
+}
+
 func uncompressYazFile(file string, cache ...bool) (string, error) {
 
 	loadCache := false
@@ -178,7 +231,7 @@ func uncompressYazFile(file string, cache ...bool) (string, error) {
 
 		path, err := cachePath(file)
 		if err != nil {
-			return Uncompress(file)
+			return UncompressFile(file)
 		}
 
 		fileInfo, err := os.Stat(path)
@@ -186,7 +239,7 @@ func uncompressYazFile(file string, cache ...bool) (string, error) {
 			return path, nil
 		}
 
-		err = UncompressTo(file, path)
+		err = UncompressFileTo(file, path)
 		if err != nil {
 			return "", err
 		}
@@ -195,7 +248,7 @@ func uncompressYazFile(file string, cache ...bool) (string, error) {
 	}
 
 	// uncompress
-	return Uncompress(file)
+	return UncompressFile(file)
 }
 
 func cachePath(file string) (string, error) {

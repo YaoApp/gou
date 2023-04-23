@@ -13,13 +13,36 @@ func TestOpen(t *testing.T) {
 	vars := data(t)
 	defer clean(t, vars)
 
-	_, err := Open(vars["compress"], nil)
+	compress, err := os.Open(vars["compress"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer compress.Close()
+
+	_, err = Open(compress, vars["compress"], nil)
 	assert.Nil(t, err)
 
-	_, err = Open(vars["pack"], ciphers.NewAES([]byte(vars["aseKey"])))
+	pack, err := os.Open(vars["pack"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pack.Close()
+
+	_, err = Open(pack, vars["pack"], ciphers.NewAES([]byte(vars["aseKey"])))
+	assert.Nil(t, err)
+}
+
+func TestOpenFile(t *testing.T) {
+	vars := data(t)
+	defer clean(t, vars)
+
+	_, err := OpenFile(vars["compress"], nil)
 	assert.Nil(t, err)
 
-	_, err = Open("not exists", nil)
+	_, err = OpenFile(vars["pack"], ciphers.NewAES([]byte(vars["aseKey"])))
+	assert.Nil(t, err)
+
+	_, err = OpenFile("not exists", nil)
 	assert.NotNil(t, err)
 }
 
@@ -27,7 +50,7 @@ func TestWalk(t *testing.T) {
 	vars := data(t)
 	defer clean(t, vars)
 
-	app, err := Open(vars["compress"], nil)
+	app, err := OpenFile(vars["compress"], nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +73,7 @@ func TestWalkWithPatterns(t *testing.T) {
 	vars := data(t)
 	defer clean(t, vars)
 
-	app, err := Open(vars["compress"], nil)
+	app, err := OpenFile(vars["compress"], nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +103,7 @@ func TestRead(t *testing.T) {
 	defer clean(t, vars)
 
 	// test compress
-	app, err := Open(vars["compress"], nil)
+	app, err := OpenFile(vars["compress"], nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +126,7 @@ func TestRead(t *testing.T) {
 	assert.NotNil(t, err)
 
 	// test pack without cipher
-	app, err = Open(vars["pack"], nil)
+	app, err = OpenFile(vars["pack"], nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +150,7 @@ func TestRead(t *testing.T) {
 
 	// test pack with cipher
 	aesCipher := ciphers.NewAES([]byte(vars["aseKey"]))
-	app, err = Open(vars["pack"], aesCipher)
+	app, err = OpenFile(vars["pack"], aesCipher)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +179,7 @@ func TestWriteRemoveWatchExist(t *testing.T) {
 	defer clean(t, vars)
 
 	// test compress
-	app, err := Open(vars["compress"], nil)
+	app, err := OpenFile(vars["compress"], nil)
 	if err != nil {
 		t.Fatal(err)
 	}

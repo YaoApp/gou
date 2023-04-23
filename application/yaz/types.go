@@ -4,7 +4,6 @@ import "io"
 
 // Yaz is a type that represents a package.
 type Yaz struct {
-	file   string // the package file
 	root   string // the app root (temp dir)
 	cipher Cipher // the cipher interface
 }
