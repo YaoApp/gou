@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/yaoapp/gou/application/ignore"
@@ -232,7 +233,7 @@ func compress(root string, target string, cipher Cipher) error {
 			// Encrypt the file
 			ext := strings.TrimPrefix(filepath.Ext(path), ".")
 
-			if cipher != nil && encryptFiles[ext] {
+			if !cipherIsNull(cipher) && encryptFiles[ext] {
 
 				dir := filepath.Dir(target)
 				encryptFile := filepath.Join(dir, filepath.Base(path)+".enc")
@@ -309,7 +310,7 @@ func uncompress(file string, dest string, cipher Cipher) error {
 			defer fileWriter.Close()
 
 			ext := strings.TrimPrefix(filepath.Ext(target), ".")
-			if cipher != nil && encryptFiles[ext] {
+			if !cipherIsNull(cipher) && encryptFiles[ext] {
 				decryptFile := filepath.Join(dest, filepath.Base(target)+".dec")
 				decryptWriter, err := os.Create(decryptFile)
 				if err != nil {
@@ -344,4 +345,18 @@ func uncompress(file string, dest string, cipher Cipher) error {
 	}
 
 	return nil
+}
+
+func cipherIsNull(cipher Cipher) bool {
+
+	if cipher == nil {
+		return true
+	}
+
+	switch reflect.TypeOf(cipher).Kind() {
+	case reflect.Ptr:
+		return reflect.ValueOf(cipher).IsNil()
+	}
+
+	return false
 }
