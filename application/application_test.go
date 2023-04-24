@@ -32,6 +32,27 @@ func TestOpenFromDisk(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestOpenFromYazFile(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	aesCipher := ciphers.NewAES([]byte("0123456789123456"))
+
+	file, err := yaz.Pack(root, aesCipher)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(file)
+
+	app, err := OpenFromYazFile(file, aesCipher)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testParse(t, app)
+
+	_, err = OpenFromYazFile("/path/not-exists", nil)
+	assert.NotNil(t, err)
+}
+
 func TestOpenFromYaz(t *testing.T) {
 	root := os.Getenv("GOU_TEST_APPLICATION")
 	aesCipher := ciphers.NewAES([]byte("0123456789123456"))
@@ -42,15 +63,24 @@ func TestOpenFromYaz(t *testing.T) {
 	}
 	defer os.Remove(file)
 
-	app, err := OpenFromYaz(file, aesCipher)
+	reader, err := os.Open(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+
+	app, err := OpenFromYaz(reader, file, aesCipher)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	testParse(t, app)
 
-	_, err = OpenFromYaz("/path/not-exists", nil)
-	assert.NotNil(t, err)
+	app, err = OpenFromYazCache(file, aesCipher)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testParse(t, app)
 }
 
 func testParse(t *testing.T, app Application) {
