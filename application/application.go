@@ -44,8 +44,10 @@ func Load(app Application) {
 	}
 
 	for name, value := range pack.Environments {
-		if err := os.Setenv(name, value); err != nil {
-			log.Warn("Application Load Set ENV: %s", err.Error())
+		if os.Getenv(name) == "" {
+			if err := os.Setenv(name, value); err != nil {
+				log.Warn("Application Load Set ENV: %s", err.Error())
+			}
 		}
 	}
 }
