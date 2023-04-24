@@ -15,8 +15,8 @@ type Application interface {
 	FS(root string) http.FileSystem
 }
 
-// Pack the application pack interface
-type Pack interface {
-	Decode(data []byte) ([]byte, error)
-	Encode(data []byte) ([]byte, error)
+// Pack the application pack
+type Pack struct {
+	Name         string            `json:"name,omitempty"`
+	Environments map[string]string `json:"environments,omitempty"`
 }
