@@ -2,6 +2,7 @@ package application
 
 import (
 	"fmt"
+	"io"
 	"path/filepath"
 
 	jsoniter "github.com/json-iterator/go"
@@ -23,14 +24,19 @@ func OpenFromDisk(root string) (Application, error) {
 	return disk.Open(root)
 }
 
-// OpenFromYaz open the application from the .yaz file
-func OpenFromYaz(file string, cipher yaz.Cipher) (Application, error) {
+// OpenFromYazFile open the application from the .yaz file
+func OpenFromYazFile(file string, cipher yaz.Cipher) (Application, error) {
 	return yaz.OpenFile(file, cipher)
 }
 
-// OpenFromBin open the application from the binary .app file
-func OpenFromBin(file string, cipher yaz.Cipher) (Application, error) {
-	return nil, nil
+// OpenFromYazCache open the application from the cache
+func OpenFromYazCache(file string, cipher yaz.Cipher) (Application, error) {
+	return yaz.OpenCache(file, cipher)
+}
+
+// OpenFromYaz open the application from the binary .app file
+func OpenFromYaz(reader io.Reader, file string, cipher yaz.Cipher) (Application, error) {
+	return yaz.Open(reader, file, cipher)
 }
 
 // OpenFromDB open the application from database

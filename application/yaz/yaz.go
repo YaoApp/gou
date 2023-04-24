@@ -31,6 +31,26 @@ func Open(reader io.Reader, file string, cipher Cipher, cache ...bool) (*Yaz, er
 	return yaz, nil
 }
 
+// OpenCache opens a package file from cache
+func OpenCache(file string, cipher Cipher) (*Yaz, error) {
+
+	path, err := cachePath(file)
+	if err != nil {
+		return nil, err
+	}
+
+	fileInfo, err := os.Stat(path)
+	if err == nil && fileInfo.IsDir() {
+		yaz := &Yaz{
+			cipher: cipher,
+			root:   path,
+		}
+		return yaz, nil
+	}
+
+	return nil, fmt.Errorf("%s not found cache", file)
+}
+
 // OpenFile opens a package file.
 func OpenFile(file string, cipher Cipher, cache ...bool) (*Yaz, error) {
 
