@@ -119,3 +119,15 @@ func (r *Connector) makeConnection() error {
 	r.Rdb = client
 	return nil
 }
+
+// Setting get the connection setting
+func (r *Connector) Setting() map[string]interface{} {
+	return map[string]interface{}{
+		"db":      r.Options.DB,
+		"host":    r.Options.Host,
+		"port":    r.Options.Port,
+		"user":    r.Options.User,
+		"pass":    r.Options.Pass,
+		"timeout": r.Options.Timeout,
+	}
+}

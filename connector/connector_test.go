@@ -10,6 +10,7 @@ import (
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector/database"
 	mongo "github.com/yaoapp/gou/connector/mongo"
+	"github.com/yaoapp/gou/connector/openai"
 	"github.com/yaoapp/gou/connector/redis"
 )
 
@@ -26,7 +27,7 @@ func TestLoadMysql(t *testing.T) {
 	}
 
 	if !Connectors["mysql"].Is(DATABASE) {
-		t.Fatal("the mysql connector is not a DATABASE")
+		t.Fatal("the connector is not a DATABASE")
 	}
 
 	if _, ok := Connectors["mysql"].(*database.Xun); !ok {
@@ -51,7 +52,7 @@ func TestLoadSQLite(t *testing.T) {
 	}
 
 	if _, ok := Connectors["sqlite"].(*database.Xun); !ok {
-		t.Fatal("the sqlite connector is not a *database.Xun")
+		t.Fatal("the connector is not a *database.Xun")
 	}
 	assert.Equal(t, "sqlite", Connectors["sqlite"].ID())
 }
@@ -73,7 +74,7 @@ func TestLoadRedis(t *testing.T) {
 	}
 
 	if _, ok := Connectors["redis"].(*redis.Connector); !ok {
-		t.Fatal("the redis connector is not a *redis.Connector")
+		t.Fatal("the connector is not a *redis.Connector")
 	}
 
 	assert.Equal(t, "redis", Connectors["redis"].ID())
@@ -96,10 +97,34 @@ func TestLoadMongoDB(t *testing.T) {
 	}
 
 	if _, ok := Connectors["mongo"].(*mongo.Connector); !ok {
-		t.Fatal("the mongo connector is not a *mongo.Connector")
+		t.Fatal("the connector is not a *mongo.Connector")
+	}
+	assert.Equal(t, "mongo", Connectors["mongo"].ID())
+}
+
+func TestLoadOpenAI(t *testing.T) {
+	file := prepare(t, "openai")
+	_, err := Load(file, "openai")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	assert.Equal(t, "mongo", Connectors["mongo"].ID())
+	_, has := Connectors["openai"]
+	if !has {
+		t.Fatal("the openai connector does not exist")
+	}
+
+	if !Connectors["openai"].Is(OPENAI) {
+		t.Fatal("the connector is not a OPENAI")
+	}
+
+	if _, ok := Connectors["openai"].(*openai.Connector); !ok {
+		t.Fatal("the openai connector is not a *openai.Connector")
+	}
+
+	setting := Connectors["openai"].Setting()
+	assert.Equal(t, "openai", Connectors["openai"].ID())
+	assert.Contains(t, setting["key"], "sk-")
 }
 
 func prepare(t *testing.T, name string) string {

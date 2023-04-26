@@ -18,6 +18,9 @@ const (
 	// KAFKA the kafka connector
 	KAFKA
 
+	// OPENAI the openai connector
+	OPENAI
+
 	// SCRIPT ? the script connector ( difference with widget ?)
 	SCRIPT
 )
@@ -33,6 +36,7 @@ var types = map[string]int{
 	"elasticsearch": ELASTICSEARCH,
 	"es":            ELASTICSEARCH,
 	"kafka":         KAFKA,
+	"openai":        OPENAI,
 	"script":        SCRIPT, // ?
 }
 
@@ -43,6 +47,7 @@ type Connector interface {
 	Close() error
 	ID() string
 	Is(int) bool
+	Setting() map[string]interface{}
 }
 
 // DSL the connector DSL
