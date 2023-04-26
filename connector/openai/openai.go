@@ -2,6 +2,7 @@ package openai
 
 import (
 	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/xun/dbal/query"
 )
 
@@ -24,7 +25,15 @@ type Options struct {
 func (o *Connector) Register(file string, id string, dsl []byte) error {
 	o.id = id
 	o.file = file
-	return application.Parse(file, dsl, o)
+	err := application.Parse(file, dsl, o)
+	if err != nil {
+		return err
+	}
+
+	o.Options.Proxy = helper.EnvString(o.Options.Proxy)
+	o.Options.Model = helper.EnvString(o.Options.Model)
+	o.Options.Key = helper.EnvString(o.Options.Key)
+	return nil
 }
 
 // Is the connections from dsl

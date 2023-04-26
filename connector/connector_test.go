@@ -99,7 +99,6 @@ func TestLoadMongoDB(t *testing.T) {
 	if _, ok := Connectors["mongo"].(*mongo.Connector); !ok {
 		t.Fatal("the connector is not a *mongo.Connector")
 	}
-
 	assert.Equal(t, "mongo", Connectors["mongo"].ID())
 }
 
@@ -125,7 +124,7 @@ func TestLoadOpenAI(t *testing.T) {
 
 	setting := Connectors["openai"].Setting()
 	assert.Equal(t, "openai", Connectors["openai"].ID())
-	assert.NotNil(t, setting["key"])
+	assert.Contains(t, setting["key"], "sk-")
 }
 
 func prepare(t *testing.T, name string) string {
