@@ -39,6 +39,8 @@ env:
   MONGO_TEST_USER: "root"
   MONGO_TEST_PASS: "123456"
 
+  OPENAI_TEST_KEY: ${{ secrets.OPENAI_TEST_KEY }}
+
 jobs:
   unit-test:
     runs-on: ubuntu-latest

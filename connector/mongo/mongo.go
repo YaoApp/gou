@@ -159,3 +159,15 @@ func (m *Connector) getDSN() (string, error) {
 
 	return dsn, nil
 }
+
+// Setting get the connection setting
+func (m *Connector) Setting() map[string]interface{} {
+
+	return map[string]interface{}{
+		"db":      m.Options.DB,
+		"params":  m.Options.Params,
+		"timeout": m.Options.Timeout,
+		"hosts":   m.Options.Hosts,
+		"dsn":     m.Options.dsn,
+	}
+}

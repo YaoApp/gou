@@ -6,6 +6,7 @@ import (
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector/database"
 	mongo "github.com/yaoapp/gou/connector/mongo"
+	"github.com/yaoapp/gou/connector/openai"
 	"github.com/yaoapp/gou/connector/redis"
 )
 
@@ -76,6 +77,10 @@ func make(typ string) (Connector, error) {
 
 	case MONGO:
 		c := &mongo.Connector{}
+		return c, nil
+
+	case OPENAI:
+		c := &openai.Connector{}
 		return c, nil
 	}
 

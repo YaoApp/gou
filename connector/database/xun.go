@@ -249,3 +249,17 @@ func (x *Xun) mysqlDSN(i int) (string, error) {
 
 	return dsn, nil
 }
+
+// Setting get the connection setting
+func (x *Xun) Setting() map[string]interface{} {
+	return map[string]interface{}{
+		"db":        x.Options.DB,
+		"prefix":    x.Options.TablePrefix,
+		"collation": x.Options.Collation,
+		"charset":   x.Options.Charset,
+		"parseTime": x.Options.ParseTime,
+		"timeout":   x.Options.Timeout,
+		"file":      x.Options.File,
+		"hosts":     x.Options.Hosts,
+	}
+}
