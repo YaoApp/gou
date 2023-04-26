@@ -19,11 +19,15 @@ const (
 
 // Request HTTP Request
 type Request struct {
-	url     string
-	query   url.Values
-	headers http.Header
-	files   map[string]string
-	data    interface{}
+	url       string
+	query     url.Values
+	headers   http.Header
+	files     map[string]string
+	fileBytes map[string]struct {
+		data []byte
+		name string
+	}
+	data interface{}
 }
 
 // Response HTTP Response
