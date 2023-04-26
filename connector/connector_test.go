@@ -119,7 +119,7 @@ func TestLoadOpenAI(t *testing.T) {
 	}
 
 	if _, ok := Connectors["openai"].(*openai.Connector); !ok {
-		t.Fatal("the openai connector is not a *mongo.Connector")
+		t.Fatal("the openai connector is not a *openai.Connector")
 	}
 
 	setting := Connectors["openai"].Setting()
