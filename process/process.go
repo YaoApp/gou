@@ -116,6 +116,15 @@ func (process *Process) make() error {
 		process.ID = strings.ToLower(strings.Join(fields[1:], "."))
 		break
 
+	case "aigcs":
+		if len(fields) < 2 {
+			return fmt.Errorf("Exception|404:%s not found", process.Name)
+		}
+		// aigcs.translate
+		process.Handler = strings.ToLower(process.Group)
+		process.ID = strings.ToLower(strings.ToLower(strings.Join(fields[1:], ".")))
+		break
+
 	case "scripts", "studio", "plugins":
 		if len(fields) < 3 {
 			return fmt.Errorf("Exception|404:%s not found", process.Name)
