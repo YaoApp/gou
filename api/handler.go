@@ -111,7 +111,7 @@ func (path Path) streamHandler(getArgs func(c *gin.Context) []interface{}) func(
 				close(chanError)
 			}()
 
-			path.runStreamScript(c, getArgs,
+			path.runStreamScript(ctx, c, getArgs,
 				// event
 				func(name string, message interface{}) {
 					chanStream <- ssEventData{Name: name, Message: message}
@@ -148,7 +148,7 @@ func (path Path) streamHandler(getArgs func(c *gin.Context) []interface{}) func(
 	}
 }
 
-func (path Path) runStreamScript(c *gin.Context, getArgs func(c *gin.Context) []interface{}, onEvent func(name string, message interface{}), onCancel func(), onError func(error)) {
+func (path Path) runStreamScript(ctx context.Context, c *gin.Context, getArgs func(c *gin.Context) []interface{}, onEvent func(name string, message interface{}), onCancel func(), onError func(error)) {
 
 	if !strings.HasPrefix(path.Process, "scripts") {
 		onError(fmt.Errorf("process must be a script"))
@@ -179,40 +179,40 @@ func (path Path) runStreamScript(c *gin.Context, getArgs func(c *gin.Context) []
 	}
 
 	// make a new script context
-	ctx, err := script.NewContext(sid, global)
+	v8ctx, err := script.NewContext(sid, global)
 	if err != nil {
 		onError(err)
 		return
 	}
-	defer ctx.Close()
+	defer v8ctx.Close()
 
 	// make a new bridge function
-	ssEventT := v8go.NewFunctionTemplate(ctx.Isolate(), func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+	ssEventT := v8go.NewFunctionTemplate(v8ctx.Isolate(), func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		args := info.Args()
 		if len(args) != 2 {
-			return v8go.Null(ctx.Isolate())
+			return v8go.Null(v8ctx.Isolate())
 		}
 
 		name := args[0].String()
 		message, err := bridge.GoValue(args[1])
 		if err != nil {
-			return v8go.Null(ctx.Isolate())
+			return v8go.Null(v8ctx.Isolate())
 		}
 
 		onEvent(name, message)
-		return v8go.Null(ctx.Isolate())
+		return v8go.Null(v8ctx.Isolate())
 	})
 
-	cancelT := v8go.NewFunctionTemplate(ctx.Isolate(), func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+	cancelT := v8go.NewFunctionTemplate(v8ctx.Isolate(), func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		onCancel()
-		return v8go.Null(ctx.Isolate())
+		return v8go.Null(v8ctx.Isolate())
 	})
 
-	ctx.Global().Set("ssEvent", ssEventT.GetFunction(ctx.Context))
-	ctx.Global().Set("cancel", cancelT.GetFunction(ctx.Context))
+	v8ctx.Global().Set("ssEvent", ssEventT.GetFunction(v8ctx.Context))
+	v8ctx.Global().Set("cancel", cancelT.GetFunction(v8ctx.Context))
 
 	args := getArgs(c)
-	_, err = ctx.Call(method, args...)
+	_, err = v8ctx.CallWith(ctx, method, args...)
 	if err != nil {
 		onError(err)
 		return

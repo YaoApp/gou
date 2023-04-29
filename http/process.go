@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -295,7 +296,10 @@ func processHTTPStream(p *process.Process) interface{} {
 		req.WithHeader(headers)
 	}
 
-	return req.Stream(method, payload, func(data []byte) int {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	return req.Stream(ctx, method, payload, func(data []byte) int {
 
 		procesHandler, err := process.Of(handler, string(data))
 		if err != nil {

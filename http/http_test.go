@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -160,7 +161,10 @@ func TestStream(t *testing.T) {
 	<-ready
 	res := []byte{}
 	req := New(fmt.Sprintf("%s/stream", host))
-	req.Stream("GET", nil, func(data []byte) int {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req.Stream(ctx, "GET", nil, func(data []byte) int {
 		res = append(res, data...)
 		return 1
 	})
@@ -168,11 +172,24 @@ func TestStream(t *testing.T) {
 
 	// test break
 	res = []byte{}
-	req.Stream("GET", nil, func(data []byte) int {
+	req.Stream(ctx, "GET", nil, func(data []byte) int {
 		res = append(res, data...)
 		return 0
 	})
 	assert.Equal(t, "event:message", string(res))
+
+	// test cancel
+	res = []byte{}
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+	}()
+
+	err := req.Stream(ctx, "GET", nil, func(data []byte) int {
+		res = append(res, data...)
+		return 1
+	})
+	assert.Equal(t, "context canceled", err.Error())
 }
 
 func tmpfile(t *testing.T, content string) string {
