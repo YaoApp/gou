@@ -26,17 +26,21 @@ var registeredOptions = map[string]bool{}
 func ProcessGuard(name string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body interface{}
-		bodyBytes, err := ioutil.ReadAll(c.Request.Body)
-		if err == nil {
-			if strings.HasPrefix(strings.ToLower(c.Request.Header.Get("Content-Type")), "application/json") {
-				jsoniter.Unmarshal(bodyBytes, &body)
-			} else {
-				body = string(bodyBytes)
+		if c.Request.Body != nil {
+
+			bodyBytes, err := ioutil.ReadAll(c.Request.Body)
+			if err == nil {
+				if strings.HasPrefix(strings.ToLower(c.Request.Header.Get("Content-Type")), "application/json") {
+					jsoniter.Unmarshal(bodyBytes, &body)
+				} else {
+					body = string(bodyBytes)
+				}
 			}
+
+			// Reset body
+			c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
 
-		// Reset body
-		c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 		params := map[string]string{}
 		for _, param := range c.Params {
 			params[param.Key] = param.Value
