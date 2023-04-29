@@ -1,6 +1,7 @@
 package v8
 
 import (
+	"context"
 	"time"
 
 	"github.com/yaoapp/gou/runtime/v8/bridge"
@@ -77,6 +78,74 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 	}
 
 	return goRes, nil
+}
+
+// CallWith call the script function
+func (ctx *Context) CallWith(context context.Context, method string, args ...interface{}) (interface{}, error) {
+
+	global := ctx.Context.Global()
+	jsArgs, err := bridge.JsValues(ctx.Context, args)
+	if err != nil {
+		return nil, err
+	}
+
+	defer bridge.FreeJsValues(jsArgs)
+
+	jsData, err := ctx.setData(global)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if !jsData.IsNull() && !jsData.IsUndefined() {
+			jsData.Release()
+		}
+	}()
+
+	doneChan := make(chan bool, 1)
+	resChan := make(chan interface{}, 1)
+	errChan := make(chan error, 1)
+
+	go func() {
+
+		defer func() {
+			close(doneChan)
+			close(resChan)
+			close(errChan)
+		}()
+
+		select {
+		case <-doneChan:
+			return
+
+		default:
+
+			jsRes, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
+			if err != nil {
+				errChan <- err
+				return
+			}
+
+			goRes, err := bridge.GoValue(jsRes)
+			if err != nil {
+				errChan <- err
+				return
+			}
+
+			resChan <- goRes
+		}
+	}()
+
+	select {
+	case <-context.Done():
+		doneChan <- true
+		return nil, context.Err()
+
+	case err := <-errChan:
+		return nil, err
+
+	case goRes := <-resChan:
+		return goRes, nil
+	}
 }
 
 func (ctx *Context) setData(global *v8go.Object) (*v8go.Value, error) {

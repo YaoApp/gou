@@ -37,7 +37,6 @@ type Out struct {
 	Type     string            `json:"type,omitempty"`
 	Body     interface{}       `json:"body,omitempty"`
 	Headers  map[string]string `json:"headers,omitempty"`
-	Stream   bool              `json:"stream,omitempty"`
 	Redirect *Redirect         `json:"redirect,omitempty"`
 }
 

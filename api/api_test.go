@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -176,7 +177,9 @@ func TestAPIStreamUnitTest(t *testing.T) {
 	req := httpTest.New(fmt.Sprintf("%s/stream/unit/test", host)).
 		WithHeader(http.Header{"Content-Type": []string{"application/json"}})
 
-	req.Stream("POST", map[string]interface{}{"foo": "bar"}, func(data []byte) int {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req.Stream(ctx, "POST", map[string]interface{}{"foo": "bar"}, func(data []byte) int {
 		res = append(res, data...)
 		return 1
 	})

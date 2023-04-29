@@ -297,10 +297,7 @@ func (r *Request) Send(method string, data interface{}) *Response {
 }
 
 // Stream stream the request
-func (r *Request) Stream(method string, data interface{}, handler func(data []byte) int) error {
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (r *Request) Stream(ctx context.Context, method string, data interface{}, handler func(data []byte) int) error {
 
 	var res *Response
 	var body []byte
@@ -405,7 +402,7 @@ func (r *Request) Stream(method string, data interface{}, handler func(data []by
 			return nil
 
 		case HandlerReturnError:
-			break
+			return fmt.Errorf("handler return error %d", res)
 		}
 	}
 

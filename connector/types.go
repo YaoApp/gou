@@ -21,6 +21,9 @@ const (
 	// OPENAI the openai connector
 	OPENAI
 
+	// WEAVIATE the weaviate connector
+	WEAVIATE
+
 	// SCRIPT ? the script connector ( difference with widget ?)
 	SCRIPT
 )
@@ -37,6 +40,7 @@ var types = map[string]int{
 	"es":            ELASTICSEARCH,
 	"kafka":         KAFKA,
 	"openai":        OPENAI,
+	"weaviate":      WEAVIATE,
 	"script":        SCRIPT, // ?
 }
 

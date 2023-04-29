@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -335,7 +336,10 @@ func (obj *Object) stream(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return obj.vReturn(info, err)
 		}
 
-		v8err = req.Stream(method, payload, func(data []byte) int {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		v8err = req.Stream(ctx, method, payload, func(data []byte) int {
 			v, err := v8go.NewValue(iso, string(data))
 			if err != nil {
 				log.Error("[http.Stream] %s %s %s", method, args[2].String(), err.Error())
