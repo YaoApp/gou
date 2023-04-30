@@ -4,6 +4,7 @@ import (
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/xun/dbal/query"
+	"github.com/yaoapp/xun/dbal/schema"
 )
 
 // Connector connector
@@ -48,6 +49,11 @@ func (o *Connector) ID() string {
 
 // Query get connector query interface
 func (o *Connector) Query() (query.Query, error) {
+	return nil, nil
+}
+
+// Schema get connector schema interface
+func (o *Connector) Schema() (schema.Schema, error) {
 	return nil, nil
 }
 

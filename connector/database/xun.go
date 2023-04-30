@@ -12,6 +12,7 @@ import (
 	"github.com/yaoapp/xun/capsule"
 	"github.com/yaoapp/xun/dbal"
 	"github.com/yaoapp/xun/dbal/query"
+	"github.com/yaoapp/xun/dbal/schema"
 )
 
 // Xun the xun database ORM
@@ -108,6 +109,16 @@ func (x *Xun) Query() (query.Query, error) {
 	}
 
 	return query.Use(conn), nil
+}
+
+// Schema get connector schema interface
+func (x *Xun) Schema() (schema.Schema, error) {
+
+	if x.Manager.Connections == nil {
+		return nil, fmt.Errorf("connection is empty")
+	}
+
+	return x.Manager.Schema(), nil
 }
 
 // Close connections

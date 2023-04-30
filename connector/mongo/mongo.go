@@ -8,6 +8,7 @@ import (
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/xun/dbal/query"
+	"github.com/yaoapp/xun/dbal/schema"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -66,6 +67,11 @@ func (m *Connector) ID() string {
 
 // Query get connector query interface
 func (m *Connector) Query() (query.Query, error) {
+	return nil, nil
+}
+
+// Schema get connector schema interface
+func (m *Connector) Schema() (schema.Schema, error) {
 	return nil, nil
 }
 
