@@ -1,6 +1,9 @@
 package connector
 
-import "github.com/yaoapp/xun/dbal/query"
+import (
+	"github.com/yaoapp/xun/dbal/query"
+	"github.com/yaoapp/xun/dbal/schema"
+)
 
 const (
 	// DATABASE the database connector (mysql, pgsql, oracle, sqlite ... )
@@ -48,6 +51,7 @@ var types = map[string]int{
 type Connector interface {
 	Register(file string, id string, dsl []byte) error
 	Query() (query.Query, error)
+	Schema() (schema.Schema, error)
 	Close() error
 	ID() string
 	Is(int) bool
