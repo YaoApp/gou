@@ -108,7 +108,6 @@ func (ctx *Context) CallWith(context context.Context, method string, args ...int
 	go func() {
 
 		defer func() {
-			close(doneChan)
 			close(resChan)
 			close(errChan)
 		}()
