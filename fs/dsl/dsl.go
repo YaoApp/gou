@@ -3,6 +3,7 @@ package dsl
 import (
 	"bytes"
 	"encoding/json"
+	"path/filepath"
 
 	"github.com/yaoapp/gou/fs/system"
 )
@@ -20,9 +21,14 @@ func New(root ...string) *File {
 //
 //	If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
 func (f *File) WriteFile(file string, data []byte, perm uint32) (int, error) {
-	data, err := f.Fmt(data)
-	if err != nil {
-		return 0, err
+
+	var err error
+	ext := filepath.Ext(file)
+	if ext == ".json" || ext == ".yao" || ext == ".jsonc" {
+		data, err = f.Fmt(data)
+		if err != nil {
+			return 0, err
+		}
 	}
 	perm = 0644
 	return f.File.WriteFile(file, data, perm)
