@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	atobT "github.com/yaoapp/gou/runtime/v8/functions/atob"
+	btoaT "github.com/yaoapp/gou/runtime/v8/functions/btoa"
 	langT "github.com/yaoapp/gou/runtime/v8/functions/lang"
 	processT "github.com/yaoapp/gou/runtime/v8/functions/process"
 	studioT "github.com/yaoapp/gou/runtime/v8/functions/studio"
@@ -42,6 +44,7 @@ func NewIsolate() (*Isolate, error) {
 }
 
 func newIsolate() *Isolate {
+
 	iso := v8go.NewIsolate()
 
 	// set objects
@@ -59,6 +62,10 @@ func newIsolate() *Isolate {
 	template.Set("$L", langT.ExportFunction(iso))
 	template.Set("Process", processT.ExportFunction(iso))
 	template.Set("Studio", studioT.ExportFunction(iso))
+
+	// Window object (std functions)
+	template.Set("atob", atobT.ExportFunction(iso))
+	template.Set("btoa", btoaT.ExportFunction(iso))
 
 	new := &Isolate{
 		Isolate:  iso,
