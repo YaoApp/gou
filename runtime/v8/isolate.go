@@ -13,6 +13,7 @@ import (
 	exceptionT "github.com/yaoapp/gou/runtime/v8/objects/exception"
 	fsT "github.com/yaoapp/gou/runtime/v8/objects/fs"
 	httpT "github.com/yaoapp/gou/runtime/v8/objects/http"
+	jobT "github.com/yaoapp/gou/runtime/v8/objects/job"
 	logT "github.com/yaoapp/gou/runtime/v8/objects/log"
 	queryT "github.com/yaoapp/gou/runtime/v8/objects/query"
 	storeT "github.com/yaoapp/gou/runtime/v8/objects/store"
@@ -56,6 +57,7 @@ func newIsolate() *Isolate {
 	// set functions
 	template.Set("Exception", exceptionT.New().ExportFunction(iso))
 	template.Set("FS", fsT.New().ExportFunction(iso))
+	template.Set("Job", jobT.New().ExportFunction(iso))
 	template.Set("Store", storeT.New().ExportFunction(iso))
 	template.Set("Query", queryT.New().ExportFunction(iso))
 	template.Set("WebSocket", websocketT.New().ExportFunction(iso))
