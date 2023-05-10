@@ -173,7 +173,14 @@ func (obj *Object) pending(iso *v8go.Isolate) *v8go.FunctionTemplate {
 				return v8go.Undefined(info.Context().Isolate())
 			}
 
-			cbFun.Call(v8go.Undefined(info.Context().Isolate()))
+			res, err := cbFun.Call(v8go.Undefined(info.Context().Isolate()))
+			if err != nil {
+				return bridge.JsException(info.Context(), err)
+			}
+
+			if res.IsBoolean() && !res.Boolean() {
+				break
+			}
 		}
 
 		return v8go.Undefined(info.Context().Isolate())

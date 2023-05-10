@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strconv"
@@ -65,8 +66,10 @@ func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 
 	tmpl.Set("ReadFile", obj.readFile(iso))
 	tmpl.Set("ReadFileBuffer", obj.readFileBuffer(iso))
+	tmpl.Set("ReadFileBase64", obj.readFileBase64(iso))
 	tmpl.Set("WriteFile", obj.writeFile(iso))
 	tmpl.Set("WriteFileBuffer", obj.writeFileBuffer(iso))
+	tmpl.Set("WriteFileBase64", obj.writeFileBase64(iso))
 	tmpl.Set("Remove", obj.remove(iso))
 	tmpl.Set("RemoveAll", obj.removeAll(iso))
 
@@ -579,6 +582,27 @@ func (obj *Object) readFileBuffer(iso *v8go.Isolate) *v8go.FunctionTemplate {
 	})
 }
 
+func (obj *Object) readFileBase64(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		data, err := fs.ReadFile(stor, args[0].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.stringValue(info, base64.StdEncoding.EncodeToString(data))
+	})
+}
+
 func (obj *Object) writeFile(iso *v8go.Isolate) *v8go.FunctionTemplate {
 	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		args := info.Args()
@@ -610,7 +634,7 @@ func (obj *Object) writeFile(iso *v8go.Isolate) *v8go.FunctionTemplate {
 func (obj *Object) writeFileBuffer(iso *v8go.Isolate) *v8go.FunctionTemplate {
 	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		args := info.Args()
-		if len(args) < 3 {
+		if len(args) < 2 {
 			return obj.errorString(info, "Missing parameters")
 		}
 
@@ -640,6 +664,42 @@ func (obj *Object) writeFileBuffer(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		}
 
 		length, err := fs.WriteFile(stor, name, data, perm)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.intValue(info, int32(length))
+	})
+}
+
+// writeFileBase64 writes a base64 encoded string to a file
+func (obj *Object) writeFileBase64(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 2 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		name := args[0].String()
+		data := args[1].String()
+
+		// Decode base64
+		dataDecode, err := base64.StdEncoding.DecodeString(data)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		perm := uint32(os.ModePerm)
+		if len(args) > 2 {
+			perm = args[2].Uint32()
+		}
+
+		length, err := fs.WriteFile(stor, name, dataDecode, perm)
 		if err != nil {
 			return obj.error(info, err)
 		}
