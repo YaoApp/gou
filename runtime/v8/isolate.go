@@ -159,9 +159,6 @@ func (list *Isolates) Add(iso *Isolate) {
 
 // Remove a isolate
 func (list *Isolates) Remove(iso *Isolate) {
-	if iso.status == IsoBusy {
-		return
-	}
 	iso.Isolate.Dispose()
 	iso.Isolate = nil
 	list.Data.Delete(iso)
