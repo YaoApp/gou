@@ -27,6 +27,8 @@ var ModelHandlers = map[string]process.Handler{
 	"destroywhere":        processDestroyWhere,
 	"eachsave":            processEachSave,
 	"eachsaveafterdelete": processEachSaveAfterDelete,
+	"migrate":             processMigrate,
+	"load":                processLoad,
 }
 
 func init() {
@@ -258,4 +260,22 @@ func processSelectOption(process *process.Process) interface{} {
 	}
 
 	return res
+}
+
+// processMigrate migrate model
+func processMigrate(process *process.Process) interface{} {
+	mod := Select(process.ID)
+	if process.NumOfArgs() > 0 {
+		return mod.Migrate(process.ArgsBool(0))
+	}
+	return mod.Migrate(false)
+}
+
+// processLoad load model
+func processLoad(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	id := process.ID
+	file := process.ArgsString(0)
+	_, err := Load(file, id)
+	return err
 }
