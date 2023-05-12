@@ -12,6 +12,12 @@ import (
 // UndefinedT type of Undefined
 type UndefinedT byte
 
+// FunctionT jsValue Function
+type FunctionT *v8go.Value
+
+// PromiseT jsValue Promise
+type PromiseT *v8go.Value
+
 // Undefined jsValue  Undefined
 var Undefined UndefinedT = 0x00
 
@@ -133,7 +139,8 @@ func GoValues(jsValues []*v8go.Value) ([]interface{}, error) {
 // * | ✅ | []interface{}           | array                 |
 // * | ✅ | []byte                  | object(Uint8Array)    |
 // * | ✅ | struct                  | object                |
-// * | ❌ | ?func                   | function              |
+// * | ✅ | bridge.PromiseT         | object(Promise)       |
+// * | ✅ | bridge.FunctionT        | function              |
 // * |-------------------------------------------------------
 func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
@@ -166,6 +173,12 @@ func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
 	case float32:
 		return v8go.NewValue(ctx.Isolate(), float64(v))
+
+	case PromiseT:
+		return (*v8go.Value)(v), nil
+
+	case FunctionT:
+		return (*v8go.Value)(v), nil
 
 	case UndefinedT:
 		return v8go.Undefined(ctx.Isolate()), nil
@@ -206,8 +219,8 @@ func jsValueParse(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 // *  | ✅ | object(Int8Array)     | []byte                  |
 // *  | ✅ | object                | map[string]interface{}  |
 // *  | ✅ | array                 | []interface{}           |
-// *  | ❌ | object(Promise)       | bridge.Promise          |
-// *  | ❌ | function              | bridge.Function         |
+// *  | ✅ | object(Promise)       | bridge.PromiseT          |
+// *  | ✅ | function              | bridge.FunctionT         |
 // *  |-------------------------------------------------------
 func GoValue(value *v8go.Value) (interface{}, error) {
 
@@ -225,6 +238,14 @@ func GoValue(value *v8go.Value) (interface{}, error) {
 
 	if value.IsBoolean() {
 		return value.Boolean(), nil
+	}
+
+	if value.IsFunction() {
+		return FunctionT(value), nil
+	}
+
+	if value.IsPromise() {
+		return PromiseT(value), nil
 	}
 
 	if value.IsNumber() {

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"rogchap.com/v8go"
 )
 
 func TestValueOfNull(t *testing.T) {
@@ -185,6 +186,65 @@ func TestValueOfStruct(t *testing.T) {
 		t.Fatal(err)
 	}
 	checkValueOf(t, res, "object", value)
+}
+
+func TestValueOfFunction(t *testing.T) {
+	ctx := prepare(t)
+	defer close(ctx)
+
+	cb, err := call(ctx, "ReturnFunction")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := call(ctx, "ValueOfFunction", cb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "hello", res)
+}
+func TestValueOfPromise(t *testing.T) {
+	ctx := prepare(t)
+	defer close(ctx)
+
+	promise, err := call(ctx, "ReturnPromiseString", "hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := call(ctx, "ValueOfPromise", promise)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v, ok := res.(PromiseT)
+	assert.Equal(t, true, ok)
+
+	p, err := (*v8go.Value)(v).AsPromise()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "hello", p.Result().String())
+
+	promise, err = call(ctx, "ReturnPromiseInt", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = call(ctx, "ValueOfPromise", promise)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v, ok = res.(PromiseT)
+	assert.Equal(t, true, ok)
+
+	p, err = (*v8go.Value)(v).AsPromise()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, int32(1), p.Result().Int32())
 }
 
 func checkValueOf(t *testing.T, res interface{}, typeof string, goValue interface{}) {
