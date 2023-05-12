@@ -138,6 +138,38 @@ func TestReturnArray(t *testing.T) {
 	checkReturn(t, true, reflect.DeepEqual(expect, res))
 }
 
+func TestReturnFunction(t *testing.T) {
+	ctx := prepare(t)
+	defer close(ctx)
+	res, err := call(ctx, "ReturnFunction")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok := res.(FunctionT)
+	checkReturn(t, true, ok)
+}
+
+func TestReturnPromise(t *testing.T) {
+	ctx := prepare(t)
+	defer close(ctx)
+	res, err := call(ctx, "ReturnPromiseString", "hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok := res.(PromiseT)
+	checkReturn(t, true, ok)
+
+	res, err = call(ctx, "ReturnPromiseInt", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok = res.(PromiseT)
+	checkReturn(t, true, ok)
+}
+
 func checkReturn(t *testing.T, expect interface{}, value interface{}) {
 	assert.Equal(t, expect, value, fmt.Sprintf("Value: %#v expectedValue:%#v", value, expect))
 }
