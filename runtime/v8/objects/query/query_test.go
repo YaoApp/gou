@@ -43,7 +43,7 @@ func TestQueryObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.GoValue(v)
+	res, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestQueryObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err = bridge.GoValue(v)
+	res, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestQueryObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err = bridge.GoValue(v)
+	res, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestQueryObject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err = bridge.GoValue(v)
+	res, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

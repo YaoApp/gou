@@ -23,7 +23,7 @@ func call(ctx *v8go.Context, method string, args ...interface{}) (interface{}, e
 		return nil, err
 	}
 
-	goRes, err := GoValue(jsRes)
+	goRes, err := GoValue(jsRes, ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -46,7 +46,7 @@ func (obj *Object) run(iso *v8go.Isolate, level log.Level) *v8go.FunctionTemplat
 		values := []interface{}{}
 		var err error
 		if len(args) > 1 {
-			values, err = bridge.GoValues(args[1:])
+			values, err = bridge.GoValues(args[1:], info.Context())
 			if err != nil {
 				msg := fmt.Sprintf("Log: %s", err.Error())
 				log.Error(msg)

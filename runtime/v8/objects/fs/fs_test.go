@@ -50,7 +50,7 @@ func TestFSObjectReadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.GoValue(v)
+	res, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestFSObjectReadFile(t *testing.T) {
 
 	assert.True(t, v.IsUint8Array())
 
-	res, err = bridge.GoValue(v)
+	res, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestFSObjectReadFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err = bridge.GoValue(v)
+	res, err = bridge.GoValue(v, ctx)
 	assert.True(t, v.IsUint8Array())
 	assert.Equal(t, data, res)
 }
@@ -134,7 +134,7 @@ func TestFSObjectRootFs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.GoValue(v)
+	res, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestFSObjectRootFsError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.GoValue(v)
+	res, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +219,7 @@ func TestFSObjectWriteFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.GoValue(v)
+	res, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func TestFSObjectWriteFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err = bridge.GoValue(v)
+	res, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +295,7 @@ func TestFSObjectExistRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.GoValue(v)
+	res, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +357,7 @@ func TestFSObjectFileInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := bridge.GoValue(v)
+	res, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -492,7 +492,7 @@ func TestFSObjectDir(t *testing.T) {
 	}
 
 	assert.True(t, v.IsArray())
-	res, err := bridge.GoValue(v)
+	res, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

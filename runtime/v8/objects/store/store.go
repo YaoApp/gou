@@ -81,7 +81,7 @@ func (store *Store) set(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), msg)
 		}
 
-		v, err := bridge.GoValue(args[1])
+		v, err := bridge.GoValue(args[1], info.Context())
 		if err != nil {
 			msg := fmt.Sprintf("Cache Set: %s", err.Error())
 			log.Error(msg)
@@ -138,7 +138,7 @@ func (store *Store) getSet(iso *v8go.Isolate) *v8go.FunctionTemplate {
 				return nil, err
 			}
 
-			return bridge.GoValue(value)
+			return bridge.GoValue(value, info.Context())
 		})
 
 		if err != nil {

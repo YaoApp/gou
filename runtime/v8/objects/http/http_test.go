@@ -46,7 +46,7 @@ func TestHTTPObjectGet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := bridge.GoValue(v)
+	resp, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestHTTPObjectGet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err = bridge.GoValue(v)
+	resp, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestHTTPObjectPost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := bridge.GoValue(v)
+	resp, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestHTTPObjectPost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err = bridge.GoValue(v)
+	resp, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestHTTPObjectPost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err = bridge.GoValue(v)
+	resp, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestHTTPObjectPost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err = bridge.GoValue(v)
+	resp, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestHTTPObjectOthers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp, err := bridge.GoValue(v)
+		resp, err := bridge.GoValue(v, ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -241,7 +241,7 @@ func TestHTTPObjectOthers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp, err = bridge.GoValue(v)
+		resp, err = bridge.GoValue(v, ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -277,7 +277,7 @@ func TestHTTPObjectSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := bridge.GoValue(v)
+	resp, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +297,7 @@ func TestHTTPObjectSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err = bridge.GoValue(v)
+	resp, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +340,7 @@ func TestHTTPObjectStream(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err := bridge.GoValue(v)
+	resp, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -362,7 +362,7 @@ func TestHTTPObjectStream(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, err = bridge.GoValue(v)
+	resp, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +377,7 @@ func TestHTTPObjectStream(t *testing.T) {
 	call()
 	`, host), "")
 
-	resp, err = bridge.GoValue(v)
+	resp, err = bridge.GoValue(v, ctx)
 	mapv := any.Of(resp).MapStr()
 	assert.Equal(t, "v8go: value is not a Function", mapv.Get("message"))
 

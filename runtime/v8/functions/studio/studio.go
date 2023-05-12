@@ -35,7 +35,7 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	var err error
 	goArgs := []interface{}{}
 	if len(jsArgs) > 1 {
-		goArgs, err = bridge.GoValues(jsArgs[1:])
+		goArgs, err = bridge.GoValues(jsArgs[1:], info.Context())
 		if err != nil {
 			return bridge.JsException(info.Context(), err)
 		}

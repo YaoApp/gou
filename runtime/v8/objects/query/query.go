@@ -221,7 +221,7 @@ func (obj *Object) getQueryDSL(info *v8go.FunctionCallbackInfo, param *v8go.Valu
 		return nil, nil, err
 	}
 
-	v, err := bridge.GoValue(param)
+	v, err := bridge.GoValue(param, info.Context())
 	if err != nil {
 		return nil, nil, err
 	}

@@ -30,7 +30,7 @@ func TestProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	goRes, err := bridge.GoValue(jsRes)
+	goRes, err := bridge.GoValue(jsRes, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestProcessWithData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	goRes, err := bridge.GoValue(jsRes)
+	goRes, err := bridge.GoValue(jsRes, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

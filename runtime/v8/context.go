@@ -72,7 +72,7 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 		return nil, err
 	}
 
-	goRes, err := bridge.GoValue(jsRes)
+	goRes, err := bridge.GoValue(jsRes, ctx.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (ctx *Context) CallWith(context context.Context, method string, args ...int
 				return
 			}
 
-			goRes, err := bridge.GoValue(jsRes)
+			goRes, err := bridge.GoValue(jsRes, ctx.Context)
 			if err != nil {
 				errChan <- err
 				return
