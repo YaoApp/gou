@@ -19,7 +19,7 @@ type Disk struct {
 	watched sync.Map
 }
 
-var defaultPatterns = []string{"*.yao", "*.json", "*.jsonc", "*.yaml", "*.so", "*.dll", "*.js", "*.py", "*.ts", "*.wasm"}
+var defaultPatterns = []string{"*.yao", "*.json", "*.jsonc", "*.yaml", "*.yml", "*.so", "*.dll", "*.js", "*.py", "*.ts", "*.wasm"}
 var ignoreWatchPatterns = []string{"public", "data", "db", "logs", "dist"}
 
 // Open the application
