@@ -146,8 +146,15 @@ func TestReturnFunction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, ok := res.(FunctionT)
+	f, ok := res.(FunctionT)
 	checkReturn(t, true, ok)
+
+	v, err := f.Call("hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "hello", v)
 }
 
 func TestReturnPromise(t *testing.T) {

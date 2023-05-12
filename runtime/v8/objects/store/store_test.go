@@ -80,7 +80,7 @@ func testStoreObject(t *testing.T, c store.Store) {
 		t.Fatal(err)
 	}
 
-	value, err := bridge.GoValue(v)
+	value, err := bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func testStoreObject(t *testing.T, c store.Store) {
 		t.Fatal(err)
 	}
 
-	value, err = bridge.GoValue(v)
+	value, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func testStoreObject(t *testing.T, c store.Store) {
 	del()
 	`, "")
 
-	value, err = bridge.GoValue(v)
+	value, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func testStoreObject(t *testing.T, c store.Store) {
 	keys()
 	`, "")
 
-	value, err = bridge.GoValue(v)
+	value, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func testStoreObject(t *testing.T, c store.Store) {
 		len()
 		`, "")
 
-	value, err = bridge.GoValue(v)
+	value, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,12 +210,12 @@ func testStoreObject(t *testing.T, c store.Store) {
 		clear()
 		`, "")
 
-	value, err = bridge.GoValue(v)
+	value, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	value, err = bridge.GoValue(v)
+	value, err = bridge.GoValue(v, ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

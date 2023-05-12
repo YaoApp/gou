@@ -13,10 +13,16 @@ import (
 type UndefinedT byte
 
 // FunctionT jsValue Function
-type FunctionT *v8go.Value
+type FunctionT struct {
+	ctx   *v8go.Context
+	value *v8go.Value
+}
 
 // PromiseT jsValue Promise
-type PromiseT *v8go.Value
+type PromiseT struct {
+	ctx   *v8go.Context
+	value *v8go.Value
+}
 
 // Undefined jsValue  Undefined
 var Undefined UndefinedT = 0x00
@@ -102,10 +108,10 @@ func FreeJsValues(values []*v8go.Value) {
 }
 
 // GoValues JavaScript -> Golang
-func GoValues(jsValues []*v8go.Value) ([]interface{}, error) {
+func GoValues(jsValues []*v8go.Value, ctx *v8go.Context) ([]interface{}, error) {
 	goValues := []interface{}{}
 	for _, jsValue := range jsValues {
-		goValue, err := GoValue(jsValue)
+		goValue, err := GoValue(jsValue, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -175,10 +181,10 @@ func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 		return v8go.NewValue(ctx.Isolate(), float64(v))
 
 	case PromiseT:
-		return (*v8go.Value)(v), nil
+		return v.value, nil
 
 	case FunctionT:
-		return (*v8go.Value)(v), nil
+		return v.value, nil
 
 	case UndefinedT:
 		return v8go.Undefined(ctx.Isolate()), nil
@@ -222,7 +228,7 @@ func jsValueParse(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 // *  | ✅ | object(Promise)       | bridge.PromiseT          |
 // *  | ✅ | function              | bridge.FunctionT         |
 // *  |-------------------------------------------------------
-func GoValue(value *v8go.Value) (interface{}, error) {
+func GoValue(value *v8go.Value, ctx *v8go.Context) (interface{}, error) {
 
 	if value.IsNull() {
 		return nil, nil
@@ -241,11 +247,11 @@ func GoValue(value *v8go.Value) (interface{}, error) {
 	}
 
 	if value.IsFunction() {
-		return FunctionT(value), nil
+		return FunctionT{value: value, ctx: ctx}, nil
 	}
 
 	if value.IsPromise() {
-		return PromiseT(value), nil
+		return PromiseT{value: value, ctx: ctx}, nil
 	}
 
 	if value.IsNumber() {
@@ -304,7 +310,7 @@ func ShareData(ctx *v8go.Context) (bool, map[string]interface{}, string, *v8go.V
 		return false, nil, "", JsException(ctx, err)
 	}
 
-	goData, err := GoValue(jsData)
+	goData, err := GoValue(jsData, nil)
 	if err != nil {
 		return false, nil, "", JsException(ctx, err)
 	}

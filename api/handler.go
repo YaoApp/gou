@@ -194,7 +194,7 @@ func (path Path) runStreamScript(ctx context.Context, c *gin.Context, getArgs fu
 		}
 
 		name := args[0].String()
-		message, err := bridge.GoValue(args[1])
+		message, err := bridge.GoValue(args[1], info.Context())
 		if err != nil {
 			return v8go.Null(v8ctx.Isolate())
 		}

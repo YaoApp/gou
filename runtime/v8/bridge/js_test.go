@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"rogchap.com/v8go"
 )
 
 func TestValueOfNull(t *testing.T) {
@@ -221,7 +220,7 @@ func TestValueOfPromise(t *testing.T) {
 	v, ok := res.(PromiseT)
 	assert.Equal(t, true, ok)
 
-	p, err := (*v8go.Value)(v).AsPromise()
+	p, err := v.value.AsPromise()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,14 +236,14 @@ func TestValueOfPromise(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	v, ok = res.(PromiseT)
+	pro, ok := res.(PromiseT)
 	assert.Equal(t, true, ok)
 
-	p, err = (*v8go.Value)(v).AsPromise()
+	res, err = pro.Result()
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, int32(1), p.Result().Int32())
+	assert.Equal(t, 1, res)
 }
 
 func checkValueOf(t *testing.T, res interface{}, typeof string, goValue interface{}) {

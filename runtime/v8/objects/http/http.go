@@ -125,7 +125,7 @@ func (obj *Object) post(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		args := info.Args()
 		var payload interface{}
 		if len(args) > 1 {
-			value, err := bridge.GoValue(args[1])
+			value, err := bridge.GoValue(args[1], info.Context())
 			if err != nil {
 				return obj.vReturn(info, &http.Response{
 					Status:  400,
@@ -410,7 +410,7 @@ func (obj *Object) new(info *v8go.FunctionCallbackInfo, idx, from int) (*http.Re
 	req := http.New(args[idx].String())
 
 	if len(args) > from {
-		input, err := bridge.GoValue(args[from])
+		input, err := bridge.GoValue(args[from], info.Context())
 		if err != nil {
 			return nil, &http.Response{
 				Status:  400,
@@ -436,7 +436,7 @@ func (obj *Object) new(info *v8go.FunctionCallbackInfo, idx, from int) (*http.Re
 	}
 
 	if len(args) > from+1 {
-		input, err := bridge.GoValue(args[from+1])
+		input, err := bridge.GoValue(args[from+1], info.Context())
 		if err != nil {
 			return nil, &http.Response{
 				Status:  400,
