@@ -63,10 +63,10 @@ func Load(file string, id string) (*Model, error) {
 				Nullable: true,
 			},
 			Column{
-				Label:    "Updated At",
+				Label:    "::Updated At",
 				Name:     "updated_at",
 				Type:     "timestamp",
-				Comment:  "Updated At",
+				Comment:  "::Updated At",
 				Nullable: true,
 			},
 		)
