@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -47,6 +48,7 @@ import (
 // var res 			  = fs.Copy("/root/path", "/root/new")
 // var res 			  = fs.Move("/root/path/foo.file", "/root/path/bar.file")
 // var res 			  = fs.Move("/root/path", "/root/new")
+// var file 		  = fs.Abs('/data/path')
 
 // Object Javascript API
 type Object struct{}
@@ -89,6 +91,7 @@ func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 
 	tmpl.Set("Move", obj.move(iso))
 	tmpl.Set("Copy", obj.copy(iso))
+	tmpl.Set("Abs", obj.abs(iso))
 	return tmpl
 }
 
@@ -378,6 +381,24 @@ func (obj *Object) exists(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		}
 
 		return obj.boolValue(info, ok)
+	})
+}
+
+func (obj *Object) abs(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		file := filepath.Join(stor.Root(), args[0].String())
+		return obj.stringValue(info, file)
 	})
 }
 
