@@ -137,8 +137,8 @@ func GoValues(jsValues []*v8go.Value, ctx *v8go.Context) ([]interface{}, error) 
 // * | ✅ | int32                   | number(int)           |
 // * | ✅ | float32                 | number(float)         |
 // * | ✅ | float64                 | number(float)         |
-// * | ✅ | int64                   | bigint                |
-// * | ✅ | uint64                  | bigint                |
+// * | ✅ | int64                   | number(int)           |
+// * | ✅ | uint64                  | number(int)           |
 // * | ✅ | *big.Int                | bigint                |
 // * | ✅ | string                  | string                |
 // * | ✅ | map[string]interface{}  | object                |
@@ -156,8 +156,14 @@ func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
 	switch v := value.(type) {
 
-	case string, int32, uint32, int64, uint64, bool, *big.Int, float64, []byte:
+	case string, int32, uint32, bool, *big.Int, float64, []byte:
 		return v8go.NewValue(ctx.Isolate(), v)
+
+	case int64:
+		return v8go.NewValue(ctx.Isolate(), int32(v))
+
+	case uint64:
+		return v8go.NewValue(ctx.Isolate(), int32(v))
 
 	case int:
 		return v8go.NewValue(ctx.Isolate(), int32(v))

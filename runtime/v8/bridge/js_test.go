@@ -51,6 +51,7 @@ func TestValueOfNumberInt(t *testing.T) {
 	values := []interface{}{
 		99, int(99), int8(99), int16(99), int32(99),
 		uint(99), uint8(99), uint16(99), uint32(99),
+		uint64(99), int64(99),
 	}
 
 	for _, value := range values {
@@ -81,7 +82,7 @@ func TestValueOfBigInt(t *testing.T) {
 	ctx := prepare(t)
 	defer close(ctx)
 
-	values := []interface{}{int64(99), big.NewInt(99)}
+	values := []interface{}{big.NewInt(99)}
 
 	for _, value := range values {
 		res, err := call(ctx, "ValueOfBigInt", value)
