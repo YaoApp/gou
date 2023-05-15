@@ -2,6 +2,7 @@ package v8
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/yaoapp/gou/runtime/v8/bridge"
@@ -52,7 +53,7 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 	global := ctx.Context.Global()
 	jsArgs, err := bridge.JsValues(ctx.Context, args)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
 	}
 
 	defer bridge.FreeJsValues(jsArgs)
@@ -69,12 +70,12 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 
 	jsRes, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
 	}
 
 	goRes, err := bridge.GoValue(jsRes, ctx.Context)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
 	}
 
 	return goRes, nil
@@ -86,14 +87,14 @@ func (ctx *Context) CallWith(context context.Context, method string, args ...int
 	global := ctx.Context.Global()
 	jsArgs, err := bridge.JsValues(ctx.Context, args)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
 	}
 
 	defer bridge.FreeJsValues(jsArgs)
 
 	jsData, err := ctx.setData(global)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
 	}
 	defer func() {
 		if !jsData.IsNull() && !jsData.IsUndefined() {
@@ -140,7 +141,7 @@ func (ctx *Context) CallWith(context context.Context, method string, args ...int
 		return nil, context.Err()
 
 	case err := <-errChan:
-		return nil, err
+		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
 
 	case goRes := <-resChan:
 		return goRes, nil
