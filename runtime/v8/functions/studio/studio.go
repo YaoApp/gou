@@ -1,6 +1,9 @@
 package studio
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"rogchap.com/v8go"
@@ -41,7 +44,8 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		}
 	}
 
-	goRes, err := process.New(jsArgs[0].String(), goArgs...).
+	name := fmt.Sprintf("studio.%s", strings.TrimPrefix(jsArgs[0].String(), "studio."))
+	goRes, err := process.New(name, goArgs...).
 		WithGlobal(global).
 		WithSID(sid).
 		Exec()
