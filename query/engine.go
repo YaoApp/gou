@@ -16,6 +16,12 @@ func Register(name string, engine share.DSL) {
 	Engines[name] = engine
 }
 
+// Unregister Unregister a Query Engine
+func Unregister(name string) {
+	name = strings.ToLower(name)
+	delete(Engines, name)
+}
+
 // Alias set the Engine alias
 func Alias(name, alias string) {
 	name = strings.ToLower(name)
