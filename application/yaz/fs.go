@@ -62,7 +62,7 @@ func (file *File) Read(p []byte) (n int, err error) {
 		return n, nil
 	}
 
-	return file.Read(p)
+	return file.File.Read(p)
 }
 
 // Close closes the File, rendering it unusable for I/O.
