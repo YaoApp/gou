@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Dir is the public path
@@ -40,8 +41,15 @@ func (dir Dir) Open(name string) (http.File, error) {
 
 	// decrypt file
 	buff := &bytes.Buffer{}
-	if dir.cipher != nil {
+	ext := strings.TrimPrefix(filepath.Ext(name), ".")
+	if dir.cipher != nil && encryptFiles[ext] {
 		dir.cipher.Decrypt(f, buff)
+
+	} else {
+		_, err := buff.ReadFrom(f)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &File{File: f, buff: buff.Bytes(), cipher: dir.cipher}, nil
