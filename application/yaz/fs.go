@@ -44,12 +44,6 @@ func (dir Dir) Open(name string) (http.File, error) {
 	ext := strings.TrimPrefix(filepath.Ext(name), ".")
 	if dir.cipher != nil && encryptFiles[ext] {
 		dir.cipher.Decrypt(f, buff)
-
-	} else {
-		_, err := buff.ReadFrom(f)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return &File{File: f, buff: buff.Bytes(), cipher: dir.cipher}, nil
@@ -58,7 +52,8 @@ func (dir Dir) Open(name string) (http.File, error) {
 // Read reads up to len(p) bytes into p.
 func (file *File) Read(p []byte) (n int, err error) {
 
-	if file.cipher != nil {
+	ext := strings.TrimPrefix(filepath.Ext(file.Name()), ".")
+	if file.cipher != nil && encryptFiles[ext] {
 		if len(file.buff) == 0 {
 			return 0, nil
 		}
