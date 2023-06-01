@@ -1,14 +1,13 @@
 package fs
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/kun/exception"
@@ -323,10 +322,7 @@ func processUpload(process *process.Process) interface{} {
 		exception.New("parameters error: %v", 400, process.Args[0]).Throw()
 	}
 
-	hash := md5.Sum([]byte(time.Now().Format("20060102-15:04:05")))
-	fingerprint := string(hex.EncodeToString(hash[:]))
-	fingerprint = strings.ToUpper(fingerprint)
-
+	fingerprint := strings.ToUpper(uuid.NewString())
 	dir := strings.Join([]string{string(os.PathSeparator), time.Now().Format("20060102")}, "")
 	ext := filepath.Ext(tmpfile.Name)
 	filename := filepath.Join(dir, fmt.Sprintf("%s%s", fingerprint, ext))
