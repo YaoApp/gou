@@ -16,8 +16,7 @@ var reFun = regexp.MustCompile("{{[ ]*([0-9a-zA-Z_]+)[ ]*\\((.*)\\)[ ]*}}") // {
 var reFunArg = regexp.MustCompile("([^\\s,]+)")                             // $res.users, 'id'
 
 // Bind 绑定数据
-func Bind(v interface{}, data maps.Map, vars ...*regexp.Regexp) interface{} {
-
+func Bind(v interface{}, data map[string]interface{}, vars ...*regexp.Regexp) interface{} {
 	if len(vars) == 0 {
 		vars = []*regexp.Regexp{reVar, reVarStyle2}
 	}
@@ -31,42 +30,48 @@ func Bind(v interface{}, data maps.Map, vars ...*regexp.Regexp) interface{} {
 		valueKind = value.Kind()
 	}
 
-	if valueKind == reflect.Slice || valueKind == reflect.Array { // Slice || Array
-		val := []interface{}{}
+	switch valueKind {
+	case reflect.Slice, reflect.Array: // Slice || Array
+		val := make([]interface{}, value.Len())
 		for i := 0; i < value.Len(); i++ {
-			val = append(val, Bind(value.Index(i).Interface(), data))
+			val[i] = Bind(value.Index(i).Interface(), data)
 		}
 		res = val
-	} else if valueKind == reflect.Map { // Map
-		val := map[string]interface{}{}
+	case reflect.Map: // Map
+		val := make(map[string]interface{})
 		for _, key := range value.MapKeys() {
 			k := fmt.Sprintf("%s", key)
 			val[k] = Bind(value.MapIndex(key).Interface(), data)
 		}
 		res = val
-	} else if valueKind == reflect.String { // String
+	case reflect.String: // String
 		input := value.Interface().(string)
 
 		// 替换变量
-		for _, reVar := range vars {
-			matches := reVar.FindAllStringSubmatch(input, -1)
+		for _, re := range vars {
+			matches := re.FindAllStringSubmatchIndex(input, -1)
 			length := len(matches)
 			if length == 1 { // "{{in.0}}"
-				name := matches[0][1]
+				name := input[matches[0][2]:matches[0][3]]
 				res = data[name]
 				break
 			} else if length > 1 {
+				var sb strings.Builder
+				lastIndex := 0
 				for _, match := range matches {
-					val := fmt.Sprintf("%s", data[match[1]])
-					input = strings.ReplaceAll(input, match[0], val)
+					val := fmt.Sprintf("%s", data[input[match[2]:match[3]]])
+					sb.WriteString(input[lastIndex:match[0]])
+					sb.WriteString(val)
+					lastIndex = match[1]
 				}
-				res = input
+				sb.WriteString(input[lastIndex:])
+				res = sb.String()
 				break
 			} else {
 				res = input
 			}
 		}
-	} else {
+	default:
 		res = v
 	}
 
