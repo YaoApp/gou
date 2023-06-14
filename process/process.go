@@ -141,12 +141,11 @@ func (process *Process) make() error {
 		break
 
 	case "widgets":
-		// widgets.reload, widgets.dyform.save
 		process.Method = fields[len(fields)-1]
 		process.ID = strings.ToLower(strings.Join(fields[1:len(fields)-1], "."))
 		process.Handler = strings.ToLower(fmt.Sprintf("widgets.%s.%s", process.ID, process.Method))
-		fmt.Println("widgets:: ", process.Handler)
 		break
+
 	default:
 		process.Handler = strings.ToLower(process.Name)
 		break
