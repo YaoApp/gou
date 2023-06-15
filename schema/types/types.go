@@ -9,6 +9,7 @@ type Schema interface {
 	Drop(name string) error
 
 	Tables(prefix ...string) ([]string, error)
+	TableExists(name string) (bool, error)
 	TableGet(name string) (Blueprint, error)
 	TableCreate(name string, blueprint Blueprint) error
 	TableSave(name string, blueprint Blueprint) error

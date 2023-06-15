@@ -78,7 +78,10 @@ require (
 	google.golang.org/protobuf v1.30.0 // indirect
 )
 
-require github.com/google/uuid v1.3.0
+require (
+	github.com/evanw/esbuild v0.18.2
+	github.com/google/uuid v1.3.0
+)
 
 require (
 	github.com/bytedance/sonic v1.8.8 // indirect

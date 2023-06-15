@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/process"
 )
@@ -65,6 +66,19 @@ func TestSchemaProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// TableExists
+	exists, err := process.New("schemas.default.TableExists", "unit_tests_schema_table_user_re").Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, exists.(bool))
+
+	exists, err = process.New("schemas.default.TableExists", "unit_tests_schema_table_user_not_exists").Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.False(t, exists.(bool))
 
 	// Tables
 	_, err = process.New("schemas.default.Tables").Exec()

@@ -23,16 +23,31 @@ func LoadSync(file string, id string) (*Model, error) {
 	return Load(file, id)
 }
 
-// Load 载入数据模型
-func Load(file string, id string) (*Model, error) {
+// LoadSourceSync load model sync
+func LoadSourceSync(source []byte, id string, file string) (*Model, error) {
+	lock.Lock()
+	defer lock.Unlock()
+	return LoadSource(source, id, "")
+}
 
+// Load load model
+func Load(file string, id string) (*Model, error) {
 	data, err := application.App.Read(file)
 	if err != nil {
 		return nil, err
 	}
+	return LoadSource(data, id, file)
+}
+
+// LoadSource load model from source
+func LoadSource(source []byte, id string, file string) (*Model, error) {
+
+	if file == "" {
+		file = fmt.Sprintf("__source:%s", id)
+	}
 
 	metadata := MetaData{}
-	err = application.Parse(file, data, &metadata)
+	err := application.Parse(file, source, &metadata)
 	if err != nil {
 		exception.Err(err, 400).Throw()
 	}

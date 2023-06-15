@@ -21,6 +21,7 @@ func prepare(t *testing.T) {
 	// application scripts
 	scripts := map[string]string{
 		"runtime.basic": filepath.Join("scripts", "runtime", "basic.js"),
+		"runtime.lib":   filepath.Join("scripts", "runtime", "lib.js"),
 	}
 
 	for id, file := range scripts {
@@ -37,18 +38,6 @@ func prepare(t *testing.T) {
 
 	for id, file := range rootScripts {
 		_, err := LoadRoot(file, id)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	// widget scripts
-	widgetScripts := map[string]string{
-		"dyform.compile": filepath.Join("widgets", "dyform", "compile.js"),
-	}
-
-	for id, file := range widgetScripts {
-		_, err := LoadWidget(file, id)
 		if err != nil {
 			t.Fatal(err)
 		}
