@@ -13,6 +13,7 @@ var SchemaHandlers = map[string]process.Handler{
 	"drop":   processSchemaDrop,
 
 	"tables":      processSchemaTables,
+	"tableexists": processSchemaTableExists,
 	"tableget":    processSchemaTableGet,
 	"tablecreate": processSchemaTableCreate,
 	"tabledrop":   processSchemaTableDrop,
@@ -96,6 +97,22 @@ func processSchemaTableGet(process *process.Process) interface{} {
 		return nil
 	}
 	return table
+}
+
+// schemas.<connector>.TableExists
+// args: [tableName:String]
+// TableExists check if a table exists
+func processSchemaTableExists(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	sch := Use(process.ID)
+	name := process.ArgsString(0)
+	has, err := sch.TableExists(name)
+	if err != nil {
+		log.Error("schemas.%s.TableExists: %s", process.ID, err.Error())
+		exception.New(err.Error(), 500).Throw()
+		return nil
+	}
+	return has
 }
 
 // schemas.<connector>.TableCreate

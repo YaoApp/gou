@@ -128,6 +128,16 @@ func (x *Xun) TableGet(name string) (types.Blueprint, error) {
 	return TableToBlueprint(table), nil
 }
 
+// TableExists check if a table exists
+func (x *Xun) TableExists(name string) (bool, error) {
+	sch := x.Manager.Schema()
+	has, err := sch.HasTable(name)
+	if err != nil {
+		return false, err
+	}
+	return has, nil
+}
+
 // TableCreate a table
 func (x *Xun) TableCreate(name string, blueprint types.Blueprint) error {
 	sch := x.Manager.Schema()

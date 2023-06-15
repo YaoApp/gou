@@ -64,6 +64,7 @@ func newIsolate() *Isolate {
 	template.Set("$L", langT.ExportFunction(iso))
 	template.Set("Process", processT.ExportFunction(iso))
 	template.Set("Studio", studioT.ExportFunction(iso))
+	template.Set("Require", Require(iso))
 
 	// Window object (std functions)
 	template.Set("atob", atobT.ExportFunction(iso))

@@ -276,6 +276,11 @@ func processLoad(process *process.Process) interface{} {
 	process.ValidateArgNums(1)
 	id := process.ID
 	file := process.ArgsString(0)
+	if process.NumOfArgs() > 1 {
+		source := process.ArgsString(1)
+		_, err := LoadSourceSync([]byte(source), id, file)
+		return err
+	}
 	_, err := LoadSync(file, id)
 	return err
 }
