@@ -43,7 +43,7 @@ func Load(file string, id string) (*Model, error) {
 func LoadSource(source []byte, id string, file string) (*Model, error) {
 
 	if file == "" {
-		file = fmt.Sprintf("__source:%s", id)
+		file = fmt.Sprintf("__source.%s.mod.yao", id)
 	}
 
 	metadata := MetaData{}
