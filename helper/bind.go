@@ -22,6 +22,12 @@ func Bind(v interface{}, data map[string]interface{}, vars ...*regexp.Regexp) in
 	}
 
 	var res interface{}
+
+	// If the value is a []byte type, return it directly
+	if bytes, ok := v.([]byte); ok {
+		return bytes
+	}
+
 	value := reflect.ValueOf(v)
 	value = reflect.Indirect(value)
 	valueKind := value.Kind()
