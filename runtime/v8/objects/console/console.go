@@ -3,9 +3,9 @@ package console
 import (
 	"fmt"
 
+	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/kun/log"
-	"github.com/yaoapp/kun/utils"
 	"rogchap.com/v8go"
 )
 
@@ -63,7 +63,7 @@ func (obj *Object) run(iso *v8go.Isolate) *v8go.FunctionTemplate {
 				return bridge.JsException(info.Context(), msg)
 			}
 
-			utils.Dump(goArgs...)
+			helper.Dump(goArgs...)
 		}
 
 		return v8go.Null(iso)
