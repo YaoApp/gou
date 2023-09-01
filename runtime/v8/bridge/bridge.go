@@ -343,3 +343,27 @@ func ShareData(ctx *v8go.Context) (bool, map[string]interface{}, string, *v8go.V
 
 	return root, global, sid, nil
 }
+
+func (fun FunctionT) String() string {
+	return fmt.Sprintf("[Function: %s]", fun.value.String())
+}
+
+func (promise PromiseT) String() string {
+	p, err := promise.value.AsPromise()
+	if err != nil {
+		return fmt.Sprintf("%s", err.Error())
+	}
+
+	var state string = "pending"
+	switch p.State() {
+	case v8go.Fulfilled:
+		state = "fulfilled"
+	case v8go.Rejected:
+		state = "rejected"
+	}
+	return state
+}
+
+func (undefined UndefinedT) String() string {
+	return fmt.Sprintf("undefined")
+}

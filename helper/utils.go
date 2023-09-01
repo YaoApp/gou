@@ -21,7 +21,7 @@ func Dump(values ...interface{}) {
 			continue
 		}
 
-		switch v.(type) {
+		switch value := v.(type) {
 
 		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, bool:
 			color.Cyan(fmt.Sprintf("%v", v))
@@ -32,15 +32,15 @@ func Dump(values ...interface{}) {
 			continue
 
 		case bridge.UndefinedT:
-			color.Yellow("Undefined")
+			color.Magenta(value.String())
 			continue
 
-		case bridge.FunctionT, *bridge.FunctionT:
-			color.Yellow("Function")
+		case bridge.FunctionT:
+			color.Cyan(value.String())
 			continue
 
-		case bridge.PromiseT, *bridge.PromiseT:
-			color.Yellow("Promise")
+		case bridge.PromiseT:
+			color.Cyan("Promise { " + value.String() + " }")
 			continue
 
 		default:
