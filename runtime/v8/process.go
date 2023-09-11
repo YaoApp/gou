@@ -24,7 +24,7 @@ func processScripts(process *process.Process) interface{} {
 
 	ctx, err := script.NewContext(process.Sid, process.Global)
 	if err != nil {
-		message := fmt.Sprintf("scripts.%s failed to create context. %s", process.ID, err.Error())
+		message := fmt.Sprintf("scripts.%s failed to create context. %+v", process.ID, err.Error())
 		log.Error("[V8] process error. %s", message)
 		exception.New(message, 500).Throw()
 		return nil
@@ -50,7 +50,7 @@ func processStudio(process *process.Process) interface{} {
 
 	ctx, err := script.NewContext(process.Sid, process.Global)
 	if err != nil {
-		message := fmt.Sprintf("studio.%s failed to create context. %s", process.ID, err.Error())
+		message := fmt.Sprintf("studio.%s failed to create context. %+v", process.ID, err.Error())
 		log.Error("[V8] process error. %s", message)
 		exception.New(message, 500).Throw()
 		return nil
