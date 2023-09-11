@@ -70,7 +70,7 @@ func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error
 
 	jsRes, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
 	if err != nil {
-		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
+		return nil, fmt.Errorf("%s.%s %+v", ctx.ID, method, err)
 	}
 
 	goRes, err := bridge.GoValue(jsRes, ctx.Context)

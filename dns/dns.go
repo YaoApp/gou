@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"runtime"
 	"sync"
 
@@ -78,13 +79,20 @@ func LookupIP(host string, ipv6 ...bool) ([]string, error) {
 
 // DialContext return a DialContext function for http.Transport, using the local resolver
 func DialContext() func(ctx context.Context, network, addr string) (net.Conn, error) {
+
+	// Read the ipv6 support from env YAO_ENABLE_IPV6 (default false)
+	ipv6 := false
+	if v := os.Getenv("YAO_ENABLE_IPV6"); v != "" {
+		ipv6 = true
+	}
+
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil {
 			return nil, err
 		}
 
-		ips, err := LookupIP(host, true)
+		ips, err := LookupIP(host, ipv6)
 		if err != nil {
 			return nil, err
 		}
