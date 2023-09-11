@@ -25,6 +25,16 @@ func TestProcessScripts(t *testing.T) {
 	}
 
 	assert.Equal(t, "world", value)
+
+	p, err = process.Of("scripts.runtime.basic.Error", "world")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = p.Exec()
+	assert.Contains(t, err.Error(), "at callStackTest")
+	assert.Contains(t, err.Error(), "at Error")
+
 }
 
 func TestProcessScriptsRoot(t *testing.T) {

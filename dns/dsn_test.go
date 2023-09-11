@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,18 @@ func TestLookupIP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	res, err := LookupIP("api.mch.weixin.qq.com", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Contains(t, strings.Join(res, ","), ":")
+	res, err = LookupIP("api.mch.weixin.qq.com", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotContains(t, strings.Join(res, ","), ":")
 }
 
 func TestLookupIPCaches(t *testing.T) {
