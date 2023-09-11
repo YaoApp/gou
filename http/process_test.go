@@ -263,6 +263,36 @@ func TestHTTPSend(t *testing.T) {
 	assert.NotNil(t, resp.Message)
 }
 
+func TestHTTPSendText(t *testing.T) {
+
+	shutdown, ready, host := processSetup()
+	go processStart(t, &host, shutdown, ready)
+	defer processStop(shutdown, ready)
+	<-ready
+
+	v := process.New("http.Send", "POST", fmt.Sprintf("%s/path?foo=bar", host),
+		"User Input Text",
+		map[string]string{"hello": "world"},
+		map[string]string{"Auth": "Test", "Content-Type": "text/plain"},
+	).Run()
+
+	resp, ok := v.(*Response)
+	if !ok {
+		t.Fatal(fmt.Errorf("response error %#v", v))
+	}
+	if resp.Status == 0 {
+		t.Fatal(resp.Message)
+	}
+
+	assert.Equal(t, 200, resp.Status)
+	res := any.Of(resp.Data).MapStr().Dot()
+	assert.Equal(t, "bar", res.Get("query.foo[0]"))
+	assert.Equal(t, "world", res.Get("query.hello[0]"))
+	assert.Equal(t, "Test", res.Get("headers.Auth[0]"))
+	assert.Equal(t, `User Input Text`, res.Get("payload"))
+
+}
+
 func TestHTTPStream(t *testing.T) {
 
 	shutdown, ready, host := processSetup()
