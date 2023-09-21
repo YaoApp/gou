@@ -85,6 +85,18 @@ func TestReturnUint8Array(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	assert.Len(t, res, 2)
+	checkReturn(t, []byte{0x1a, 0x2a}, res)
+}
+
+func TestReturnSharedArrayBuffer(t *testing.T) {
+	ctx := prepare(t)
+	defer close(ctx)
+	res, err := call(ctx, "ReturnSharedArrayBuffer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Len(t, res, 1)
 	checkReturn(t, []byte{0x2a}, res)
 }
 
