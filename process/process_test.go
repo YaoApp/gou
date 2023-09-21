@@ -149,7 +149,7 @@ func TestRun(t *testing.T) {
 
 	// models.widget.Notfound
 	p = New("models.widget.Notfound", "foo", "bar")
-	assert.PanicsWithValue(t, *exception.New("models.widget.Notfound (models.notfound) not found", 404), func() {
+	assert.PanicsWithValue(t, *exception.New("models.widget.Notfound Handler -> models.notfound not found", 404), func() {
 		p.Run()
 	})
 }
@@ -206,7 +206,7 @@ func TestExec(t *testing.T) {
 	p = New("models.widget.Notfound", "foo", "bar")
 	res, err = p.Exec()
 	assert.Equal(t, nil, res)
-	assert.Equal(t, "Exception|404:models.widget.Notfound (models.notfound) not found", err.Error())
+	assert.Equal(t, "Exception|404:models.widget.Notfound Handler -> models.notfound not found", err.Error())
 }
 
 func TestWithSID(t *testing.T) {

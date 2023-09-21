@@ -153,12 +153,12 @@ func TestValueOfArray(t *testing.T) {
 	checkValueOf(t, res, "object", value)
 }
 
-func TestValueOfUint8Array(t *testing.T) {
+func TestValueUint8Array(t *testing.T) {
 	ctx := prepare(t)
 	defer close(ctx)
 
-	value := []byte{0x2a}
-	res, err := call(ctx, "ValueOfUint8Array", value)
+	value := []byte{0x1a, 0x2a}
+	res, err := call(ctx, "ValueUint8Array", value)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -122,32 +122,32 @@ func GoValues(jsValues []*v8go.Value, ctx *v8go.Context) ([]interface{}, error) 
 
 // JsValue cast golang value to JavasScript value
 //
-// * |-------------------------------------------------------
-// * |    | Golang                  | JavaScript            |
-// * |-------------------------------------------------------
-// * | ✅ | nil                     | null                  |
-// * | ✅ | bool                    | boolean               |
-// * | ✅ | int                     | number(int)           |
-// * | ✅ | uint                    | number(int)           |
-// * | ✅ | uint8                   | number(int)           |
-// * | ✅ | uint16                  | number(int)           |
-// * | ✅ | uint32                  | number(int)           |
-// * | ✅ | int8                    | number(int)           |
-// * | ✅ | int16                   | number(int)           |
-// * | ✅ | int32                   | number(int)           |
-// * | ✅ | float32                 | number(float)         |
-// * | ✅ | float64                 | number(float)         |
-// * | ✅ | int64                   | number(int)           |
-// * | ✅ | uint64                  | number(int)           |
-// * | ✅ | *big.Int                | bigint                |
-// * | ✅ | string                  | string                |
-// * | ✅ | map[string]interface{}  | object                |
-// * | ✅ | []interface{}           | array                 |
-// * | ✅ | []byte                  | object(Uint8Array)    |
-// * | ✅ | struct                  | object                |
-// * | ✅ | bridge.PromiseT         | object(Promise)       |
-// * | ✅ | bridge.FunctionT        | function              |
-// * |-------------------------------------------------------
+// * |-----------------------------------------------------------
+// * |    | Golang                  | JavaScript                |
+// * |-----------------------------------------------------------
+// * | ✅ | nil                     | null                      |
+// * | ✅ | bool                    | boolean                   |
+// * | ✅ | int                     | number(int)               |
+// * | ✅ | uint                    | number(int)               |
+// * | ✅ | uint8                   | number(int)               |
+// * | ✅ | uint16                  | number(int)               |
+// * | ✅ | uint32                  | number(int)               |
+// * | ✅ | int8                    | number(int)               |
+// * | ✅ | int16                   | number(int)               |
+// * | ✅ | int32                   | number(int)               |
+// * | ✅ | float32                 | number(float)             |
+// * | ✅ | float64                 | number(float)             |
+// * | ✅ | int64                   | number(int)               |
+// * | ✅ | uint64                  | number(int)               |
+// * | ✅ | *big.Int                | bigint                    |
+// * | ✅ | string                  | string                    |
+// * | ✅ | map[string]interface{}  | object                    |
+// * | ✅ | []interface{}           | array                 	   |
+// * | ✅ | []byte                  | object(Uint8Array) 	   |
+// * | ✅ | struct                  | object                    |
+// * | ✅ | bridge.PromiseT         | object(Promise)           |
+// * | ✅ | bridge.FunctionT        | function                  |
+// * |-----------------------------------------------------------
 func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
 	if value == nil {
@@ -156,8 +156,24 @@ func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
 	switch v := value.(type) {
 
-	case string, int32, uint32, bool, *big.Int, float64, []byte:
+	case string, int32, uint32, bool, *big.Int, float64:
 		return v8go.NewValue(ctx.Isolate(), v)
+
+	case []byte:
+		newObj, err := ctx.RunScript(fmt.Sprintf("new Uint8Array(%d)", len(v)), "")
+		if err != nil {
+			return nil, err
+		}
+
+		jsObj, err := newObj.AsObject()
+		if err != nil {
+			return nil, err
+		}
+
+		for i := 0; i < len(v); i++ {
+			jsObj.SetIdx(uint32(i), uint32(v[i]))
+		}
+		return jsObj.Value, nil
 
 	case int64:
 		return v8go.NewValue(ctx.Isolate(), int32(v))
@@ -218,21 +234,22 @@ func jsValueParse(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 // GoValue cast JavasScript value to Golang value
 //
 // *  JavaScript -> Golang
-// *  |--------------------------------------------------------
-// *  |    | JavaScript            | Golang                   |
-// *  |--------------------------------------------------------
-// *  | ✅ | null                  | nil                     |
-// *  | ✅ | undefined             | bridge.Undefined        |
-// *  | ✅ | boolean               | bool                    |
-// *  | ✅ | number(int)           | int                     |
-// *  | ✅ | number(float)         | float64                 |
-// *  | ✅ | bigint                | int64                   |
-// *  | ✅ | string                | string                  |
-// *  | ✅ | object(Int8Array)     | []byte                  |
-// *  | ✅ | object                | map[string]interface{}  |
-// *  | ✅ | array                 | []interface{}           |
-// *  | ✅ | object(Promise)       | bridge.PromiseT          |
-// *  | ✅ | function              | bridge.FunctionT         |
+// *  |-----------------------------------------------------------
+// *  |    | JavaScript            | Golang                      |
+// *  |-----------------------------------------------------------
+// *  | ✅ | null                      | nil                     |
+// *  | ✅ | undefined                 | bridge.Undefined        |
+// *  | ✅ | boolean                   | bool                    |
+// *  | ✅ | number(int)               | int                     |
+// *  | ✅ | number(float)             | float64                 |
+// *  | ✅ | bigint                    | int64                   |
+// *  | ✅ | string               	  | string                  |
+// *  | ✅ | object(SharedArrayBuffer) | []byte                  |
+// *  | ✅ | object(Uint8Array)        | []byte                  |
+// *  | ✅ | object                    | map[string]interface{}  |
+// *  | ✅ | array                     | []interface{}           |
+// *  | ✅ | object(Promise)           | bridge.PromiseT          |
+// *  | ✅ | function                  | bridge.FunctionT         |
 // *  |-------------------------------------------------------
 func GoValue(value *v8go.Value, ctx *v8go.Context) (interface{}, error) {
 
@@ -273,8 +290,35 @@ func GoValue(value *v8go.Value, ctx *v8go.Context) (interface{}, error) {
 		return value.BigInt().Int64(), nil
 	}
 
+	if value.IsSharedArrayBuffer() { // bytes
+		buf, cleanup, err := value.SharedArrayBufferGetContents()
+		if err != nil {
+			return nil, err
+		}
+		defer cleanup()
+		return buf, nil
+	}
+
 	if value.IsUint8Array() { // bytes
-		return value.Uint8Array(), nil
+		arr, err := value.AsObject()
+		if err != nil {
+			return nil, err
+		}
+
+		length, err := arr.Get("length")
+		if err != nil {
+			return nil, err
+		}
+
+		var goValue []byte
+		for i := uint32(0); i < length.Uint32(); i++ {
+			v, err := arr.GetIdx(i)
+			if err != nil {
+				return nil, err
+			}
+			goValue = append(goValue, byte(v.Uint32()))
+		}
+		return goValue, nil
 	}
 
 	if value.IsArray() {
