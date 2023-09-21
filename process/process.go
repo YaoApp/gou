@@ -36,6 +36,7 @@ func (process *Process) Run() interface{} {
 		exception.New("%s", 500, err.Error()).Throw()
 		return nil
 	}
+
 	return hd(process)
 }
 
@@ -71,7 +72,11 @@ func RegisterGroup(name string, group map[string]Handler) {
 func Alias(name string, alias string) {
 	name = strings.ToLower(name)
 	alias = strings.ToLower(alias)
-	Handlers[alias] = Handlers[name]
+	if _, has := Handlers[name]; has {
+		Handlers[alias] = Handlers[name]
+		return
+	}
+	exception.New("Process: %s does not exist", 404, name).Throw()
 }
 
 // WithSID set the session id
@@ -88,10 +93,10 @@ func (process *Process) WithGlobal(global map[string]interface{}) *Process {
 
 // handler get the process handler
 func (process *Process) handler() (Handler, error) {
-	if hander, has := Handlers[process.Handler]; has {
+	if hander, has := Handlers[process.Handler]; has && hander != nil {
 		return hander, nil
 	}
-	return nil, fmt.Errorf("Exception|404:%s (%s) not found", process.Name, process.Handler)
+	return nil, fmt.Errorf("Exception|404:%s Handler -> %s not found", process.Name, process.Handler)
 }
 
 // make parse the process

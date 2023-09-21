@@ -86,11 +86,21 @@ func ProcessGuard(name string) gin.HandlerFunc {
 	}
 }
 
+// get the origin
+func getOrigin(c *gin.Context) string {
+	referer := c.Request.Referer()
+	origin := c.Request.Header.Get("Origin")
+	if origin == "" {
+		origin = referer
+	}
+	return origin
+}
+
 // IsAllowed check if the referer is in allow list
 func IsAllowed(c *gin.Context, allowsMap map[string]bool) bool {
-	referer := c.Request.Referer()
-	if referer != "" {
-		url, err := url.Parse(referer)
+	origin := getOrigin(c)
+	if origin != "" {
+		url, err := url.Parse(origin)
 		if err != nil {
 			return true
 		}
@@ -140,20 +150,22 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 		}
 
 		// Cross domain
-		http.crossDomain(path.Path, allowsMap, router)
+		http.setCorsOption(path.Path, allowsMap, router)
 		handlers = append(handlers, func(c *gin.Context) {
-			referer := c.Request.Referer()
-			if referer != "" {
+			origin := getOrigin(c)
+			if origin != "" {
+
 				if !IsAllowed(c, allowsMap) {
-					c.AbortWithStatus(403)
+					c.JSON(403, gin.H{"code": 403, "message": "referer is not allowed. allows: " + strings.Join(allows, ",")})
+					c.Abort()
 					return
 				}
 
 				// url parse
-				url, _ := url.Parse(referer)
-				referer = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
+				url, _ := url.Parse(origin)
+				origin = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
 				// fmt.Println("referer is:", referer)
-				c.Writer.Header().Set("Access-Control-Allow-Origin", referer)
+				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 				c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 				c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
@@ -198,8 +210,8 @@ func (http HTTP) guard(handlers *[]gin.HandlerFunc, guard string, defaults strin
 	}
 }
 
-// crossDomain 跨域许可
-func (http HTTP) crossDomain(path string, allows map[string]bool, router gin.IRoutes) {
+// setCorsOption 跨域许可
+func (http HTTP) setCorsOption(path string, allows map[string]bool, router gin.IRoutes) {
 	if _, has := registeredOptions[fmt.Sprintf("%s.%s", http.Name, path)]; has {
 		return
 	}
