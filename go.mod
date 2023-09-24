@@ -79,7 +79,7 @@ require (
 )
 
 require (
-	github.com/evanw/esbuild v0.18.2
+	github.com/evanw/esbuild v0.19.3
 	github.com/google/uuid v1.3.0
 )
 
