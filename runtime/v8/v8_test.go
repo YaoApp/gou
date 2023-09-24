@@ -20,8 +20,9 @@ func prepare(t *testing.T) {
 
 	// application scripts
 	scripts := map[string]string{
-		"runtime.basic": filepath.Join("scripts", "runtime", "basic.js"),
-		"runtime.lib":   filepath.Join("scripts", "runtime", "lib.js"),
+		"runtime.basic":      filepath.Join("scripts", "runtime", "basic.js"),
+		"runtime.lib":        filepath.Join("scripts", "runtime", "lib.js"),
+		"runtime.typescript": filepath.Join("scripts", "runtime", "typescript.ts"),
 	}
 
 	for id, file := range scripts {

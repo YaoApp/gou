@@ -2,6 +2,7 @@ package v8
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -38,6 +39,14 @@ func Load(file string, id string) (*Script, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if strings.HasSuffix(file, ".ts") {
+		source, err = TransformTS(source)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	script.Source = string(source)
 	script.Root = false
 	Scripts[id] = script
@@ -51,10 +60,36 @@ func LoadRoot(file string, id string) (*Script, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if strings.HasSuffix(file, ".ts") {
+		source, err = TransformTS(source)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	script.Source = string(source)
 	script.Root = true
 	RootScripts[id] = script
 	return script, nil
+}
+
+// TransformTS transform the typescript
+func TransformTS(source []byte) ([]byte, error) {
+	result := api.Transform(string(source), api.TransformOptions{
+		Loader: api.LoaderTS,
+		Target: api.ESNext,
+	})
+
+	if len(result.Errors) > 0 {
+		errors := []string{}
+		for _, err := range result.Errors {
+			errors = append(errors, fmt.Sprintf("%s", err.Text))
+		}
+		return nil, fmt.Errorf("transform ts code error: %v", strings.Join(errors, "\n"))
+	}
+
+	return result.Code, nil
 }
 
 // Transform the javascript
