@@ -411,6 +411,58 @@ func (f *File) MimeType(name string) (string, error) {
 	return mtype.String(), nil
 }
 
+// Walk traverse folders and read file contents
+func (f *File) Walk(root string, handler func(root, file string, isdir bool) error, patterns ...string) error {
+	rootAbs, err := f.absPath(root)
+	if err != nil {
+		return err
+	}
+
+	return filepath.Walk(rootAbs, func(filename string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Error("[fs.Walk] %s %s", filename, err.Error())
+			return err
+		}
+
+		isdir := info.IsDir()
+		if patterns != nil && !isdir && len(patterns) > 0 && patterns[0] != "-" {
+			notmatched := true
+			basname := filepath.Base(filename)
+			for _, pattern := range patterns {
+				if matched, _ := filepath.Match(pattern, basname); matched {
+					notmatched = false
+					break
+				}
+			}
+
+			if notmatched {
+				return nil
+			}
+		}
+
+		name := strings.TrimPrefix(filename, rootAbs)
+		if name == "" && isdir {
+			name = string(os.PathSeparator)
+		}
+
+		if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "/.") || strings.HasPrefix(name, "\\.") {
+			return nil
+		}
+
+		if !isdir {
+			name = filepath.Join(root, name)
+		}
+
+		err = handler(root, name, isdir)
+		if err != nil {
+			log.Error("[fs.Walk] %s %s", filename, err.Error())
+			return err
+		}
+
+		return nil
+	})
+}
+
 func (f *File) isTemp(path string) bool {
 	return strings.HasPrefix(path, os.TempDir())
 }

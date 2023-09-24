@@ -31,4 +31,6 @@ type FileSystem interface {
 	MimeType(name string) (string, error)
 
 	Root() string
+
+	Walk(path string, handler func(root, filename string, isdir bool) error, patterns ...string) error
 }
