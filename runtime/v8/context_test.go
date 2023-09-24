@@ -11,7 +11,7 @@ import (
 func TestCall(t *testing.T) {
 	prepare(t)
 	time.Sleep(20 * time.Millisecond)
-	assert.Equal(t, 2, len(Scripts))
+	assert.Equal(t, 3, len(Scripts))
 	assert.Equal(t, 1, len(RootScripts))
 	assert.Equal(t, 2, len(chIsoReady))
 
@@ -33,10 +33,35 @@ func TestCall(t *testing.T) {
 	assert.Equal(t, "world", res)
 }
 
+func TestCallTS(t *testing.T) {
+	prepare(t)
+	time.Sleep(20 * time.Millisecond)
+	assert.Equal(t, 3, len(Scripts))
+	assert.Equal(t, 1, len(RootScripts))
+	assert.Equal(t, 2, len(chIsoReady))
+
+	typescript, err := Select("runtime.typescript")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, err := typescript.NewContext("SID_1010", map[string]interface{}{"name": "testing"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ctx.Close()
+
+	res, err := ctx.Call("Hello", "world")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "world", res)
+}
+
 func TestCallWith(t *testing.T) {
 	prepare(t)
 	time.Sleep(20 * time.Millisecond)
-	assert.Equal(t, 2, len(Scripts))
+	assert.Equal(t, 3, len(Scripts))
 	assert.Equal(t, 1, len(RootScripts))
 	assert.Equal(t, 2, len(chIsoReady))
 
@@ -64,7 +89,7 @@ func TestCallWith(t *testing.T) {
 func TestCallWithCancel(t *testing.T) {
 	prepare(t)
 	time.Sleep(20 * time.Millisecond)
-	assert.Equal(t, 2, len(Scripts))
+	assert.Equal(t, 3, len(Scripts))
 	assert.Equal(t, 1, len(RootScripts))
 	assert.Equal(t, 2, len(chIsoReady))
 
