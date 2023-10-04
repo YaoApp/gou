@@ -1,5 +1,8 @@
 package api
 
+const allowHeaders = "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, Yao-Gateway-Billing, Yao-Request-Uid, Yao-Builder-Uid"
+const allowMethods = "POST, GET, OPTIONS, PUT, DELETE, HEAD, PATCH"
+
 // API 数据接口
 type API struct {
 	ID   string `jsong:"id"`
