@@ -167,8 +167,8 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 				// fmt.Println("referer is:", referer)
 				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-				c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-				c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+				c.Writer.Header().Set("Access-Control-Allow-Headers", allowHeaders)
+				c.Writer.Header().Set("Access-Control-Allow-Methods", allowMethods)
 			}
 		})
 	}
@@ -229,8 +229,8 @@ func (http HTTP) setCorsOption(path string, allows map[string]bool, router gin.I
 			referer = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
 			c.Writer.Header().Set("Access-Control-Allow-Origin", referer)
 			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-			c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-			c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+			c.Writer.Header().Set("Access-Control-Allow-Headers", allowHeaders)
+			c.Writer.Header().Set("Access-Control-Allow-Methods", allowMethods)
 			c.AbortWithStatus(204)
 		}
 	})
