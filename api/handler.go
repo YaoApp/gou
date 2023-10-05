@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -272,21 +271,33 @@ func (path Path) setResponseHeaders(c *gin.Context, resp interface{}, contentTyp
 func (path Path) setPayload(c *gin.Context) {
 
 	if strings.HasPrefix(strings.ToLower(c.GetHeader("content-type")), "application/json") {
-		bytes, err := ioutil.ReadAll(c.Request.Body)
+
+		if c.Request.Body == nil {
+			c.Set("__payloads", map[string]interface{}{})
+			return
+		}
+
+		bytes, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			panic(err)
+			c.Set("__payloads", map[string]interface{}{})
+			log.Error("[Path] %s %s", path.Path, err.Error())
+			return
 		}
 
 		if bytes == nil || len(bytes) == 0 {
 			c.Set("__payloads", map[string]interface{}{})
+			return
 
-		} else {
-			payloads := map[string]interface{}{}
-			err = jsoniter.Unmarshal(bytes, &payloads)
-			if err != nil {
-				panic(err)
-			}
-			c.Set("__payloads", payloads)
 		}
+
+		payloads := map[string]interface{}{}
+		err = jsoniter.Unmarshal(bytes, &payloads)
+		if err != nil {
+			c.Set("__payloads", map[string]interface{}{})
+			log.Error("[Path] %s %s", path.Path, err.Error())
+		}
+		c.Set("__payloads", payloads)
+		c.Request.Body = io.NopCloser(strings.NewReader(string(bytes)))
+
 	}
 }
