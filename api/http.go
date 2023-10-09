@@ -341,6 +341,11 @@ func (http HTTP) parseIn(in []interface{}) func(c *gin.Context) []interface{} {
 				return ""
 			})
 
+		} else if arg[0] == "$header" && length == 2 {
+			getValues = append(getValues, func(c *gin.Context) interface{} {
+				return c.GetHeader(arg[1])
+			})
+
 		} else if arg[0] == "$file" && length == 2 {
 			getValues = append(getValues, func(c *gin.Context) interface{} {
 
