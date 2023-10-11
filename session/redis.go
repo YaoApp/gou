@@ -75,6 +75,7 @@ func (redis *Redis) Set(id string, key string, value interface{}, timeout time.D
 		return err
 	}
 
+	log.Debug("Session redis Set: %s KEY: %s VALUE: %v TS: %#v", skey, key, value, timeout)
 	err = redis.rdb.Set(context.Background(), skey, bytes, timeout).Err()
 	if err != nil {
 		log.Error("Session redis Set: %s", err.Error())

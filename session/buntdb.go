@@ -59,6 +59,7 @@ func (bunt *BuntDB) Set(id string, key string, value interface{}, timeout time.D
 		option = &buntdb.SetOptions{Expires: true, TTL: timeout}
 	}
 
+	log.Debug("Session buntdb Set: %s KEY: %s VALUE: %v TS: %#v", skey, key, value, option.TTL)
 	err = bunt.db.Update(func(tx *buntdb.Tx) error {
 		_, _, err = tx.Set(skey, string(bytes), option)
 		return err

@@ -4,10 +4,10 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"io"
-	"log"
 	"time"
 
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/log"
 )
 
 // Managers 已注册会话管理器
@@ -48,7 +48,7 @@ func Use(name string) *Session {
 func ID() string {
 	b := make([]byte, 32)
 	if _, err := io.ReadFull(rand.Reader, b); err != nil {
-		log.Fatalf("Can't create session id")
+		log.Error("Can't create session id")
 	}
 	return base64.URLEncoding.EncodeToString(b)
 }
@@ -98,6 +98,7 @@ func (session *Session) MustSet(key string, value interface{}) {
 
 // SetWithEx 设置数值
 func (session *Session) SetWithEx(key string, value interface{}, timeout time.Duration) error {
+	log.Debug("SetWithEx ID: %s KEY: %s, VALUE: %v, TS: %#v", session.id, key, value, timeout)
 	return session.Manager.Set(session.id, key, value, timeout)
 }
 
