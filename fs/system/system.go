@@ -454,6 +454,10 @@ func (f *File) Walk(root string, handler func(root, file string, isdir bool) err
 		}
 
 		err = handler(root, name, isdir)
+		if filepath.SkipDir == err {
+			return filepath.SkipDir
+		}
+
 		if err != nil {
 			log.Error("[fs.Walk] %s %s", filename, err.Error())
 			return err
