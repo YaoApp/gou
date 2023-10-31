@@ -2,6 +2,7 @@ package fs
 
 import (
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 	"time"
@@ -144,6 +145,11 @@ func ReadFile(xfs FileSystem, file string) ([]byte, error) {
 //	If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
 func WriteFile(xfs FileSystem, file string, data []byte, perm uint32) (int, error) {
 	return xfs.WriteFile(file, data, perm)
+}
+
+// Write writes the content of reader to the named file, creating it if necessary.
+func Write(xfs FileSystem, file string, reader io.Reader, perm uint32) (int, error) {
+	return xfs.Write(file, reader, perm)
 }
 
 // ReadDir reads the named directory, returning all its directory entries sorted by filename.

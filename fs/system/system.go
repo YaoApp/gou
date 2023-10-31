@@ -101,6 +101,39 @@ func (f *File) WriteFile(file string, data []byte, perm uint32) (int, error) {
 	return len(data), err
 }
 
+// Write writes data to the named file, creating it if necessary.
+func (f *File) Write(file string, reader io.Reader, perm uint32) (int, error) {
+
+	file, err := f.absPath(file)
+	if err != nil {
+		return 0, err
+	}
+
+	dir := filepath.Dir(file)
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		return 0, err
+	}
+
+	outFile, err := os.Create(file)
+	if err != nil {
+		return 0, err
+	}
+	defer outFile.Close()
+
+	n, err := io.Copy(outFile, reader)
+	if err != nil {
+		return 0, err
+	}
+
+	err = outFile.Chmod(fs.FileMode(perm))
+	if err != nil {
+		return 0, err
+	}
+
+	return int(n), nil
+}
+
 // ReadDir reads the named directory, returning all its directory entries sorted by filename.
 // If an error occurs reading the directory, ReadDir returns the entries it was able to read before the error, along with the error.
 func (f *File) ReadDir(dir string, recursive bool) ([]string, error) {
