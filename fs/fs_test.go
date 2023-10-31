@@ -195,6 +195,54 @@ func TestWriteFile(t *testing.T) {
 	}
 }
 
+func TestWrite(t *testing.T) {
+	stores := testStores(t)
+	f := testFiles(t)
+	for name, stor := range stores {
+		clear(stor, t)
+
+		// Write
+		f1 := strings.NewReader("Hello F1")
+		length, err := Write(stor, f["F1"], f1, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F1"], name)
+		checkFileSize(stor, t, f["F1"], length, name)
+		checkFileMode(stor, t, f["F1"], 0644, name)
+
+		// Overwrite
+		f2 := strings.NewReader("Hello F2")
+		l21, err := Write(stor, f["F2"], f2, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F2"], name)
+		checkFileSize(stor, t, f["F2"], l21, name)
+		checkFileMode(stor, t, f["F2"], 0644, name)
+
+		f3 := strings.NewReader("Hello F3")
+		l22, err := Write(stor, f["F2"], f3, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F2"], name)
+		checkFileSize(stor, t, f["F2"], l22, name)
+		checkFileMode(stor, t, f["F2"], 0644, name)
+
+		// permission denied
+		err = Chmod(stor, f["F2"], 0400)
+		assert.Nil(t, err, name)
+		l31, err := Write(stor, f["F2"], f2, 0644)
+		assert.NotNil(t, err, name)
+		assert.Equal(t, l31, 0)
+
+		err = MkdirAll(stor, f["D1"], uint32(os.ModePerm))
+		assert.Nil(t, err, name)
+		err = Chmod(stor, f["D1"], 0400)
+		assert.Nil(t, err, name)
+
+		d1d2f1 := strings.NewReader("Hello D1_D2_F1")
+		l32, err := Write(stor, f["D1_D2_F1"], d1d2f1, 0644)
+		assert.NotNil(t, err, name)
+		assert.Equal(t, l32, 0)
+	}
+}
+
 func TestReadFile(t *testing.T) {
 	stores := testStores(t)
 	f := testFiles(t)

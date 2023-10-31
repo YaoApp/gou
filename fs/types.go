@@ -1,11 +1,15 @@
 package fs
 
-import "time"
+import (
+	"io"
+	"time"
+)
 
 // FileSystem the filesystem io interface
 type FileSystem interface {
 	ReadFile(file string) ([]byte, error)
 	WriteFile(file string, data []byte, perm uint32) (int, error)
+	Write(file string, reader io.Reader, perm uint32) (int, error)
 
 	ReadDir(dir string, recursive bool) ([]string, error)
 	Mkdir(dir string, perm uint32) error
