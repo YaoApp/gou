@@ -24,14 +24,15 @@ type HTTP struct {
 
 // Path HTTP Path
 type Path struct {
-	Label       string        `json:"label,omitempty"`
-	Description string        `json:"description,omitempty"`
-	Path        string        `json:"path"`
-	Method      string        `json:"method"`
-	Process     string        `json:"process"`
-	Guard       string        `json:"guard,omitempty"`
-	In          []interface{} `json:"in,omitempty"`
-	Out         Out           `json:"out,omitempty"`
+	Label          string        `json:"label,omitempty"`
+	Description    string        `json:"description,omitempty"`
+	Path           string        `json:"path"`
+	Method         string        `json:"method"`
+	Process        string        `json:"process"`
+	Guard          string        `json:"guard,omitempty"`
+	In             []interface{} `json:"in,omitempty"`
+	Out            Out           `json:"out,omitempty"`
+	ProcessHandler bool          `json:"processHandler,omitempty"`
 }
 
 // Out http 输出
