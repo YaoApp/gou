@@ -180,6 +180,9 @@ func (http HTTP) Route(router gin.IRoutes, path Path, allows ...string) {
 	if path.Out.Redirect != nil {
 		handlers = append(handlers, path.redirectHandler(getArgs))
 
+	} else if path.ProcessHandler {
+		handlers = append(handlers, path.processHandler(getArgs))
+
 	} else if strings.HasPrefix(path.Out.Type, "text/event-stream") {
 		handlers = append(handlers, path.streamHandler(getArgs))
 

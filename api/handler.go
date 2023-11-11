@@ -70,6 +70,18 @@ func (path Path) defaultHandler(getArgs func(c *gin.Context) []interface{}) func
 	}
 }
 
+func (path Path) processHandler(getArgs func(c *gin.Context) []interface{}) func(c *gin.Context) {
+	process := process.New(path.Process)
+	res := process.Run()
+	handler, ok := res.(func(c *gin.Context))
+	if !ok {
+		handler = func(c *gin.Context) {
+			c.Done()
+		}
+	}
+	return handler
+}
+
 // redirectHandler default handler
 func (path Path) redirectHandler(getArgs func(c *gin.Context) []interface{}) func(c *gin.Context) {
 	return func(c *gin.Context) {
