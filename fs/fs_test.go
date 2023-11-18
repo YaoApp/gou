@@ -451,6 +451,8 @@ func TestList(t *testing.T) {
 	_, err = WriteFile(stor, f["D1_D2_F1"], []byte("D1_D2_F1"), 0644)
 	assert.Nil(t, err)
 
+	time.Sleep(200 * time.Millisecond)
+
 	_, err = WriteFile(stor, f["D1_D2_F2"], []byte("D1_D2_F2"), 0644)
 	assert.Nil(t, err)
 
