@@ -512,6 +512,10 @@ func (f *File) absPath(path string) (string, error) {
 		}
 	}
 
+	if !pathSafe(path) {
+		return "", fmt.Errorf("%s is not safe", path)
+	}
+
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return "", err
@@ -530,6 +534,11 @@ func (f *File) relPath(path string) string {
 		return path
 	}
 	return strings.TrimPrefix(path, strings.TrimRight(f.root, string(os.PathSeparator)))
+}
+
+// pathSafe returns true if the path is safe
+func pathSafe(path string) bool {
+	return !strings.Contains(path, "..")
 }
 
 func (f *File) validate(absPath string) error {
