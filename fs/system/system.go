@@ -2,15 +2,20 @@ package system
 
 import (
 	"fmt"
+	"image"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/yaoapp/kun/log"
+	"golang.org/x/image/draw"
 )
 
 // File the file
@@ -19,6 +24,14 @@ type File struct {
 	allowlist []string // the pattern list https://pkg.go.dev/path/filepath#Match
 	denylist  []string // the pattern list https://pkg.go.dev/path/filepath#Match
 }
+
+type fileInfoCache struct {
+	files      []string
+	fileInfos  map[string]os.FileInfo
+	lastUpdate time.Time
+}
+
+var cache fileInfoCache
 
 // New create a new file struct
 func New(root ...string) *File {
@@ -498,6 +511,207 @@ func (f *File) Walk(root string, handler func(root, file string, isdir bool) err
 
 		return nil
 	})
+}
+
+// List list the files
+func (f *File) List(path string, types []string, page, pageSize int, filter func(string) bool) ([]string, int, int, error) {
+
+	pathAbs, err := f.absPath(path)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	path = pathAbs
+	if !cacheNeedsUpdate(path, filter) {
+		// If the cache is still valid, use it directly
+		totalCount := len(cache.files)
+		totalPages := calculateTotalPages(totalCount, pageSize)
+		return f.paginateFiles(cache.files, page, pageSize), totalCount, totalPages, nil
+	}
+
+	var matchingFiles []string
+	fileInfos := make(map[string]os.FileInfo)
+
+	err = filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() && (len(types) == 0 || containsFileType(filePath, types)) {
+			if filter(filePath) {
+				matchingFiles = append(matchingFiles, filePath)
+				fileInfos[filePath] = info
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
+	// Sort files by modification time
+	sort.Slice(matchingFiles, func(i, j int) bool {
+		timeI := fileInfos[matchingFiles[i]].ModTime()
+		timeJ := fileInfos[matchingFiles[j]].ModTime()
+		return timeI.After(timeJ)
+	})
+
+	cache.files = matchingFiles
+	cache.fileInfos = fileInfos
+	cache.lastUpdate = time.Now()
+
+	totalCount := len(matchingFiles)
+	totalPages := calculateTotalPages(totalCount, pageSize)
+
+	return f.paginateFiles(matchingFiles, page, pageSize), totalCount, totalPages, nil
+}
+
+// Resize resize the image
+func (f *File) Resize(inputPath, outputPath string, width, height uint) error {
+
+	inputPath, err := f.absPath(inputPath)
+	if err != nil {
+		return err
+	}
+
+	outputPath, err = f.absPath(outputPath)
+	if err != nil {
+		return err
+	}
+
+	dir := filepath.Dir(outputPath)
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
+
+	// Open the image file
+	file, err := os.Open(inputPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Decode the image
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return err
+	}
+
+	// Calculate the aspect ratio
+	aspectRatio := float64(img.Bounds().Dx()) / float64(img.Bounds().Dy())
+
+	// Calculate the new dimensions based on the target width and aspect ratio
+	newWidth := int(width)
+	newHeight := int(float64(newWidth) / aspectRatio)
+
+	// If the target height is specified, use it instead
+	if height != 0 {
+		newHeight = int(height)
+		newWidth = int(float64(newHeight) * aspectRatio)
+	}
+
+	// Create a new image with the new dimensions
+	resizedImg := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
+	draw.ApproxBiLinear.Scale(resizedImg, resizedImg.Bounds(), img, img.Bounds(), draw.Over, nil)
+
+	// Create the output file
+	outFile, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	// Save the resized image
+	err = f.encodeImage(outFile, outputPath, resizedImg)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f *File) encodeImage(outFile *os.File, outputPath string, img image.Image) error {
+	// Determine the image format based on the file extension
+	format := f.imageFormatFromExtension(outputPath)
+
+	// Encode and save the image
+	switch format {
+	case "jpeg":
+		return jpeg.Encode(outFile, img, nil)
+	case "png":
+		return png.Encode(outFile, img)
+	default:
+		return fmt.Errorf("unsupported image format: %s", format)
+	}
+}
+
+func (f *File) imageFormatFromExtension(filename string) string {
+	switch filepath.Ext(filename) {
+	case ".jpeg", ".jpg":
+		return "jpeg"
+	case ".png":
+		return "png"
+	default:
+		return ""
+	}
+}
+
+// CleanCache clean the cache
+func (f *File) CleanCache() {
+	cache = fileInfoCache{}
+}
+
+func containsFileType(filePath string, types []string) bool {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	for _, t := range types {
+		if ext == strings.ToLower(t) {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *File) paginateFiles(absfiles []string, page, pageSize int) []string {
+
+	files := []string{}
+	for _, file := range absfiles {
+		files = append(files, f.relPath(file))
+	}
+
+	startIndex := (page - 1) * pageSize
+	endIndex := startIndex + pageSize
+	if endIndex > len(files) {
+		endIndex = len(files)
+	}
+	return files[startIndex:endIndex]
+}
+
+func calculateTotalPages(totalCount, pageSize int) int {
+	if pageSize == 0 {
+		return 0
+	}
+	return (totalCount + pageSize - 1) / pageSize
+}
+
+func cacheNeedsUpdate(path string, filter func(string) bool) bool {
+	// Check if the cache is empty or expired
+	if len(cache.files) == 0 || time.Since(cache.lastUpdate) > 10*time.Minute {
+		return true
+	}
+
+	// Check if the filter has changed
+	return !filterMatchesCache(path, filter)
+}
+
+func filterMatchesCache(path string, filter func(string) bool) bool {
+	for _, file := range cache.files {
+		if !filter(file) {
+			return true
+		}
+	}
+	return false
 }
 
 func (f *File) isTemp(path string) bool {
