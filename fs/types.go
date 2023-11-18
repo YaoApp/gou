@@ -37,4 +37,10 @@ type FileSystem interface {
 	Root() string
 
 	Walk(path string, handler func(root, filename string, isdir bool) error, patterns ...string) error
+
+	List(path string, types []string, page, pageSize int, filter func(string) bool) ([]string, int, int, error)
+
+	Resize(inputPath, outputPath string, width, height uint) error
+
+	CleanCache()
 }
