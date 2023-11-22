@@ -27,7 +27,7 @@ require (
 )
 
 require (
-	github.com/TylerBrock/colorjson v0.0.0-20200706003622-8a50f05110d2 // indirect
+	github.com/TylerBrock/colorjson v0.0.0-20200706003622-8a50f05110d2
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -51,7 +51,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/oklog/run v1.1.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/tidwall/btree v1.4.2 // indirect
@@ -73,7 +72,6 @@ require (
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
-	google.golang.org/genproto v0.0.0-20231030173426-d783a09b4405 // indirect
 	google.golang.org/grpc v1.59.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
@@ -81,6 +79,7 @@ require (
 require (
 	github.com/evanw/esbuild v0.19.3
 	github.com/google/uuid v1.4.0
+	golang.org/x/image v0.14.0
 )
 
 require (
@@ -92,7 +91,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	golang.org/x/arch v0.6.0 // indirect
-	golang.org/x/image v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 )
 
