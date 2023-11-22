@@ -29,6 +29,11 @@ func New(router *gin.Engine, option Option) *Server {
 	}
 }
 
+// Reset the http server
+func (server *Server) Reset(router *gin.Engine) {
+	server.router = router
+}
+
 // Event get event signal
 func (server *Server) Event() chan uint8 {
 	return server.event
