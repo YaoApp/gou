@@ -2,6 +2,7 @@ package v8
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -16,6 +17,8 @@ var Scripts = map[string]*Script{}
 
 // RootScripts the scripts for studio
 var RootScripts = map[string]*Script{}
+
+var importRe = regexp.MustCompile(`import\s+.*;`)
 
 // NewScript create a new script
 func NewScript(file string, id string, timeout ...time.Duration) *Script {
@@ -76,7 +79,10 @@ func LoadRoot(file string, id string) (*Script, error) {
 
 // TransformTS transform the typescript
 func TransformTS(source []byte) ([]byte, error) {
-	result := api.Transform(string(source), api.TransformOptions{
+
+	// @todo import supoort
+	jsCode := importRe.ReplaceAllString(string(source), "")
+	result := api.Transform(jsCode, api.TransformOptions{
 		Loader: api.LoaderTS,
 		Target: api.ESNext,
 	})
