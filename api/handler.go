@@ -22,49 +22,66 @@ import (
 func (path Path) defaultHandler(getArgs func(c *gin.Context) []interface{}) func(c *gin.Context) {
 	return func(c *gin.Context) {
 
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		// defer debug.FreeOSMemory()
+
 		path.setPayload(c)
-		var resp interface{} = path.runProcess(c, getArgs)
 		var status int = path.Out.Status
 		var contentType = path.reqContentType(c)
 
-		if resp == nil {
-			c.Done()
-			return
-		}
+		chRes := make(chan interface{}, 1)
+		go path.execProcess(ctx, chRes, c, getArgs)
 
-		// Response Headers
-		contentType = path.setResponseHeaders(c, resp, contentType)
-
-		// Format Body
-		body := resp
-		if path.Out.Body != nil {
-			res := any.Of(resp)
-			if res.IsMap() {
-				data := res.Map().MapStrAny.Dot()
-				body = helper.Bind(path.Out.Body, data)
-			}
-		}
-
-		switch data := body.(type) {
-		case maps.Map, map[string]interface{}, []interface{}, []maps.Map, []map[string]interface{}:
-			c.JSON(status, data)
-			c.Done()
-			return
-
-		case []byte:
-			c.Data(status, contentType, data)
-			c.Done()
-			return
-
-		default:
-			if strings.HasPrefix(contentType, "application/json") {
-				c.JSON(status, body)
+		select {
+		case resp := <-chRes:
+			close(chRes)
+			if resp == nil {
 				c.Done()
 				return
 			}
 
-			c.String(status, "%v", body)
-			c.Done()
+			// Set ContentType
+			contentType = path.setResponseHeaders(c, resp, contentType)
+
+			// Format Body
+			body := resp
+			if path.Out.Body != nil {
+				res := any.Of(resp)
+				if res.IsMap() {
+					data := res.Map().MapStrAny.Dot()
+					body = helper.Bind(path.Out.Body, data)
+				}
+			}
+
+			switch data := body.(type) {
+			case maps.Map, map[string]interface{}, []interface{}, []maps.Map, []map[string]interface{}:
+				c.JSON(status, data)
+				c.Done()
+				return
+
+			case []byte:
+				c.Data(status, contentType, data)
+				c.Done()
+				return
+
+			case error:
+				c.JSON(500, gin.H{"message": data.Error(), "code": 500})
+
+			default:
+				if strings.HasPrefix(contentType, "application/json") {
+					c.JSON(status, body)
+					c.Done()
+					return
+				}
+
+				c.String(status, "%v", body)
+				c.Done()
+				return
+			}
+
+		case <-c.Request.Context().Done():
+			c.Abort()
 			return
 		}
 	}
@@ -86,11 +103,14 @@ func (path Path) processHandler(getArgs func(c *gin.Context) []interface{}) func
 func (path Path) redirectHandler(getArgs func(c *gin.Context) []interface{}) func(c *gin.Context) {
 	return func(c *gin.Context) {
 
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		path.setPayload(c)
 		contentType := path.reqContentType(c)
 
 		// run process
-		resp := path.runProcess(c, getArgs)
+		resp := path.runProcess(ctx, c, getArgs)
 
 		// Response Headers
 		path.setResponseHeaders(c, resp, contentType)
@@ -230,7 +250,38 @@ func (path Path) runStreamScript(ctx context.Context, c *gin.Context, getArgs fu
 	}
 }
 
-func (path Path) runProcess(c *gin.Context, getArgs func(c *gin.Context) []interface{}) interface{} {
+func (path Path) execProcess(ctx context.Context, chRes chan<- interface{}, c *gin.Context, getArgs func(c *gin.Context) []interface{}) {
+	var args []interface{} = getArgs(c)
+	var process, err = process.Of(path.Process, args...)
+	if err != nil {
+		log.Error("[Path] %s %s", path.Path, err.Error())
+		chRes <- err
+	}
+
+	if sid, has := c.Get("__sid"); has { // 设定会话ID
+		if sid, ok := sid.(string); ok {
+			process.WithSID(sid)
+		}
+	}
+
+	if global, has := c.Get("__global"); has { // 设定全局变量
+		if global, ok := global.(map[string]interface{}); ok {
+			process.WithGlobal(global)
+		}
+	}
+
+	process.WithContext(ctx)
+	res, err := process.Exec()
+	if err != nil {
+		fmt.Println("err", err)
+		log.Error("[Path] %s %s", path.Path, err.Error())
+		chRes <- nil
+		return
+	}
+	chRes <- res
+}
+
+func (path Path) runProcess(ctx context.Context, c *gin.Context, getArgs func(c *gin.Context) []interface{}) interface{} {
 	var args []interface{} = getArgs(c)
 	var process = process.New(path.Process, args...)
 
@@ -246,6 +297,7 @@ func (path Path) runProcess(c *gin.Context, getArgs func(c *gin.Context) []inter
 		}
 	}
 
+	process.WithContext(ctx)
 	return process.Run()
 }
 

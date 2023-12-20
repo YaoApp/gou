@@ -8,8 +8,6 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/yaoapp/gou/application"
-	"github.com/yaoapp/gou/runtime/v8/objects/console"
-	"rogchap.com/v8go"
 )
 
 // Scripts loaded scripts
@@ -133,34 +131,130 @@ func SelectRoot(id string) (*Script, error) {
 	return script, nil
 }
 
-// Compile the javascript
-func (script *Script) Compile(iso *Isolate, timeout time.Duration) (*v8go.Context, error) {
+// NewContext create a new context
+func (script *Script) NewContext(sid string, global map[string]interface{}) (*Context, error) {
 
-	if iso.Isolate == nil {
-		return nil, fmt.Errorf("isolate was removed")
-	}
-
+	timeout := script.Timeout
 	if timeout == 0 {
-		timeout = time.Second * 5
+		timeout = time.Duration(runtimeOption.ContextTimeout) * time.Millisecond
 	}
 
-	ctx := v8go.NewContext(iso.Isolate, iso.template)
-	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
+	iso, err := SelectIso(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
 	if err != nil {
 		return nil, err
 	}
 
-	// console.log("foo", "bar", 1, 2, 3, 4)
-	err = console.New().Set("console", ctx)
+	context, err := iso.SelectContext(script, timeout)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = instance.Run(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	iso.contexts[script] = ctx // cache
-	return ctx, nil
+	return &Context{
+		ID:      script.ID,
+		Context: context,
+		SID:     sid,
+		Data:    global,
+		Root:    script.Root,
+		Iso:     iso,
+	}, nil
 }
+
+// Compile the javascript
+// func (script *Script) Compile(iso *Isolate, timeout time.Duration) (*v8go.Context, error) {
+
+// 	if iso.Isolate == nil {
+// 		return nil, fmt.Errorf("isolate was removed")
+// 	}
+
+// 	if timeout == 0 {
+// 		timeout = time.Second * 5
+// 	}
+
+// 	ctx := v8go.NewContext(iso.Isolate, iso.template)
+// 	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// console.log("foo", "bar", 1, 2, 3, 4)
+// 	err = console.New().Set("console", ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	_, err = instance.Run(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// iso.contexts[script] = ctx // cache
+// 	return ctx, nil
+// }
+
+// debug : debug the script
+// func (script *Script) debug(sid string, data map[string]interface{}, method string, args ...interface{}) (interface{}, error) {
+
+// 	timeout := script.Timeout
+// 	if timeout == 0 {
+// 		timeout = 100 * time.Millisecond
+// 	}
+
+// 	iso, err := SelectIso(timeout)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	defer iso.Unlock()
+
+// 	ctx := v8go.NewContext(iso.Isolate, iso.template)
+// 	defer ctx.Close()
+
+// 	instance, err := iso.Isolate.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	_, err = instance.Run(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	global := ctx.Global()
+
+// 	jsArgs, err := bridge.JsValues(ctx, args)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("%s.%s %s", script.ID, method, err.Error())
+// 	}
+// 	defer bridge.FreeJsValues(jsArgs)
+
+// 	jsData, err := bridge.JsValue(ctx, map[string]interface{}{
+// 		"SID":  sid,
+// 		"ROOT": script.Root,
+// 		"DATA": data,
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer func() {
+// 		if !jsData.IsNull() && !jsData.IsUndefined() {
+// 			jsData.Release()
+// 		}
+// 	}()
+
+// 	err = global.Set("__yao_data", jsData)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	res, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("%s.%s %+v", script.ID, method, err)
+// 	}
+
+// 	goRes, err := bridge.GoValue(res, ctx)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("%s.%s %s", script.ID, method, err.Error())
+// 	}
+
+// 	return goRes, nil
+// }
