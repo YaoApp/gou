@@ -28,6 +28,27 @@ func (option *Option) Validate() {
 		option.MaxSize = 10
 	}
 
+	if option.DefaultTimeout == 0 {
+		option.DefaultTimeout = 200
+	}
+
+	if option.ContextTimeout == 0 {
+		option.ContextTimeout = 200
+	}
+
+	if option.ContetxQueueSize == 0 {
+		option.ContetxQueueSize = 10
+	}
+
+	if option.Mode == "" {
+		option.Mode = "normal"
+	}
+
+	if option.Mode == "performance" {
+		log.Warn("[V8] the performance mode does not support yet")
+		option.Mode = "normal"
+	}
+
 	if option.MinSize > 100 {
 		log.Warn("[V8] the maximum value of initSize is 100")
 		option.MinSize = 100

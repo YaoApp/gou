@@ -44,11 +44,8 @@ func NewIsolate() (*Isolate, error) {
 	return new, nil
 }
 
-func newIsolate() *Isolate {
-
-	iso := v8go.NewIsolate()
-
-	// set objects
+// makeTemplate make a new template
+func makeTemplate(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	template := v8go.NewObjectTemplate(iso)
 	template.Set("log", logT.New().ExportObject(iso))
 	template.Set("time", timeT.New().ExportObject(iso))
@@ -69,12 +66,19 @@ func newIsolate() *Isolate {
 	// Window object (std functions)
 	template.Set("atob", atobT.ExportFunction(iso))
 	template.Set("btoa", btoaT.ExportFunction(iso))
+	return template
+}
+
+func newIsolate() *Isolate {
+
+	iso := v8go.NewIsolate()
+	template := makeTemplate(iso)
 
 	new := &Isolate{
 		Isolate:  iso,
 		template: template,
 		status:   IsoReady,
-		contexts: map[*Script]*v8go.Context{},
+		contexts: map[*Script]chan *v8go.Context{},
 	}
 
 	if runtimeOption.Precompile {
@@ -85,12 +89,24 @@ func newIsolate() *Isolate {
 
 // Precompile compile the loaded scirpts
 func (iso *Isolate) Precompile() {
+
 	for _, script := range Scripts {
 		timeout := script.Timeout
 		if timeout == 0 {
-			timeout = time.Millisecond * 100
+			timeout = time.Millisecond * time.Duration(runtimeOption.ContextTimeout)
 		}
-		script.Compile(iso, timeout)
+		ch := make(chan *v8go.Context, runtimeOption.ContetxQueueSize)
+		iso.contexts[script] = ch
+		if runtimeOption.Mode == "performance" {
+			for i := 0; i < runtimeOption.ContetxQueueSize; i++ {
+				newContext, err := iso.MakeContext(script)
+				if err != nil {
+					log.Error("[V8] %s make context error %s", script.ID, err.Error())
+					continue
+				}
+				ch <- newContext
+			}
+		}
 	}
 
 	for _, script := range RootScripts {
@@ -98,7 +114,19 @@ func (iso *Isolate) Precompile() {
 		if timeout == 0 {
 			timeout = time.Millisecond * 100
 		}
-		script.Compile(iso, timeout)
+
+		ch := make(chan *v8go.Context, runtimeOption.ContetxQueueSize)
+		iso.contexts[script] = ch
+		if runtimeOption.Mode == "performance" {
+			for i := 0; i < runtimeOption.ContetxQueueSize; i++ {
+				newContext, err := iso.MakeContext(script)
+				if err != nil {
+					log.Error("[V8] %s make context error %s", script.ID, err.Error())
+					continue
+				}
+				ch <- newContext
+			}
+		}
 	}
 }
 
@@ -111,7 +139,7 @@ func SelectIso(timeout time.Duration) (*Isolate, error) {
 	}
 
 	// make a timer
-	timer := time.NewTimer(time.Duration(timeout))
+	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 
 	select {
@@ -160,8 +188,26 @@ func (list *Isolates) Add(iso *Isolate) {
 
 // Remove a isolate
 func (list *Isolates) Remove(iso *Isolate) {
+
+	// Remove the contexts
+	for script, ch := range iso.contexts {
+
+		// close the contexts
+		for i := 0; i < len(ch); i++ {
+			ctx := <-ch
+			ctx.Close()
+		}
+
+		// close channel
+		close(ch)
+
+		// remove the context
+		delete(iso.contexts, script)
+	}
+
 	iso.Isolate.Dispose()
 	iso.Isolate = nil
+	iso.contexts = nil
 	list.Data.Delete(iso)
 	list.Len = list.Len - 1
 }
@@ -205,6 +251,7 @@ func (iso Isolate) Locked() bool {
 	return iso.status == IsoBusy
 }
 
+// health check the isolate health
 func (iso *Isolate) health() bool {
 
 	// {
@@ -235,4 +282,87 @@ func (iso *Isolate) health() bool {
 	}
 
 	return true
+}
+
+// SelectContext select a context
+func (iso *Isolate) SelectContext(script *Script, timeout time.Duration) (*v8go.Context, error) {
+
+	// for performance mode
+	if runtimeOption.Mode == "performance" {
+		return iso.NewContext(script, timeout)
+	}
+
+	// for normal mode
+	if iso.Isolate == nil {
+		return nil, fmt.Errorf("[V8] %s isolate was removed", script.ID)
+	}
+
+	return iso.MakeContext(script)
+}
+
+// NewContext create a new context
+func (iso *Isolate) NewContext(script *Script, timeout time.Duration) (*v8go.Context, error) {
+
+	if iso.Isolate == nil {
+		return nil, fmt.Errorf("[V8] %s isolate was removed", script.ID)
+	}
+
+	var ch chan *v8go.Context
+	ch, has := iso.contexts[script]
+	if !has {
+		ch = make(chan *v8go.Context, runtimeOption.ContetxQueueSize)
+		iso.contexts[script] = ch
+
+		// Create ContetxQueueSize contexts
+		// for performance, we can create the context when the isolate is created
+		if runtimeOption.Mode == "performance" {
+			for i := 0; i < runtimeOption.ContetxQueueSize; i++ {
+				newContext, err := iso.MakeContext(script)
+				if err != nil {
+					log.Error("[V8] %s make context error %s", script.ID, err.Error())
+					continue
+				}
+				ch <- newContext
+			}
+		}
+	}
+
+	go func() {
+		newContext, err := iso.MakeContext(script)
+		if err != nil {
+			log.Error("[V8] %s make context error %s", script.ID, err.Error())
+			return
+		}
+		ch <- newContext
+	}()
+
+	// make a timer
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+		return nil, fmt.Errorf("Select context timeout %v", timeout)
+
+	case ctx := <-ch:
+		return ctx, nil
+	}
+}
+
+// MakeContext make a new context
+func (iso *Isolate) MakeContext(script *Script) (*v8go.Context, error) {
+	newContext := v8go.NewContext(iso.Isolate, iso.template)
+	instance, err := iso.Isolate.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
+	if err != nil {
+		newContext.Close()
+		return nil, err
+	}
+
+	_, err = instance.Run(newContext)
+	if err != nil {
+		newContext.Close()
+		return nil, err
+	}
+
+	return newContext, nil
 }

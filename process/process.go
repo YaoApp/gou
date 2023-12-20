@@ -1,6 +1,7 @@
 package process
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -88,6 +89,12 @@ func (process *Process) WithSID(sid string) *Process {
 // WithGlobal set the global vars
 func (process *Process) WithGlobal(global map[string]interface{}) *Process {
 	process.Global = global
+	return process
+}
+
+// WithContext set the context
+func (process *Process) WithContext(ctx context.Context) *Process {
+	process.Context = ctx
 	return process
 }
 

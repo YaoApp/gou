@@ -14,12 +14,16 @@ import (
 
 // Option runtime option
 type Option struct {
+	Mode              string `json:"mode,omitempty"`              // the mode of the runtime, the default value is "normal" and the other value is "performance". "performance" mode need more memory but will run faster
 	MinSize           int    `json:"minSize,omitempty"`           // the number of V8 VM when runtime start. max value is 100, the default value is 2
 	MaxSize           int    `json:"maxSize,omitempty"`           // the maximum of V8 VM should be smaller than minSize, the default value is 10
 	HeapSizeLimit     uint64 `json:"heapSizeLimit,omitempty"`     // the isolate heap size limit should be smaller than 1.5G, and the default value is 1518338048 (1.5G)
 	HeapSizeRelease   uint64 `json:"heapSizeRelease,omitempty"`   // the isolate will be re-created when reaching this value, and the default value is 52428800 (50M)
 	HeapAvailableSize uint64 `json:"heapAvailableSize,omitempty"` // the isolate will be re-created when the available size is smaller than this value, and the default value is 524288000 (500M)
 	Precompile        bool   `json:"precompile,omitempty"`        // if true compile scripts when the VM is created. this will increase the load time, but the script will run faster. the default value is false
+	DefaultTimeout    int    `json:"defaultTimeout,omitempty"`    // the default timeout for the script, the default value is 200ms
+	ContextTimeout    int    `json:"contextTimeout,omitempty"`    // the default timeout for the context, the default value is 200ms
+	ContetxQueueSize  int    `json:"contextQueueSize,omitempty"`  // the default queue size for the context, the default value is 10, performance only
 	DataRoot          string `json:"dataRoot,omitempty"`          // the data root path
 }
 
@@ -36,7 +40,7 @@ type Script struct {
 type Isolate struct {
 	*v8go.Isolate
 	status   uint8
-	contexts map[*Script]*v8go.Context
+	contexts map[*Script]chan *v8go.Context // the context queue
 	template *v8go.ObjectTemplate
 }
 
@@ -51,9 +55,9 @@ type Context struct {
 	ID      string                 // the script id
 	SID     string                 // set the session id
 	Data    map[string]interface{} // set the global data
-	Timeout time.Duration          // terminate the execution after this time
-	Iso     *Isolate
 	Root    bool
+	Timeout time.Duration // terminate the execution after this time
+	Iso     *Isolate
 	*v8go.Context
 }
 
