@@ -23,12 +23,11 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		return bridge.JsException(info.Context(), "the first parameter should be a string")
 	}
 
-	_, global, sid, v := bridge.ShareData(info.Context())
-	if v != nil {
-		return v
+	share, err := bridge.ShareData(info.Context())
+	if err != nil {
+		return bridge.JsException(info.Context(), err)
 	}
 
-	var err error
 	goArgs := []interface{}{}
 	if len(jsArgs) > 1 {
 		goArgs, err = bridge.GoValues(jsArgs[1:], info.Context())
@@ -38,8 +37,8 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	}
 
 	goRes, err := process.New(jsArgs[0].String(), goArgs...).
-		WithGlobal(global).
-		WithSID(sid).
+		WithGlobal(share.Global).
+		WithSID(share.Sid).
 		Exec()
 
 	if err != nil {

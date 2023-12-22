@@ -40,7 +40,6 @@ type Script struct {
 type Isolate struct {
 	*v8go.Isolate
 	status   uint8
-	contexts map[*Script]chan *v8go.Context // the context queue
 	template *v8go.ObjectTemplate
 }
 

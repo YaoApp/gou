@@ -8,6 +8,10 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/process"
+	"github.com/yaoapp/gou/runtime/v8/bridge"
+	"github.com/yaoapp/kun/exception"
+	"rogchap.com/v8go"
 )
 
 // Scripts loaded scripts
@@ -131,6 +135,79 @@ func SelectRoot(id string) (*Script, error) {
 	return script, nil
 }
 
+// Exec execute the script
+func (script *Script) Exec(process *process.Process) interface{} {
+
+	return script.execNormal(process)
+}
+
+// ExecNormal execute the script in normal mode ( save memory )
+func (script *Script) execNormal(process *process.Process) interface{} {
+
+	iso, err := SelectIsoNormal(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
+	if err != nil {
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
+	defer iso.Dispose()
+
+	ctx := v8go.NewContext(iso, iso.Template)
+	defer ctx.Close()
+
+	// Create instance of the script
+	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
+	if err != nil {
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
+	v, err := instance.Run(ctx)
+	if err != nil {
+		return err
+	}
+	defer v.Release()
+
+	// Set the global data
+	global := ctx.Global()
+	err = bridge.SetShareData(ctx, global, &bridge.Share{
+		Sid:    process.Sid,
+		Root:   script.Root,
+		Global: process.Global,
+		// Iso:    iso.Key(),
+	})
+	if err != nil {
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
+
+	// Run the method
+	jsArgs, err := bridge.JsValues(ctx, process.Args)
+	if err != nil {
+		return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
+	}
+
+	defer bridge.FreeJsValues(jsArgs)
+
+	jsRes, err := global.MethodCall(process.Method, bridge.Valuers(jsArgs)...)
+	if err != nil {
+		return fmt.Errorf("%s.%s %+v", script.ID, process.Method, err)
+	}
+
+	goRes, err := bridge.GoValue(jsRes, ctx)
+	if err != nil {
+		return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
+	}
+
+	return goRes
+}
+
+// ContextTimeout get the context timeout
+func (script *Script) ContextTimeout() time.Duration {
+	if script.Timeout > 0 {
+		return script.Timeout
+	}
+	return time.Duration(runtimeOption.ContextTimeout) * time.Millisecond
+}
+
 // NewContext create a new context
 func (script *Script) NewContext(sid string, global map[string]interface{}) (*Context, error) {
 
@@ -144,14 +221,14 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 		return nil, err
 	}
 
-	context, err := iso.SelectContext(script, timeout)
-	if err != nil {
-		return nil, err
-	}
+	// context, err := iso.SelectContext(script, timeout)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return &Context{
 		ID:      script.ID,
-		Context: context,
+		Context: nil,
 		SID:     sid,
 		Data:    global,
 		Root:    script.Root,

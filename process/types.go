@@ -1,6 +1,8 @@
 package process
 
-import "context"
+import (
+	"context"
+)
 
 // Process the process sturct
 type Process struct {
@@ -12,7 +14,13 @@ type Process struct {
 	Args    []interface{}
 	Global  map[string]interface{} // Global vars
 	Sid     string                 // Session ID
-	Context context.Context
+	Context context.Context        // Context
+	Runtime Runtime                // Runtime
+}
+
+// Runtime interface
+type Runtime interface {
+	Dispose()
 }
 
 // Handler the process handler

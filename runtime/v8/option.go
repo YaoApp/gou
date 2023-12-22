@@ -68,8 +68,8 @@ func (option *Option) Validate() {
 		option.HeapSizeLimit = 1518338048 // 1.5G
 	}
 
-	if option.HeapSizeLimit > 1518338048 {
-		log.Warn("[V8] the maximum value of HeapSizeLimit is 1518338048(1.5G)")
+	if option.HeapSizeLimit > 4294967296 {
+		log.Warn("[V8] the maximum value of HeapSizeLimit is 4294967296(4G)")
 		option.HeapSizeLimit = 1518338048 // 1.5G
 	}
 

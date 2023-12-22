@@ -251,12 +251,14 @@ func (path Path) runStreamScript(ctx context.Context, c *gin.Context, getArgs fu
 }
 
 func (path Path) execProcess(ctx context.Context, chRes chan<- interface{}, c *gin.Context, getArgs func(c *gin.Context) []interface{}) {
+
 	var args []interface{} = getArgs(c)
 	var process, err = process.Of(path.Process, args...)
 	if err != nil {
 		log.Error("[Path] %s %s", path.Path, err.Error())
 		chRes <- err
 	}
+	defer process.Dispose()
 
 	if sid, has := c.Get("__sid"); has { // 设定会话ID
 		if sid, ok := sid.(string); ok {
@@ -284,6 +286,7 @@ func (path Path) execProcess(ctx context.Context, chRes chan<- interface{}, c *g
 func (path Path) runProcess(ctx context.Context, c *gin.Context, getArgs func(c *gin.Context) []interface{}) interface{} {
 	var args []interface{} = getArgs(c)
 	var process = process.New(path.Process, args...)
+	defer process.Dispose()
 
 	if sid, has := c.Get("__sid"); has { // 设定会话ID
 		if sid, ok := sid.(string); ok {

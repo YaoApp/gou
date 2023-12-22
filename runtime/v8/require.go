@@ -9,9 +9,9 @@ import (
 func Require(iso *v8go.Isolate) *v8go.FunctionTemplate {
 	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
-		root, _, _, v := bridge.ShareData(info.Context())
-		if v != nil {
-			return v
+		share, err := bridge.ShareData(info.Context())
+		if err != nil {
+			return bridge.JsException(info.Context(), err)
 		}
 
 		jsArgs := info.Args()
@@ -25,13 +25,11 @@ func Require(iso *v8go.Isolate) *v8go.FunctionTemplate {
 
 		id := jsArgs[0].String()
 		script := Scripts[id]
-		if root {
+		if share.Root {
 			if _, has := RootScripts[id]; has {
 				script = RootScripts[id]
 			}
 		}
-		ctx := v8go.NewContext()
-		defer ctx.Close()
 
 		globalName := "require"
 		info.Context().RunScript(Transform(script.Source, globalName), script.File)
