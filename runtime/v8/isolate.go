@@ -121,8 +121,8 @@ func (iso *Isolate) Precompile() {
 	}
 }
 
-// SelectIsoNormal one ready isolate ( the max size is 2 )
-func SelectIsoNormal(timeout time.Duration) (*store.Isolate, error) {
+// SelectIsoStandard one ready isolate ( the max size is 2 )
+func SelectIsoStandard(timeout time.Duration) (*store.Isolate, error) {
 
 	go func() {
 		// Create a new isolate

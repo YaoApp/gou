@@ -137,14 +137,13 @@ func SelectRoot(id string) (*Script, error) {
 
 // Exec execute the script
 func (script *Script) Exec(process *process.Process) interface{} {
-
-	return script.execNormal(process)
+	return script.execStandard(process)
 }
 
-// ExecNormal execute the script in normal mode ( save memory )
-func (script *Script) execNormal(process *process.Process) interface{} {
+// execStandard execute the script in normal mode ( save memory )
+func (script *Script) execStandard(process *process.Process) interface{} {
 
-	iso, err := SelectIsoNormal(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
+	iso, err := SelectIsoStandard(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
 	if err != nil {
 		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
 		return nil

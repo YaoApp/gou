@@ -14,7 +14,7 @@ import (
 
 // Option runtime option
 type Option struct {
-	Mode              string `json:"mode,omitempty"`              // the mode of the runtime, the default value is "normal" and the other value is "performance". "performance" mode need more memory but will run faster
+	Mode              string `json:"mode,omitempty"`              // the mode of the runtime, the default value is "standard" and the other value is "performance". "performance" mode need more memory but will run faster
 	MinSize           int    `json:"minSize,omitempty"`           // the number of V8 VM when runtime start. max value is 100, the default value is 2
 	MaxSize           int    `json:"maxSize,omitempty"`           // the maximum of V8 VM should be smaller than minSize, the default value is 10
 	HeapSizeLimit     uint64 `json:"heapSizeLimit,omitempty"`     // the isolate heap size limit should be smaller than 1.5G, and the default value is 1518338048 (1.5G)
