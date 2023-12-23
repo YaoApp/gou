@@ -39,6 +39,11 @@ var newContextLock = &sync.RWMutex{}
 // in performance mode, the minSize isolates will be created
 func initialize() {
 	isoReady = make(chan *store.Isolate, runtimeOption.MaxSize)
+	store.Isolates = store.New()
+	log.Trace(
+		"[V8] VM is initializing  MinSize=%d MaxSize=%d HeapLimit=%d",
+		runtimeOption.MinSize, runtimeOption.MaxSize, runtimeOption.HeapSizeLimit,
+	)
 	if runtimeOption.Mode == "performance" {
 		for store.Isolates.Len() < runtimeOption.MinSize {
 			addIsolate()
@@ -60,22 +65,29 @@ func addIsolate() (*store.Isolate, error) {
 	}
 
 	store.Isolates.Add(iso)
-	store.MakeIsolateCache(iso.Key())
-	log.Info("[V8] VM %s is ready", iso.Key())
+	// store.MakeIsolateCache(iso.Key())
 	isoReady <- iso
+	log.Trace("[V8] VM %s is ready (%d)", iso.Key(), len(isoReady))
 	return iso, nil
 }
 
-// removeIsolate remove a isolate
+// replaceIsolate
+// remove a isolate
 // create a new one append to the isolates if the isolates is less than minSize
-func removeIsolate(iso *store.Isolate) {
-	key := iso.Key()
-	store.CleanIsolateCache(key)
-	store.Isolates.Remove(key)
-	log.Info("[V8] VM %s is removed", key)
+func replaceIsolate(iso *store.Isolate) {
+	removeIsolate(iso)
 	if store.Isolates.Len() < runtimeOption.MinSize {
 		addIsolate()
 	}
+}
+
+// removeIsolate remove a isolate
+func removeIsolate(iso *store.Isolate) {
+	key := iso.Key()
+	// store.CleanIsolateCache(key)
+	// store.Isolates.Remove(key)
+	iso.Dispose()
+	log.Trace("[V8] VM %s is removed", key)
 }
 
 // precompile compile the loaded scirpts
@@ -133,28 +145,18 @@ func makeIsolate() *store.Isolate {
 // SelectIsoPerformance one ready isolate
 func SelectIsoPerformance(timeout time.Duration) (*store.Isolate, error) {
 
-	go func() {
-		// Create a new isolate
-		iso, err := addIsolate()
-		if err != nil {
-			log.Error("[V8] %v", err)
-			return
-		}
-		isoReady <- iso
-	}()
-
 	// make a timer
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 
 	select {
+	case iso := <-isoReady:
+		Lock(iso)
+		return iso, nil
+
 	case <-timer.C:
 		log.Error("[V8] Select isolate timeout %v", timeout)
 		return nil, fmt.Errorf("Select isolate timeout %v", timeout)
-
-	case iso := <-isoReady:
-		iso.Lock()
-		return iso, nil
 	}
 
 }
@@ -182,17 +184,41 @@ func SelectIsoStandard(timeout time.Duration) (*store.Isolate, error) {
 	}
 }
 
+// Lock the isolate
+func Lock(iso *store.Isolate) {
+	iso.Lock()
+}
+
 // Unlock the isolate
+// Recycle the isolate if the isolate is not health
 func Unlock(iso *store.Isolate) {
 
 	health := iso.Health(runtimeOption.HeapSizeRelease, runtimeOption.HeapAvailableSize)
-	if health && len(isoReady) <= runtimeOption.MinSize-1 { // the available isolates are less than min size
+	available := len(isoReady)
+	log.Trace("[V8] VM %s is health %v available %d", iso.Key(), health, available)
+
+	// add the isolate if the available isolates are less than min size
+	if available < runtimeOption.MinSize {
+		defer addIsolate()
+	}
+
+	// remove the isolate if the available isolates are more than min size
+	if available > runtimeOption.MinSize {
+		go removeIsolate(iso)
+		return
+	}
+
+	// unlock the isolate if the isolate is health
+	if health {
 		iso.Unlock()
 		isoReady <- iso
 		return
 	}
-	// Remove the iso and create new one
-	go removeIsolate(iso)
+
+	// remove the isolate if the isolate is not health
+	// then create a new one
+	go replaceIsolate(iso)
+
 }
 
 // *********************************************************************************************************************

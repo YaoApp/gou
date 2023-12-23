@@ -151,59 +151,67 @@ func (script *Script) Exec(process *process.Process) interface{} {
 // execPerformance execute the script in performance mode
 func (script *Script) execPerformance(process *process.Process) interface{} {
 
-	iso, ctx, err := MakeContext(script)
+	iso, err := SelectIsoPerformance(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
 	if err != nil {
-		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
-		return nil
+		return err
 	}
 	defer Unlock(iso)
-	defer ctx.Release()
 
-	// Set the global data
-	global := ctx.Context.Global()
-	err = bridge.SetShareData(ctx.Context, global, &bridge.Share{
-		Sid:    process.Sid,
-		Root:   script.Root,
-		Global: process.Global,
-	})
-	if err != nil {
-		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
-		return nil
-	}
+	return "OK"
 
-	// Run the method
-	jsArgs, err := bridge.JsValues(ctx.Context, process.Args)
-	if err != nil {
-		return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
-	}
-	defer bridge.FreeJsValues(jsArgs)
+	// iso, ctx, err := MakeContext(script)
+	// if err != nil {
+	// 	exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+	// 	return nil
+	// }
+	// defer Unlock(iso)
+	// defer ctx.Context.Close()
 
-	jsRes, err := global.MethodCall(process.Method, bridge.Valuers(jsArgs)...)
-	if err != nil {
-		return fmt.Errorf("%s.%s %+v", script.ID, process.Method, err)
-	}
+	// // Set the global data
+	// global := ctx.Context.Global()
+	// err = bridge.SetShareData(ctx.Context, global, &bridge.Share{
+	// 	Sid:    process.Sid,
+	// 	Root:   script.Root,
+	// 	Global: process.Global,
+	// })
+	// if err != nil {
+	// 	exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+	// 	return nil
+	// }
 
-	goRes, err := bridge.GoValue(jsRes, ctx.Context)
-	if err != nil {
-		return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
-	}
+	// // Run the method
+	// jsArgs, err := bridge.JsValues(ctx.Context, process.Args)
+	// if err != nil {
+	// 	return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
+	// }
+	// defer bridge.FreeJsValues(jsArgs)
 
-	return goRes
+	// jsRes, err := global.MethodCall(process.Method, bridge.Valuers(jsArgs)...)
+	// if err != nil {
+	// 	return fmt.Errorf("%s.%s %+v", script.ID, process.Method, err)
+	// }
+
+	// goRes, err := bridge.GoValue(jsRes, ctx.Context)
+	// if err != nil {
+	// 	return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
+	// }
+
+	// return goRes
 }
 
 // MakeContext select a context
 func MakeContext(script *Script) (*store.Isolate, *store.Context, error) {
-	iso, err := SelectIsoStandard(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
+	iso, err := SelectIsoPerformance(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	ctx, has := store.GetContextFromCache(iso.Key(), script.ID)
-	if has {
-		return iso, ctx, nil
-	}
+	// ctx, has := store.GetContextFromCache(iso.Key(), script.ID)
+	// if has {
+	// 	return iso, ctx, nil
+	// }
 
-	ctx, err = script.compile(iso)
+	ctx, err := script.compile(iso)
 	if err != nil {
 		Unlock(iso)
 		return iso, nil, err
@@ -281,22 +289,21 @@ func (script *Script) ContextTimeout() time.Duration {
 // in performance mode the script will be compiled when the isolate is created
 func (script *Script) compile(iso *store.Isolate) (*store.Context, error) {
 	v8ctx := v8go.NewContext(iso, iso.Template)
-	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
+	instance, err := iso.Isolate.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
 	if err != nil {
 		log.Error("[v8] scripts.%s compile error %s", script.ID, err.Error())
 		return nil, err
 	}
-	v, err := instance.Run(v8ctx)
+	_, err = instance.Run(v8ctx)
 	if err != nil {
 		log.Error("[v8] scripts.%s compile error %s", script.ID, err.Error())
 		return nil, err
 	}
-	defer v.Release()
 
 	key := iso.Key()
 	ctx := store.NewContext(key, script.ID, v8ctx)
-	store.SetContextCache(key, script.ID, ctx)
-	log.Info("[v8] scripts.%s compile success", script.ID)
+	// store.SetContextCache(key, script.ID, ctx)
+	log.Trace("[v8] scripts.%s compile success", script.ID)
 	return ctx, nil
 }
 

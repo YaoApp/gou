@@ -10,7 +10,11 @@ import (
 
 func TestRequre(t *testing.T) {
 
-	prepare(t)
+	option := option()
+	option.Mode = "standard"
+	option.HeapSizeLimit = 4294967296
+
+	prepare(t, option)
 
 	ctx := requrePrepare(t, false, "", nil)
 	defer requireClose(ctx)

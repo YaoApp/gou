@@ -1,6 +1,8 @@
 package store
 
-import "fmt"
+import (
+	"fmt"
+)
 
 const (
 
@@ -63,10 +65,6 @@ func (iso *Isolate) Health(HeapSizeRelease uint64, HeapAvailableSize uint64) boo
 	}
 
 	stat := iso.Isolate.GetHeapStatistics()
-	if stat.TotalHeapSize > HeapSizeRelease {
-		return false
-	}
-
 	if stat.TotalAvailableSize < HeapAvailableSize { // 500M
 		return false
 	}

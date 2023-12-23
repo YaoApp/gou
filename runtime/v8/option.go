@@ -83,6 +83,6 @@ func (option *Option) Validate() {
 
 	if option.HeapAvailableSize < 524288000 || option.HeapAvailableSize > option.HeapSizeLimit {
 		log.Warn("[V8] the heapAvailableSize value is 524288000(500M) or heapSizeLimit * 0.30 to reduce the risk of program crashes")
-		option.HeapSizeRelease = 524288000 // 500M
+		// option.HeapSizeRelease = 524288000 // 500M
 	}
 }

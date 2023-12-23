@@ -1,6 +1,8 @@
 package store
 
-import "sync"
+import (
+	"sync"
+)
 
 // Isolates the new isolate store
 var Isolates = New()
@@ -12,10 +14,8 @@ func New() *Store {
 
 // Get get a isolate
 func (store *Store) Get(key string) (IStore, bool) {
-
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
-
 	v, ok := store.data[key]
 	if !ok {
 		return nil, false
@@ -28,6 +28,7 @@ func (store *Store) Add(data IStore) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 	store.data[data.Key()] = data
+
 }
 
 // Remove a isolate
@@ -35,19 +36,16 @@ func (store *Store) Remove(key string) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 	delete(store.data, key)
+
 }
 
 // Len the length of store
 func (store *Store) Len() int {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
 	return len(store.data)
 }
 
 // Range traverse isolates
 func (store *Store) Range(callback func(data IStore) bool) {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
 	for _, v := range store.data {
 		if !callback(v.(IStore)) {
 			break

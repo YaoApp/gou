@@ -12,10 +12,10 @@ func (cache *Cache) Dispose() {
 		ctx = nil
 	}
 
-	if iso, has := Isolates.Get(cache.key); has {
-		iso.Dispose()
-		iso = nil
-	}
+	// if iso, has := Isolates.Get(cache.key); has {
+	// 	iso.Dispose()
+	// 	iso = nil
+	// }
 
 	cache.contexts = nil
 	cache = nil

@@ -2,7 +2,6 @@ package v8
 
 import (
 	"github.com/yaoapp/gou/runtime/v8/store"
-	"github.com/yaoapp/kun/utils"
 )
 
 var runtimeOption = &Option{}
@@ -11,7 +10,6 @@ var runtimeOption = &Option{}
 func Start(option *Option) error {
 	option.Validate()
 	runtimeOption = option
-	utils.Dump(runtimeOption)
 	initialize()
 	return nil
 }
@@ -19,6 +17,7 @@ func Start(option *Option) error {
 // Stop v8 runtime
 func Stop() {
 	close(isoReady)
+	isoReady = nil
 	store.Isolates.Range(func(iso store.IStore) bool {
 		key := iso.Key()
 		store.CleanIsolateCache(key)
