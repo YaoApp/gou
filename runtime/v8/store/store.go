@@ -36,3 +36,21 @@ func (store *Store) Remove(key string) {
 	defer store.mutex.Unlock()
 	delete(store.data, key)
 }
+
+// Len the length of store
+func (store *Store) Len() int {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+	return len(store.data)
+}
+
+// Range traverse isolates
+func (store *Store) Range(callback func(data IStore) bool) {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+	for _, v := range store.data {
+		if !callback(v.(IStore)) {
+			break
+		}
+	}
+}

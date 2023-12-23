@@ -41,12 +41,7 @@ func (option *Option) Validate() {
 	}
 
 	if option.Mode == "" {
-		option.Mode = "normal"
-	}
-
-	if option.Mode == "performance" {
-		log.Warn("[V8] the performance mode does not support yet")
-		option.Mode = "normal"
+		option.Mode = "standard"
 	}
 
 	if option.MinSize > 100 {

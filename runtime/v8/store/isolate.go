@@ -40,3 +40,36 @@ func (iso *Isolate) Unlock() {
 func (iso *Isolate) Locked() bool {
 	return iso.Status == IsoBusy
 }
+
+// Health  check the isolate health
+func (iso *Isolate) Health(HeapSizeRelease uint64, HeapAvailableSize uint64) bool {
+
+	// {
+	// 	"ExternalMemory": 0,
+	// 	"HeapSizeLimit": 1518338048,
+	// 	"MallocedMemory": 16484,
+	// 	"NumberOfDetachedContexts": 0,
+	// 	"NumberOfNativeContexts": 3,
+	// 	"PeakMallocedMemory": 24576,
+	// 	"TotalAvailableSize": 1518051356,
+	// 	"TotalHeapSize": 1261568,
+	// 	"TotalHeapSizeExecutable": 262144,
+	// 	"TotalPhysicalSize": 499164,
+	// 	"UsedHeapSize": 713616
+	// }
+
+	if iso.Isolate == nil {
+		return false
+	}
+
+	stat := iso.Isolate.GetHeapStatistics()
+	if stat.TotalHeapSize > HeapSizeRelease {
+		return false
+	}
+
+	if stat.TotalAvailableSize < HeapAvailableSize { // 500M
+		return false
+	}
+
+	return true
+}

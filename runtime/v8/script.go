@@ -10,7 +10,9 @@ import (
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
+	"github.com/yaoapp/gou/runtime/v8/store"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
 )
 
@@ -136,11 +138,81 @@ func SelectRoot(id string) (*Script, error) {
 }
 
 // Exec execute the script
+// the default mode is "standard" and the other value is "performance".
+// the "standard" mode save memory but will run slower. can be used in most cases, especially in arm64 device.
+// the "performance" mode need more memory but will run faster. can be used in high concurrency and large script.
 func (script *Script) Exec(process *process.Process) interface{} {
+	if runtimeOption.Mode == "performance" {
+		return script.execPerformance(process)
+	}
 	return script.execStandard(process)
 }
 
-// execStandard execute the script in normal mode ( save memory )
+// execPerformance execute the script in performance mode
+func (script *Script) execPerformance(process *process.Process) interface{} {
+
+	iso, ctx, err := MakeContext(script)
+	if err != nil {
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
+	defer Unlock(iso)
+	defer ctx.Release()
+
+	// Set the global data
+	global := ctx.Context.Global()
+	err = bridge.SetShareData(ctx.Context, global, &bridge.Share{
+		Sid:    process.Sid,
+		Root:   script.Root,
+		Global: process.Global,
+	})
+	if err != nil {
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
+
+	// Run the method
+	jsArgs, err := bridge.JsValues(ctx.Context, process.Args)
+	if err != nil {
+		return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
+	}
+	defer bridge.FreeJsValues(jsArgs)
+
+	jsRes, err := global.MethodCall(process.Method, bridge.Valuers(jsArgs)...)
+	if err != nil {
+		return fmt.Errorf("%s.%s %+v", script.ID, process.Method, err)
+	}
+
+	goRes, err := bridge.GoValue(jsRes, ctx.Context)
+	if err != nil {
+		return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
+	}
+
+	return goRes
+}
+
+// MakeContext select a context
+func MakeContext(script *Script) (*store.Isolate, *store.Context, error) {
+	iso, err := SelectIsoStandard(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ctx, has := store.GetContextFromCache(iso.Key(), script.ID)
+	if has {
+		return iso, ctx, nil
+	}
+
+	ctx, err = script.compile(iso)
+	if err != nil {
+		Unlock(iso)
+		return iso, nil, err
+	}
+
+	return iso, ctx, nil
+}
+
+// execStandard execute the script in standard mode
 func (script *Script) execStandard(process *process.Process) interface{} {
 
 	iso, err := SelectIsoStandard(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
@@ -171,7 +243,6 @@ func (script *Script) execStandard(process *process.Process) interface{} {
 		Sid:    process.Sid,
 		Root:   script.Root,
 		Global: process.Global,
-		// Iso:    iso.Key(),
 	})
 	if err != nil {
 		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
@@ -183,7 +254,6 @@ func (script *Script) execStandard(process *process.Process) interface{} {
 	if err != nil {
 		return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
 	}
-
 	defer bridge.FreeJsValues(jsArgs)
 
 	jsRes, err := global.MethodCall(process.Method, bridge.Valuers(jsArgs)...)
@@ -205,6 +275,29 @@ func (script *Script) ContextTimeout() time.Duration {
 		return script.Timeout
 	}
 	return time.Duration(runtimeOption.ContextTimeout) * time.Millisecond
+}
+
+// compile compile the script
+// in performance mode the script will be compiled when the isolate is created
+func (script *Script) compile(iso *store.Isolate) (*store.Context, error) {
+	v8ctx := v8go.NewContext(iso, iso.Template)
+	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
+	if err != nil {
+		log.Error("[v8] scripts.%s compile error %s", script.ID, err.Error())
+		return nil, err
+	}
+	v, err := instance.Run(v8ctx)
+	if err != nil {
+		log.Error("[v8] scripts.%s compile error %s", script.ID, err.Error())
+		return nil, err
+	}
+	defer v.Release()
+
+	key := iso.Key()
+	ctx := store.NewContext(key, script.ID, v8ctx)
+	store.SetContextCache(key, script.ID, ctx)
+	log.Info("[v8] scripts.%s compile success", script.ID)
+	return ctx, nil
 }
 
 // NewContext create a new context

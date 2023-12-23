@@ -24,3 +24,16 @@ type Isolate struct {
 	Status   uint8
 	Template *v8go.ObjectTemplate
 }
+
+// Context runtime context
+type Context struct {
+	script  string // Script ID
+	isolate string // Isolate ID
+	*v8go.Context
+}
+
+// Cache the cache
+type Cache struct {
+	key      string
+	contexts map[string]*Context
+}
