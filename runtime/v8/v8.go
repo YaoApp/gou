@@ -16,7 +16,9 @@ func Start(option *Option) error {
 
 // Stop v8 runtime
 func Stop() {
-	close(isoReady)
+	if isoReady != nil {
+		close(isoReady)
+	}
 	isoReady = nil
 	store.Isolates.Range(func(iso store.IStore) bool {
 		key := iso.Key()
