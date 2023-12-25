@@ -9,59 +9,59 @@ import (
 )
 
 // Call call the script function
-func (ctx *Context) Call(method string, args ...interface{}) (interface{}, error) {
+func (context *Context) Call(method string, args ...interface{}) (interface{}, error) {
 
-	global := ctx.Context.Global()
-	jsArgs, err := bridge.JsValues(ctx.Context, args)
-	if err != nil {
-		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
-	}
-
-	defer bridge.FreeJsValues(jsArgs)
-
-	jsData, err := ctx.setData(global)
+	// Set the global data
+	global := context.Global()
+	err := bridge.SetShareData(context.Context, global, &bridge.Share{
+		Sid:    context.Sid,
+		Root:   context.Root,
+		Global: context.Data,
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if !jsData.IsNull() && !jsData.IsUndefined() {
-			jsData.Release()
-		}
-	}()
+
+	// Run the method
+	jsArgs, err := bridge.JsValues(context.Context, args)
+	if err != nil {
+		return nil, err
+	}
+	defer bridge.FreeJsValues(jsArgs)
 
 	jsRes, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
 	if err != nil {
-		return nil, fmt.Errorf("%s.%s %+v", ctx.ID, method, err)
+		return nil, err
 	}
 
-	goRes, err := bridge.GoValue(jsRes, ctx.Context)
+	goRes, err := bridge.GoValue(jsRes, context.Context)
 	if err != nil {
-		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
+		return nil, err
 	}
 
 	return goRes, nil
 }
 
 // CallWith call the script function
-func (ctx *Context) CallWith(context context.Context, method string, args ...interface{}) (interface{}, error) {
+func (context *Context) CallWith(ctx context.Context, method string, args ...interface{}) (interface{}, error) {
 
-	global := ctx.Context.Global()
-	jsArgs, err := bridge.JsValues(ctx.Context, args)
+	// Set the global data
+	global := context.Global()
+	err := bridge.SetShareData(context.Context, global, &bridge.Share{
+		Sid:    context.Sid,
+		Root:   context.Root,
+		Global: context.Data,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
+		return nil, err
 	}
 
+	// Run the method
+	jsArgs, err := bridge.JsValues(context.Context, args)
+	if err != nil {
+		return nil, err
+	}
 	defer bridge.FreeJsValues(jsArgs)
-
-	jsData, err := ctx.setData(global)
-	if err != nil {
-		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
-	}
-	defer func() {
-		if !jsData.IsNull() && !jsData.IsUndefined() {
-			jsData.Release()
-		}
-	}()
 
 	doneChan := make(chan bool, 1)
 	resChan := make(chan interface{}, 1)
@@ -86,7 +86,7 @@ func (ctx *Context) CallWith(context context.Context, method string, args ...int
 				return
 			}
 
-			goRes, err := bridge.GoValue(jsRes, ctx.Context)
+			goRes, err := bridge.GoValue(jsRes, context.Context)
 			if err != nil {
 				errChan <- err
 				return
@@ -97,43 +97,39 @@ func (ctx *Context) CallWith(context context.Context, method string, args ...int
 	}()
 
 	select {
-	case <-context.Done():
+	case <-ctx.Done():
 		doneChan <- true
-		return nil, context.Err()
+		return nil, ctx.Err()
 
 	case err := <-errChan:
-		return nil, fmt.Errorf("%s.%s %s", ctx.ID, method, err.Error())
+		return nil, fmt.Errorf("%s.%s %s", context.ID, method, err.Error())
 
 	case goRes := <-resChan:
 		return goRes, nil
 	}
 }
 
-func (ctx *Context) setData(global *v8go.Object) (*v8go.Value, error) {
-	goData := map[string]interface{}{
-		"SID":  ctx.SID,
-		"ROOT": ctx.Root,
-		"DATA": ctx.Data,
-	}
-
-	jsData, err := bridge.JsValue(ctx.Context, goData)
-	if err != nil {
-		return nil, err
-	}
-
-	err = global.Set("__yao_data", jsData)
-	if err != nil {
-		return nil, err
-	}
-
-	return jsData, nil
+// WithFunction add a function to the context
+func (context *Context) WithFunction(name string, cb v8go.FunctionCallback) {
+	tmpl := v8go.NewFunctionTemplate(context.Isolate.Isolate, cb)
+	context.Global().Set(name, tmpl.GetFunction(context.Context))
 }
 
 // Close Context
-func (ctx *Context) Close() error {
-	ctx.Context.Close()
-	ctx.Context = nil
-	ctx.Data = nil
-	ctx.SID = ""
-	return ctx.Iso.Unlock()
+func (context *Context) Close() error {
+
+	context.Context.Close()
+	context.Context = nil
+	context.UnboundScript = nil
+	context.Data = nil
+
+	if runtimeOption.Mode == "standard" {
+		context.Isolate.Dispose()
+		context.Isolate = nil
+		return nil
+	}
+	// Performance Mode
+	context.Isolate.Unlock()
+	context.Isolate = nil
+	return nil
 }

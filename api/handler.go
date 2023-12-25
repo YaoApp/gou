@@ -217,30 +217,26 @@ func (path Path) runStreamScript(ctx context.Context, c *gin.Context, getArgs fu
 	}
 	defer v8ctx.Close()
 
-	// make a new bridge function
-	ssEventT := v8go.NewFunctionTemplate(v8ctx.Isolate(), func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+	v8ctx.WithFunction("ssEvent", func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		args := info.Args()
 		if len(args) != 2 {
-			return v8go.Null(v8ctx.Isolate())
+			return v8go.Null(info.Context().Isolate())
 		}
 
 		name := args[0].String()
 		message, err := bridge.GoValue(args[1], info.Context())
 		if err != nil {
-			return v8go.Null(v8ctx.Isolate())
+			return v8go.Null(info.Context().Isolate())
 		}
 
 		onEvent(name, message)
-		return v8go.Null(v8ctx.Isolate())
+		return v8go.Null(info.Context().Isolate())
 	})
 
-	cancelT := v8go.NewFunctionTemplate(v8ctx.Isolate(), func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+	v8ctx.WithFunction("cancel", func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		onCancel()
-		return v8go.Null(v8ctx.Isolate())
+		return v8go.Null(info.Context().Isolate())
 	})
-
-	v8ctx.Global().Set("ssEvent", ssEventT.GetFunction(v8ctx.Context))
-	v8ctx.Global().Set("cancel", cancelT.GetFunction(v8ctx.Context))
 
 	args := getArgs(c)
 	_, err = v8ctx.CallWith(ctx, method, args...)

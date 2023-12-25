@@ -424,7 +424,7 @@ func ShareData(ctx *v8go.Context) (*Share, error) {
 
 	iso, ok := data["ISO"].(string) // Isolate ID
 	if !ok {
-		root = false
+		iso = ""
 	}
 
 	return &Share{

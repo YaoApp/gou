@@ -24,4 +24,5 @@ func Stop() {
 		store.Isolates.Remove(key)
 		return true
 	})
+	release()
 }

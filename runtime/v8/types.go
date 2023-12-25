@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/yaoapp/gou/runtime/v8/store"
 	"rogchap.com/v8go"
 )
 
@@ -52,11 +53,12 @@ type Isolates struct {
 // Context v8 Context
 type Context struct {
 	ID      string                 // the script id
-	SID     string                 // set the session id
+	Sid     string                 // set the session id
 	Data    map[string]interface{} // set the global data
 	Root    bool
 	Timeout time.Duration // terminate the execution after this time
-	Iso     *Isolate
+	*store.Isolate
+	*v8go.UnboundScript
 	*v8go.Context
 }
 
