@@ -42,7 +42,12 @@ func initialize() {
 	v8go.YaoInit(uint(runtimeOption.HeapSizeLimit / 1024 / 1024))
 
 	// Make a global Isolate
-	makeGlobalIsolate()
+	// makeGlobalIsolate()
+
+	if runtimeOption.Mode == "performance" {
+		dispatcher = NewDispatcher(runtimeOption.MinSize, runtimeOption.MaxSize)
+		dispatcher.Start()
+	}
 
 	isoReady = make(chan *store.Isolate, runtimeOption.MaxSize)
 	store.Isolates = store.New()
@@ -59,6 +64,9 @@ func initialize() {
 
 func release() {
 	v8go.YaoDispose()
+	if runtimeOption.Mode == "performance" {
+		dispatcher.Stop()
+	}
 }
 
 // addIsolate create a new and add to the isolates

@@ -192,52 +192,13 @@ func (script *Script) Exec(process *process.Process) interface{} {
 // execPerformance execute the script in performance mode
 func (script *Script) execPerformance(process *process.Process) interface{} {
 
-	iso, err := SelectIsoPerformance(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
+	runner, err := dispatcher.Select(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
 	if err != nil {
-		return err
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
 	}
-	defer Unlock(iso)
 
-	return "Performance Mode is not supported yet"
-
-	// iso, ctx, err := MakeContext(script)
-	// if err != nil {
-	// 	exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
-	// 	return nil
-	// }
-	// defer Unlock(iso)
-	// defer ctx.Context.Close()
-
-	// // Set the global data
-	// global := ctx.Context.Global()
-	// err = bridge.SetShareData(ctx.Context, global, &bridge.Share{
-	// 	Sid:    process.Sid,
-	// 	Root:   script.Root,
-	// 	Global: process.Global,
-	// })
-	// if err != nil {
-	// 	exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
-	// 	return nil
-	// }
-
-	// // Run the method
-	// jsArgs, err := bridge.JsValues(ctx.Context, process.Args)
-	// if err != nil {
-	// 	return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
-	// }
-	// defer bridge.FreeJsValues(jsArgs)
-
-	// jsRes, err := global.MethodCall(process.Method, bridge.Valuers(jsArgs)...)
-	// if err != nil {
-	// 	return fmt.Errorf("%s.%s %+v", script.ID, process.Method, err)
-	// }
-
-	// goRes, err := bridge.GoValue(jsRes, ctx.Context)
-	// if err != nil {
-	// 	return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
-	// }
-
-	// return goRes
+	return runner.Exec(script, process.Method, process.Args...)
 }
 
 // execStandard execute the script in standard mode
