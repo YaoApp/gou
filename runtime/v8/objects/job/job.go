@@ -94,9 +94,9 @@ func (obj *Object) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			err:     nil,
 		})
 
-		_, global, sid, v := bridge.ShareData(info.Context())
-		if v != nil {
-			return v
+		share, err := bridge.ShareData(info.Context())
+		if err != nil {
+			return bridge.JsException(info.Context(), err)
 		}
 
 		go func() {
@@ -105,8 +105,8 @@ func (obj *Object) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 				return
 			default:
 				goRes, err := process.New(exec, goArgs...).
-					WithGlobal(global).
-					WithSID(sid).
+					WithGlobal(share.Global).
+					WithSID(share.Sid).
 					Exec()
 				jobs.Store(id, &Job{
 					id:      id,

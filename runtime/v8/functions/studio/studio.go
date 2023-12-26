@@ -17,12 +17,12 @@ func ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 // exec
 func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
-	root, global, sid, v := bridge.ShareData(info.Context())
-	if v != nil {
-		return v
+	share, err := bridge.ShareData(info.Context())
+	if err != nil {
+		return bridge.JsException(info.Context(), err)
 	}
 
-	if !root {
+	if !share.Root {
 		return bridge.JsException(info.Context(), "function is not allowed")
 	}
 
@@ -35,7 +35,6 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		return bridge.JsException(info.Context(), "the first parameter should be a string")
 	}
 
-	var err error
 	goArgs := []interface{}{}
 	if len(jsArgs) > 1 {
 		goArgs, err = bridge.GoValues(jsArgs[1:], info.Context())
@@ -46,8 +45,8 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
 	name := fmt.Sprintf("studio.%s", strings.TrimPrefix(jsArgs[0].String(), "studio."))
 	goRes, err := process.New(name, goArgs...).
-		WithGlobal(global).
-		WithSID(sid).
+		WithGlobal(share.Global).
+		WithSID(share.Sid).
 		Exec()
 
 	if err != nil {

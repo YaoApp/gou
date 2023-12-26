@@ -107,12 +107,12 @@ func (obj *Object) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			name = args[0].String()
 		}
 
-		root, _, _, v := bridge.ShareData(info.Context())
-		if v != nil {
-			return v
+		share, err := bridge.ShareData(info.Context())
+		if err != nil {
+			return obj.errorString(info, fmt.Sprintf("%s", err.Error()))
 		}
 
-		if root {
+		if share.Root {
 			_, err := fs.RootGet(name)
 			if err != nil {
 				return obj.errorString(info, fmt.Sprintf("%s does not loaded", name))
@@ -735,8 +735,8 @@ func (obj *Object) getFS(info *v8go.FunctionCallbackInfo) (fs.FileSystem, error)
 		return nil, err
 	}
 
-	root, _, _, _ := bridge.ShareData(info.Context())
-	if root {
+	share, _ := bridge.ShareData(info.Context())
+	if share.Root {
 		return fs.RootGet(name.String())
 	}
 

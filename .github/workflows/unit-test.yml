@@ -70,10 +70,10 @@ jobs:
           path: gou-dev-app
 
       - name: Checkout V8Go
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          repository: rogchap/v8go
-          # ref: aac4923ed74083e58ae7b42b1acb0fa0d11a26cb
+          repository: yaoapp/v8go
+          lfs: true
           path: v8go
 
       - name: Checkout Demo WMS
@@ -158,6 +158,10 @@ jobs:
           chmod 600 $HOME/.yao/github_token
           ls -l $HOME/.yao/github_token
 
+      - name: Run Benchmark
+        run: |
+          make bench
+          
       - name: Run Test
         run: |
           make vet
@@ -165,9 +169,7 @@ jobs:
           make misspell-check
           make test
 
-      - name: Run Benchmark
-        run: |
-          make bench
+   
 
       - name: Codecov Report
         uses: codecov/codecov-action@v3

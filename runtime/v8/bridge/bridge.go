@@ -24,6 +24,14 @@ type PromiseT struct {
 	value *v8go.Value
 }
 
+// Share share data
+type Share struct {
+	Iso    string // Isolate ID
+	Sid    string
+	Root   bool
+	Global map[string]interface{}
+}
+
 // Undefined jsValue  Undefined
 var Undefined UndefinedT = 0x00
 
@@ -353,8 +361,82 @@ func goValueParse(value *v8go.Value, v interface{}) (interface{}, error) {
 	return *ptr, nil
 }
 
+// SetShareData set share data golang <-> javascript
+func SetShareData(ctx *v8go.Context, obj *v8go.Object, share *Share) error {
+
+	goData := map[string]interface{}{
+		"SID":  share.Sid,
+		"ROOT": share.Root,
+		"DATA": share.Global,
+		"ISO":  share.Iso,
+	}
+
+	jsData, err := JsValue(ctx, goData)
+	if err != nil {
+		return err
+	}
+
+	err = obj.Set("__yao_data", jsData)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if !jsData.IsNull() && !jsData.IsUndefined() {
+			jsData.Release()
+		}
+	}()
+
+	return nil
+}
+
 // ShareData get share data golang <-> javascript
-func ShareData(ctx *v8go.Context) (bool, map[string]interface{}, string, *v8go.Value) {
+func ShareData(ctx *v8go.Context) (*Share, error) {
+	jsData, err := ctx.Global().Get("__yao_data")
+	if err != nil {
+		return nil, err
+	}
+
+	goData, err := GoValue(jsData, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	data, ok := goData.(map[string]interface{})
+	if !ok {
+		data = map[string]interface{}{}
+	}
+
+	global, ok := data["DATA"].(map[string]interface{})
+	if !ok {
+		global = map[string]interface{}{}
+	}
+
+	sid, ok := data["SID"].(string)
+	if !ok {
+		sid = ""
+	}
+
+	root, ok := data["ROOT"].(bool)
+	if !ok {
+		root = false
+	}
+
+	iso, ok := data["ISO"].(string) // Isolate ID
+	if !ok {
+		iso = ""
+	}
+
+	return &Share{
+		Root:   root,
+		Sid:    sid,
+		Global: global,
+		Iso:    iso,
+	}, nil
+}
+
+// ShareData1 get share data golang <-> javascript
+func ShareData1(ctx *v8go.Context) (bool, map[string]interface{}, string, *v8go.Value) {
 	jsData, err := ctx.Global().Get("__yao_data")
 	if err != nil {
 		return false, nil, "", JsException(ctx, err)

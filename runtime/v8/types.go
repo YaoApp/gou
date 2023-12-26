@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/yaoapp/gou/runtime/v8/store"
 	"rogchap.com/v8go"
 )
 
@@ -14,7 +15,7 @@ import (
 
 // Option runtime option
 type Option struct {
-	Mode              string `json:"mode,omitempty"`              // the mode of the runtime, the default value is "normal" and the other value is "performance". "performance" mode need more memory but will run faster
+	Mode              string `json:"mode,omitempty"`              // the mode of the runtime, the default value is "standard" and the other value is "performance". "performance" mode need more memory but will run faster
 	MinSize           int    `json:"minSize,omitempty"`           // the number of V8 VM when runtime start. max value is 100, the default value is 2
 	MaxSize           int    `json:"maxSize,omitempty"`           // the maximum of V8 VM should be smaller than minSize, the default value is 10
 	HeapSizeLimit     uint64 `json:"heapSizeLimit,omitempty"`     // the isolate heap size limit should be smaller than 1.5G, and the default value is 1518338048 (1.5G)
@@ -40,7 +41,6 @@ type Script struct {
 type Isolate struct {
 	*v8go.Isolate
 	status   uint8
-	contexts map[*Script]chan *v8go.Context // the context queue
 	template *v8go.ObjectTemplate
 }
 
@@ -53,11 +53,12 @@ type Isolates struct {
 // Context v8 Context
 type Context struct {
 	ID      string                 // the script id
-	SID     string                 // set the session id
+	Sid     string                 // set the session id
 	Data    map[string]interface{} // set the global data
 	Root    bool
 	Timeout time.Duration // terminate the execution after this time
-	Iso     *Isolate
+	*store.Isolate
+	*v8go.UnboundScript
 	*v8go.Context
 }
 

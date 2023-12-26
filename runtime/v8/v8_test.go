@@ -8,7 +8,13 @@ import (
 	"github.com/yaoapp/gou/application"
 )
 
-func prepare(t *testing.T) {
+func option() *Option {
+	option := &Option{}
+	option.Validate()
+	return option
+}
+
+func prepare(t *testing.T, option *Option) {
 	root := os.Getenv("GOU_TEST_APPLICATION")
 
 	// Load app
@@ -44,18 +50,10 @@ func prepare(t *testing.T) {
 		}
 	}
 
-	prepareSetup(t)
+	prepareSetup(t, option)
 }
 
-func prepareSetup(t *testing.T) {
-
+func prepareSetup(t *testing.T, option *Option) {
 	EnablePrecompile()
-
-	chIsoReady = make(chan *Isolate, runtimeOption.MaxSize)
-	isolates.Range(func(iso *Isolate) bool {
-		isolates.Remove(iso)
-		return true
-	})
-
-	Start(&Option{})
+	Start(option)
 }

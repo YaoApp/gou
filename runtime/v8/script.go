@@ -8,6 +8,11 @@ import (
 
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/process"
+	"github.com/yaoapp/gou/runtime/v8/bridge"
+	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/log"
+	"rogchap.com/v8go"
 )
 
 // Scripts loaded scripts
@@ -139,122 +144,178 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 		timeout = time.Duration(runtimeOption.ContextTimeout) * time.Millisecond
 	}
 
-	iso, err := SelectIso(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
+	if runtimeOption.Mode == "performance" {
+		return nil, fmt.Errorf("performance mode is not supported yet")
+	}
+
+	iso, err := SelectIsoStandard(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
 	if err != nil {
 		return nil, err
 	}
 
-	context, err := iso.SelectContext(script, timeout)
+	ctx := v8go.NewContext(iso, iso.Template)
+
+	// Create instance of the script
+	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scripts.%s %s", script.ID, err.Error())
 	}
+	v, err := instance.Run(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("scripts.%s %s", script.ID, err.Error())
+	}
+	defer v.Release()
 
 	return &Context{
-		ID:      script.ID,
-		Context: context,
-		SID:     sid,
-		Data:    global,
-		Root:    script.Root,
-		Iso:     iso,
+		ID:            script.ID,
+		Sid:           sid,
+		Data:          global,
+		Root:          script.Root,
+		Timeout:       timeout,
+		Isolate:       iso,
+		Context:       ctx,
+		UnboundScript: instance,
 	}, nil
 }
 
-// Compile the javascript
-// func (script *Script) Compile(iso *Isolate, timeout time.Duration) (*v8go.Context, error) {
+// Exec execute the script
+// the default mode is "standard" and the other value is "performance".
+// the "standard" mode save memory but will run slower. can be used in most cases, especially in arm64 device.
+// the "performance" mode need more memory but will run faster. can be used in high concurrency and large script.
+func (script *Script) Exec(process *process.Process) interface{} {
+	if runtimeOption.Mode == "performance" {
+		return script.execPerformance(process)
+	}
+	return script.execStandard(process)
+}
 
-// 	if iso.Isolate == nil {
-// 		return nil, fmt.Errorf("isolate was removed")
-// 	}
+// execPerformance execute the script in performance mode
+func (script *Script) execPerformance(process *process.Process) interface{} {
 
-// 	if timeout == 0 {
-// 		timeout = time.Second * 5
-// 	}
+	iso, err := SelectIsoPerformance(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
+	if err != nil {
+		return err
+	}
+	defer Unlock(iso)
 
-// 	ctx := v8go.NewContext(iso.Isolate, iso.template)
-// 	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	return "Performance Mode is not supported yet"
 
-// 	// console.log("foo", "bar", 1, 2, 3, 4)
-// 	err = console.New().Set("console", ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	// iso, ctx, err := MakeContext(script)
+	// if err != nil {
+	// 	exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+	// 	return nil
+	// }
+	// defer Unlock(iso)
+	// defer ctx.Context.Close()
 
-// 	_, err = instance.Run(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	// // Set the global data
+	// global := ctx.Context.Global()
+	// err = bridge.SetShareData(ctx.Context, global, &bridge.Share{
+	// 	Sid:    process.Sid,
+	// 	Root:   script.Root,
+	// 	Global: process.Global,
+	// })
+	// if err != nil {
+	// 	exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+	// 	return nil
+	// }
 
-// 	// iso.contexts[script] = ctx // cache
-// 	return ctx, nil
-// }
+	// // Run the method
+	// jsArgs, err := bridge.JsValues(ctx.Context, process.Args)
+	// if err != nil {
+	// 	return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
+	// }
+	// defer bridge.FreeJsValues(jsArgs)
 
-// debug : debug the script
-// func (script *Script) debug(sid string, data map[string]interface{}, method string, args ...interface{}) (interface{}, error) {
+	// jsRes, err := global.MethodCall(process.Method, bridge.Valuers(jsArgs)...)
+	// if err != nil {
+	// 	return fmt.Errorf("%s.%s %+v", script.ID, process.Method, err)
+	// }
 
-// 	timeout := script.Timeout
-// 	if timeout == 0 {
-// 		timeout = 100 * time.Millisecond
-// 	}
+	// goRes, err := bridge.GoValue(jsRes, ctx.Context)
+	// if err != nil {
+	// 	return fmt.Errorf("%s.%s %s", script.ID, process.Method, err.Error())
+	// }
 
-// 	iso, err := SelectIso(timeout)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	// return goRes
+}
 
-// 	defer iso.Unlock()
+// execStandard execute the script in standard mode
+func (script *Script) execStandard(process *process.Process) interface{} {
 
-// 	ctx := v8go.NewContext(iso.Isolate, iso.template)
-// 	defer ctx.Close()
+	iso, err := SelectIsoStandard(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
+	if err != nil {
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
+	defer iso.Dispose()
 
-// 	instance, err := iso.Isolate.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	ctx := v8go.NewContext(iso, iso.Template)
+	defer ctx.Close()
 
-// 	_, err = instance.Run(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	// Next Version will support this, snapshot will be used in the next version
+	// ctx, err := iso.Context()
+	// if err != nil {
+	// 	exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+	// 	return nil
+	// }
 
-// 	global := ctx.Global()
+	// Create instance of the script
+	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
+	if err != nil {
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
+	v, err := instance.Run(ctx)
+	if err != nil {
+		return err
+	}
+	defer v.Release()
 
-// 	jsArgs, err := bridge.JsValues(ctx, args)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("%s.%s %s", script.ID, method, err.Error())
-// 	}
-// 	defer bridge.FreeJsValues(jsArgs)
+	// Set the global data
+	global := ctx.Global()
+	err = bridge.SetShareData(ctx, global, &bridge.Share{
+		Sid:    process.Sid,
+		Root:   script.Root,
+		Global: process.Global,
+	})
+	if err != nil {
+		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
 
-// 	jsData, err := bridge.JsValue(ctx, map[string]interface{}{
-// 		"SID":  sid,
-// 		"ROOT": script.Root,
-// 		"DATA": data,
-// 	})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer func() {
-// 		if !jsData.IsNull() && !jsData.IsUndefined() {
-// 			jsData.Release()
-// 		}
-// 	}()
+	// Run the method
+	jsArgs, err := bridge.JsValues(ctx, process.Args)
+	if err != nil {
+		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
+		exception.New(err.Error(), 500).Throw()
+		return nil
 
-// 	err = global.Set("__yao_data", jsData)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	}
+	defer bridge.FreeJsValues(jsArgs)
 
-// 	res, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("%s.%s %+v", script.ID, method, err)
-// 	}
+	jsRes, err := global.MethodCall(process.Method, bridge.Valuers(jsArgs)...)
+	if err != nil {
+		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
+		exception.New(err.Error(), 500).Throw()
+		return nil
+	}
 
-// 	goRes, err := bridge.GoValue(res, ctx)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("%s.%s %s", script.ID, method, err.Error())
-// 	}
+	goRes, err := bridge.GoValue(jsRes, ctx)
+	if err != nil {
+		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
+		exception.New(err.Error(), 500).Throw()
+		return nil
+	}
 
-// 	return goRes, nil
-// }
+	return goRes
+}
+
+// ContextTimeout get the context timeout
+func (script *Script) ContextTimeout() time.Duration {
+	if script.Timeout > 0 {
+		return script.Timeout
+	}
+	return time.Duration(runtimeOption.ContextTimeout) * time.Millisecond
+}

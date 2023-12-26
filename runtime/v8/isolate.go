@@ -19,33 +19,97 @@ import (
 	storeT "github.com/yaoapp/gou/runtime/v8/objects/store"
 	timeT "github.com/yaoapp/gou/runtime/v8/objects/time"
 	websocketT "github.com/yaoapp/gou/runtime/v8/objects/websocket"
+	"github.com/yaoapp/gou/runtime/v8/store"
 
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
 )
 
 var isolates = &Isolates{Data: &sync.Map{}, Len: 0}
+var contextCache = map[*Isolate]map[*Script]*Context{}
+var isoReady chan *store.Isolate
+
 var chIsoReady chan *Isolate
 var newIsolateLock = &sync.RWMutex{}
 
-// NewIsolate create a new Isolate
-func NewIsolate() (*Isolate, error) {
+var chCtxReady chan *Context
+var newContextLock = &sync.RWMutex{}
 
-	newIsolateLock.Lock()
-	defer newIsolateLock.Unlock()
+// initialize create a new Isolate
+// in performance mode, the minSize isolates will be created
+func initialize() {
 
-	if isolates.Len >= runtimeOption.MaxSize {
+	v8go.YaoInit(uint(runtimeOption.HeapSizeLimit / 1024 / 1024))
+
+	// Make a global Isolate
+	makeGlobalIsolate()
+
+	isoReady = make(chan *store.Isolate, runtimeOption.MaxSize)
+	store.Isolates = store.New()
+	log.Trace(
+		"[V8] VM is initializing  MinSize=%d MaxSize=%d HeapLimit=%d",
+		runtimeOption.MinSize, runtimeOption.MaxSize, runtimeOption.HeapSizeLimit,
+	)
+	if runtimeOption.Mode == "performance" {
+		for store.Isolates.Len() < runtimeOption.MinSize {
+			addIsolate()
+		}
+	}
+}
+
+func release() {
+	v8go.YaoDispose()
+}
+
+// addIsolate create a new and add to the isolates
+func addIsolate() (*store.Isolate, error) {
+
+	if store.Isolates.Len() >= runtimeOption.MaxSize {
 		log.Warn("[V8] The maximum number of v8 vm has been reached (%d)", runtimeOption.MaxSize)
 		return nil, fmt.Errorf("The maximum number of v8 vm has been reached (%d)", runtimeOption.MaxSize)
 	}
 
-	new := newIsolate()
-	isolates.Add(new)
-	return new, nil
+	iso := makeIsolate()
+	if runtimeOption.Precompile {
+		precompile(iso)
+	}
+
+	store.Isolates.Add(iso)
+	// store.MakeIsolateCache(iso.Key())
+	isoReady <- iso
+	log.Trace("[V8] VM %s is ready (%d)", iso.Key(), len(isoReady))
+	return iso, nil
 }
 
-// makeTemplate make a new template
-func makeTemplate(iso *v8go.Isolate) *v8go.ObjectTemplate {
+// replaceIsolate
+// remove a isolate
+// create a new one append to the isolates if the isolates is less than minSize
+func replaceIsolate(iso *store.Isolate) {
+	removeIsolate(iso)
+	if store.Isolates.Len() < runtimeOption.MinSize {
+		addIsolate()
+	}
+}
+
+// removeIsolate remove a isolate
+func removeIsolate(iso *store.Isolate) {
+	key := iso.Key()
+	// store.CleanIsolateCache(key)
+	// store.Isolates.Remove(key)
+	iso.Dispose()
+	log.Trace("[V8] VM %s is removed", key)
+}
+
+// precompile compile the loaded scirpts
+// it cost too much time and memory to compile all scripts
+// ignore the error
+func precompile(iso *store.Isolate) {
+	return
+}
+
+// MakeTemplate make a new template
+func MakeTemplate(iso *v8go.Isolate) *v8go.ObjectTemplate {
+
 	template := v8go.NewObjectTemplate(iso)
 	template.Set("log", logT.New().ExportObject(iso))
 	template.Set("time", timeT.New().ExportObject(iso))
@@ -69,74 +133,53 @@ func makeTemplate(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	return template
 }
 
-func newIsolate() *Isolate {
+func makeGlobalIsolate() {
+	iso := v8go.YaoNewIsolate()
+	iso.AsGlobal()
+}
 
-	iso := v8go.NewIsolate()
-	template := makeTemplate(iso)
+func makeIsolate() *store.Isolate {
+	// iso, err := v8go.YaoNewIsolateFromGlobal()
+	// if err != nil {
+	// 	log.Error("[V8] Create isolate failed: %s", err.Error())
+	// 	return nil
+	// }
 
-	new := &Isolate{
+	iso := v8go.YaoNewIsolate()
+	return &store.Isolate{
 		Isolate:  iso,
-		template: template,
-		status:   IsoReady,
-		contexts: map[*Script]chan *v8go.Context{},
-	}
-
-	if runtimeOption.Precompile {
-		new.Precompile()
-	}
-	return new
-}
-
-// Precompile compile the loaded scirpts
-func (iso *Isolate) Precompile() {
-
-	for _, script := range Scripts {
-		timeout := script.Timeout
-		if timeout == 0 {
-			timeout = time.Millisecond * time.Duration(runtimeOption.ContextTimeout)
-		}
-		ch := make(chan *v8go.Context, runtimeOption.ContetxQueueSize)
-		iso.contexts[script] = ch
-		if runtimeOption.Mode == "performance" {
-			for i := 0; i < runtimeOption.ContetxQueueSize; i++ {
-				newContext, err := iso.MakeContext(script)
-				if err != nil {
-					log.Error("[V8] %s make context error %s", script.ID, err.Error())
-					continue
-				}
-				ch <- newContext
-			}
-		}
-	}
-
-	for _, script := range RootScripts {
-		timeout := script.Timeout
-		if timeout == 0 {
-			timeout = time.Millisecond * 100
-		}
-
-		ch := make(chan *v8go.Context, runtimeOption.ContetxQueueSize)
-		iso.contexts[script] = ch
-		if runtimeOption.Mode == "performance" {
-			for i := 0; i < runtimeOption.ContetxQueueSize; i++ {
-				newContext, err := iso.MakeContext(script)
-				if err != nil {
-					log.Error("[V8] %s make context error %s", script.ID, err.Error())
-					continue
-				}
-				ch <- newContext
-			}
-		}
+		Template: MakeTemplate(iso),
+		Status:   IsoReady,
 	}
 }
 
-// SelectIso one ready isolate
-func SelectIso(timeout time.Duration) (*Isolate, error) {
+// SelectIsoPerformance one ready isolate
+func SelectIsoPerformance(timeout time.Duration) (*store.Isolate, error) {
 
-	// Create a new isolate
-	if len(chIsoReady) == 0 {
-		go NewIsolate()
+	// make a timer
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	select {
+	case iso := <-isoReady:
+		Lock(iso)
+		return iso, nil
+
+	case <-timer.C:
+		log.Error("[V8] Select isolate timeout %v", timeout)
+		return nil, fmt.Errorf("Select isolate timeout %v", timeout)
 	}
+
+}
+
+// SelectIsoStandard one ready isolate ( the max size is 2 )
+func SelectIsoStandard(timeout time.Duration) (*store.Isolate, error) {
+
+	go func() {
+		// Create a new isolate
+		iso := makeIsolate()
+		isoReady <- iso
+	}()
 
 	// make a timer
 	timer := time.NewTimer(timeout)
@@ -144,225 +187,47 @@ func SelectIso(timeout time.Duration) (*Isolate, error) {
 
 	select {
 	case <-timer.C:
+		log.Error("[V8] Select isolate timeout %v", timeout)
 		return nil, fmt.Errorf("Select isolate timeout %v", timeout)
 
-	case iso := <-chIsoReady:
-		iso.Lock()
+	case iso := <-isoReady:
 		return iso, nil
 	}
 }
 
-// Resize set the maxSize
-func (list *Isolates) Resize(minSize, maxSize int) error {
-	if maxSize > 100 {
-		log.Warn("[V8] the maximum value of maxSize is 100")
-		maxSize = 100
-	}
-
-	// Remove iso
-	isolates.Range(func(iso *Isolate) bool {
-		isolates.Remove(iso)
-		return true
-	})
-
-	runtimeOption.MinSize = minSize
-	runtimeOption.MaxSize = maxSize
-	runtimeOption.Validate()
-	chIsoReady = make(chan *Isolate, runtimeOption.MaxSize)
-	for i := 0; i < runtimeOption.MinSize; i++ {
-		_, err := NewIsolate()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// Add a isolate
-func (list *Isolates) Add(iso *Isolate) {
-	list.Data.Store(iso, true)
-	list.Len = list.Len + 1
-	chIsoReady <- iso
-}
-
-// Remove a isolate
-func (list *Isolates) Remove(iso *Isolate) {
-
-	// Remove the contexts
-	for script, ch := range iso.contexts {
-
-		// close the contexts
-		for i := 0; i < len(ch); i++ {
-			ctx := <-ch
-			ctx.Close()
-		}
-
-		// close channel
-		close(ch)
-
-		// remove the context
-		delete(iso.contexts, script)
-	}
-
-	iso.Isolate.Dispose()
-	iso.Isolate = nil
-	iso.contexts = nil
-	list.Data.Delete(iso)
-	list.Len = list.Len - 1
-}
-
-// Range traverse isolates
-func (list *Isolates) Range(callback func(iso *Isolate) bool) {
-	list.Data.Range(func(key, value any) bool {
-		return callback(key.(*Isolate))
-	})
-}
-
 // Lock the isolate
-func (iso *Isolate) Lock() error {
-	iso.status = IsoBusy
-	return nil
+func Lock(iso *store.Isolate) {
+	iso.Lock()
 }
 
 // Unlock the isolate
-func (iso *Isolate) Unlock() error {
+// Recycle the isolate if the isolate is not health
+func Unlock(iso *store.Isolate) {
 
-	if iso.health() && len(chIsoReady) <= runtimeOption.MinSize-1 { // the available isolates are less than min size
-		iso.status = IsoReady
-		chIsoReady <- iso
-		return nil
+	health := iso.Health(runtimeOption.HeapSizeRelease, runtimeOption.HeapAvailableSize)
+	available := len(isoReady)
+	log.Trace("[V8] VM %s is health %v available %d", iso.Key(), health, available)
+
+	// add the isolate if the available isolates are less than min size
+	if available < runtimeOption.MinSize {
+		defer addIsolate()
 	}
 
-	// Remove the iso and create new one
-	go func() {
-		log.Info("[V8] VM %p will be removed", iso)
-		isolates.Remove(iso)
-		if len(chIsoReady) <= runtimeOption.MinSize-1 { // the available isolates are less than min size
-			NewIsolate()
-		}
-	}()
-
-	return nil
-}
-
-// Locked check if the isolate is locked
-func (iso Isolate) Locked() bool {
-	return iso.status == IsoBusy
-}
-
-// health check the isolate health
-func (iso *Isolate) health() bool {
-
-	// {
-	// 	"ExternalMemory": 0,
-	// 	"HeapSizeLimit": 1518338048,
-	// 	"MallocedMemory": 16484,
-	// 	"NumberOfDetachedContexts": 0,
-	// 	"NumberOfNativeContexts": 3,
-	// 	"PeakMallocedMemory": 24576,
-	// 	"TotalAvailableSize": 1518051356,
-	// 	"TotalHeapSize": 1261568,
-	// 	"TotalHeapSizeExecutable": 262144,
-	// 	"TotalPhysicalSize": 499164,
-	// 	"UsedHeapSize": 713616
-	// }
-
-	if iso.Isolate == nil {
-		return false
+	// remove the isolate if the available isolates are more than min size
+	if available > runtimeOption.MinSize {
+		go removeIsolate(iso)
+		return
 	}
 
-	stat := iso.Isolate.GetHeapStatistics()
-	if stat.TotalHeapSize > runtimeOption.HeapSizeRelease {
-		return false
+	// unlock the isolate if the isolate is health
+	if health {
+		iso.Unlock()
+		isoReady <- iso
+		return
 	}
 
-	if stat.TotalAvailableSize < runtimeOption.HeapAvailableSize { // 500M
-		return false
-	}
+	// remove the isolate if the isolate is not health
+	// then create a new one
+	go replaceIsolate(iso)
 
-	return true
-}
-
-// SelectContext select a context
-func (iso *Isolate) SelectContext(script *Script, timeout time.Duration) (*v8go.Context, error) {
-
-	// for performance mode
-	if runtimeOption.Mode == "performance" {
-		return iso.NewContext(script, timeout)
-	}
-
-	// for normal mode
-	if iso.Isolate == nil {
-		return nil, fmt.Errorf("[V8] %s isolate was removed", script.ID)
-	}
-
-	return iso.MakeContext(script)
-}
-
-// NewContext create a new context
-func (iso *Isolate) NewContext(script *Script, timeout time.Duration) (*v8go.Context, error) {
-
-	if iso.Isolate == nil {
-		return nil, fmt.Errorf("[V8] %s isolate was removed", script.ID)
-	}
-
-	var ch chan *v8go.Context
-	ch, has := iso.contexts[script]
-	if !has {
-		ch = make(chan *v8go.Context, runtimeOption.ContetxQueueSize)
-		iso.contexts[script] = ch
-
-		// Create ContetxQueueSize contexts
-		// for performance, we can create the context when the isolate is created
-		if runtimeOption.Mode == "performance" {
-			for i := 0; i < runtimeOption.ContetxQueueSize; i++ {
-				newContext, err := iso.MakeContext(script)
-				if err != nil {
-					log.Error("[V8] %s make context error %s", script.ID, err.Error())
-					continue
-				}
-				ch <- newContext
-			}
-		}
-	}
-
-	go func() {
-		newContext, err := iso.MakeContext(script)
-		if err != nil {
-			log.Error("[V8] %s make context error %s", script.ID, err.Error())
-			return
-		}
-		ch <- newContext
-	}()
-
-	// make a timer
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
-	select {
-	case <-timer.C:
-		return nil, fmt.Errorf("Select context timeout %v", timeout)
-
-	case ctx := <-ch:
-		return ctx, nil
-	}
-}
-
-// MakeContext make a new context
-func (iso *Isolate) MakeContext(script *Script) (*v8go.Context, error) {
-	newContext := v8go.NewContext(iso.Isolate, iso.template)
-	instance, err := iso.Isolate.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
-	if err != nil {
-		newContext.Close()
-		return nil, err
-	}
-
-	_, err = instance.Run(newContext)
-	if err != nil {
-		newContext.Close()
-		return nil, err
-	}
-
-	return newContext, nil
 }

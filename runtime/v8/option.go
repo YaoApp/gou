@@ -41,12 +41,7 @@ func (option *Option) Validate() {
 	}
 
 	if option.Mode == "" {
-		option.Mode = "normal"
-	}
-
-	if option.Mode == "performance" {
-		log.Warn("[V8] the performance mode does not support yet")
-		option.Mode = "normal"
+		option.Mode = "standard"
 	}
 
 	if option.MinSize > 100 {
@@ -68,8 +63,8 @@ func (option *Option) Validate() {
 		option.HeapSizeLimit = 1518338048 // 1.5G
 	}
 
-	if option.HeapSizeLimit > 1518338048 {
-		log.Warn("[V8] the maximum value of HeapSizeLimit is 1518338048(1.5G)")
+	if option.HeapSizeLimit > 4294967296 {
+		log.Warn("[V8] the maximum value of HeapSizeLimit is 4294967296(4G)")
 		option.HeapSizeLimit = 1518338048 // 1.5G
 	}
 
@@ -88,6 +83,6 @@ func (option *Option) Validate() {
 
 	if option.HeapAvailableSize < 524288000 || option.HeapAvailableSize > option.HeapSizeLimit {
 		log.Warn("[V8] the heapAvailableSize value is 524288000(500M) or heapSizeLimit * 0.30 to reduce the risk of program crashes")
-		option.HeapSizeRelease = 524288000 // 500M
+		// option.HeapSizeRelease = 524288000 // 500M
 	}
 }
