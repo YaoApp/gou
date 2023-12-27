@@ -198,7 +198,11 @@ func (script *Script) execPerformance(process *process.Process) interface{} {
 		return nil
 	}
 
-	return runner.Exec(script, process.Method, process.Args...)
+	runner.method = process.Method
+	runner.args = process.Args
+	runner.global = process.Global
+	runner.sid = process.Sid
+	return runner.Exec(script)
 }
 
 // execStandard execute the script in standard mode
