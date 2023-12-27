@@ -21,11 +21,11 @@ func EnablePrecompile() {
 func (option *Option) Validate() {
 
 	if option.MinSize == 0 {
-		option.MinSize = 2
+		option.MinSize = 50
 	}
 
 	if option.MaxSize == 0 {
-		option.MaxSize = 10
+		option.MaxSize = 100
 	}
 
 	if option.DefaultTimeout == 0 {
@@ -44,14 +44,14 @@ func (option *Option) Validate() {
 		option.Mode = "standard"
 	}
 
-	if option.MinSize > 100 {
-		log.Warn("[V8] the maximum value of initSize is 100")
-		option.MinSize = 100
+	if option.MinSize > 500 {
+		log.Warn("[V8] the maximum value of initSize is 500")
+		option.MinSize = 500
 	}
 
-	if option.MaxSize > 100 {
-		log.Warn("[V8] the maximum value of maxSize is 100")
-		option.MaxSize = 100
+	if option.MaxSize > 500 {
+		log.Warn("[V8] the maximum value of maxSize is 500")
+		option.MaxSize = 500
 	}
 
 	if option.MinSize > option.MaxSize {

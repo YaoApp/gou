@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
 )
@@ -27,9 +26,6 @@ type Runner struct {
 }
 
 var seq uint = 0
-
-var tempCount uint64 = 0
-var cacheCount uint64 = 0
 
 const (
 	// RunnerStatusInit is the runner status init
@@ -68,32 +64,32 @@ const (
 
 // NewRunner create a new v8 runner
 func NewRunner(keepalive bool) *Runner {
-	iso := v8go.YaoNewIsolate()
-	tmpl := MakeTemplate(iso)
-	ctx := v8go.NewContext(iso, tmpl)
-	status := RunnerStatusInit
-	if !keepalive {
-		status = RunnerStatusReady
-	}
-
 	seq++
 	return &Runner{
 		id:        seq,
-		iso:       iso,
-		ctx:       ctx,
+		iso:       nil,
+		ctx:       nil,
 		signal:    make(chan uint8, 2),
 		keepalive: keepalive,
-		status:    status,
+		status:    RunnerStatusInit,
 	}
 }
 
 // Start start the v8 runner
-func (runner *Runner) Start() error {
+func (runner *Runner) Start(ready chan bool) error {
 
 	// Set the status to free
 	if runner.status != RunnerStatusInit {
-		return fmt.Errorf("[runner] you can't start a runner with status: [%d]", runner.status)
+		err := fmt.Errorf("[runner] you can't start a runner with status: [%d]", runner.status)
+		log.Error(err.Error())
+		return err
 	}
+
+	iso := v8go.YaoNewIsolate()
+	tmpl := MakeTemplate(iso)
+	ctx := v8go.NewContext(iso, tmpl)
+	runner.iso = iso
+	runner.ctx = ctx
 
 	runner.status = RunnerStatusReady
 	if runner.keepalive {
@@ -101,6 +97,7 @@ func (runner *Runner) Start() error {
 	}
 
 	ticker := time.NewTicker(time.Millisecond * 50)
+	ready <- true
 
 	// Command loop
 	for {
@@ -155,7 +152,7 @@ func (runner *Runner) Exec(script *Script) interface{} {
 	runner.status = RunnerStatusRunning
 	runner.script = script
 	runner.chResp = make(chan interface{})
-	fmt.Println("Exec a script to the v8 runner to execute", runner.id)
+	log.Debug(fmt.Sprintln("2.  Exec a script to the v8 runner to execute", "runner.id:", runner.id, "status:", runner.status, "keepalive:", runner.keepalive, len(runner.signal)))
 
 	runner.signal <- RunnerCommandExec
 	select {
@@ -174,19 +171,26 @@ func (runner *Runner) exec() {
 	defer func() {
 		go func() {
 			if !runner.keepalive {
+				log.Debug(fmt.Sprintln("3.1 Send a destory signal to the v8 runner", "runner.id:", runner.id, "status:", runner.status, runner.keepalive))
 				runner.signal <- RunnerCommandDestroy
-				fmt.Println("Send a destory signal to the v8 runner done", runner.id, runner.status)
+				log.Debug(fmt.Sprintln("3.2 Send a destory signal to the v8 runner done", "runner.id:", runner.id, "status:", runner.status))
 				return
 			}
 			runner.signal <- RunnerCommandClose
-			fmt.Println("Send a close signal to the v8 runner done", runner.id, runner.status)
+			log.Debug(fmt.Sprintln("3.  Send a close signal to the v8 runner done", "runner.id:", runner.id, "status:", runner.status, runner.keepalive))
 		}()
 	}()
+
+	// runner.chResp <- "OK"
+	runner._exec()
+}
+
+func (runner *Runner) _exec() {
 
 	// Create instance of the script
 	instance, err := runner.iso.CompileUnboundScript(runner.script.Source, runner.script.File, v8go.CompileOptions{})
 	if err != nil {
-		exception.New("scripts.%s.%s %s", 500, runner.script.ID, runner.method, err.Error()).Throw()
+		runner.chResp <- err
 		return
 	}
 	v, err := instance.Run(runner.ctx)
@@ -203,15 +207,14 @@ func (runner *Runner) exec() {
 		Global: runner.global,
 	})
 	if err != nil {
-		exception.New("scripts.%s.%s %s", 500, runner.script.ID, runner.method, err.Error()).Throw()
+		runner.chResp <- err
 		return
 	}
 
 	// Run the method
 	jsArgs, err := bridge.JsValues(runner.ctx, runner.args)
 	if err != nil {
-		log.Error("scripts.%s.%s %s", runner.script.ID, runner.method, err.Error())
-		exception.New(err.Error(), 500).Throw()
+		runner.chResp <- err
 		return
 
 	}
@@ -234,9 +237,8 @@ func (runner *Runner) exec() {
 
 func (runner *Runner) close() {
 
-	fmt.Println("close the runner", runner.id, runner.status)
-	fmt.Println("--------------------", runner.id, "END")
-	fmt.Println("")
+	log.Debug(fmt.Sprintln("4.  close the runner", "runner.id:", runner.id, "status:", runner.status))
+	log.Debug(fmt.Sprintf("--- %d end -----------------\n\n", runner.id))
 
 	if runner.keepalive {
 		runner.reset()
@@ -256,6 +258,10 @@ func (runner *Runner) close() {
 
 // destory the runner
 func (runner *Runner) destory() {
+
+	log.Debug(fmt.Sprintln("4.  destory the runner", "runner.id:", runner.id, "status:", runner.status))
+	log.Debug(fmt.Sprintf("--- %d end -----------------\n\n", runner.id))
+
 	runner.status = RunnerStatusDestroy
 	if runner.signal != nil {
 		close(runner.signal)
