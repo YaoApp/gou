@@ -11,6 +11,11 @@ import (
 // Call call the script function
 func (context *Context) Call(method string, args ...interface{}) (interface{}, error) {
 
+	// Performance Mode
+	if context.Runner != nil {
+		return context.Runner.Exec(context.script), nil
+	}
+
 	// Set the global data
 	global := context.Global()
 	err := bridge.SetShareData(context.Context, global, &bridge.Share{
@@ -44,6 +49,11 @@ func (context *Context) Call(method string, args ...interface{}) (interface{}, e
 
 // CallWith call the script function
 func (context *Context) CallWith(ctx context.Context, method string, args ...interface{}) (interface{}, error) {
+
+	// Performance Mode
+	if context.Runner != nil {
+		return context.Runner.Exec(context.script), nil
+	}
 
 	// Set the global data
 	global := context.Global()
@@ -118,18 +128,26 @@ func (context *Context) WithFunction(name string, cb v8go.FunctionCallback) {
 // Close Context
 func (context *Context) Close() error {
 
-	context.Context.Close()
-	context.Context = nil
-	context.UnboundScript = nil
-	context.Data = nil
-
+	// Standard Mode Release Isolate
 	if runtimeOption.Mode == "standard" {
+		context.Context.Close()
+		context.Context = nil
+		context.UnboundScript = nil
+		context.Data = nil
+
 		context.Isolate.Dispose()
 		context.Isolate = nil
 		return nil
 	}
-	// Performance Mode
-	context.Isolate.Unlock()
-	context.Isolate = nil
+
+	// Performance Mode Release Runner
+	if context.Runner != nil {
+		context.Runner.Reset()
+		context.Context = nil
+		context.Data = nil
+		context.Runner = nil
+		return nil
+	}
+
 	return nil
 }
