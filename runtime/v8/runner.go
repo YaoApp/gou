@@ -6,6 +6,7 @@ import (
 
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/kun/log"
+	"github.com/yaoapp/kun/utils"
 	"rogchap.com/v8go"
 )
 
@@ -14,6 +15,7 @@ type Runner struct {
 	id        uint
 	iso       *v8go.Isolate
 	ctx       *v8go.Context
+	tmpl      *v8go.ObjectTemplate
 	status    uint8
 	signal    chan uint8
 	chResp    chan interface{}
@@ -23,6 +25,7 @@ type Runner struct {
 	sid       string
 	args      []interface{}
 	global    map[string]interface{}
+	caches    map[string]*v8go.Object
 }
 
 var seq uint = 0
@@ -45,9 +48,6 @@ const (
 
 	// RunnerCommandDestroy is the runner command destroy
 	RunnerCommandDestroy
-
-	// RunnerCommandClean is the runner command clean
-	RunnerCommandClean
 
 	// RunnerCommandReset is the runner command reset
 	RunnerCommandReset
@@ -87,7 +87,7 @@ func (runner *Runner) Start(ready chan bool) error {
 	ctx := v8go.NewContext(iso, tmpl)
 	runner.iso = iso
 	runner.ctx = ctx
-
+	runner.tmpl = tmpl
 	runner.status = RunnerStatusReady
 	if runner.keepalive {
 		dispatcher.online(runner)
@@ -105,10 +105,6 @@ func (runner *Runner) Start(ready chan bool) error {
 
 		case signal := <-runner.signal:
 			switch signal {
-
-			case RunnerCommandClean:
-				runner.clean()
-				break
 
 			case RunnerCommandReset:
 				runner.reset()
@@ -246,6 +242,8 @@ func (runner *Runner) destroy() {
 	runner.iso.Dispose()
 	runner.iso = nil
 	runner.ctx = nil
+	runner.caches = nil
+	runner.tmpl = nil
 	runner = nil
 }
 
@@ -254,14 +252,16 @@ func (runner *Runner) reset() {
 
 	log.Debug(fmt.Sprintf("4.  [%d] reset the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive))
 	log.Debug(fmt.Sprintf("--- [%d] end -----------------", runner.id))
-
-	runner.status = RunnerStatusDestroy
-
+	runner.status = RunnerStatusCleaning
+	// runner.ctx.Reset(runner.tmpl)
 	runner.ctx.Close()
-	runner.iso.Dispose()
-	runner.iso = v8go.YaoNewIsolate()
-	runner.ctx = v8go.NewContext(runner.iso, MakeTemplate(runner.iso))
-	// log.Info("[runner] reset the runner: [%p]", runner)
+	runner.ctx = v8go.NewContext(runner.iso, runner.tmpl)
+
+	if !runner.health() {
+		runner.signal <- RunnerCommandDestroy
+		dispatcher.create()
+		return
+	}
 
 	// Set the status to free
 	runner.status = RunnerStatusReady
@@ -269,14 +269,19 @@ func (runner *Runner) reset() {
 
 }
 
-func (runner *Runner) clean() {
+func (runner *Runner) health() bool {
+	if runner.status == RunnerStatusDestroy {
+		return true
+	}
 	runner.status = RunnerStatusCleaning
-	runner.ctx.Close()
-	runner.ctx = v8go.NewContext(runner.iso, MakeTemplate(runner.iso))
-	// log.Info("[runner] clean the runner: [%p]", runner)
+	stat := runner.iso.GetHeapStatistics()
+	utils.Dump(stat)
 
-	// Set the status to free
+	log.Trace("[runner] [%d] health check. HeapStatistics:%d, HeapSizeRelease:%d", runner.id, stat.TotalHeapSize-stat.UsedHeapSize, runtimeOption.HeapSizeRelease)
+	if stat.TotalHeapSize-stat.UsedHeapSize < runtimeOption.HeapSizeRelease {
+		log.Trace("[runner] [%d] health check. HeapStatistics: %d < %d Restart", runner.id, stat.TotalHeapSize-stat.UsedHeapSize, runtimeOption.HeapSizeRelease)
+		return false
+	}
 	runner.status = RunnerStatusReady
-	dispatcher.online(runner)
-
+	return true
 }

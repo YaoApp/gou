@@ -25,3 +25,4 @@ tests/yao/workshop/*
 .idea
 tests/app/db
 tests/app/data
+test.log

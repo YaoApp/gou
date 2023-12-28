@@ -17,7 +17,7 @@ type RunnerMap struct {
 
 // Dispatcher is a runner dispatcher
 type Dispatcher struct {
-	availables RunnerMap
+	availables chan *Runner
 	health     *Health
 	total      uint
 	min        uint
@@ -41,7 +41,7 @@ func NewDispatcher(min, max uint) *Dispatcher {
 	// min = 10
 	// max = 200
 	return &Dispatcher{
-		availables: RunnerMap{data: make(map[uint]*Runner), mutex: &sync.RWMutex{}},
+		availables: make(chan *Runner, max),
 		health:     &Health{missing: 0, total: 0},
 		total:      0,
 		min:        min,
@@ -61,32 +61,15 @@ func (dispatcher *Dispatcher) Start() error {
 
 // Stop stop the v8 mannager
 func (dispatcher *Dispatcher) Stop() {
-	for _, runner := range dispatcher.availables.data {
-		dispatcher.destroy(runner)
-		runner.signal <- RunnerCommandDestroy
-	}
-}
-
-func (dispatcher *Dispatcher) offline(runner *Runner) {
-	dispatcher.availables.mutex.Lock()
-	defer dispatcher.availables.mutex.Unlock()
-	dispatcher._offline(runner)
-}
-
-func (dispatcher *Dispatcher) _offline(runner *Runner) {
-	delete(dispatcher.availables.data, runner.id)
-	log.Trace("[dispatcher] [%d] runner offline. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
-	// create a new runner if the total runners are less than max
-	// if dispatcher.total < dispatcher.max {
-	// 	go dispatcher.create()
+	// for _, runner := range dispatcher.availables.data {
+	// 	dispatcher.destroy(runner)
+	// 	runner.signal <- RunnerCommandDestroy
 	// }
 }
 
 func (dispatcher *Dispatcher) online(runner *Runner) {
-	dispatcher.availables.mutex.Lock()
-	defer dispatcher.availables.mutex.Unlock()
-	dispatcher.availables.data[runner.id] = runner
-	log.Trace("[dispatcher] [%d] runner online. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
+	dispatcher.availables <- runner
+	log.Trace("[dispatcher] [%d] runner online. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables), dispatcher.total, dispatcher.health)
 }
 
 func (dispatcher *Dispatcher) create() {
@@ -95,36 +78,44 @@ func (dispatcher *Dispatcher) create() {
 	go runner.Start(ready)
 	<-ready
 	dispatcher.total++
-	log.Trace("[dispatcher] [%d] runner create. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
-}
-
-func (dispatcher *Dispatcher) destroy(runner *Runner) {
-	dispatcher.availables.mutex.Lock()
-	defer dispatcher.availables.mutex.Unlock()
-	delete(dispatcher.availables.data, runner.id)
-	dispatcher.total--
-	log.Trace("[dispatcher] [%d] runner destroy. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
+	log.Trace("[dispatcher] [%d] runner create. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables), dispatcher.total, dispatcher.health)
 }
 
 // Select select a free v8 runner
 func (dispatcher *Dispatcher) Select(timeout time.Duration) (*Runner, error) {
-	dispatcher.availables.mutex.Lock()
-	defer dispatcher.availables.mutex.Unlock()
-	go dispatcher.totalCount()
 
-	for _, runner := range dispatcher.availables.data {
-		dispatcher._offline(runner)
-		log.Debug(fmt.Sprintf("--- [%d] -----------------", runner.id))
-		log.Debug(fmt.Sprintf("1.  [%d] Select a free v8 runner. availables=%d", runner.id, len(dispatcher.availables.data)))
-		return runner, nil
+	go dispatcher.totalCount()
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	timecnt := 1 * time.Millisecond
+
+	for {
+		select {
+		case <-ticker.C:
+			timecnt = timecnt + 100
+			if timecnt > timeout {
+				return nil, fmt.Errorf("[dispatcher] select timeout %d", timeout)
+			}
+
+			if uint(len(dispatcher.availables)) < dispatcher.max {
+				go dispatcher.missingCount()
+				runner := NewRunner(false)
+				ready := make(chan bool)
+				go runner.Start(ready)
+				<-ready
+				dispatcher.availables <- runner
+			}
+			break
+
+		case runner := <-dispatcher.availables:
+			log.Debug(fmt.Sprintf("--- [%d] -----------------", runner.id))
+			log.Debug(fmt.Sprintf("1.  [%d] Select a free v8 runner. availables=%d", runner.id, len(dispatcher.availables)))
+			return runner, nil
+
+		}
 	}
 
-	go dispatcher.missingCount()
-	runner := NewRunner(false)
-	ready := make(chan bool)
-	go runner.Start(ready)
-	<-ready
-	return runner, nil
 }
 
 // Scaling scale the v8 runners, check every 10 seconds

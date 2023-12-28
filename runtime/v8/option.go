@@ -69,7 +69,7 @@ func (option *Option) Validate() {
 	}
 
 	if option.HeapSizeRelease == 0 {
-		option.HeapSizeRelease = 52428800 // 50M
+		option.HeapSizeRelease = 524288 // 50M
 	}
 
 	if option.HeapSizeRelease > 524288000 {
