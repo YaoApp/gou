@@ -62,7 +62,7 @@ func (dispatcher *Dispatcher) Start() error {
 // Stop stop the v8 mannager
 func (dispatcher *Dispatcher) Stop() {
 	for _, runner := range dispatcher.availables.data {
-		dispatcher.destory(runner)
+		dispatcher.destroy(runner)
 		runner.signal <- RunnerCommandDestroy
 	}
 }
@@ -75,7 +75,7 @@ func (dispatcher *Dispatcher) offline(runner *Runner) {
 
 func (dispatcher *Dispatcher) _offline(runner *Runner) {
 	delete(dispatcher.availables.data, runner.id)
-	log.Trace("[dispatcher] runner %d offline (%d/%d) %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
+	log.Trace("[dispatcher] [%d] runner offline. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
 	// create a new runner if the total runners are less than max
 	// if dispatcher.total < dispatcher.max {
 	// 	go dispatcher.create()
@@ -86,7 +86,7 @@ func (dispatcher *Dispatcher) online(runner *Runner) {
 	dispatcher.availables.mutex.Lock()
 	defer dispatcher.availables.mutex.Unlock()
 	dispatcher.availables.data[runner.id] = runner
-	log.Trace("[dispatcher] runner %d online (%d/%d) %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
+	log.Trace("[dispatcher] [%d] runner online. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
 }
 
 func (dispatcher *Dispatcher) create() {
@@ -95,15 +95,15 @@ func (dispatcher *Dispatcher) create() {
 	go runner.Start(ready)
 	<-ready
 	dispatcher.total++
-	log.Trace("[dispatcher] runner %d create (%d/%d) %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
+	log.Trace("[dispatcher] [%d] runner create. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
 }
 
-func (dispatcher *Dispatcher) destory(runner *Runner) {
+func (dispatcher *Dispatcher) destroy(runner *Runner) {
 	dispatcher.availables.mutex.Lock()
 	defer dispatcher.availables.mutex.Unlock()
 	delete(dispatcher.availables.data, runner.id)
 	dispatcher.total--
-	log.Trace("[dispatcher] runner %d destory (%d,%d) %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
+	log.Trace("[dispatcher] [%d] runner destroy. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables.data), dispatcher.total, dispatcher.health)
 }
 
 // Select select a free v8 runner
@@ -114,8 +114,8 @@ func (dispatcher *Dispatcher) Select(timeout time.Duration) (*Runner, error) {
 
 	for _, runner := range dispatcher.availables.data {
 		dispatcher._offline(runner)
-		log.Debug(fmt.Sprintf("--- %d -----------------\n", runner.id))
-		log.Debug(fmt.Sprintln("1.  Select a free v8 runner id", runner.id, "count", len(dispatcher.availables.data)))
+		log.Debug(fmt.Sprintf("--- [%d] -----------------", runner.id))
+		log.Debug(fmt.Sprintf("1.  [%d] Select a free v8 runner. availables=%d", runner.id, len(dispatcher.availables.data)))
 		return runner, nil
 	}
 
@@ -162,7 +162,7 @@ func (dispatcher *Dispatcher) totalCount() {
 }
 
 func (health *Health) String() string {
-	return fmt.Sprintf("missing: %d, total: %d", health.missing, health.total)
+	return fmt.Sprintf("missing:%d, total:%d", health.missing, health.total)
 }
 
 // Reset reset the health

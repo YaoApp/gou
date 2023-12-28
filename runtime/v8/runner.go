@@ -55,9 +55,6 @@ const (
 	// RunnerCommandExec is the runner command exec
 	RunnerCommandExec
 
-	// RunnerCommandClose is the runner command close
-	RunnerCommandClose
-
 	// RunnerCommandStatus is the runner command status
 	RunnerCommandStatus
 )
@@ -97,6 +94,7 @@ func (runner *Runner) Start(ready chan bool) error {
 	}
 
 	ticker := time.NewTicker(time.Millisecond * 50)
+
 	ready <- true
 
 	// Command loop
@@ -120,12 +118,8 @@ func (runner *Runner) Start(ready chan bool) error {
 				runner.exec()
 				break
 
-			case RunnerCommandClose:
-				runner.close()
-				break
-
 			case RunnerCommandDestroy:
-				runner.destory()
+				runner.destroy()
 				return nil
 
 			default:
@@ -152,7 +146,7 @@ func (runner *Runner) Exec(script *Script) interface{} {
 	runner.status = RunnerStatusRunning
 	runner.script = script
 	runner.chResp = make(chan interface{})
-	log.Debug(fmt.Sprintln("2.  Exec a script to the v8 runner to execute", "runner.id:", runner.id, "status:", runner.status, "keepalive:", runner.keepalive, len(runner.signal)))
+	log.Debug(fmt.Sprintf("2.  [%d] Exec script %s.%s. status:%d, keepalive:%v, signal:%d", runner.id, script.ID, runner.method, runner.status, runner.keepalive, len(runner.signal)))
 
 	runner.signal <- RunnerCommandExec
 	select {
@@ -171,13 +165,15 @@ func (runner *Runner) exec() {
 	defer func() {
 		go func() {
 			if !runner.keepalive {
-				log.Debug(fmt.Sprintln("3.1 Send a destory signal to the v8 runner", "runner.id:", runner.id, "status:", runner.status, runner.keepalive))
+				log.Debug(fmt.Sprintf("3.1 [%d] Send a destroy signal to the v8 runner. status:%d, keepalive:%v", runner.id, runner.status, runner.keepalive))
 				runner.signal <- RunnerCommandDestroy
-				log.Debug(fmt.Sprintln("3.2 Send a destory signal to the v8 runner done", "runner.id:", runner.id, "status:", runner.status))
+				log.Debug(fmt.Sprintf("3.2 [%d] Send a destroy signal to the v8 runner. sstatus:%d, keepalive:%v (done)", runner.id, runner.status, runner.keepalive))
 				return
 			}
-			runner.signal <- RunnerCommandClose
-			log.Debug(fmt.Sprintln("3.  Send a close signal to the v8 runner done", "runner.id:", runner.id, "status:", runner.status, runner.keepalive))
+
+			log.Debug(fmt.Sprintf("3.1 [%d] Send a reset signal to the v8 runner. status:%d, keepalive:%v", runner.id, runner.status, runner.keepalive))
+			runner.signal <- RunnerCommandReset
+			log.Debug(fmt.Sprintf("3.2 [%d] Send a reset signal to the v8 runner. status:%d, keepalive:%v (done)", runner.id, runner.status, runner.keepalive))
 		}()
 	}()
 
@@ -235,32 +231,11 @@ func (runner *Runner) _exec() {
 	runner.chResp <- goRes
 }
 
-func (runner *Runner) close() {
+// destroy the runner
+func (runner *Runner) destroy() {
 
-	log.Debug(fmt.Sprintln("4.  close the runner", "runner.id:", runner.id, "status:", runner.status))
-	log.Debug(fmt.Sprintf("--- %d end -----------------\n\n", runner.id))
-
-	if runner.keepalive {
-		runner.reset()
-		return
-	}
-
-	// Clean the runner
-	if runner.signal != nil {
-		close(runner.signal)
-	}
-	runner.ctx.Close()
-	runner.iso.Dispose()
-	runner.iso = nil
-	runner.ctx = nil
-	runner.args = nil
-}
-
-// destory the runner
-func (runner *Runner) destory() {
-
-	log.Debug(fmt.Sprintln("4.  destory the runner", "runner.id:", runner.id, "status:", runner.status))
-	log.Debug(fmt.Sprintf("--- %d end -----------------\n\n", runner.id))
+	log.Debug(fmt.Sprintf("4.  [%d] destroy the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive))
+	log.Debug(fmt.Sprintf("--- [%d] end -----------------", runner.id))
 
 	runner.status = RunnerStatusDestroy
 	if runner.signal != nil {
@@ -277,8 +252,10 @@ func (runner *Runner) destory() {
 // reset the runner
 func (runner *Runner) reset() {
 
+	log.Debug(fmt.Sprintf("4.  [%d] destroy the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive))
+	log.Debug(fmt.Sprintf("--- [%d] end -----------------", runner.id))
+
 	runner.status = RunnerStatusDestroy
-	// dispatcher.UpdateStatus(runner, RunnerStatusDestroy)
 
 	runner.ctx.Close()
 	runner.iso.Dispose()
