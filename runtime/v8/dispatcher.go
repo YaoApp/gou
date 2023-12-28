@@ -69,16 +69,20 @@ func (dispatcher *Dispatcher) Stop() {
 
 func (dispatcher *Dispatcher) online(runner *Runner) {
 	dispatcher.availables <- runner
-	log.Trace("[dispatcher] [%d] runner online. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables), dispatcher.total, dispatcher.health)
+	log.Trace("[dispatcher] [%s] runner online. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables), dispatcher.total, dispatcher.health)
 }
 
 func (dispatcher *Dispatcher) create() {
+	if dispatcher.total >= dispatcher.max {
+		log.Error("[dispatcher] the runner is max. availables:%d, total:%d, %s", len(dispatcher.availables), dispatcher.total, dispatcher.health)
+		return
+	}
 	runner := NewRunner(true)
 	ready := make(chan bool)
 	go runner.Start(ready)
 	<-ready
 	dispatcher.total++
-	log.Trace("[dispatcher] [%d] runner create. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables), dispatcher.total, dispatcher.health)
+	log.Trace("[dispatcher] [%s] runner create. availables:%d, total:%d, %s", runner.id, len(dispatcher.availables), dispatcher.total, dispatcher.health)
 }
 
 // Select select a free v8 runner
@@ -89,28 +93,23 @@ func (dispatcher *Dispatcher) Select(timeout time.Duration) (*Runner, error) {
 	defer ticker.Stop()
 
 	timecnt := 1 * time.Millisecond
-
 	for {
 		select {
 		case <-ticker.C:
-			timecnt = timecnt + 100
+			timecnt = timecnt + 100*time.Millisecond
 			if timecnt > timeout {
-				return nil, fmt.Errorf("[dispatcher] select timeout %d", timeout)
+				return nil, fmt.Errorf("[dispatcher] select timeout %v", timeout)
 			}
 
 			if uint(len(dispatcher.availables)) < dispatcher.max {
-				go dispatcher.missingCount()
-				runner := NewRunner(false)
-				ready := make(chan bool)
-				go runner.Start(ready)
-				<-ready
-				dispatcher.availables <- runner
+				dispatcher.missingCount()
+				go dispatcher.create()
 			}
 			break
 
 		case runner := <-dispatcher.availables:
-			log.Debug(fmt.Sprintf("--- [%d] -----------------", runner.id))
-			log.Debug(fmt.Sprintf("1.  [%d] Select a free v8 runner. availables=%d", runner.id, len(dispatcher.availables)))
+			log.Debug(fmt.Sprintf("--- [%s] -----------------", runner.id))
+			log.Debug(fmt.Sprintf("1.  [%s] Select a free v8 runner. availables=%d", runner.id, len(dispatcher.availables)))
 			return runner, nil
 
 		}

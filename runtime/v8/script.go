@@ -10,6 +10,7 @@ import (
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
+	"github.com/yaoapp/gou/runtime/v8/objects/console"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
@@ -139,13 +140,38 @@ func SelectRoot(id string) (*Script, error) {
 // NewContext create a new context
 func (script *Script) NewContext(sid string, global map[string]interface{}) (*Context, error) {
 
+	fmt.Println("create a new context", sid, script.ID)
+
 	timeout := script.Timeout
 	if timeout == 0 {
 		timeout = time.Duration(runtimeOption.ContextTimeout) * time.Millisecond
 	}
 
+	// The performance mode
 	if runtimeOption.Mode == "performance" {
-		return nil, fmt.Errorf("performance mode is not supported yet")
+
+		runner, err := dispatcher.Select(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
+		if err != nil {
+			return nil, err
+		}
+
+		runner.global = global
+		runner.sid = sid
+		ctx, err := runner.Context()
+		if err != nil {
+			return nil, err
+		}
+
+		return &Context{
+			ID:      script.ID,
+			Sid:     sid,
+			Data:    global,
+			Root:    script.Root,
+			Timeout: timeout,
+			Runner:  runner,
+			Context: ctx,
+		}, nil
+
 	}
 
 	iso, err := SelectIsoStandard(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
@@ -165,6 +191,12 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 		return nil, fmt.Errorf("scripts.%s %s", script.ID, err.Error())
 	}
 	defer v.Release()
+
+	// console.log("foo", "bar", 1, 2, 3, 4)
+	err = console.New().Set("console", ctx)
+	if err != nil {
+		return nil, fmt.Errorf("scripts.%s %s", script.ID, err.Error())
+	}
 
 	return &Context{
 		ID:            script.ID,
@@ -246,6 +278,13 @@ func (script *Script) execStandard(process *process.Process) interface{} {
 	})
 	if err != nil {
 		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
+
+	// console.log("foo", "bar", 1, 2, 3, 4)
+	err = console.New().Set("console", ctx)
+	if err != nil {
 		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
 		return nil
 	}

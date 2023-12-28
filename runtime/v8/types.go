@@ -57,6 +57,7 @@ type Context struct {
 	Data    map[string]interface{} // set the global data
 	Root    bool
 	Timeout time.Duration // terminate the execution after this time
+	*Runner
 	*store.Isolate
 	*v8go.UnboundScript
 	*v8go.Context

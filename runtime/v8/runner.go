@@ -2,17 +2,26 @@ package v8
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
+	"github.com/yaoapp/gou/runtime/v8/objects/console"
 	"github.com/yaoapp/kun/log"
-	"github.com/yaoapp/kun/utils"
 	"rogchap.com/v8go"
 )
 
+// ID is the runner id
+type ID string
+
+func (id ID) String() string {
+	return strings.Split(string(id), "-")[0]
+}
+
 // Runner is the v8 runner
 type Runner struct {
-	id        uint
+	id        ID
 	iso       *v8go.Isolate
 	ctx       *v8go.Context
 	tmpl      *v8go.ObjectTemplate
@@ -27,8 +36,6 @@ type Runner struct {
 	global    map[string]interface{}
 	caches    map[string]*v8go.Object
 }
-
-var seq uint = 0
 
 const (
 	// RunnerStatusInit is the runner status init
@@ -61,9 +68,8 @@ const (
 
 // NewRunner create a new v8 runner
 func NewRunner(keepalive bool) *Runner {
-	seq++
 	return &Runner{
-		id:        seq,
+		id:        ID(uuid.New().String()),
 		iso:       nil,
 		ctx:       nil,
 		signal:    make(chan uint8, 2),
@@ -132,7 +138,7 @@ func (runner *Runner) Destroy(cb func()) {
 }
 
 // Reset send a reset signal to the v8 runner
-func (runner *Runner) Reset(cb func()) {
+func (runner *Runner) Reset() {
 	runner.signal <- RunnerCommandReset
 }
 
@@ -142,7 +148,7 @@ func (runner *Runner) Exec(script *Script) interface{} {
 	runner.status = RunnerStatusRunning
 	runner.script = script
 	runner.chResp = make(chan interface{})
-	log.Debug(fmt.Sprintf("2.  [%d] Exec script %s.%s. status:%d, keepalive:%v, signal:%d", runner.id, script.ID, runner.method, runner.status, runner.keepalive, len(runner.signal)))
+	log.Debug(fmt.Sprintf("2.  [%s] Exec script %s.%s. status:%d, keepalive:%v, signal:%d", runner.id, script.ID, runner.method, runner.status, runner.keepalive, len(runner.signal)))
 
 	runner.signal <- RunnerCommandExec
 	select {
@@ -161,15 +167,15 @@ func (runner *Runner) exec() {
 	defer func() {
 		go func() {
 			if !runner.keepalive {
-				log.Debug(fmt.Sprintf("3.1 [%d] Send a destroy signal to the v8 runner. status:%d, keepalive:%v", runner.id, runner.status, runner.keepalive))
+				log.Debug(fmt.Sprintf("3.1 [%s] Send a destroy signal to the v8 runner. status:%d, keepalive:%v", runner.id, runner.status, runner.keepalive))
 				runner.signal <- RunnerCommandDestroy
-				log.Debug(fmt.Sprintf("3.2 [%d] Send a destroy signal to the v8 runner. sstatus:%d, keepalive:%v (done)", runner.id, runner.status, runner.keepalive))
+				log.Debug(fmt.Sprintf("3.2 [%s] Send a destroy signal to the v8 runner. sstatus:%d, keepalive:%v (done)", runner.id, runner.status, runner.keepalive))
 				return
 			}
 
-			log.Debug(fmt.Sprintf("3.1 [%d] Send a reset signal to the v8 runner. status:%d, keepalive:%v", runner.id, runner.status, runner.keepalive))
+			log.Debug(fmt.Sprintf("3.1 [%s] Send a reset signal to the v8 runner. status:%d, keepalive:%v", runner.id, runner.status, runner.keepalive))
 			runner.signal <- RunnerCommandReset
-			log.Debug(fmt.Sprintf("3.2 [%d] Send a reset signal to the v8 runner. status:%d, keepalive:%v (done)", runner.id, runner.status, runner.keepalive))
+			log.Debug(fmt.Sprintf("3.2 [%s] Send a reset signal to the v8 runner. status:%d, keepalive:%v (done)", runner.id, runner.status, runner.keepalive))
 		}()
 	}()
 
@@ -187,9 +193,17 @@ func (runner *Runner) _exec() {
 	}
 	v, err := instance.Run(runner.ctx)
 	if err != nil {
+		runner.chResp <- err
 		return
 	}
 	defer v.Release()
+
+	// console.log("foo", "bar", 1, 2, 3, 4)
+	err = console.New().Set("console", runner.ctx)
+	if err != nil {
+		runner.chResp <- err
+		return
+	}
 
 	// Set the global data
 	global := runner.ctx.Global()
@@ -230,9 +244,10 @@ func (runner *Runner) _exec() {
 // destroy the runner
 func (runner *Runner) destroy() {
 
-	log.Debug(fmt.Sprintf("4.  [%d] destroy the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive))
-	log.Debug(fmt.Sprintf("--- [%d] end -----------------", runner.id))
+	log.Debug(fmt.Sprintf("4.  [%s] destroy the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive))
+	log.Debug(fmt.Sprintf("--- [%s] end -----------------", runner.id))
 
+	dispatcher.total--
 	runner.status = RunnerStatusDestroy
 	if runner.signal != nil {
 		close(runner.signal)
@@ -250,10 +265,10 @@ func (runner *Runner) destroy() {
 // reset the runner
 func (runner *Runner) reset() {
 
-	log.Debug(fmt.Sprintf("4.  [%d] reset the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive))
-	log.Debug(fmt.Sprintf("--- [%d] end -----------------", runner.id))
+	log.Debug(fmt.Sprintf("4.  [%s] reset the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive))
+	log.Debug(fmt.Sprintf("--- [%s] end -----------------", runner.id))
 	runner.status = RunnerStatusCleaning
-	// runner.ctx.Reset(runner.tmpl)
+
 	runner.ctx.Close()
 	runner.ctx = v8go.NewContext(runner.iso, runner.tmpl)
 
@@ -275,11 +290,11 @@ func (runner *Runner) health() bool {
 	}
 	runner.status = RunnerStatusCleaning
 	stat := runner.iso.GetHeapStatistics()
-	utils.Dump(stat)
+	// utils.Dump(stat)
 
-	log.Trace("[runner] [%d] health check. HeapStatistics:%d, HeapSizeRelease:%d", runner.id, stat.TotalHeapSize-stat.UsedHeapSize, runtimeOption.HeapSizeRelease)
-	if stat.TotalHeapSize-stat.UsedHeapSize < runtimeOption.HeapSizeRelease {
-		log.Trace("[runner] [%d] health check. HeapStatistics: %d < %d Restart", runner.id, stat.TotalHeapSize-stat.UsedHeapSize, runtimeOption.HeapSizeRelease)
+	log.Trace("[runner] [%s] health check. HeapStatistics:%d, HeapSizeRelease:%d", runner.id, stat.TotalHeapSize-stat.UsedHeapSize, runtimeOption.HeapSizeRelease)
+	if stat.TotalHeapSize-stat.UsedHeapSize < runtimeOption.HeapSizeRelease || stat.NumberOfNativeContexts > 200 {
+		log.Trace("[runner] [%s] health check. HeapStatistics: %d < %d Restart || %d", runner.id, stat.TotalHeapSize-stat.UsedHeapSize, runtimeOption.HeapSizeRelease, stat.NumberOfNativeContexts)
 		return false
 	}
 	runner.status = RunnerStatusReady
