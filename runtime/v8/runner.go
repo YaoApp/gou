@@ -252,7 +252,7 @@ func (runner *Runner) destroy() {
 // reset the runner
 func (runner *Runner) reset() {
 
-	log.Debug(fmt.Sprintf("4.  [%d] destroy the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive))
+	log.Debug(fmt.Sprintf("4.  [%d] reset the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive))
 	log.Debug(fmt.Sprintf("--- [%d] end -----------------", runner.id))
 
 	runner.status = RunnerStatusDestroy
