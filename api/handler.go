@@ -13,6 +13,7 @@ import (
 	v8 "github.com/yaoapp/gou/runtime/v8"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/kun/any"
+	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
 	"github.com/yaoapp/kun/maps"
 	"rogchap.com/v8go"
@@ -66,7 +67,8 @@ func (path Path) defaultHandler(getArgs func(c *gin.Context) []interface{}) func
 				return
 
 			case error:
-				c.JSON(500, gin.H{"message": data.Error(), "code": 500})
+				ex := exception.Err(data, 500)
+				c.JSON(ex.Code, gin.H{"message": ex.Message, "code": ex.Code})
 
 			default:
 				if strings.HasPrefix(contentType, "application/json") {
@@ -271,9 +273,8 @@ func (path Path) execProcess(ctx context.Context, chRes chan<- interface{}, c *g
 	process.WithContext(ctx)
 	res, err := process.Exec()
 	if err != nil {
-		fmt.Println("err", err)
 		log.Error("[Path] %s %s", path.Path, err.Error())
-		chRes <- nil
+		chRes <- err
 		return
 	}
 	chRes <- res

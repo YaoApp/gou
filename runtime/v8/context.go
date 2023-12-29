@@ -2,9 +2,10 @@ package v8
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/yaoapp/gou/runtime/v8/bridge"
+	"github.com/yaoapp/gou/runtime/v8/objects/console"
+	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
 )
 
@@ -27,6 +28,12 @@ func (context *Context) Call(method string, args ...interface{}) (interface{}, e
 		return nil, err
 	}
 
+	// console.log("foo", "bar", 1, 2, 3, 4)
+	err = console.New().Set("console", context.Context)
+	if err != nil {
+		return nil, err
+	}
+
 	// Run the method
 	jsArgs, err := bridge.JsValues(context.Context, args)
 	if err != nil {
@@ -36,6 +43,7 @@ func (context *Context) Call(method string, args ...interface{}) (interface{}, e
 
 	jsRes, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
 	if err != nil {
+		log.Error("%s.%s %s", context.ID, method, err.Error())
 		return nil, err
 	}
 
@@ -62,6 +70,12 @@ func (context *Context) CallWith(ctx context.Context, method string, args ...int
 		Root:   context.Root,
 		Global: context.Data,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	// console.log("foo", "bar", 1, 2, 3, 4)
+	err = console.New().Set("console", context.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +126,8 @@ func (context *Context) CallWith(ctx context.Context, method string, args ...int
 		return nil, ctx.Err()
 
 	case err := <-errChan:
-		return nil, fmt.Errorf("%s.%s %s", context.ID, method, err.Error())
+		log.Error("%s.%s %s", context.ID, method, err.Error())
+		return nil, err
 
 	case goRes := <-resChan:
 		return goRes, nil

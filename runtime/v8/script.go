@@ -302,7 +302,7 @@ func (script *Script) execStandard(process *process.Process) interface{} {
 	jsRes, err := global.MethodCall(process.Method, bridge.Valuers(jsArgs)...)
 	if err != nil {
 		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
-		exception.New(err.Error(), 500).Throw()
+		exception.Err(err, 500).Throw()
 		return nil
 	}
 
