@@ -2,18 +2,10 @@ package v8
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/yaoapp/kun/log"
 )
-
-// RunnerMap is a runner map
-type RunnerMap struct {
-	data   map[uint]*Runner
-	length uint
-	mutex  *sync.RWMutex
-}
 
 // Dispatcher is a runner dispatcher
 type Dispatcher struct {
@@ -79,6 +71,8 @@ func (dispatcher *Dispatcher) create() {
 	}
 	runner := NewRunner(true)
 	ready := make(chan bool)
+	defer close(ready)
+
 	go runner.Start(ready)
 	<-ready
 	dispatcher.total++
