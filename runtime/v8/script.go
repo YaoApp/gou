@@ -22,7 +22,7 @@ var Scripts = map[string]*Script{}
 // RootScripts the scripts for studio
 var RootScripts = map[string]*Script{}
 
-var importRe = regexp.MustCompile(`import\s+.*;`)
+var importRe = regexp.MustCompile(`import\s*\t*\n*[^;]*;`)
 
 // NewScript create a new script
 func NewScript(file string, id string, timeout ...time.Duration) *Script {
@@ -86,6 +86,10 @@ func TransformTS(source []byte) ([]byte, error) {
 
 	// @todo import supoort
 	jsCode := importRe.ReplaceAllString(string(source), "")
+	if strings.Contains(jsCode, "import") {
+		fmt.Println(jsCode)
+	}
+
 	result := api.Transform(jsCode, api.TransformOptions{
 		Loader: api.LoaderTS,
 		Target: api.ESNext,
