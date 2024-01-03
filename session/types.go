@@ -7,6 +7,7 @@ type Manager interface {
 	Init()
 	Set(id string, key string, value interface{}, expired time.Duration) error
 	Get(id string, key string) (interface{}, error)
+	Del(id string, key string) error
 	Dump(id string) (map[string]interface{}, error)
 }
 

@@ -295,9 +295,9 @@ func (process *Process) ArgsStrings(index int) []string {
 	process.ValidateArgNums(index + 1)
 	columnsAny := process.Args[index]
 	columns := []string{}
-	switch columnsAny.(type) {
+	switch values := columnsAny.(type) {
 	case []interface{}:
-		for _, v := range columnsAny.([]interface{}) {
+		for _, v := range values {
 			value, ok := v.(string)
 			if ok {
 				columns = append(columns, value)
@@ -305,7 +305,12 @@ func (process *Process) ArgsStrings(index int) []string {
 			}
 			exception.New("参数错误: 第%d个参数不是字符串数组", 400, index+1).Ctx(process.Args[index]).Throw()
 		}
+		break
+
 	case []string:
+		columns = values
+		break
+
 	default:
 		exception.New("参数错误: 第%d个参数不是字符串数组", 400, index+1).Ctx(process.Args[index]).Throw()
 		break

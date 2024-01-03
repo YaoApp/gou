@@ -26,7 +26,7 @@ func TestBuntDBID(t *testing.T) {
 	assert.Equal(t, id, s.GetID())
 }
 
-func TestBuntDBMustSetGet(t *testing.T) {
+func TestBuntDBMustSetGetDel(t *testing.T) {
 	id := ID()
 	s := Use("buntdb").ID(id).Expire(200 * time.Millisecond)
 	s.MustSet("foo", "bar")
@@ -36,6 +36,9 @@ func TestBuntDBMustSetGet(t *testing.T) {
 	s.MustSetMany(map[string]interface{}{"hello": "world", "hi": "gou"})
 	assert.Equal(t, "world", s.MustGet("hello"))
 	assert.Equal(t, "gou", s.MustGet("hi"))
+
+	s.MustDel("hi")
+	assert.Nil(t, s.MustGet("hi"))
 
 	time.Sleep(201 * time.Millisecond)
 	assert.Nil(t, s.MustGet("foo"))

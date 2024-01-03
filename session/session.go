@@ -160,6 +160,19 @@ func (session *Session) MustGet(key string) interface{} {
 	return value
 }
 
+// Del 删除数值
+func (session *Session) Del(key string) error {
+	return session.Manager.Del(session.id, key)
+}
+
+// MustDel 删除数值
+func (session *Session) MustDel(key string) {
+	err := session.Del(key)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+}
+
 // Dump 导出所有数据
 func (session *Session) Dump() (map[string]interface{}, error) {
 	return session.Manager.Dump(session.id)
