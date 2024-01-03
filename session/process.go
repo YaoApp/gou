@@ -12,9 +12,12 @@ import (
 var SessionHandlers = map[string]process.Handler{
 	"id":      processID,
 	"get":     processGet,
+	"del":     processDel,
 	"set":     processSet,
 	"dump":    processDump,
+	"getmany": processGetMany,
 	"setmany": processSetMany,
+	"delmany": processDelMany,
 }
 
 func init() {
@@ -61,6 +64,19 @@ func processGet(process *process.Process) interface{} {
 	return ss.MustGet(process.ArgsString(0))
 }
 
+// processDel
+func processDel(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	ss := setSession(process)
+	if process.NumOfArgs() == 2 {
+		ss = Global().ID(process.ArgsString(1))
+		ss.MustDel(process.ArgsString(0))
+		return nil
+	}
+	ss.MustDel(process.ArgsString(0))
+	return nil
+}
+
 // processSet
 func processSet(process *process.Process) interface{} {
 	process.ValidateArgNums(2)
@@ -90,6 +106,44 @@ func processDump(process *process.Process) interface{} {
 		return ss.MustDump()
 	}
 	return ss.MustDump()
+}
+
+// processGetMany
+func processGetMany(process *process.Process) interface{} {
+	ss := setSession(process)
+	process.ValidateArgNums(1)
+	keys := process.ArgsStrings(0)
+	res := map[string]interface{}{}
+	if process.NumOfArgs() == 2 {
+		ss = Global().ID(process.ArgsString(1))
+		for _, key := range keys {
+			res[key] = ss.MustGet(key)
+		}
+		return res
+	}
+
+	for _, key := range keys {
+		res[key] = ss.MustGet(key)
+	}
+	return res
+}
+
+// processDelMany
+func processDelMany(process *process.Process) interface{} {
+	ss := setSession(process)
+	process.ValidateArgNums(1)
+	keys := process.ArgsStrings(0)
+	if process.NumOfArgs() == 2 {
+		ss = Global().ID(process.ArgsString(1))
+		for _, key := range keys {
+			ss.MustDel(key)
+		}
+		return nil
+	}
+	for _, key := range keys {
+		ss.MustDel(key)
+	}
+	return nil
 }
 
 // processSetMany

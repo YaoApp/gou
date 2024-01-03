@@ -108,6 +108,18 @@ func (redis *Redis) Get(id string, key string) (interface{}, error) {
 	return value, nil
 }
 
+// Del session value
+func (redis *Redis) Del(id string, key string) error {
+	skey := fmt.Sprintf("%s:%s:%s", "yao:session", id, key)
+	log.Debug("Session redis Del: %s", skey)
+	err := redis.rdb.Del(context.Background(), skey).Err()
+	if err != nil {
+		log.Error("Session redis Del: %s", err.Error())
+		return err
+	}
+	return nil
+}
+
 // Dump session data
 func (redis *Redis) Dump(id string) (map[string]interface{}, error) {
 	prefix := fmt.Sprintf("%s:%s:", "yao:session", id)

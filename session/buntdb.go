@@ -98,6 +98,21 @@ func (bunt *BuntDB) Get(id string, key string) (interface{}, error) {
 	return value, err
 }
 
+// Del session value
+func (bunt *BuntDB) Del(id string, key string) error {
+	skey := fmt.Sprintf("%s:%s:%s", "yao:session", id, key)
+	err := bunt.db.Update(func(tx *buntdb.Tx) error {
+		_, err := tx.Delete(skey)
+		return err
+	})
+
+	if err != nil {
+		log.Error("Session buntdb Del: %s key %s", err.Error(), skey)
+		return err
+	}
+	return nil
+}
+
 // Dump session data
 func (bunt *BuntDB) Dump(id string) (map[string]interface{}, error) {
 	prefix := fmt.Sprintf("%s:%s:", "yao:session", id)

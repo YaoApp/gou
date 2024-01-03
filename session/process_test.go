@@ -15,7 +15,7 @@ func TestID(t *testing.T) {
 	assert.Equal(t, "SID-UNIT-TEST", res)
 }
 
-func TestSetGet(t *testing.T) {
+func TestSetGetDel(t *testing.T) {
 	prepare(t)
 	assert.NotPanics(t, func() {
 		execOf(t, "session.Set", "user_id", "UID-01")
@@ -64,6 +64,35 @@ func TestSetGet(t *testing.T) {
 
 	assert.Equal(t, "UID-08", execOf(t, "session.Get", "user_id", "SID-UNIT-TEST-2"))
 	assert.Equal(t, "UID-08-DATA", execOf(t, "session.Get", "user_data", "SID-UNIT-TEST-2"))
+
+	// Test del
+	assert.NotPanics(t, func() {
+		execOf(t, "session.Set", "user_id", "UID-09", 1)
+	})
+	res = execOf(t, "session.Get", "user_id")
+	assert.Equal(t, "UID-09", res)
+	assert.NotPanics(t, func() {
+		execOf(t, "session.Del", "user_id")
+	})
+	assert.Equal(t, nil, execOf(t, "session.Get", "user_id"))
+
+	// Delete Many
+	assert.NotPanics(t, func() {
+		execOf(t, "session.SetMany", map[string]interface{}{"user_id": "UID-10", "user_data": "UID-10-DATA"})
+	})
+	res = execOf(t, "session.GetMany", []string{"user_id", "user_data"})
+	v, ok := res.(map[string]interface{})
+	if !ok {
+		t.Fatal("session.GetMany return not map")
+	}
+
+	assert.Equal(t, "UID-10", v["user_id"])
+	assert.Equal(t, "UID-10-DATA", v["user_data"])
+	assert.NotPanics(t, func() {
+		execOf(t, "session.DelMany", []string{"user_id", "user_data"})
+	})
+	assert.Equal(t, nil, execOf(t, "session.Get", "user_id"))
+	assert.Equal(t, nil, execOf(t, "session.Get", "user_data"))
 }
 
 func TestDump(t *testing.T) {
