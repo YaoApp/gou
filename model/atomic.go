@@ -80,10 +80,10 @@ func (mod *Model) Create(row maps.MapStrAny) (int, error) {
 	if len(errs) > 0 {
 		msgs := []string{}
 		for _, err := range errs {
-			msgs = append(msgs, err.Column, strings.Join(err.Messages, ";"))
+			msgs = append(msgs, err.Column, strings.Join(err.Messages, ","))
 			log.Error("[Model] %s Create %v", mod.ID, err)
 		}
-		exception.New("输入参数错误\n %s", 400, strings.Join(msgs, "\n")).Ctx(errs).Throw()
+		exception.New("%s", 400, strings.Join(msgs, ";")).Ctx(errs).Throw()
 	}
 
 	mod.FliterIn(row) // 入库前输入数据预处理
@@ -119,10 +119,10 @@ func (mod *Model) Update(id interface{}, row maps.MapStrAny) error {
 	if len(errs) > 0 {
 		msgs := []string{}
 		for _, err := range errs {
-			msgs = append(msgs, err.Column, strings.Join(err.Messages, ";"))
+			msgs = append(msgs, err.Column, strings.Join(err.Messages, ","))
 			log.Error("[Model] %s Update %v", mod.ID, err)
 		}
-		exception.New("输入参数错误\n %s", 400, strings.Join(msgs, "\n")).Ctx(errs).Throw()
+		exception.New("%s", 400, strings.Join(msgs, ";")).Ctx(errs).Throw()
 	}
 
 	mod.FliterIn(row) // 入库前输入数据预处理
@@ -159,10 +159,10 @@ func (mod *Model) Save(row maps.MapStrAny) (interface{}, error) {
 	if len(errs) > 0 {
 		msgs := []string{}
 		for _, err := range errs {
-			msgs = append(msgs, err.Column, strings.Join(err.Messages, ";"))
+			msgs = append(msgs, err.Column, strings.Join(err.Messages, ","))
 			log.Error("[Model] %s Save %v", mod.ID, err)
 		}
-		exception.New("输入参数错误\n %s", 400, strings.Join(msgs, "\n")).Ctx(errs).Throw()
+		exception.New("%s", 400, strings.Join(msgs, ";")).Ctx(errs).Throw()
 	}
 
 	mod.FliterIn(row) // 入库前输入数据预处理
@@ -295,7 +295,7 @@ func (mod *Model) Insert(columns []string, rows [][]interface{}) error {
 		for _, err := range errs {
 			log.Error("[Model] %s Insert %v", mod.ID, err)
 		}
-		exception.New("输入参数错误", 400).Ctx(errs).Throw()
+		exception.New("%v", 400, errs).Ctx(errs).Throw()
 	}
 
 	// 添加创建时间戳
@@ -328,10 +328,10 @@ func (mod *Model) UpdateWhere(param QueryParam, row maps.MapStrAny) (int, error)
 	if len(errs) > 0 {
 		msgs := []string{}
 		for _, err := range errs {
-			msgs = append(msgs, err.Column, strings.Join(err.Messages, ";"))
+			msgs = append(msgs, err.Column, strings.Join(err.Messages, ","))
 			log.Error("[Model] %s UpdateWhere %v", mod.ID, err)
 		}
-		exception.New("输入参数错误\n %s", 400, strings.Join(msgs, "\n")).Ctx(errs).Throw()
+		exception.New("%s", 400, strings.Join(msgs, ";")).Ctx(errs).Throw()
 	}
 
 	mod.FliterIn(row) // 入库前输入数据预处理
