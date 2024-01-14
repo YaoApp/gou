@@ -336,6 +336,32 @@ func TestProcessFsMove(t *testing.T) {
 	processCheckFileExists(t, f["D2_F2"])
 }
 
+func TestProcessFsZip(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(FileSystems["system"], t)
+	testFsMakeData(t)
+
+	processName := "fs.system.Zip"
+	zipfile := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test.zip")
+	args := []interface{}{f["D1_D2"], zipfile}
+	_, err := process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Unzip
+	processName = "fs.system.Unzip"
+	unzipdir := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test")
+	args = []interface{}{zipfile, unzipdir}
+	files, err := process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, 2, len(files.([]string)))
+
+}
+
 func TestProcessFsCopy(t *testing.T) {
 	f := testFsFiles(t)
 	testFsClear(FileSystems["system"], t)

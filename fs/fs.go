@@ -1,8 +1,10 @@
 package fs
 
 import (
+	"archive/zip"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -247,6 +249,129 @@ func IsLink(xfs FileSystem, name string) bool {
 // MimeType return the MimeType
 func MimeType(xfs FileSystem, name string) (string, error) {
 	return xfs.MimeType(name)
+}
+
+// Zip zip the dirs
+func Zip(xfs FileSystem, name string, target string) error {
+
+	if has, _ := xfs.Exists(name); !has {
+		return fmt.Errorf("%s does not exists", name)
+	}
+
+	if (xfs.IsDir(name)) == false {
+		return fmt.Errorf("%s is not a dir", name)
+	}
+
+	root := xfs.Root()
+	absPath := filepath.Join(root, name)
+	basePath := filepath.Base(absPath)
+	targetPath := filepath.Join(root, target)
+
+	targetWriter, err := os.Create(targetPath)
+	if err != nil {
+		return err
+	}
+	defer targetWriter.Close()
+
+	writer := zip.NewWriter(targetWriter)
+	defer writer.Close()
+
+	return filepath.Walk(absPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		zipPath := strings.TrimPrefix(path, filepath.Join(root, basePath))
+		if zipPath == "" {
+			return nil
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		zipFile, err := writer.Create(zipPath)
+		if err != nil {
+			return err
+		}
+
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		_, err = io.Copy(zipFile, file)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+}
+
+// Unzip unzip the file and return the file list
+func Unzip(xfs FileSystem, name string, target string) ([]string, error) {
+	if (strings.HasSuffix(name, ".zip") || strings.HasSuffix(name, ".ZIP")) == false {
+		return nil, fmt.Errorf("%s is not a zip file", name)
+	}
+
+	if has, _ := xfs.Exists(name); !has {
+		return nil, fmt.Errorf("%s does not exists", name)
+	}
+
+	root := xfs.Root()
+	absPath := filepath.Join(root, name)
+	reader, err := zip.OpenReader(absPath)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+
+	if has, _ := xfs.Exists(target); !has {
+		err := xfs.MkdirAll(target, 0755)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if (xfs.IsDir(target)) == false {
+		return nil, fmt.Errorf("%s is not a dir", target)
+	}
+
+	files := []string{}
+	for _, file := range reader.File {
+		name := filepath.Join(root, target, file.Name)
+		if file.FileInfo().IsDir() {
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(name), 0755); err != nil {
+			return nil, err
+		}
+
+		zipFile, err := file.Open()
+		if err != nil {
+			return nil, err
+		}
+		defer zipFile.Close()
+
+		// 创建目标文件
+		targetFile, err := os.Create(name)
+		if err != nil {
+			return nil, err
+		}
+		defer targetFile.Close()
+
+		_, err = io.Copy(targetFile, zipFile)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, filepath.Join(target, file.Name))
+	}
+
+	return files, nil
+
 }
 
 // BaseName return the base name

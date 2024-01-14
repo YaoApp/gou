@@ -417,6 +417,59 @@ func TestFSObjectMove(t *testing.T) {
 	checkFileExists(t, f["D2_F2"])
 }
 
+func TestFSObjectZip(t *testing.T) {
+
+	testFsClear(t)
+	testFsMakeData(t)
+	f := testFsFiles(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsobj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsobj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	zipfile := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test.zip")
+	unzipdir := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test")
+
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function Zip() {
+		var res = {}
+		var fs = new FS("system")
+		return fs.Zip("%s", "%s")
+	
+	}
+	Zip()
+	`, f["D1_D2"], zipfile), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.True(t, v.IsNull())
+
+	v, err = ctx.RunScript(fmt.Sprintf(`
+	function UnZip() {
+		var res = {}
+		var fs = new FS("system")
+		return fs.Unzip("%s", "%s")
+	
+	}
+	UnZip()
+	`, zipfile, unzipdir), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := bridge.GoValue(v, ctx)
+	assert.Len(t, files, 2)
+}
+
 func TestFSObjectCopy(t *testing.T) {
 
 	testFsClear(t)
