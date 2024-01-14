@@ -42,6 +42,8 @@ var FileSystemHandlers = map[string]process.Handler{
 	"copy":            processCopy,
 	"upload":          processUpload,
 	"download":        processDownload,
+	"zip":             processZip,
+	"unzip":           processUnzip,
 }
 
 func init() {
@@ -300,6 +302,30 @@ func processMove(process *process.Process) interface{} {
 		exception.New(err.Error(), 500).Throw()
 	}
 	return nil
+}
+
+func processZip(process *process.Process) interface{} {
+	process.ValidateArgNums(2)
+	stor := stor(process)
+	src := process.ArgsString(0)
+	dst := process.ArgsString(1)
+	err := Zip(stor, src, dst)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
+
+func processUnzip(process *process.Process) interface{} {
+	process.ValidateArgNums(2)
+	stor := stor(process)
+	src := process.ArgsString(0)
+	dst := process.ArgsString(1)
+	files, err := Unzip(stor, src, dst)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return files
 }
 
 func processCopy(process *process.Process) interface{} {

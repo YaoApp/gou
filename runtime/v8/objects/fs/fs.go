@@ -92,6 +92,9 @@ func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl.Set("Move", obj.move(iso))
 	tmpl.Set("Copy", obj.copy(iso))
 	tmpl.Set("Abs", obj.abs(iso))
+
+	tmpl.Set("Zip", obj.zip(iso))
+	tmpl.Set("Unzip", obj.unzip(iso))
 	return tmpl
 }
 
@@ -153,6 +156,48 @@ func (obj *Object) move(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		}
 
 		return v8go.Null(iso)
+	})
+}
+
+func (obj *Object) zip(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 2 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		err = fs.Zip(stor, args[0].String(), args[1].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return v8go.Null(iso)
+	})
+}
+
+func (obj *Object) unzip(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 2 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		files, err := fs.Unzip(stor, args[0].String(), args[1].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.stringArrayValue(info, files)
 	})
 }
 

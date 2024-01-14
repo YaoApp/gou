@@ -641,6 +641,41 @@ func TestMimeType(t *testing.T) {
 	}
 }
 
+func TestUnzipZip(t *testing.T) {
+
+	stores := testStores(t)
+	f := testFiles(t)
+	stor := stores["system"]
+	clear(stor, t)
+
+	data := testData(t)
+	names := []string{"D1_D2_F1", "F1", "F2", "D1_F1", "D1_F2"}
+	for _, name := range names {
+		_, err := WriteFile(stor, f[name], data, 0644)
+		if err != nil {
+			t.Fatalf("WriteFile error: %s", err)
+		}
+	}
+
+	// Zip
+	stor = stores["system-relpath"]
+	err := Zip(stor, "d1", "d1.zip")
+	if err != nil {
+		t.Fatalf("Zip error: %s", err)
+	}
+
+	// Unzip
+	files, err := Unzip(stor, "d1.zip", "d1-unzip")
+	if err != nil {
+		t.Fatalf("Unzip error: %s", err)
+	}
+
+	assert.Len(t, files, 3)
+	assert.Contains(t, files, "d1-unzip/d2/f1.file")
+	assert.Contains(t, files, "d1-unzip/f1.file")
+	assert.Contains(t, files, "d1-unzip/f2.file")
+}
+
 func TestBase(t *testing.T) {
 	f := testFiles(t)
 	assert.Equal(t, "f1.file", BaseName(f["F1"]))
