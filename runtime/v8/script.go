@@ -144,8 +144,6 @@ func SelectRoot(id string) (*Script, error) {
 // NewContext create a new context
 func (script *Script) NewContext(sid string, global map[string]interface{}) (*Context, error) {
 
-	fmt.Println("create a new context", sid, script.ID)
-
 	timeout := script.Timeout
 	if timeout == 0 {
 		timeout = time.Duration(runtimeOption.ContextTimeout) * time.Millisecond
