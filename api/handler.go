@@ -70,6 +70,10 @@ func (path Path) defaultHandler(getArgs func(c *gin.Context) []interface{}) func
 				ex := exception.Err(data, 500)
 				c.JSON(ex.Code, gin.H{"message": ex.Message, "code": ex.Code})
 
+			case nil:
+				c.Done()
+				return
+
 			default:
 				if strings.HasPrefix(contentType, "application/json") {
 					c.JSON(status, body)
