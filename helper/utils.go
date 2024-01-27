@@ -3,7 +3,6 @@ package helper
 import (
 	"fmt"
 
-	"github.com/TylerBrock/colorjson"
 	"github.com/fatih/color"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
@@ -12,8 +11,9 @@ import (
 // Dump The Dump function dumps the given variables:
 func Dump(values ...interface{}) {
 
-	f := colorjson.NewFormatter()
+	f := NewFormatter()
 	f.Indent = 4
+	f.RawStrings = true
 	for _, v := range values {
 
 		if err, ok := v.(error); ok {
@@ -52,8 +52,8 @@ func Dump(values ...interface{}) {
 			}
 
 			jsoniter.Unmarshal(txt, &res)
-			s, _ := f.Marshal(res)
-			fmt.Printf("%s\n", s)
+			bytes, _ := f.Marshal(res)
+			fmt.Println(string(bytes))
 		}
 	}
 }
