@@ -557,6 +557,21 @@ func (r *Request) formBody() ([]byte, string, *Response) {
 			_ = writer.WriteField(name, fmt.Sprintf("%v", v))
 		}
 		break
+
+	default:
+		var data map[string]interface{}
+		raw, err := jsoniter.Marshal(value)
+		if err != nil {
+			return nil, "", ResponseError(0, err.Error())
+		}
+
+		err = jsoniter.Unmarshal(raw, &data)
+		if err != nil {
+			return nil, "", ResponseError(0, err.Error())
+		}
+		for name, v := range data {
+			_ = writer.WriteField(name, fmt.Sprintf("%v", v))
+		}
 	}
 
 	err := writer.Close()
