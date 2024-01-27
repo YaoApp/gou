@@ -23,14 +23,12 @@ import (
 // New make a new  http Request
 func New(url string) *Request {
 	return &Request{
-		url:     url,
-		headers: http.Header{},
-		query:   neturl.Values{},
-		files:   map[string]string{},
-		fileBytes: map[string]struct {
-			data []byte
-			name string
-		}{}}
+		url:       url,
+		headers:   http.Header{},
+		query:     neturl.Values{},
+		files:     []File{},
+		fileBytes: []File{},
+	}
 }
 
 // ResponseError return new  error response
@@ -52,17 +50,14 @@ func (r *Request) AddHeader(name, value string) *Request {
 
 // AddFile set the file
 func (r *Request) AddFile(name, file string) *Request {
-	r.files[name] = file
+	r.files = append(r.files, File{Name: name, Path: file})
 	r.SetHeader("Content-Type", "multipart/form-data")
 	return r
 }
 
 // AddFileBytes set the file
-func (r *Request) AddFileBytes(name, fileName string, data []byte) *Request {
-	r.fileBytes[name] = struct {
-		data []byte
-		name string
-	}{data: data, name: fileName}
+func (r *Request) AddFileBytes(name, pathname string, data []byte) *Request {
+	r.fileBytes = append(r.fileBytes, File{Name: name, Path: pathname, data: data})
 	r.SetHeader("Content-Type", "multipart/form-data")
 	return r
 }
@@ -514,19 +509,19 @@ func (r *Request) formBody() ([]byte, string, *Response) {
 	writer := multipart.NewWriter(body)
 
 	// upload files
-	for name, path := range r.files {
-		file, err := os.Open(path)
+	for _, f := range r.files {
+		file, err := os.Open(f.Path)
 		if err != nil {
 			return nil, "", ResponseError(0, err.Error())
 		}
 		defer file.Close()
-		part, _ := writer.CreateFormFile(name, filepath.Base(file.Name()))
+		part, _ := writer.CreateFormFile(f.Name, filepath.Base(file.Name()))
 		io.Copy(part, file)
 	}
 
-	for name, file := range r.fileBytes {
-		part, _ := writer.CreateFormFile(name, file.name)
-		part.Write(file.data)
+	for _, f := range r.fileBytes {
+		part, _ := writer.CreateFormFile(f.Name, filepath.Base(f.Path))
+		part.Write(f.data)
 	}
 
 	switch value := r.data.(type) {

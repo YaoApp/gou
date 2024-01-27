@@ -22,12 +22,9 @@ type Request struct {
 	url       string
 	query     url.Values
 	headers   http.Header
-	files     map[string]string
-	fileBytes map[string]struct {
-		data []byte
-		name string
-	}
-	data interface{}
+	files     []File
+	fileBytes []File
+	data      interface{}
 }
 
 // Response HTTP Response
@@ -37,4 +34,12 @@ type Response struct {
 	Headers http.Header `json:"headers"`
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
+}
+
+// File file
+type File struct {
+	Name string `json:"name"`
+	Path string `json:"path,omitempty"`
+	Data string `json:"data,omitempty"`
+	data []byte
 }
