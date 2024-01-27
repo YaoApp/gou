@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"path/filepath"
 
@@ -56,6 +57,7 @@ import (
 // args[2] Payload <Optional> "Foo", {"foo":"bar"}, ["foo", "bar", {"k1":"v1"}], "/root/path"
 // args[3] Query Params <Optional> {"k1":"v1", "k2":"v2"}, ["k1=v1","k1"="v11","k2"="v2"], [{"k1":"v1"},{"k1":"v11"},{"k2":"v2"}], k1=v1&k1=v11&k2=k2
 // args[4] Headers <Optional> {"K1":"V1","K2":"V2"}  [{"K1":"V1"},{"K1":"V11"},{"K2":"V2"}]
+// args[5] Files   <Optional> [{"name": "field_name", "path": "/path/root/file",  "data": "base64EncodedFileContent" }...]
 //
 // http.Stream(...args)
 // args[0] Method GET/POST/PUT/HEAD/PATCH/DELETE/...
@@ -300,6 +302,50 @@ func (obj *Object) send(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		if err != nil {
 			return obj.vReturn(info, err)
 		}
+
+		// Upload a file via payload
+		if method == "POST" && len(args) > 5 {
+			var files []http.File
+			bytes, err := jsoniter.Marshal(args[5])
+			if err != nil {
+				return obj.vReturn(info,
+					&http.Response{
+						Status:  400,
+						Code:    400,
+						Message: fmt.Sprintf("args[%d] parameter error: %s", 5, err.Error()),
+						Headers: map[string][]string{},
+						Data:    nil,
+					})
+			}
+
+			err = jsoniter.Unmarshal(bytes, &files)
+			if err != nil {
+				return obj.vReturn(info,
+					&http.Response{
+						Status:  400,
+						Code:    400,
+						Message: fmt.Sprintf("args[%d] parameter error: %s", 5, err.Error()),
+						Headers: map[string][]string{},
+						Data:    nil,
+					})
+			}
+
+			for _, file := range files {
+				data, err := base64.StdEncoding.DecodeString(file.Data)
+				if err != nil {
+					return obj.vReturn(info,
+						&http.Response{
+							Status:  400,
+							Code:    400,
+							Message: fmt.Sprintf("args[%d] parameter error: %s", 5, err.Error()),
+							Headers: map[string][]string{},
+							Data:    nil,
+						})
+				}
+				req.AddFileBytes(file.Name, file.Path, data)
+			}
+		}
+
 		return obj.vReturn(info, req.Send(method, payload))
 	})
 }

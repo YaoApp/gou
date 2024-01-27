@@ -2,9 +2,11 @@ package http
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"path/filepath"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/cast"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/kun/log"
@@ -207,6 +209,7 @@ func processHTTPHead(process *process.Process) interface{} {
 // args[2] Payload <Optional> "Foo", {"foo":"bar"}, ["foo", "bar", {"k1":"v1"}], "/root/path"
 // args[3] Query Params <Optional> {"k1":"v1", "k2":"v2"}, ["k1=v1","k1"="v11","k2"="v2"], [{"k1":"v1"},{"k1":"v11"},{"k2":"v2"}], k1=v1&k1=v11&k2=k2
 // args[4] Headers <Optional> {"K1":"V1","K2":"V2"}  [{"K1":"V1"},{"K1":"V11"},{"K2":"V2"}]
+// args[5] Files   <Optional> [{"name": "field_name", "path": "/path/root/file",  "data": "base64EncodedFileContent" }...]
 func processHTTPSend(process *process.Process) interface{} {
 	process.ValidateArgNums(2)
 
@@ -244,6 +247,45 @@ func processHTTPSend(process *process.Process) interface{} {
 			}
 		}
 		req.WithHeader(headers)
+	}
+
+	if process.NumOfArgs() > 5 {
+		var files []File
+		bytes, err := jsoniter.Marshal(process.Args[5])
+		if err != nil {
+			return &Response{
+				Status:  400,
+				Code:    400,
+				Message: fmt.Sprintf("args[%d] parameter error: %s", 5, err.Error()),
+				Headers: map[string][]string{},
+				Data:    nil,
+			}
+		}
+
+		err = jsoniter.Unmarshal(bytes, &files)
+		if err != nil {
+			return &Response{
+				Status:  400,
+				Code:    400,
+				Message: fmt.Sprintf("args[%d] parameter error: %s", 5, err.Error()),
+				Headers: map[string][]string{},
+				Data:    nil,
+			}
+		}
+
+		for _, file := range files {
+			data, err := base64.StdEncoding.DecodeString(file.Data)
+			if err != nil {
+				return &Response{
+					Status:  400,
+					Code:    400,
+					Message: fmt.Sprintf("args[%d] parameter error: %s", 5, err.Error()),
+					Headers: map[string][]string{},
+					Data:    nil,
+				}
+			}
+			req.AddFileBytes(file.Name, file.Path, data)
+		}
 	}
 
 	return req.Send(method, payload)
