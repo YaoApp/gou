@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evanw/esbuild/pkg/api"
+	"github.com/fatih/color"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
@@ -303,6 +304,12 @@ func (script *Script) execStandard(process *process.Process) interface{} {
 
 	jsRes, err := global.MethodCall(process.Method, bridge.Valuers(jsArgs)...)
 	if err != nil {
+
+		// Debug output the error stack
+		if e, ok := err.(*v8go.JSError); ok {
+			color.Red("%s\n\n", e.StackTrace)
+		}
+
 		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
 		exception.Err(err, 500).Throw()
 		return nil
