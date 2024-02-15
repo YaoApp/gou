@@ -142,7 +142,7 @@ func (process *Process) make() error {
 		process.Handler = strings.ToLower(fmt.Sprintf("%s.%s", process.Group, process.Method))
 		break
 
-	case "flows":
+	case "flows", "pipes":
 		process.Handler = process.Group
 		process.ID = strings.ToLower(strings.Join(fields[1:], "."))
 		break
