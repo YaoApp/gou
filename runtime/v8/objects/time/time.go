@@ -92,7 +92,6 @@ func (obj *Object) after(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			}
 		}()
 
-		time.Sleep(time.Duration(ms) * time.Millisecond)
 		return v8go.Null(iso)
 	})
 }
