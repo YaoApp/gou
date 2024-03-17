@@ -66,6 +66,7 @@ var DownloadWhitelist = map[string]bool{
 	"css":    true,
 	"js":     true,
 	"htm":    true,
+	"webp":   true,
 }
 
 // RegisterConnector register a fileSystem via connector
