@@ -385,7 +385,7 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 			break
 		case "match":
 			if value, ok := where.Value.(string); ok {
-				qb.Where(column, "like", "%"+value+"%")
+				qb.OrWhere(column, "like", "%"+value+"%")
 			}
 			break
 		case "in":
