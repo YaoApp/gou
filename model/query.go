@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/yaoapp/xun/capsule"
@@ -142,7 +141,11 @@ func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 	withParam := with.Query
 	withParam.Model = rel.Model
 	withParam.Table = withModel.MetaData.Table.Name
-	withParam.Alias = withParam.Table + "__rel__" // 临时BUG修复，这里整个逻辑需要优化
+	alias := rel.Name
+	if rel.Name == "" {
+		alias = withParam.Table
+	}
+	withParam.Alias = alias + "__rel__" // 临时BUG修复，这里整个逻辑需要优化
 	if param.Alias != "" {
 		withParam.Alias = param.Alias + "_" + withParam.Alias
 	}
@@ -165,7 +168,7 @@ func (param QueryParam) withHasOne(stack *QueryStack, rel Relation, with With) {
 		if tab != param.Table {
 			foreign = tab + "__rel__" + "." + field
 		}
-		fmt.Println(tab, param.Table, rel.Foreign, foreign)
+		// fmt.Println(tab, param.Table, rel.Foreign, foreign)
 	}
 
 	if len(withParam.Wheres) == 0 && len(rel.Query.Wheres) > 0 {
