@@ -1,15 +1,18 @@
 package model
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/query"
 	"github.com/yaoapp/gou/query/gou"
 	"github.com/yaoapp/kun/exception"
+	"github.com/yaoapp/kun/maps"
 	"github.com/yaoapp/xun/capsule"
 )
 
@@ -41,8 +44,10 @@ func TestLoadWithoutDB(t *testing.T) {
 
 // prepare test suit
 func prepare(t *testing.T) {
-	dbconnect(t)
+	dbconnect()
 	root := os.Getenv("GOU_TEST_APPLICATION")
+	aesKey := os.Getenv("GOU_TEST_AES_KEY")
+
 	mods := map[string]string{
 		"user":     filepath.Join("models", "user.mod.yao"),
 		"pet":      filepath.Join("models", "pet.mod.yao"),
@@ -51,6 +56,9 @@ func prepare(t *testing.T) {
 		"user.pet": filepath.Join("models", "user", "pet.mod.yao"),
 		"pet.tag":  filepath.Join("models", "pet", "tag.mod.yao"),
 	}
+
+	WithCrypt([]byte(fmt.Sprintf(`{"key":"%s"}`, aesKey)), "AES")
+	WithCrypt([]byte(`{}`), "PASSWORD")
 
 	// Load app
 	app, err := application.OpenFromDisk(root)
@@ -71,6 +79,31 @@ func prepare(t *testing.T) {
 	for id := range mods {
 		mod := Select(id)
 		err := mod.Migrate(true)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+}
+
+func prepareTestData(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	file := filepath.Join(root, "data", "tests.json")
+	raw, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+
+	}
+
+	data := map[string][]map[string]interface{}{}
+	err = jsoniter.Unmarshal(raw, &data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for id, rows := range data {
+		mod := Select(id)
+		_, err := mod.EachSave(rows)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,7 +138,7 @@ func dbclose() {
 	}
 }
 
-func dbconnect(t *testing.T) {
+func dbconnect() {
 
 	TestDriver := os.Getenv("GOU_TEST_DB_DRIVER")
 	TestDSN := os.Getenv("GOU_TEST_DSN")
@@ -135,159 +168,188 @@ func dbconnect(t *testing.T) {
 	})
 }
 
-// func TestLoadModel(t *testing.T) {
-// 	// source := "file://" + path.Join(TestModRoot, "user.json")
-// 	// user := LoadModel(source, "user")
-// 	// assert.Equal(t, user.MetaData.Name, "用户")
-// 	// assert.Equal(t, user.Name, "user")
-// 	// assert.Equal(t, user.Source, source)
-// }
+func TestModelMustFind(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestModelReload(t *testing.T) {
-// 	user := Select("user")
-// 	user.Reload()
-// 	assert.Equal(t, user.MetaData.Name, "用户")
-// 	assert.Equal(t, user.Name, "user")
-// }
+	user := Select("user").MustFind(1, QueryParam{})
+	assert.Equal(t, user.Get("mobile"), "1234567890")
+	assert.Equal(t, user.Dot().Get("extra.sex"), "male")
+}
 
-// func TestModelMigrate(t *testing.T) {
-// 	for _, mod := range Models {
-// 		mod.DropTable()
-// 		err := mod.Migrate(true)
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-// 	}
-// }
+func TestModelMustFindWiths(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+	pet := Select("pet").MustFind(1, QueryParam{
+		Withs: map[string]With{"category": {Query: QueryParam{
+			Select: []interface{}{"id", "name"},
+		}}},
+	})
+	res := pet.Dot()
+	assert.Equal(t, res.Get("category_id"), res.Get("category.id"))
 
-// func TestModelMustFind(t *testing.T) {
-// 	user := Select("user").MustFind(1, QueryParam{})
-// 	assert.Equal(t, user.Get("mobile"), "13900001111")
-// 	assert.Equal(t, user.Dot().Get("extra.sex"), "男")
-// }
+	// Multiple withs
+	pet = Select("pet").MustFind(1, QueryParam{
+		Withs: map[string]With{"category": {}, "owner": {}},
+	})
+	res = pet.Dot()
+	assert.NotEmpty(t, res.Get("category.name"))
+	assert.NotEmpty(t, res.Get("owner.name"))
+	assert.Equal(t, res.Get("category_id"), res.Get("category.id"))
+	assert.Equal(t, res.Get("owner_id"), res.Get("owner.id"))
 
-// func TestModelMustFindWiths(t *testing.T) {
-// 	user := Select("user").MustFind(1,
-// 		QueryParam{
-// 			Withs: map[string]With{
-// 				"manu":      {},
-// 				"addresses": {},
-// 				"roles":     {}, // 暂未实现（ 下一版支持 )
-// 				"mother": {
-// 					Query: QueryParam{ // 数据归集存在BUG（ 下一版修复 )
-// 						Withs: map[string]With{
-// 							// "addresses": {},
-// 							// "manu": {},
-// 						},
-// 					},
-// 				},
-// 			},
-// 		})
+	// Multiple withs the same model
+	pet = Select("pet").MustFind(1, QueryParam{
+		Withs: map[string]With{"category": {}, "owner": {}, "doctor": {}},
+	})
 
-// 	// utils.Dump(user)
+	res = pet.Dot()
+	assert.NotEmpty(t, res.Get("category.name"))
+	assert.NotEmpty(t, res.Get("owner.name"))
+	assert.NotEmpty(t, res.Get("doctor.name"))
+	assert.Equal(t, res.Get("category_id"), res.Get("category.id"))
+	assert.Equal(t, res.Get("owner_id"), res.Get("owner.id"))
+	assert.Equal(t, res.Get("doctor_id"), res.Get("doctor.id"))
 
-// 	userDot := user.Dot()
-// 	assert.Equal(t, userDot.Get("mobile"), "13900001111")
-// 	assert.Equal(t, userDot.Get("extra.sex"), "男")
-// 	assert.Equal(t, userDot.Get("manu.name"), "北京云道天成科技有限公司")
-// 	assert.Equal(t, userDot.Get("addresses.0.location"), "银海星月9号楼9单元9层1024室")
-// 	assert.Equal(t, userDot.Get("mother.extra.sex"), "女")
-// 	assert.Equal(t, userDot.Get("mother.friends.friend_id"), int64(2))
-// 	assert.Equal(t, userDot.Get("mother.friends.type"), "monther")
-// }
+}
 
-// func TestModelMustGet(t *testing.T) {
-// 	users := Select("user").MustGet(QueryParam{Limit: 2})
-// 	// utils.Dump(users)
-// 	assert.Equal(t, len(users), 2)
-// 	userDot := maps.MapStr{"data": users}.Dot()
-// 	assert.Equal(t, userDot.Get("data.0.id"), int64(1))
-// 	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
-// }
+func TestModelMustGet(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestModelMustGetWiths(t *testing.T) {
-// 	users := Select("user").MustGet(QueryParam{
-// 		Select: []interface{}{"id", "name", "mobile"},
-// 		Withs: map[string]With{
-// 			"manu":      {},
-// 			"addresses": {},
-// 			"mother":    {},
-// 		},
-// 		Wheres: []QueryWhere{
-// 			{Column: "status", Value: "enabled"},
-// 		},
-// 		Orders: []QueryOrder{
-// 			{Column: "id", Option: "desc"},
-// 		},
-// 		Limit: 2,
-// 	})
-// 	// utils.Dump(users)
+	pets := Select("pet").MustGet(QueryParam{})
+	if len(pets) != 4 {
+		t.Fatal("pets length not equal 4")
+	}
+	res := pets[0].Dot()
+	assert.Equal(t, res.Get("name"), "Tommy")
+}
 
-// 	assert.Equal(t, len(users), 2)
-// 	userDot := maps.MapStr{"data": users}.Dot()
-// 	assert.Equal(t, userDot.Get("data.0.id"), int64(3))
-// 	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
-// }
+func TestModelMustGetWiths(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestModelMustPaginate(t *testing.T) {
-// 	user := Select("user").MustPaginate(QueryParam{}, 1, 2)
-// 	userDot := user.Dot()
-// 	assert.Equal(t, userDot.Get("total"), 3)
-// 	assert.Equal(t, userDot.Get("next"), 2)
-// 	assert.Equal(t, userDot.Get("page"), 1)
-// 	assert.Equal(t, userDot.Get("data.0.id"), int64(1))
-// 	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
-// }
+	pets := Select("pet").MustGet(QueryParam{
+		Withs: map[string]With{"category": {Query: QueryParam{
+			Select: []interface{}{"id", "name"},
+		}}},
+	})
+	if len(pets) != 4 {
+		t.Fatal("pets length not equal 4")
+	}
+	res := pets[0].Dot()
+	assert.Equal(t, res.Get("category_id"), res.Get("category.id"))
 
-// func TestModelMustPaginateWiths(t *testing.T) {
-// 	user := Select("user").MustPaginate(QueryParam{
-// 		Select: []interface{}{"id", "name", "mobile", "extra"},
-// 		Withs: map[string]With{
-// 			"manu":      {},
-// 			"addresses": {},
-// 			"mother":    {},
-// 		},
-// 	}, 1, 2)
+	// Multiple withs
+	pets = Select("pet").MustGet(QueryParam{
+		Withs: map[string]With{"category": {}, "owner": {}},
+	})
+	if len(pets) != 4 {
+		t.Fatal("pets length not equal 4")
+	}
+	res = pets[0].Dot()
+	assert.NotEmpty(t, res.Get("category.name"))
+	assert.NotEmpty(t, res.Get("owner.name"))
+	assert.Equal(t, res.Get("category_id"), res.Get("category.id"))
+	assert.Equal(t, res.Get("owner_id"), res.Get("owner.id"))
 
-// 	// utils.Dump(user)
+	// Multiple withs the same model
+	pets = Select("pet").MustGet(QueryParam{
+		Withs: map[string]With{"category": {}, "owner": {}, "doctor": {}},
+	})
+	if len(pets) != 4 {
+		t.Fatal("pets length not equal 4")
+	}
+	res = pets[0].Dot()
+	assert.NotEmpty(t, res.Get("category.name"))
+	assert.NotEmpty(t, res.Get("owner.name"))
+	assert.NotEmpty(t, res.Get("doctor.name"))
+	assert.Equal(t, res.Get("category_id"), res.Get("category.id"))
+	assert.Equal(t, res.Get("owner_id"), res.Get("owner.id"))
+	assert.Equal(t, res.Get("doctor_id"), res.Get("doctor.id"))
+}
 
-// 	userDot := user.Dot()
-// 	assert.Equal(t, userDot.Get("total"), 3)
-// 	assert.Equal(t, userDot.Get("next"), 2)
-// 	assert.Equal(t, userDot.Get("page"), 1)
-// 	assert.Equal(t, userDot.Get("data.0.id"), int64(1))
-// 	assert.Equal(t, userDot.Get("data.0.manu.name"), "北京云道天成科技有限公司")
-// 	assert.Equal(t, userDot.Get("data.0.mother.extra.sex"), "女")
-// 	assert.Equal(t, userDot.Get("data.0.extra.sex"), "男")
-// 	assert.Equal(t, userDot.Get("data.0.addresses.0.location"), "银海星月9号楼9单元9层1024室")
-// 	assert.Equal(t, userDot.Get("data.1.id"), int64(2))
-// }
+func TestModelMustPaginate(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestModelMustPaginateWithsWhere(t *testing.T) {
-// 	user := Select("user").MustPaginate(QueryParam{
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Column: "mobile",
-// 				Value:  "13900001111",
-// 			},
-// 		},
-// 		Withs: map[string]With{
-// 			"manu":      {},
-// 			"addresses": {},
-// 			"mother":    {},
-// 		},
-// 	}, 1, 2)
-// 	userDot := user.Dot()
-// 	assert.Equal(t, userDot.Get("total"), 1)
-// 	assert.Equal(t, userDot.Get("next"), -1)
-// 	assert.Equal(t, userDot.Get("page"), 1)
-// 	assert.Equal(t, userDot.Get("data.0.id"), int64(1))
-// 	assert.Equal(t, userDot.Get("data.0.manu.name"), "北京云道天成科技有限公司")
-// 	assert.Equal(t, userDot.Get("data.0.mother.extra.sex"), "女")
-// 	assert.Equal(t, userDot.Get("data.0.extra.sex"), "男")
-// 	assert.Equal(t, userDot.Get("data.0.addresses.0.location"), "银海星月9号楼9单元9层1024室")
+	pets := Select("pet").MustPaginate(QueryParam{}, 1, 2)
+	assert.Equal(t, pets["total"], 4)
+	assert.Equal(t, pets["page"], 1)
+	assert.Equal(t, pets["pagecnt"], 2)
+	assert.Equal(t, pets["pagesize"], 2)
+	assert.Equal(t, pets["next"], 2)
+	assert.Equal(t, pets["prev"], -1)
 
-// }
+	rows := pets["data"].([]maps.MapStr)
+	if len(rows) != 2 {
+		t.Fatal("pets length not equal 4")
+	}
+	res := rows[0].Dot()
+	assert.Equal(t, res.Get("name"), "Tommy")
+
+}
+
+func TestModelMustPaginateWiths(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	pets := Select("pet").MustPaginate(QueryParam{
+		Withs: map[string]With{"category": {Query: QueryParam{
+			Select: []interface{}{"id", "name"},
+		}}},
+	}, 1, 2)
+	assert.Equal(t, pets["total"], 4)
+	assert.Equal(t, pets["page"], 1)
+	assert.Equal(t, pets["pagecnt"], 2)
+	assert.Equal(t, pets["pagesize"], 2)
+	assert.Equal(t, pets["next"], 2)
+	assert.Equal(t, pets["prev"], -1)
+
+	rows := pets["data"].([]maps.MapStr)
+	if len(rows) != 2 {
+		t.Fatal("pets length not equal 4")
+	}
+	res := rows[0].Dot()
+	assert.Equal(t, res.Get("name"), "Tommy")
+
+	// Multiple withs
+	pets = Select("pet").MustPaginate(QueryParam{
+		Withs: map[string]With{"category": {}, "owner": {}},
+	}, 1, 2)
+	rows = pets["data"].([]maps.MapStr)
+	if len(rows) != 2 {
+		t.Fatal("pets length not equal 4")
+	}
+	res = rows[0].Dot()
+	assert.NotEmpty(t, res.Get("category.name"))
+	assert.NotEmpty(t, res.Get("owner.name"))
+	assert.Equal(t, res.Get("category_id"), res.Get("category.id"))
+	assert.Equal(t, res.Get("owner_id"), res.Get("owner.id"))
+
+	// Multiple withs the same model
+	pets = Select("pet").MustPaginate(QueryParam{
+		Withs: map[string]With{"category": {}, "owner": {}, "doctor": {}},
+	}, 1, 2)
+	rows = pets["data"].([]maps.MapStr)
+	if len(rows) != 2 {
+		t.Fatal("pets length not equal 4")
+	}
+	res = rows[0].Dot()
+	assert.NotEmpty(t, res.Get("category.name"))
+	assert.NotEmpty(t, res.Get("owner.name"))
+	assert.NotEmpty(t, res.Get("doctor.name"))
+	assert.Equal(t, res.Get("category_id"), res.Get("category.id"))
+	assert.Equal(t, res.Get("owner_id"), res.Get("owner.id"))
+	assert.Equal(t, res.Get("doctor_id"), res.Get("doctor.id"))
+
+}
 
 // func TestModelMustPaginateWithsWheresOrder(t *testing.T) {
 // 	user := Select("user").MustPaginate(QueryParam{
