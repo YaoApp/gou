@@ -29,6 +29,9 @@ var ModelHandlers = map[string]process.Handler{
 	"eachsaveafterdelete": processEachSaveAfterDelete,
 	"migrate":             processMigrate,
 	"load":                processLoad,
+	"reload":              processReload,
+	"read":                processRead,
+	"exists":              processExists,
 }
 
 func init() {
@@ -283,4 +286,23 @@ func processLoad(process *process.Process) interface{} {
 	}
 	_, err := LoadSync(file, id)
 	return err
+}
+
+func processReload(process *process.Process) interface{} {
+	mod := Select(process.ID)
+	_, err := mod.Reload()
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return nil
+}
+
+// processRead read the model dsl
+func processRead(process *process.Process) interface{} {
+	return Read(process.ID)
+}
+
+// processExists Check if the model is loaded
+func processExists(process *process.Process) interface{} {
+	return Exists(process.ID)
 }
