@@ -42,129 +42,44 @@ func TestLoadWithoutDB(t *testing.T) {
 	assert.False(t, has)
 }
 
-// prepare test suit
-func prepare(t *testing.T) {
-	dbconnect()
-	root := os.Getenv("GOU_TEST_APPLICATION")
-	aesKey := os.Getenv("GOU_TEST_AES_KEY")
+func TestReload(t *testing.T) {
+	prepare(t)
+	defer clean()
 
-	mods := map[string]string{
-		"user":     filepath.Join("models", "user.mod.yao"),
-		"pet":      filepath.Join("models", "pet.mod.yao"),
-		"tag":      filepath.Join("models", "tag.mod.yao"),
-		"category": filepath.Join("models", "category.mod.yao"),
-		"user.pet": filepath.Join("models", "user", "pet.mod.yao"),
-		"pet.tag":  filepath.Join("models", "pet", "tag.mod.yao"),
-	}
-
-	WithCrypt([]byte(fmt.Sprintf(`{"key":"%s"}`, aesKey)), "AES")
-	WithCrypt([]byte(`{}`), "PASSWORD")
-
-	// Load app
-	app, err := application.OpenFromDisk(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	application.Load(app)
-
-	// load mods
-	for id, file := range mods {
-		_, err := Load(file, id)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	// Migrate
-	for id := range mods {
-		mod := Select(id)
-		err := mod.Migrate(true)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
+	user := Select("user")
+	_, err := user.Reload()
+	assert.Nil(t, err)
 }
 
-func prepareTestData(t *testing.T) {
-	root := os.Getenv("GOU_TEST_APPLICATION")
-	file := filepath.Join(root, "data", "tests.json")
-	raw, err := os.ReadFile(file)
-	if err != nil {
-		t.Fatal(err)
+func TestMigrate(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-	}
+	user := Select("user")
+	users := user.MustGet(QueryParam{Select: []interface{}{"id"}})
+	assert.Equal(t, len(users), 2)
 
-	data := map[string][]map[string]interface{}{}
-	err = jsoniter.Unmarshal(raw, &data)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for id, rows := range data {
-		mod := Select(id)
-		_, err := mod.EachSave(rows)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
+	err := user.Migrate(true)
+	assert.Nil(t, err)
+	users = user.MustGet(QueryParam{Select: []interface{}{"id"}})
+	assert.Equal(t, len(users), 0)
 }
 
-func check(t *testing.T) {
-	keys := map[string]bool{}
-	for id := range Models {
-		keys[id] = true
-	}
-	mods := []string{"user", "pet", "tag", "category", "user.pet", "pet.tag"}
-	for _, id := range mods {
-		_, has := keys[id]
-		assert.True(t, has)
-	}
+func TestExists(t *testing.T) {
+	prepare(t)
+	defer clean()
+	assert.True(t, Exists("user"))
+	assert.False(t, Exists("not-found"))
 }
 
-func clean() {
-	dbclose()
-}
-
-func dbclose() {
-	if capsule.Global != nil {
-		capsule.Global.Connections.Range(func(key, value any) bool {
-			if conn, ok := value.(*capsule.Connection); ok {
-				conn.Close()
-			}
-			return true
-		})
-	}
-}
-
-func dbconnect() {
-
-	TestDriver := os.Getenv("GOU_TEST_DB_DRIVER")
-	TestDSN := os.Getenv("GOU_TEST_DSN")
-	TestAESKey := os.Getenv("GOU_TEST_AES_KEY")
-
-	// connect db
-	switch TestDriver {
-	case "sqlite3":
-		capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
-		break
-	default:
-		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
-		break
-	}
-
-	// query engine
-	query.Register("query-test", &gou.Query{
-		Query: capsule.Query(),
-		GetTableName: func(s string) string {
-			if mod, has := Models[s]; has {
-				return mod.MetaData.Table.Name
-			}
-			exception.New("[query] %s not found", 404).Throw()
-			return s
-		},
-		AESKey: TestAESKey,
+func TestRead(t *testing.T) {
+	prepare(t)
+	defer clean()
+	dsl := Read("user")
+	assert.Equal(t, dsl.Name, "User")
+	assert.Panics(t, func() {
+		Read("not-found")
 	})
 }
 
@@ -348,7 +263,132 @@ func TestModelMustPaginateWiths(t *testing.T) {
 	assert.Equal(t, res.Get("category_id"), res.Get("category.id"))
 	assert.Equal(t, res.Get("owner_id"), res.Get("owner.id"))
 	assert.Equal(t, res.Get("doctor_id"), res.Get("doctor.id"))
+}
 
+// prepare test suit
+func prepare(t *testing.T) {
+	dbconnect()
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	aesKey := os.Getenv("GOU_TEST_AES_KEY")
+
+	mods := map[string]string{
+		"user":     filepath.Join("models", "user.mod.yao"),
+		"pet":      filepath.Join("models", "pet.mod.yao"),
+		"tag":      filepath.Join("models", "tag.mod.yao"),
+		"category": filepath.Join("models", "category.mod.yao"),
+		"user.pet": filepath.Join("models", "user", "pet.mod.yao"),
+		"pet.tag":  filepath.Join("models", "pet", "tag.mod.yao"),
+	}
+
+	WithCrypt([]byte(fmt.Sprintf(`{"key":"%s"}`, aesKey)), "AES")
+	WithCrypt([]byte(`{}`), "PASSWORD")
+
+	// Load app
+	app, err := application.OpenFromDisk(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	application.Load(app)
+
+	// load mods
+	for id, file := range mods {
+		_, err := Load(file, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Migrate
+	for id := range mods {
+		mod := Select(id)
+		err := mod.Migrate(true)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+}
+
+func prepareTestData(t *testing.T) {
+	root := os.Getenv("GOU_TEST_APPLICATION")
+	file := filepath.Join(root, "data", "tests.json")
+	raw, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+
+	}
+
+	data := map[string][]map[string]interface{}{}
+	err = jsoniter.Unmarshal(raw, &data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for id, rows := range data {
+		mod := Select(id)
+		_, err := mod.EachSave(rows)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+}
+
+func check(t *testing.T) {
+	keys := map[string]bool{}
+	for id := range Models {
+		keys[id] = true
+	}
+	mods := []string{"user", "pet", "tag", "category", "user.pet", "pet.tag"}
+	for _, id := range mods {
+		_, has := keys[id]
+		assert.True(t, has)
+	}
+}
+
+func clean() {
+	dbclose()
+}
+
+func dbclose() {
+	if capsule.Global != nil {
+		capsule.Global.Connections.Range(func(key, value any) bool {
+			if conn, ok := value.(*capsule.Connection); ok {
+				conn.Close()
+			}
+			return true
+		})
+	}
+}
+
+func dbconnect() {
+
+	TestDriver := os.Getenv("GOU_TEST_DB_DRIVER")
+	TestDSN := os.Getenv("GOU_TEST_DSN")
+	TestAESKey := os.Getenv("GOU_TEST_AES_KEY")
+
+	// connect db
+	switch TestDriver {
+	case "sqlite3":
+		capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
+		break
+	default:
+		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
+		break
+	}
+
+	// query engine
+	query.Register("query-test", &gou.Query{
+		Query: capsule.Query(),
+		GetTableName: func(s string) string {
+			if mod, has := Models[s]; has {
+				return mod.MetaData.Table.Name
+			}
+			exception.New("[query] %s not found", 404).Throw()
+			return s
+		},
+		AESKey: TestAESKey,
+	})
 }
 
 // func TestModelMustPaginateWithsWheresOrder(t *testing.T) {

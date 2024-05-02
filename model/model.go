@@ -145,7 +145,7 @@ func LoadSource(source []byte, id string, file string) (*Model, error) {
 
 // Reload 更新模型
 func (mod *Model) Reload() (*Model, error) {
-	new, err := Load(mod.File, mod.ID)
+	new, err := LoadSync(mod.File, mod.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -191,11 +191,22 @@ func Select(id string) *Model {
 	mod, has := Models[id]
 	if !has {
 		exception.New(
-			fmt.Sprintf("Model:%s; 尚未加载", id),
+			fmt.Sprintf("Model:%s; not found", id),
 			400,
 		).Throw()
 	}
 	return mod
+}
+
+// Exists Check if the model is loaded
+func Exists(id string) bool {
+	_, has := Models[id]
+	return has
+}
+
+// Read read the model dsl
+func Read(id string) MetaData {
+	return Select(id).MetaData
 }
 
 // Validate 数值校验
