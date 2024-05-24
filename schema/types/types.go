@@ -61,25 +61,28 @@ type BlueprintOption struct {
 
 // Column the field description struct
 type Column struct {
-	Name        string      `json:"name"`
-	Label       string      `json:"label,omitempty"`
-	Type        string      `json:"type,omitempty"`
-	Title       string      `json:"title,omitempty"`
-	Description string      `json:"description,omitempty"`
-	Comment     string      `json:"comment,omitempty"`
-	Length      int         `json:"length,omitempty"`
-	Precision   int         `json:"precision,omitempty"`
-	Scale       int         `json:"scale,omitempty"`
-	Nullable    bool        `json:"nullable,omitempty"`
-	Option      []string    `json:"option,omitempty"`
-	Default     interface{} `json:"default,omitempty"`
-	DefaultRaw  string      `json:"default_raw,omitempty"`
-	Generate    string      `json:"generate,omitempty"` // Increment, UUID,...
-	Crypt       string      `json:"crypt,omitempty"`    // AES, PASSWORD, AES-256, AES-128, PASSWORD-HASH, ...
-	Index       bool        `json:"index,omitempty"`
-	Unique      bool        `json:"unique,omitempty"`
-	Primary     bool        `json:"primary,omitempty"`
-	Origin      string      `json:"origin,omitempty"`
+	Name          string      `json:"name"`
+	Label         string      `json:"label,omitempty"`
+	Type          string      `json:"type,omitempty"`
+	Title         string      `json:"title,omitempty"`
+	Description   string      `json:"description,omitempty"`
+	Comment       string      `json:"comment,omitempty"`
+	Length        int         `json:"length,omitempty"`
+	Precision     int         `json:"precision,omitempty"`
+	Scale         int         `json:"scale,omitempty"`
+	Nullable      bool        `json:"nullable,omitempty"`
+	Option        []string    `json:"option,omitempty"`
+	Default       interface{} `json:"default,omitempty"`
+	DefaultRaw    string      `json:"default_raw,omitempty"`
+	Generate      string      `json:"generate,omitempty"` // Increment, UUID,...
+	Crypt         string      `json:"crypt,omitempty"`    // AES, PASSWORD, AES-256, AES-128, PASSWORD-HASH, ...
+	Index         bool        `json:"index,omitempty"`
+	Unique        bool        `json:"unique,omitempty"`
+	Primary       bool        `json:"primary,omitempty"`
+	Origin        string      `json:"origin,omitempty"`
+	RemoveIndex   bool        `json:"-"`
+	RemoveUnique  bool        `json:"-"`
+	RemovePrimary bool        `json:"-"`
 }
 
 // Index the search index struct

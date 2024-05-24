@@ -1,12 +1,12 @@
 package types
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/crypto/md4"
 )
 
 // New  create a Blueprint
@@ -20,7 +20,7 @@ func New() Blueprint {
 
 // NewFile create a Blueprint by File
 func NewFile(file string) (Blueprint, error) {
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err != nil {
 		return Blueprint{}, nil
 	}
@@ -120,6 +120,6 @@ func (index Index) Hash() string {
 }
 
 func hash(s string) string {
-	h := md4.New()
+	h := md5.New()
 	return string(h.Sum([]byte(s)))
 }

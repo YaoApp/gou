@@ -130,15 +130,17 @@ func ColumnToBlueprint(col *schema.Column, prikeys []string) types.Column {
 		column.Scale = *col.Scale
 	}
 
-	if len(col.Indexes) == 1 {
+	for _, idx := range col.Indexes {
+		if len(idx.Columns) != 1 {
+			continue
+		}
 
-		switch col.Indexes[0].Type {
-		case "index":
+		if idx.Type == "index" {
 			column.Index = true
-			break
-		case "unique":
+		}
+
+		if idx.Type == "unique" {
 			column.Unique = true
-			break
 		}
 	}
 

@@ -228,11 +228,19 @@ func (x *Xun) ColumnAdd(name string, column types.Column) error {
 func (x *Xun) ColumnAlt(name string, column types.Column) error {
 	sch := x.Manager.Schema()
 
-	// drop indexes
-	if column.Index {
+	// drop index
+	if column.RemoveIndex || column.Index {
 		x.IndexDel(name, fmt.Sprintf("%s_index", column.Name))
-	} else if column.Unique {
+	}
+
+	// drop unique
+	if column.RemoveUnique || column.Unique {
 		x.IndexDel(name, fmt.Sprintf("%s_unique", column.Name))
+	}
+
+	// drop primary
+	if column.RemovePrimary {
+		x.IndexDel(name, "PRIMARY")
 	}
 
 	return sch.AlterTable(name, func(table schema.Blueprint) {

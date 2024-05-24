@@ -200,16 +200,19 @@ func (diff *Diff) columnsAddAlt(columns []Column, blueprint map[string]Column) {
 		}
 
 		if origin.Index != column.Index {
+			column.RemoveIndex = true
 			diff.Columns.Alt = append(diff.Columns.Alt, column)
 			continue
 		}
 
 		if origin.Unique != column.Unique {
+			column.RemoveUnique = true
 			diff.Columns.Alt = append(diff.Columns.Alt, column)
 			continue
 		}
 
 		if origin.Primary != column.Primary {
+			column.RemovePrimary = true
 			diff.Columns.Alt = append(diff.Columns.Alt, column)
 			continue
 		}
