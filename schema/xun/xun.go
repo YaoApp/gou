@@ -229,12 +229,12 @@ func (x *Xun) ColumnAlt(name string, column types.Column) error {
 	sch := x.Manager.Schema()
 
 	// drop index
-	if column.RemoveIndex {
+	if column.RemoveIndex || column.Index {
 		x.IndexDel(name, fmt.Sprintf("%s_index", column.Name))
 	}
 
 	// drop unique
-	if column.RemoveUnique {
+	if column.RemoveUnique || column.Unique {
 		x.IndexDel(name, fmt.Sprintf("%s_unique", column.Name))
 	}
 
