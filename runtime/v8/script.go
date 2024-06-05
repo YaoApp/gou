@@ -2,6 +2,7 @@ package v8
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -150,14 +151,76 @@ func TransformTS(file string, source []byte) ([]byte, error) {
 		})), nil
 }
 
+type entry struct {
+	absfile string
+	source  string
+	file    string
+}
+
+func getEntryPoints(file string, tsCode string, loaded map[string]bool) (string, []entry, error) {
+	entryPoints := []entry{}
+	root := application.App.Root()
+	absFile := filepath.Join(root, file)
+
+	tsCode, imports, err := replaceImportCode(file, []byte(tsCode))
+	if err != nil {
+		return "", nil, err
+	}
+	ImportMap[file] = imports
+	entryPoints = append(entryPoints, entry{file: file, absfile: absFile, source: tsCode})
+
+	for _, imp := range imports {
+		if loaded[imp.Path] {
+			continue
+		}
+		loaded[imp.Path] = true
+		source, err := application.App.Read(imp.Path)
+		if err != nil {
+			return "", nil, err
+		}
+
+		_, subEntryPoints, err := getEntryPoints(imp.Path, string(source), loaded)
+		if err != nil {
+			return "", nil, err
+		}
+
+		entryPoints = append(entryPoints, subEntryPoints...)
+	}
+	return tsCode, entryPoints, nil
+
+}
+
 func loadModule(file string, tsCode string) error {
 
 	errors := []string{}
 	root := application.App.Root()
 	absFile := filepath.Join(root, file)
-	globalName := strings.ReplaceAll(file, "/", "_")
+
+	// Check if the module loaded
+	if _, has := Modules[absFile]; has {
+		return nil
+	}
+
+	globalName := strings.ReplaceAll(strings.ReplaceAll(file, "/", "_"), ".", "_")
+	entryPoints := []entry{}
+	loaded := map[string]bool{}
+	tsCode, entryPoints, err := getEntryPoints(file, tsCode, loaded)
+	if err != nil {
+		return err
+	}
+
+	files := []string{}
+	codes := map[string]string{}
+	for _, entry := range entryPoints {
+		files = append(files, entry.absfile)
+		codes[entry.absfile] = entry.source
+	}
+
+	dir := filepath.Dir(absFile)
+	outdir := filepath.Join(string(os.PathSeparator), "outdir")
+
 	result := api.Build(api.BuildOptions{
-		EntryPoints: []string{absFile},
+		EntryPoints: files,
 		Bundle:      true,
 		Write:       false,
 		Target:      api.ESNext,
@@ -166,38 +229,13 @@ func loadModule(file string, tsCode string) error {
 			".ts": api.LoaderTS,
 		},
 		Sourcemap: api.SourceMapExternal,
-		Outdir:    "dist",
+		Outdir:    outdir,
 		Plugins: []api.Plugin{
 			{
 				Name: "custom-import-plugin",
 				Setup: func(build api.PluginBuild) {
 					build.OnLoad(api.OnLoadOptions{Filter: `.*\.ts$`}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
-						if args.Path == absFile {
-							contents := string(tsCode)
-							return api.OnLoadResult{
-								Contents: &contents,
-								Loader:   api.LoaderTS,
-							}, nil
-						}
-
-						// Read The Import File
-						relpath := strings.TrimPrefix(args.Path, root)
-
-						// Read the file
-						source, err := application.App.Read(relpath)
-						if err != nil {
-							errors = append(errors, err.Error())
-							return api.OnLoadResult{}, err
-						}
-
-						// Transform the ts code
-						tsCode, err := tsImports(relpath, source)
-						if err != nil {
-							errors = append(errors, err.Error())
-							return api.OnLoadResult{}, err
-						}
-
-						contents := tsCode
+						contents := codes[args.Path]
 						return api.OnLoadResult{
 							Contents: &contents,
 							Loader:   api.LoaderTS,
@@ -220,10 +258,14 @@ func loadModule(file string, tsCode string) error {
 
 	if len(result.OutputFiles) > 1 {
 		for _, out := range result.OutputFiles {
-			if strings.HasSuffix(out.Path, ".map") {
-				ModuleSourceMap[absFile] = string(out.Contents)
-			} else {
-				Modules[absFile] = Module{
+			if strings.HasSuffix(out.Path, ".js.map") {
+				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js.map", ".ts.map"), outdir)
+				key = filepath.Join(dir, key)
+				ModuleSourceMap[key] = string(out.Contents)
+			} else if strings.HasSuffix(out.Path, ".js") {
+				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js", ".ts"), outdir)
+				key = filepath.Join(dir, key)
+				Modules[key] = Module{
 					File:       file,
 					GlobalName: globalName,
 					Source:     string(out.Contents),
@@ -236,9 +278,27 @@ func loadModule(file string, tsCode string) error {
 }
 
 func tsImports(file string, source []byte) (string, error) {
+
+	err := loadModule(file, string(source))
+	if err != nil {
+		return "", err
+	}
+
+	tsCode := importRe.ReplaceAllStringFunc(string(source), func(m string) string { // Remove the import as comments
+		lines := strings.Split(m, "\n")
+		for i, line := range lines {
+			lines[i] = "// " + line
+		}
+		return strings.Join(lines, "\n")
+	})
+
+	return tsCode, nil
+}
+
+func replaceImportCode(file string, source []byte) (string, []Import, error) {
+	var err error = nil
 	errors := []string{}
 	imports := []Import{}
-
 	tsCode := importRe.ReplaceAllStringFunc(string(source), func(m string) string {
 		matches := importRe.FindStringSubmatch(m)
 		if len(matches) == 3 {
@@ -256,25 +316,27 @@ func tsImports(file string, source []byte) (string, error) {
 				}
 			}
 
-			absImportPath, err := getImportPath(file, importPath)
+			relImportPath, err := getImportPath(file, importPath)
 			if err != nil {
 				errors = append(errors, err.Error())
 				return m
 			}
 
-			name := strings.Trim(importClause, " ")
+			absImportPath := filepath.Join(application.App.Root(), relImportPath)
+
+			name := strings.TrimSpace(importClause)
 			if strings.Index(importClause, "*") >= 0 {
 				arr := strings.Split(importClause, " as ")
 				if len(arr) == 2 {
-					name = strings.Trim(arr[1], " ")
+					name = strings.TrimSpace(arr[1])
 				}
-			} else if strings.Index(importClause, "as") >= 0 {
-				name = strings.ReplaceAll(importClause, "as", ":")
+			} else if strings.Index(importClause, " as ") >= 0 {
+				name = strings.ReplaceAll(importClause, " as ", ":")
 			}
 
 			imports = append(imports, Import{
 				Name:    name,
-				Path:    importPath,
+				Path:    relImportPath,
 				AbsPath: absImportPath,
 				Clause:  importClause,
 			})
@@ -282,39 +344,25 @@ func tsImports(file string, source []byte) (string, error) {
 		}
 		return m
 	})
+
 	if len(errors) > 0 {
-		return "", fmt.Errorf("transform ts code error: %v", strings.Join(errors, "\n"))
+		err = fmt.Errorf("transform ts code error: %v", strings.Join(errors, "\n"))
 	}
 
-	err := loadModule(file, tsCode)
-	if err != nil {
-		return "", err
-	}
-
-	tsCode = importRe.ReplaceAllStringFunc(tsCode, func(m string) string { // Remove the import as comments
-		lines := strings.Split(m, "\n")
-		for i, line := range lines {
-			lines[i] = "// " + line
-		}
-		return strings.Join(lines, "\n")
-	})
-
-	ImportMap[file] = imports
-	return tsCode, nil
+	return tsCode, imports, err
 }
 
 func getImportPath(file string, path string) (string, error) {
 	relpath := filepath.Dir(file)
-	root := application.App.Root()
 	file = filepath.Join(relpath, path)
 	if !strings.HasSuffix(path, ".ts") {
 		if exist, _ := application.App.Exists(file + ".ts"); exist {
 			file = file + ".ts"
-			return filepath.Join(root, file), nil
+			return file, nil
 
 		} else if exist, _ := application.App.Exists(filepath.Join(path, "index.ts")); exist {
 			file = file + "index.ts"
-			return filepath.Join(root, file), nil
+			return file, nil
 		}
 	}
 
@@ -322,7 +370,7 @@ func getImportPath(file string, path string) (string, error) {
 		return "", fmt.Errorf("file %s not exists", file)
 	}
 
-	return filepath.Join(root, file), nil
+	return file, nil
 }
 
 // Transform the javascript
