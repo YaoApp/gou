@@ -133,11 +133,13 @@ func TransformTS(file string, source []byte) ([]byte, error) {
 		if imports, has := ImportMap[file]; has {
 			for _, imp := range imports {
 				module, has := Modules[imp.AbsPath]
-				if !has {
-					return nil, fmt.Errorf("module %s not exists", imp.Path)
+				if has {
+					importCodes = append(importCodes, fmt.Sprintf("%s;\nconst %s = %s;", module.Source, imp.Name, module.GlobalName))
 				}
-				importCodes = append(importCodes, fmt.Sprintf("%s;\nconst %s = %s;", module.Source, imp.Name, module.GlobalName))
 			}
+		}
+
+		if len(importCodes) > 0 {
 			jsCode = []byte(strings.Join(importCodes, "\n") + "\n" + string(result.Code))
 		}
 	}
@@ -213,7 +215,7 @@ func loadModule(file string, tsCode string) error {
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("transform ts code error: %v", strings.Join(errors, "\n"))
+		return fmt.Errorf("transform module error: %v.\n%s", strings.Join(errors, "\n"), tsCode)
 	}
 
 	if len(result.OutputFiles) > 1 {
@@ -230,8 +232,7 @@ func loadModule(file string, tsCode string) error {
 		}
 	}
 
-	return fmt.Errorf("transform ts code error: %v", "output files not found")
-
+	return nil
 }
 
 func tsImports(file string, source []byte) (string, error) {
@@ -246,7 +247,12 @@ func tsImports(file string, source []byte) (string, error) {
 			// Filter the internal keep modules
 			for _, keep := range internalKeepModules {
 				if strings.HasSuffix(importPath, keep) {
-					return m
+					lines := strings.Split(m, "\n")
+					for i, line := range lines {
+						lines[i] = "// " + line
+
+					}
+					return strings.Join(lines, "\n")
 				}
 			}
 
@@ -280,18 +286,18 @@ func tsImports(file string, source []byte) (string, error) {
 		return "", fmt.Errorf("transform ts code error: %v", strings.Join(errors, "\n"))
 	}
 
-	if len(imports) > 0 {
-
-		loadModule(file, tsCode)
-		tsCode = importRe.ReplaceAllStringFunc(tsCode, func(m string) string { // Remove the import as comments
-			lines := strings.Split(m, "\n")
-			for i, line := range lines {
-				lines[i] = "// " + line
-
-			}
-			return strings.Join(lines, "\n")
-		})
+	err := loadModule(file, tsCode)
+	if err != nil {
+		return "", err
 	}
+
+	tsCode = importRe.ReplaceAllStringFunc(tsCode, func(m string) string { // Remove the import as comments
+		lines := strings.Split(m, "\n")
+		for i, line := range lines {
+			lines[i] = "// " + line
+		}
+		return strings.Join(lines, "\n")
+	})
 
 	ImportMap[file] = imports
 	return tsCode, nil
