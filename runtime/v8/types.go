@@ -26,6 +26,11 @@ type Option struct {
 	ContextTimeout    int    `json:"contextTimeout,omitempty"`    // the default timeout for the context, the default value is 200ms
 	ContetxQueueSize  int    `json:"contextQueueSize,omitempty"`  // the default queue size for the context, the default value is 10, performance only
 	DataRoot          string `json:"dataRoot,omitempty"`          // the data root path
+
+	// The following options are experimental features and not stable.
+	// They may be removed once the features become stable. Please do not use them in a production environment.
+	Import bool `json:"import,omitempty"` // If true, TypeScript import will be enabled. Default value is false.
+
 }
 
 // Script v8 scripts
@@ -35,6 +40,21 @@ type Script struct {
 	Source  string
 	Root    bool
 	Timeout time.Duration
+}
+
+// Module the module
+type Module struct {
+	GlobalName string
+	File       string
+	Source     string
+}
+
+// Import module
+type Import struct {
+	Name    string
+	Path    string
+	AbsPath string
+	Clause  string
 }
 
 // Isolate v8 Isolate
