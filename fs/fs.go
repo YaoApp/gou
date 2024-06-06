@@ -33,6 +33,7 @@ var DownloadWhitelist = map[string]bool{
 	"docx":   true,
 	"png":    true,
 	"jpg":    true,
+	"jpeg":   true,
 	"bmp":    true,
 	"svg":    true,
 	"tif":    true,
