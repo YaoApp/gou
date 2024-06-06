@@ -100,6 +100,14 @@ func LoadRoot(file string, id string) (*Script, error) {
 	return script, nil
 }
 
+// CLearModules clear the modules cache
+func CLearModules() {
+	Modules = map[string]Module{}
+	ModuleSourceMap = map[string]string{}
+	ImportMap = map[string][]Import{}
+	SourceMap = map[string]string{}
+}
+
 // TransformTS transform the typescript
 func TransformTS(file string, source []byte) ([]byte, error) {
 
