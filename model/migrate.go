@@ -111,7 +111,7 @@ func (mod *Model) InsertValues() ([]int, []error) {
 	for _, row := range mod.MetaData.Values {
 		id, err := mod.Create(row)
 		if err != nil {
-			errs = append(errs, nil)
+			errs = append(errs, err)
 		}
 		ids = append(ids, id)
 	}
