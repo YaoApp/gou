@@ -111,7 +111,7 @@ func CLearModules() {
 // TransformTS transform the typescript
 func TransformTS(file string, source []byte) ([]byte, error) {
 
-	tsCode, err := tsImports(file, source)
+	tsCode, err := tsImports(file, removeCommentsAndKeepLines(source))
 	if err != nil {
 		return nil, err
 	}
@@ -163,6 +163,30 @@ type entry struct {
 	absfile string
 	source  string
 	file    string
+}
+
+func removeCommentsAndKeepLines(code []byte) []byte {
+	lines := strings.Split(string(code), "\n")
+	for i, line := range lines {
+		// Start with /*
+		if strings.HasPrefix(strings.TrimSpace(line), "/*") {
+			lines[i] = ""
+			for {
+				if strings.Contains(line, "*/") {
+					break
+				}
+				i++
+				line = lines[i]
+				lines[i] = ""
+			}
+		}
+
+		// Start with //
+		if strings.HasPrefix(strings.TrimSpace(line), "//") {
+			lines[i] = ""
+		}
+	}
+	return []byte(strings.Join(lines, "\n"))
 }
 
 func getEntryPoints(file string, tsCode string, loaded map[string]bool) (string, []entry, error) {
@@ -224,7 +248,8 @@ func loadModule(file string, tsCode string) error {
 		codes[entry.absfile] = entry.source
 	}
 
-	dir := filepath.Dir(absFile)
+	paths := strings.Split(file, string(os.PathSeparator))
+	dir := filepath.Join(root, paths[0]) // <app_root>/scripts, <app_root>/services, etc..
 	outdir := filepath.Join(string(os.PathSeparator), "outdir")
 
 	result := api.Build(api.BuildOptions{
@@ -237,6 +262,7 @@ func loadModule(file string, tsCode string) error {
 			".ts": api.LoaderTS,
 		},
 		Sourcemap: api.SourceMapExternal,
+		Outbase:   dir,
 		Outdir:    outdir,
 		Plugins: []api.Plugin{
 			{
