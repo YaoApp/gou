@@ -36,6 +36,34 @@ func TestTypeScript(t *testing.T) {
 	assert.Equal(t, `const message="Hello, TypeScript!";console.log(message),add(a,b),hello("World");function add(o,n){return o+n}const hello=o=>{console.log(hello,o)};`+"\n", jsCode)
 }
 
+func TestJavaScript(t *testing.T) {
+	inputCode := `
+		const message = "Hello, JavaScript!";
+		console.log(message);
+		add(a, b)
+		hello( "World" )
+
+		function add(a, b) {
+			return a + b;
+		}
+
+		const hello = (name) => {
+			console.log(hello, name)
+		}
+	`
+	jsCode, err := JavaScript(inputCode, api.TransformOptions{
+		Target:            api.ES2015,
+		MinifyWhitespace:  true,
+		MinifyIdentifiers: true,
+		MinifySyntax:      true,
+	})
+
+	if err != nil {
+		t.Errorf("transform js code error: %v", err)
+	}
+	assert.Equal(t, `const message="Hello, JavaScript!";console.log(message),add(a,b),hello("World");function add(o,l){return o+l}const hello=o=>{console.log(hello,o)};`+"\n", jsCode)
+}
+
 func TestMinifyCSS(t *testing.T) {
 	inputCode := `
 		.bordered {
