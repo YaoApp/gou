@@ -49,6 +49,7 @@ import (
 // var res 			  = fs.Move("/root/path/foo.file", "/root/path/bar.file")
 // var res 			  = fs.Move("/root/path", "/root/new")
 // var file 		  = fs.Abs('/data/path')
+// var files 		  = fs.Glob('/data/path/*.txt')
 
 // Object Javascript API
 type Object struct{}
@@ -95,6 +96,8 @@ func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 
 	tmpl.Set("Zip", obj.zip(iso))
 	tmpl.Set("Unzip", obj.unzip(iso))
+
+	tmpl.Set("Glob", obj.glob(iso))
 	return tmpl
 }
 
@@ -495,6 +498,27 @@ func (obj *Object) islink(iso *v8go.Isolate) *v8go.FunctionTemplate {
 
 		ok := fs.IsLink(stor, args[0].String())
 		return obj.boolValue(info, ok)
+	})
+}
+
+func (obj *Object) glob(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		files, err := fs.Glob(stor, args[0].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.stringArrayValue(info, files)
 	})
 }
 

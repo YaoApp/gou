@@ -162,6 +162,12 @@ func ReadDir(xfs FileSystem, dir string, recursive bool) ([]string, error) {
 	return xfs.ReadDir(dir, recursive)
 }
 
+// Glob returns the names of all files matching pattern or nil if there is no matching file.
+// The syntax of patterns is the same as in Match. The pattern may describe hierarchical names such as /usr/*/bin/ed (assuming the Separator is '/').
+func Glob(xfs FileSystem, pattern string) (matches []string, err error) {
+	return xfs.Glob(pattern)
+}
+
 // Mkdir creates a new directory with the specified name and permission bits (before umask).
 // If there is an error, it will be of type *PathError.
 func Mkdir(xfs FileSystem, dir string, perm uint32) error {

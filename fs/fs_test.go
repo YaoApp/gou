@@ -151,6 +151,46 @@ func TestReadDir(t *testing.T) {
 	}
 }
 
+func TestGlob(t *testing.T) {
+	stores := testStores(t)
+	f := testFiles(t)
+	for name, stor := range stores {
+		clear(stor, t)
+		data := testData(t)
+
+		// Mkdir
+		err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["D1"], name)
+		checkFileExists(stor, t, f["D1_D2"], name)
+
+		// Write
+		_, err = WriteFile(stor, f["D1_F1"], data, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["D1_F1"], name)
+
+		_, err = WriteFile(stor, f["D1_F2"], data, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["D1_F2"], name)
+
+		_, err = WriteFile(stor, f["D1_D2_F1"], data, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["D1_D2_F1"], name)
+
+		_, err = WriteFile(stor, f["D1_D2_F2"], data, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["D1_D2_F2"], name)
+
+		files, err := stor.Glob(f["D1"] + "/*")
+		assert.Nil(t, err, name)
+		assert.Equal(t, 3, len(files), name)
+
+		files, err = stor.Glob(f["D1"] + "/*/*")
+		assert.Nil(t, err, name)
+		assert.Equal(t, 2, len(files), name)
+	}
+}
+
 func TestWriteFile(t *testing.T) {
 	stores := testStores(t)
 	f := testFiles(t)

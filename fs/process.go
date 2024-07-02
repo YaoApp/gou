@@ -44,6 +44,7 @@ var FileSystemHandlers = map[string]process.Handler{
 	"download":        processDownload,
 	"zip":             processZip,
 	"unzip":           processUnzip,
+	"glob":            processGlob,
 }
 
 func init() {
@@ -123,6 +124,23 @@ func processReadDir(process *process.Process) interface{} {
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
+	return dirs
+}
+
+func processGlob(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	pattern := process.ArgsString(0)
+	absDirs, err := Glob(stor, pattern)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+
+	dirs := []string{}
+	for _, dir := range absDirs {
+		dirs = append(dirs, strings.Replace(dir, stor.Root(), "", 1))
+	}
+
 	return dirs
 }
 
