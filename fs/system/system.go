@@ -177,6 +177,25 @@ func (f *File) ReadDir(dir string, recursive bool) ([]string, error) {
 	return dirs, nil
 }
 
+// Glob returns the names of all files matching pattern or nil if there is no matching file.
+// The syntax of patterns is the same as in Match. The pattern may describe hierarchical names such as /usr/*/bin/ed (assuming the Separator is '/').
+func (f *File) Glob(pattern string) ([]string, error) {
+	pattern, err := f.absPath(pattern)
+	if err != nil {
+		return nil, err
+	}
+	absDirs, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	dirs := []string{}
+	for _, dir := range absDirs {
+		dirs = append(dirs, f.relPath(dir))
+	}
+	return dirs, nil
+}
+
 // Mkdir creates a new directory with the specified name and permission bits (before umask).
 // If there is an error, it will be of type *PathError.
 func (f *File) Mkdir(dir string, perm uint32) error {

@@ -138,6 +138,38 @@ func TestProcessFsDir(t *testing.T) {
 	assert.Equal(t, 5, len(res.([]string)))
 }
 
+func TestProcessFsGlob(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(FileSystems["system"], t)
+	testFsMakeData(t)
+	testFsMakeF1(t)
+	testFsMakeD1D2F1(t)
+
+	processName := "fs.system.Glob"
+	args := []interface{}{filepath.Join(f["root"], "*")}
+	res, err := process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 2, len(res.([]string)))
+
+	processName = "fs.system.Glob"
+	args = []interface{}{filepath.Join(f["root"], "*.file")}
+	res, err = process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 1, len(res.([]string)))
+
+	processName = "fs.system.Glob"
+	args = []interface{}{filepath.Join(f["root"], "d1", "*.file")}
+	res, err = process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, 2, len(res.([]string)))
+}
+
 func TestProcessFsExistRemove(t *testing.T) {
 	f := testFsFiles(t)
 	testFsClear(FileSystems["system"], t)

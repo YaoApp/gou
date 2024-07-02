@@ -15,6 +15,7 @@ type FileSystem interface {
 	Mkdir(dir string, perm uint32) error
 	MkdirAll(dir string, perm uint32) error
 	MkdirTemp(dir string, pattern string) (string, error)
+	Glob(pattern string) ([]string, error)
 
 	Remove(name string) error
 	RemoveAll(name string) error
