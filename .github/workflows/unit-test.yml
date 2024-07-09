@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [1.19.5, 1.20.0]
+        go: [1.20.0]
         db: [MySQL8.0, SQLite3]
         redis: [4, 5, 6]
         mongo: ["6.0"]
@@ -161,15 +161,13 @@ jobs:
       - name: Run Benchmark
         run: |
           make bench
-          
+
       - name: Run Test
         run: |
           make vet
           make fmt-check
           make misspell-check
           make test
-
-   
 
       - name: Codecov Report
         uses: codecov/codecov-action@v3
