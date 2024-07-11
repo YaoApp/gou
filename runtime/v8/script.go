@@ -41,7 +41,8 @@ var RootScripts = map[string]*Script{}
 var importRe = regexp.MustCompile(`import\s+\t*\n*(\*\s+as\s+\w+|\{[^}]+\}|\w+)\s+from\s+["']([^"']+)["'];?`)
 var exportRe = regexp.MustCompile(`export\s+(default|function|class|const|var|let)\s+`)
 
-var internalKeepModules = []string{"/yao.ts", "/yao", "/gou", "/gou.ts"}
+var internalKeepModuleSuffixes = []string{"/yao.ts", "/yao", "/gou", "/gou.ts"}
+var internalKeepModules = []string{"@yao", "@yaoapps", "@yaoapp", "@gou"}
 
 // NewScript create a new script
 func NewScript(file string, id string, timeout ...time.Duration) *Script {
@@ -339,12 +340,21 @@ func replaceImportCode(file string, source []byte) (string, []Import, error) {
 			importClause, importPath := matches[1], matches[2]
 
 			// Filter the internal keep modules
-			for _, keep := range internalKeepModules {
+			for _, keep := range internalKeepModuleSuffixes {
 				if strings.HasSuffix(importPath, keep) {
 					lines := strings.Split(m, "\n")
 					for i, line := range lines {
 						lines[i] = "// " + line
 
+					}
+					return strings.Join(lines, "\n")
+				}
+			}
+			for _, keep := range internalKeepModules {
+				if strings.HasPrefix(importPath, keep) {
+					lines := strings.Split(m, "\n")
+					for i, line := range lines {
+						lines[i] = "// " + line
 					}
 					return strings.Join(lines, "\n")
 				}
