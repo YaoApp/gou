@@ -190,6 +190,8 @@ func (x *Xun) getDSN(i int) (string, error) {
 		return x.mysqlDSN(i)
 	case "sqlite3":
 		return x.sqlite3DSN(i)
+	case "postgres":
+		return x.postgresDSN(i)
 	}
 
 	return "", fmt.Errorf("the driver %s does not support", x.Driver)
@@ -257,6 +259,38 @@ func (x *Xun) mysqlDSN(i int) (string, error) {
 	if len(params) > 0 {
 		dsn = dsn + "?" + strings.Join(params, "&")
 	}
+
+	return dsn, nil
+}
+
+func (x *Xun) postgresDSN(i int) (string, error) {
+
+	if x.Options.DB == "" {
+		return "", fmt.Errorf("options.db is required")
+	}
+
+	if len(x.Options.Hosts) == 0 {
+		return "", fmt.Errorf("options.hosts is required")
+	}
+
+	host := x.Options.Hosts[i]
+	if host.Host == "" {
+		return "", fmt.Errorf("hosts.%d.host is required", i)
+	}
+
+	if host.Port == "" {
+		host.Port = "5432"
+	}
+
+	if host.User == "" {
+		return "", fmt.Errorf("hosts.%d.user is required", i)
+	}
+
+	if host.Pass == "" {
+		return "", fmt.Errorf("hosts.%d.pass is required", i)
+	}
+
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", host.User, host.Pass, host.Host, host.Port, x.Options.DB)
 
 	return dsn, nil
 }
