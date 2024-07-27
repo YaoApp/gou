@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
@@ -358,6 +359,11 @@ func (path Path) setPayload(c *gin.Context) {
 
 		}
 
+		if !isFirstNonSpaceChar(string(bytes), '{') {
+			c.Set("__payloads", map[string]interface{}{})
+			return
+		}
+
 		payloads := map[string]interface{}{}
 		err = jsoniter.Unmarshal(bytes, &payloads)
 		if err != nil {
@@ -368,4 +374,13 @@ func (path Path) setPayload(c *gin.Context) {
 		c.Request.Body = io.NopCloser(strings.NewReader(string(bytes)))
 
 	}
+}
+
+func isFirstNonSpaceChar(text string, char rune) bool {
+	for _, r := range text {
+		if !unicode.IsSpace(r) {
+			return r == char
+		}
+	}
+	return false
 }
