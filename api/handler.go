@@ -3,12 +3,12 @@ package api
 import (
 	"context"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"io"
 	"strings"
 	"unicode"
 
 	"github.com/gin-gonic/gin"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/process"
 	v8 "github.com/yaoapp/gou/runtime/v8"
@@ -359,20 +359,17 @@ func (path Path) setPayload(c *gin.Context) {
 
 		}
 
-		if !isFirstNonSpaceChar(string(bytes), '{') {
-			c.Set("__payloads", map[string]interface{}{})
-			return
+		if isFirstNonSpaceChar(string(bytes), '{') {
+			payloads := map[string]interface{}{}
+			err = jsoniter.Unmarshal(bytes, &payloads)
+			if err != nil {
+				c.Set("__payloads", map[string]interface{}{})
+				log.Error("[Path] %s %s", path.Path, err.Error())
+			}
+			c.Set("__payloads", payloads)
 		}
 
-		payloads := map[string]interface{}{}
-		err = jsoniter.Unmarshal(bytes, &payloads)
-		if err != nil {
-			c.Set("__payloads", map[string]interface{}{})
-			log.Error("[Path] %s %s", path.Path, err.Error())
-		}
-		c.Set("__payloads", payloads)
 		c.Request.Body = io.NopCloser(strings.NewReader(string(bytes)))
-
 	}
 }
 
