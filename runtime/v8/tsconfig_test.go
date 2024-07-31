@@ -34,6 +34,6 @@ func TestTSConfigGetFileName(t *testing.T) {
 		t.Fatal("not match")
 	}
 
-	assert.Equal(t, "/scripts/runtime/ts/lib/foo.ts", file)
+	assert.Equal(t, "scripts/runtime/ts/lib/foo.ts", file)
 
 }

@@ -1,6 +1,7 @@
 package v8
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,36 +20,44 @@ func (tsconfg *TSConfig) GetFileName(path string) (string, bool, error) {
 	}
 
 	for pattern, paths := range tsconfg.CompilerOptions.Paths {
-
-		match, err := filepath.Match(pattern, path)
-		if err != nil {
-			return path, false, nil
-		}
-
-		if match {
+		if tsconfg.Match(pattern, path) {
 			f := tsconfg.ReplacePattern(path, pattern)
 			for _, p := range paths {
-				matches, err := application.App.Glob(p)
-				if err != nil {
-					return path, false, err
-				}
-				for _, file := range matches {
-					if strings.HasSuffix(file, f) {
-						return file, true, nil
+				dir := filepath.Clean(filepath.Dir(p))
+				f = filepath.Join(dir, f)
+				err := application.App.Walk(dir, func(root, filename string, isdir bool) error {
+					if isdir {
+						return nil
 					}
+					if filename == f {
+						return fmt.Errorf("Found")
+					}
+					return nil
+				}, "*.ts")
+
+				if err == nil {
+					return path, false, nil
+				}
+
+				if err.Error() == "Found" {
+					return f, true, nil
 				}
 			}
 		}
-
 	}
-
 	return path, false, nil
+}
+
+// Match match the pattern
+func (tsconfg *TSConfig) Match(pattern, path string) bool {
+	prefix := strings.Split(pattern, "/*")[0] + string(os.PathSeparator)
+	return strings.HasPrefix(path, prefix)
 }
 
 // ReplacePattern replace the pattern
 func (tsconfg *TSConfig) ReplacePattern(path, pattern string) string {
-	dir := filepath.Clean(filepath.Dir(path)) + string(os.PathSeparator)
-	file := strings.TrimLeft(path, dir)
+	prefix := strings.Split(pattern, "/*")[0]
+	file := strings.TrimPrefix(path, prefix)
 	if strings.HasSuffix(file, ".ts") {
 		return file
 	}
