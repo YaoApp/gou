@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -44,6 +45,9 @@ var exportRe = regexp.MustCompile(`export\s+(default|function|class|const|var|le
 var internalKeepModuleSuffixes = []string{"/yao.ts", "/yao", "/gou", "/gou.ts"}
 var internalKeepModules = []string{"@yao", "@yaoapps", "@yaoapp", "@gou"}
 
+// the lock for the scripts
+var syncLock = sync.Mutex{}
+
 // NewScript create a new script
 func NewScript(file string, id string, timeout ...time.Duration) *Script {
 
@@ -74,6 +78,8 @@ func (script *Script) Open(source []byte) error {
 
 // MakeScript make a script from source
 func MakeScript(source []byte, file string, timeout time.Duration, isroot ...bool) (*Script, error) {
+	syncLock.Lock()
+	defer syncLock.Unlock()
 	script := NewScript(file, file, timeout)
 	err := script.Open(source)
 	if err != nil {
@@ -410,8 +416,21 @@ func replaceImportCode(file string, source []byte) (string, []Import, error) {
 }
 
 func getImportPath(file string, path string) (string, error) {
-	relpath := filepath.Dir(file)
-	file = filepath.Join(relpath, path)
+
+	var fromTsConfig bool = false
+	if runtimeOption.TSConfig != nil {
+		var err error
+		path, fromTsConfig, err = runtimeOption.TSConfig.GetFileName(path)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if !fromTsConfig {
+		relpath := filepath.Dir(file)
+		file = filepath.Join(relpath, path)
+	}
+
 	if !strings.HasSuffix(path, ".ts") {
 		if exist, _ := application.App.Exists(file + ".ts"); exist {
 			file = file + ".ts"

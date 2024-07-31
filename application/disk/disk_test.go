@@ -41,6 +41,28 @@ func TestWalk(t *testing.T) {
 	assert.Greater(t, len(files), 1)
 }
 
+func TestGlob(t *testing.T) {
+	app := prepare(t)
+
+	matches, err := app.Glob("models/*.mod.yao")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Greater(t, len(matches), 1)
+
+	matches, err = app.Glob("/models/*.mod.yao")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Greater(t, len(matches), 1)
+
+	matches, err = app.Glob("/models/*.tab.yao")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Nil(t, matches)
+}
+
 func TestWalkWithPatterns(t *testing.T) {
 	app := prepare(t)
 
