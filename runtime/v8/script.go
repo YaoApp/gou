@@ -417,12 +417,16 @@ func replaceImportCode(file string, source []byte) (string, []Import, error) {
 
 func getImportPath(file string, path string) (string, error) {
 
+	var tsfile string
 	var fromTsConfig bool = false
 	if runtimeOption.TSConfig != nil {
 		var err error
-		path, fromTsConfig, err = runtimeOption.TSConfig.GetFileName(path)
+		tsfile, fromTsConfig, err = runtimeOption.TSConfig.GetFileName(path)
 		if err != nil {
 			return "", err
+		}
+		if fromTsConfig {
+			file = tsfile
 		}
 	}
 
