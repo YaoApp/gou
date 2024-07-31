@@ -78,6 +78,7 @@ require (
 
 require (
 	github.com/evanw/esbuild v0.19.3
+	github.com/go-sourcemap/sourcemap v2.1.4+incompatible
 	github.com/google/uuid v1.4.0
 	golang.org/x/image v0.18.0
 )
@@ -87,7 +88,6 @@ require (
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
-	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
