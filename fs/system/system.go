@@ -519,8 +519,8 @@ func (f *File) Walk(root string, handler func(root, file string, isdir bool) err
 		}
 
 		err = handler(root, name, isdir)
-		if filepath.SkipDir == err {
-			return filepath.SkipDir
+		if filepath.SkipDir == err || filepath.SkipAll == err {
+			return err
 		}
 
 		if err != nil {

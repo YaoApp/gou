@@ -112,6 +112,10 @@ func (disk *Disk) Walk(root string, handler func(root, file string, isdir bool) 
 		}
 
 		err = handler(root, name, isdir)
+		if filepath.SkipDir == err || filepath.SkipAll == err {
+			return err
+		}
+
 		if err != nil {
 			log.Error("[disk.Walk] %s %s", filename, err.Error())
 			return err

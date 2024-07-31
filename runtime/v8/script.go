@@ -26,14 +26,14 @@ var Scripts = map[string]*Script{}
 // Modules the scripts for modules
 var Modules = map[string]Module{}
 
-// ModuleSourceMap the module source maps
-var ModuleSourceMap = map[string]string{}
+// ModuleSourceMaps the source maps for modules
+var ModuleSourceMaps = map[string]*SourceMap{}
 
 // ImportMap the import maps
 var ImportMap = map[string][]Import{}
 
-// SourceMap the source maps
-var SourceMap = map[string]string{}
+// SourceMaps the source maps
+var SourceMaps = map[string]*SourceMap{}
 
 // RootScripts the scripts for studio
 var RootScripts = map[string]*Script{}
@@ -123,9 +123,9 @@ func LoadRoot(file string, id string) (*Script, error) {
 // CLearModules clear the modules cache
 func CLearModules() {
 	Modules = map[string]Module{}
-	ModuleSourceMap = map[string]string{}
+	ModuleSourceMaps = map[string]*SourceMap{}
 	ImportMap = map[string][]Import{}
-	SourceMap = map[string]string{}
+	SourceMaps = map[string]*SourceMap{}
 }
 
 // TransformTS transform the typescript
@@ -137,9 +137,10 @@ func TransformTS(file string, source []byte) ([]byte, error) {
 	}
 
 	result := api.Transform(tsCode, api.TransformOptions{
-		Loader:    api.LoaderTS,
-		Target:    api.ESNext,
-		Sourcemap: api.SourceMapExternal,
+		Loader:     api.LoaderTS,
+		Target:     api.ESNext,
+		Sourcefile: file,
+		Sourcemap:  api.SourceMapExternal,
 	})
 
 	if len(result.Errors) > 0 {
@@ -151,7 +152,12 @@ func TransformTS(file string, source []byte) ([]byte, error) {
 	}
 
 	// Add the source map
-	SourceMap[file] = string(result.Map)
+	sm, err := NewSourceMap(result.Map)
+	if err != nil {
+		return nil, err
+	}
+
+	SourceMaps[file] = sm
 
 	// Add the module source
 	jsCode := result.Code
@@ -164,6 +170,11 @@ func TransformTS(file string, source []byte) ([]byte, error) {
 				module, has := Modules[imp.AbsPath]
 				if has {
 					importCodes = append(importCodes, fmt.Sprintf("%s;\nconst %s = %s;", module.Source, imp.Name, module.GlobalName))
+					sm, has := ModuleSourceMaps[imp.AbsPath]
+					if !has {
+						return nil, fmt.Errorf("module %s source map not exists", imp.AbsPath)
+					}
+					SourceMaps[file].Merge(sm)
 				}
 			}
 		}
@@ -313,9 +324,11 @@ func loadModule(file string, tsCode string) error {
 	if len(result.OutputFiles) > 1 {
 		for _, out := range result.OutputFiles {
 			if strings.HasSuffix(out.Path, ".js.map") {
-				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js.map", ".ts.map"), outdir)
+				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js.map", ".ts"), outdir)
 				key = filepath.Join(dir, key)
-				ModuleSourceMap[key] = string(out.Contents)
+				sm, _ := NewSourceMap(out.Contents)
+				ModuleSourceMaps[key] = sm
+
 			} else if strings.HasSuffix(out.Path, ".js") {
 				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js", ".ts"), outdir)
 				key = filepath.Join(dir, key)

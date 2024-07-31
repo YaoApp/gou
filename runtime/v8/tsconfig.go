@@ -1,7 +1,6 @@
 package v8
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,6 +22,7 @@ func (tsconfg *TSConfig) GetFileName(path string) (string, bool, error) {
 		if tsconfg.Match(pattern, path) {
 			f := tsconfg.ReplacePattern(path, pattern)
 			for _, p := range paths {
+				matched := false
 				dir := filepath.Clean(filepath.Dir(p))
 				f = filepath.Join(dir, f)
 				err := application.App.Walk(dir, func(root, filename string, isdir bool) error {
@@ -30,17 +30,18 @@ func (tsconfg *TSConfig) GetFileName(path string) (string, bool, error) {
 						return nil
 					}
 					if filename == f {
-						return fmt.Errorf("Found")
+						matched = true
+						return filepath.SkipAll
 					}
 					return nil
 				}, "*.ts")
 
-				if err == nil {
-					return path, false, nil
+				if matched {
+					return f, true, nil
 				}
 
-				if err.Error() == "Found" {
-					return f, true, nil
+				if err == nil {
+					return path, false, nil
 				}
 			}
 		}
