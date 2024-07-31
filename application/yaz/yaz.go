@@ -68,6 +68,22 @@ func OpenFile(file string, cipher Cipher, cache ...bool) (*Yaz, error) {
 	return yaz, nil
 }
 
+// Glob searches for files in the package.
+func (yaz *Yaz) Glob(pattern string) (matches []string, err error) {
+	patternAbs, err := yaz.abs(pattern)
+	if err != nil {
+		return nil, err
+	}
+	matches, err = filepath.Glob(patternAbs)
+	if err != nil {
+		return nil, err
+	}
+	for i, match := range matches {
+		matches[i] = strings.TrimPrefix(match, yaz.root)
+	}
+	return matches, nil
+}
+
 // Walk walks the package file.
 func (yaz *Yaz) Walk(root string, handler func(root, filename string, isdir bool) error, patterns ...string) error {
 

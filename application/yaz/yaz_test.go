@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application/yaz/ciphers"
+	"github.com/yaoapp/kun/utils"
 )
 
 func TestOpen(t *testing.T) {
@@ -44,6 +45,35 @@ func TestOpenFile(t *testing.T) {
 
 	_, err = OpenFile("not exists", nil)
 	assert.NotNil(t, err)
+}
+
+func TestGlob(t *testing.T) {
+	vars := data(t)
+	defer clean(t, vars)
+
+	app, err := OpenFile(vars["compress"], nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	matches, err := app.Glob("models/*.mod.yao")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Greater(t, len(matches), 1)
+	utils.Dump(matches)
+
+	matches, err = app.Glob("/models/*.mod.yao")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Greater(t, len(matches), 1)
+
+	matches, err = app.Glob("/models/*.tab.yao")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Nil(t, matches)
 }
 
 func TestWalk(t *testing.T) {
