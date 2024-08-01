@@ -3,6 +3,7 @@ package v8
 import (
 	"context"
 
+	"github.com/fatih/color"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/runtime/v8/objects/console"
 	"github.com/yaoapp/kun/log"
@@ -43,6 +44,9 @@ func (context *Context) Call(method string, args ...interface{}) (interface{}, e
 
 	jsRes, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
 	if err != nil {
+		if e, ok := err.(*v8go.JSError); ok {
+			color.Red("%s\n\n", StackTrace(e, context.SourceRoots))
+		}
 		log.Error("%s.%s %s", context.ID, method, err.Error())
 		return nil, err
 	}
@@ -106,6 +110,9 @@ func (context *Context) CallWith(ctx context.Context, method string, args ...int
 
 			jsRes, err := global.MethodCall(method, bridge.Valuers(jsArgs)...)
 			if err != nil {
+				if e, ok := err.(*v8go.JSError); ok {
+					color.Red("%s\n\n", StackTrace(e, context.SourceRoots))
+				}
 				errChan <- err
 				return
 			}

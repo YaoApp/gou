@@ -61,10 +61,10 @@ func TestStackTrace(t *testing.T) {
 		t.Fatal("error is not a JSError")
 	}
 
-	trace := StackTrace(e)
+	trace := StackTrace(e, map[string]string{"/scripts": "/iscripts"})
 	assert.NotEmpty(t, trace)
 	assert.Contains(t, trace, "Exception|400: Error occurred")
-	assert.Contains(t, trace, "/scripts/runtime/ts/page.ts:12:2")
-	assert.Contains(t, trace, "/scripts/runtime/ts/lib/bar.ts:7:2")
-	assert.Contains(t, trace, "/scripts/runtime/ts/lib/err.ts:8:10")
+	assert.Contains(t, trace, "/iscripts/runtime/ts/page.ts:12:2")
+	assert.Contains(t, trace, "/iscripts/runtime/ts/lib/bar.ts:7:2")
+	assert.Contains(t, trace, "/iscripts/runtime/ts/lib/err.ts:8:10")
 }
