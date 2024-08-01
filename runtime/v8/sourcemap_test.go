@@ -2,6 +2,7 @@ package v8
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -61,10 +62,33 @@ func TestStackTrace(t *testing.T) {
 		t.Fatal("error is not a JSError")
 	}
 
-	trace := StackTrace(e, map[string]string{"/scripts": "/iscripts"})
+	trace := StackTrace(e, nil)
+	assert.NotEmpty(t, trace)
+	assert.Contains(t, trace, "Exception|400: Error occurred")
+	assert.Contains(t, trace, "/scripts/runtime/ts/page.ts:12:2")
+	assert.Contains(t, trace, "/scripts/runtime/ts/lib/bar.ts:7:2")
+	assert.Contains(t, trace, "/scripts/runtime/ts/lib/err.ts:8:10")
+
+	// with source root
+	trace = StackTrace(e, map[string]string{"/scripts": "/iscripts"})
 	assert.NotEmpty(t, trace)
 	assert.Contains(t, trace, "Exception|400: Error occurred")
 	assert.Contains(t, trace, "/iscripts/runtime/ts/page.ts:12:2")
 	assert.Contains(t, trace, "/iscripts/runtime/ts/lib/bar.ts:7:2")
 	assert.Contains(t, trace, "/iscripts/runtime/ts/lib/err.ts:8:10")
+
+	// with source root function
+	replace := func(file string) string {
+		if strings.HasPrefix(file, "/scripts") {
+			return strings.Replace(file, "/scripts", "/fscripts", 1)
+		}
+		return file
+	}
+
+	trace = StackTrace(e, replace)
+	assert.NotEmpty(t, trace)
+	assert.Contains(t, trace, "Exception|400: Error occurred")
+	assert.Contains(t, trace, "/fscripts/runtime/ts/page.ts:12:2")
+	assert.Contains(t, trace, "/fscripts/runtime/ts/lib/bar.ts:7:2")
+	assert.Contains(t, trace, "/fscripts/runtime/ts/lib/err.ts:8:10")
 }

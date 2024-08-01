@@ -66,7 +66,7 @@ func clearSourceMaps() {
 }
 
 // StackTrace get the stack trace
-func StackTrace(jserr *v8go.JSError, rootMapping map[string]string) string {
+func StackTrace(jserr *v8go.JSError, rootMapping interface{}) string {
 
 	// Production mode will not show the stack trace
 	if runtimeOption.Debug == false {
@@ -92,7 +92,7 @@ func (entry *StackLogEntry) String() string {
 }
 
 // String the stack log entry list to string
-func (list StackLogEntryList) String(rootMapping map[string]string) (string, error) {
+func (list StackLogEntryList) String(rootMapping interface{}) (string, error) {
 	if len(list) == 0 {
 		return "", fmt.Errorf("StackLogEntryList.String(), empty list")
 	}
@@ -229,20 +229,27 @@ func parseStackTrace(trace string) StackLogEntryList {
 	return res
 }
 
-func fmtFilePath(file string, rootMapping map[string]string) string {
+func fmtFilePath(file string, rootMapping interface{}) string {
 	file = strings.ReplaceAll(file, ".."+string(os.PathSeparator), "")
 	if !strings.HasPrefix(file, string(os.PathSeparator)) {
 		file = string(os.PathSeparator) + file
 	}
 
 	file = strings.TrimPrefix(file, application.App.Root())
-
 	if rootMapping != nil {
-		for name, mappping := range rootMapping {
-			if strings.HasPrefix(file, name) {
-				file = mappping + strings.TrimPrefix(file, name)
-				break
+		switch mapping := rootMapping.(type) {
+		case map[string]string:
+			for name, mappping := range mapping {
+				if strings.HasPrefix(file, name) {
+					file = mappping + strings.TrimPrefix(file, name)
+					break
+				}
 			}
+			break
+
+		case func(string) string:
+			file = mapping(file)
+			break
 		}
 	}
 	return file
