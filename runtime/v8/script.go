@@ -551,6 +551,7 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 		Isolate:       iso,
 		Context:       ctx,
 		UnboundScript: instance,
+		SourceRoots:   script.SourceRoots,
 	}, nil
 }
 
