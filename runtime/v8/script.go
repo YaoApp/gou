@@ -26,14 +26,8 @@ var Scripts = map[string]*Script{}
 // Modules the scripts for modules
 var Modules = map[string]Module{}
 
-// ModuleSourceMap the module source maps
-var ModuleSourceMap = map[string]string{}
-
 // ImportMap the import maps
 var ImportMap = map[string][]Import{}
-
-// SourceMap the source maps
-var SourceMap = map[string]string{}
 
 // RootScripts the scripts for studio
 var RootScripts = map[string]*Script{}
@@ -123,9 +117,8 @@ func LoadRoot(file string, id string) (*Script, error) {
 // CLearModules clear the modules cache
 func CLearModules() {
 	Modules = map[string]Module{}
-	ModuleSourceMap = map[string]string{}
 	ImportMap = map[string][]Import{}
-	SourceMap = map[string]string{}
+	clearSourceMaps()
 }
 
 // TransformTS transform the typescript
@@ -137,9 +130,10 @@ func TransformTS(file string, source []byte) ([]byte, error) {
 	}
 
 	result := api.Transform(tsCode, api.TransformOptions{
-		Loader:    api.LoaderTS,
-		Target:    api.ESNext,
-		Sourcemap: api.SourceMapExternal,
+		Loader:     api.LoaderTS,
+		Target:     api.ESNext,
+		Sourcefile: file,
+		Sourcemap:  api.SourceMapExternal,
 	})
 
 	if len(result.Errors) > 0 {
@@ -150,8 +144,8 @@ func TransformTS(file string, source []byte) ([]byte, error) {
 		return nil, fmt.Errorf("transform ts code error: %v", strings.Join(errors, "\n"))
 	}
 
-	// Add the source map
-	SourceMap[file] = string(result.Map)
+	SourceMaps[file] = result.Map
+	SourceCodes[file] = result.Code
 
 	// Add the module source
 	jsCode := result.Code
@@ -163,13 +157,12 @@ func TransformTS(file string, source []byte) ([]byte, error) {
 			for _, imp := range imports {
 				module, has := Modules[imp.AbsPath]
 				if has {
-					importCodes = append(importCodes, fmt.Sprintf("%s;\nconst %s = %s;", module.Source, imp.Name, module.GlobalName))
+					importCodes = append(importCodes, fmt.Sprintf("%s;const %s = %s;", module.Source, imp.Name, module.GlobalName))
 				}
 			}
 		}
-
 		if len(importCodes) > 0 {
-			jsCode = []byte(strings.Join(importCodes, "\n") + "\n" + string(result.Code))
+			jsCode = []byte(strings.Join(importCodes, ";") + string(result.Code))
 		}
 	}
 
@@ -313,9 +306,10 @@ func loadModule(file string, tsCode string) error {
 	if len(result.OutputFiles) > 1 {
 		for _, out := range result.OutputFiles {
 			if strings.HasSuffix(out.Path, ".js.map") {
-				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js.map", ".ts.map"), outdir)
+				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js.map", ".ts"), outdir)
 				key = filepath.Join(dir, key)
-				ModuleSourceMap[key] = string(out.Contents)
+				ModuleSourceMaps[key] = out.Contents
+
 			} else if strings.HasSuffix(out.Path, ".js") {
 				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js", ".ts"), outdir)
 				key = filepath.Join(dir, key)
@@ -653,7 +647,7 @@ func (script *Script) execStandard(process *process.Process) interface{} {
 
 		// Debug output the error stack
 		if e, ok := err.(*v8go.JSError); ok {
-			color.Red("%s\n\n", e.StackTrace)
+			color.Red("%s\n\n", StackTrace(e))
 		}
 
 		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())

@@ -78,6 +78,7 @@ require (
 
 require (
 	github.com/evanw/esbuild v0.19.3
+	github.com/go-sourcemap/sourcemap v2.1.4+incompatible
 	github.com/google/uuid v1.4.0
 	golang.org/x/image v0.18.0
 )

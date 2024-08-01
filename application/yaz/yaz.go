@@ -132,6 +132,10 @@ func (yaz *Yaz) Walk(root string, handler func(root, filename string, isdir bool
 		}
 
 		err = handler(root, name, isdir)
+		if filepath.SkipDir == err || filepath.SkipAll == err {
+			return err
+		}
+
 		if err != nil {
 			log.Error("[yaz.Walk] %s %s", filename, err.Error())
 			return err

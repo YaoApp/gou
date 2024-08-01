@@ -88,7 +88,7 @@ func TestTransformTSWithTSConfig(t *testing.T) {
 
 	assert.NotEmpty(t, pageSource)
 	imports := ImportMap[files["page.ts"]]
-	assert.Len(t, imports, 1)
+	assert.Len(t, imports, 2)
 	for _, im := range imports {
 		module, has := Modules[im.AbsPath]
 		assert.True(t, has)

@@ -17,6 +17,11 @@ func EnablePrecompile() {
 	runtimeOption.Precompile = true
 }
 
+// EnableDebug enable the debug mode
+func EnableDebug() {
+	runtimeOption.Debug = true
+}
+
 // Validate the option
 func (option *Option) Validate() {
 
