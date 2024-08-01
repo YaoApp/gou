@@ -1,7 +1,6 @@
 package v8
 
 import (
-	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -17,6 +16,7 @@ func TestStackTrace(t *testing.T) {
 	option.Mode = "standard"
 	option.Import = true
 	option.HeapSizeLimit = 4294967296
+	option.Debug = true
 
 	// add tsconfig
 	tsconfig := &TSConfig{
@@ -63,5 +63,8 @@ func TestStackTrace(t *testing.T) {
 
 	trace := StackTrace(e)
 	assert.NotEmpty(t, trace)
-	fmt.Println(trace)
+	assert.Contains(t, trace, "Exception|400: Error occurred")
+	assert.Contains(t, trace, "/scripts/runtime/ts/page.ts:12:2")
+	assert.Contains(t, trace, "/scripts/runtime/ts/lib/bar.ts:7:2")
+	assert.Contains(t, trace, "/scripts/runtime/ts/lib/err.ts:8:10")
 }

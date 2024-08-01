@@ -27,6 +27,7 @@ type Option struct {
 	ContetxQueueSize  int       `json:"contextQueueSize,omitempty"`  // the default queue size for the context, the default value is 10, performance only
 	DataRoot          string    `json:"dataRoot,omitempty"`          // the data root path
 	TSConfig          *TSConfig `json:"tsconfig,omitempty"`          // the TypeScript config
+	Debug             bool      `json:"debug,omitempty"`             // if true, the debug mode will be enabled, default value is false
 
 	// The following options are experimental features and not stable.
 	// They may be removed once the features become stable. Please do not use them in a production environment.
