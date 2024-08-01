@@ -506,13 +506,14 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 		}
 
 		return &Context{
-			ID:      script.ID,
-			Sid:     sid,
-			Data:    global,
-			Root:    script.Root,
-			Timeout: timeout,
-			Runner:  runner,
-			Context: ctx,
+			ID:          script.ID,
+			Sid:         sid,
+			Data:        global,
+			Root:        script.Root,
+			Timeout:     timeout,
+			Runner:      runner,
+			Context:     ctx,
+			SourceRoots: script.SourceRoots,
 		}, nil
 
 	}
@@ -550,6 +551,7 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 		Isolate:       iso,
 		Context:       ctx,
 		UnboundScript: instance,
+		SourceRoots:   script.SourceRoots,
 	}, nil
 }
 
@@ -647,7 +649,7 @@ func (script *Script) execStandard(process *process.Process) interface{} {
 
 		// Debug output the error stack
 		if e, ok := err.(*v8go.JSError); ok {
-			color.Red("%s\n\n", StackTrace(e))
+			color.Red("%s\n\n", StackTrace(e, script.SourceRoots))
 		}
 
 		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())

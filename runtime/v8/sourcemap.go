@@ -66,7 +66,7 @@ func clearSourceMaps() {
 }
 
 // StackTrace get the stack trace
-func StackTrace(jserr *v8go.JSError) string {
+func StackTrace(jserr *v8go.JSError, rootMapping map[string]string) string {
 
 	// Production mode will not show the stack trace
 	if runtimeOption.Debug == false {
@@ -79,7 +79,7 @@ func StackTrace(jserr *v8go.JSError) string {
 		return jserr.StackTrace
 	}
 
-	output, err := entries.String()
+	output, err := entries.String(rootMapping)
 	if err != nil {
 		return err.Error() + "\n" + jserr.StackTrace
 	}
@@ -92,7 +92,7 @@ func (entry *StackLogEntry) String() string {
 }
 
 // String the stack log entry list to string
-func (list StackLogEntryList) String() (string, error) {
+func (list StackLogEntryList) String(rootMapping map[string]string) (string, error) {
 	if len(list) == 0 {
 		return "", fmt.Errorf("StackLogEntryList.String(), empty list")
 	}
@@ -113,7 +113,7 @@ func (list StackLogEntryList) String() (string, error) {
 
 		file, fn, line, col, ok := smap.Source(line, entry.Column)
 		if ok {
-			entry.File = fmtFilePath(file)
+			entry.File = fmtFilePath(file, rootMapping)
 			entry.Line = line
 			entry.Column = col
 			if fn != "" {
@@ -226,13 +226,25 @@ func parseStackTrace(trace string) StackLogEntryList {
 			res = append(res, entry)
 		}
 	}
-
 	return res
 }
 
-func fmtFilePath(file string) string {
-	file = string(os.PathSeparator) + strings.ReplaceAll(file, ".."+string(os.PathSeparator), "")
+func fmtFilePath(file string, rootMapping map[string]string) string {
+	file = strings.ReplaceAll(file, ".."+string(os.PathSeparator), "")
+	if !strings.HasPrefix(file, string(os.PathSeparator)) {
+		file = string(os.PathSeparator) + file
+	}
+
 	file = strings.TrimPrefix(file, application.App.Root())
+
+	if rootMapping != nil {
+		for name, mappping := range rootMapping {
+			if strings.HasPrefix(file, name) {
+				file = mappping + strings.TrimPrefix(file, name)
+				break
+			}
+		}
+	}
 	return file
 }
 

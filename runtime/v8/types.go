@@ -50,11 +50,12 @@ type TSConfigCompilerOptions struct {
 
 // Script v8 scripts
 type Script struct {
-	ID      string
-	File    string
-	Source  string
-	Root    bool
-	Timeout time.Duration
+	ID          string
+	File        string
+	Source      string
+	Root        bool
+	SourceRoots map[string]string // the script source root mappping
+	Timeout     time.Duration
 }
 
 // Module the module
@@ -87,11 +88,12 @@ type Isolates struct {
 
 // Context v8 Context
 type Context struct {
-	ID      string                 // the script id
-	Sid     string                 // set the session id
-	Data    map[string]interface{} // set the global data
-	Root    bool
-	Timeout time.Duration // terminate the execution after this time
+	ID          string                 // the script id
+	Sid         string                 // set the session id
+	Data        map[string]interface{} // set the global data
+	Root        bool
+	Timeout     time.Duration     // terminate the execution after this time
+	SourceRoots map[string]string // the script source root mappping
 	*Runner
 	*store.Isolate
 	*v8go.UnboundScript
