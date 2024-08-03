@@ -21,6 +21,36 @@ func TypeScript(tsCode string, option api.TransformOptions) (string, error) {
 	return string(result.Code), nil
 }
 
+// TypeScriptWithSourceMap transform the typescript code with source map
+func TypeScriptWithSourceMap(tsCode string, option api.TransformOptions) ([]byte, []byte, error) {
+	option.Loader = api.LoaderTS
+	option.Sourcemap = api.SourceMapExternal
+	result := api.Transform(tsCode, option)
+	if len(result.Errors) > 0 {
+		errors := []string{}
+		for _, err := range result.Errors {
+			errors = append(errors, fmt.Sprintf("%s", err.Text))
+		}
+		return nil, nil, fmt.Errorf("transform ts code error: %v", strings.Join(errors, "\n"))
+	}
+	return result.Code, result.Map, nil
+}
+
+// JavaScriptWithSourceMap transform the javascript code with source map
+func JavaScriptWithSourceMap(jsCode string, option api.TransformOptions) ([]byte, []byte, error) {
+
+	option.Sourcemap = api.SourceMapExternal
+	result := api.Transform(jsCode, option)
+	if len(result.Errors) > 0 {
+		errors := []string{}
+		for _, err := range result.Errors {
+			errors = append(errors, fmt.Sprintf("%s", err.Text))
+		}
+		return nil, nil, fmt.Errorf("transform js code error: %v", strings.Join(errors, "\n"))
+	}
+	return result.Code, result.Map, nil
+}
+
 // JavaScript transform the javascript code
 func JavaScript(jsCode string, option api.TransformOptions) (string, error) {
 	result := api.Transform(jsCode, option)
