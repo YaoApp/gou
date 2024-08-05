@@ -74,7 +74,7 @@ func MinifyJS(jsCode string, target ...api.Target) (string, error) {
 	result := api.Transform(jsCode, api.TransformOptions{
 		Loader:            api.LoaderJS,
 		MinifyWhitespace:  true,
-		MinifyIdentifiers: true,
+		MinifyIdentifiers: false,
 		MinifySyntax:      true,
 		Target:            t,
 	})

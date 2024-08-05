@@ -150,5 +150,5 @@ func TestMinifyJS(t *testing.T) {
 		t.Errorf("transform ts code error: %v", err)
 	}
 
-	assert.Equal(t, "function hello(n){return n}hello();\n", jsCode)
+	assert.Equal(t, "function hello(a){return a}hello();\n", jsCode)
 }
