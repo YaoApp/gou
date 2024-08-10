@@ -44,7 +44,7 @@ var syncLock = sync.Mutex{}
 
 // GetModuleName get the module name
 func GetModuleName(file string) string {
-	replaces := []string{"@", "/", ".", "[", "]", "(", ")", "{", "}", ":", ",", ";", " ", "\t", "\n", "\r"}
+	replaces := []string{"@", "/", ".", "-", "[", "]", "(", ")", "{", "}", ":", ",", ";", " ", "\t", "\n", "\r"}
 	for _, replace := range replaces {
 		file = strings.ReplaceAll(file, replace, "_")
 	}
