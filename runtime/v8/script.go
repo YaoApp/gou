@@ -42,6 +42,15 @@ var internalKeepModules = []string{"@yao", "@yaoapps", "@yaoapp", "@gou"}
 // the lock for the scripts
 var syncLock = sync.Mutex{}
 
+// GetModuleName get the module name
+func GetModuleName(file string) string {
+	replaces := []string{"@", "/", ".", "[", "]", "(", ")", "{", "}", ":", ",", ";", " ", "\t", "\n", "\r"}
+	for _, replace := range replaces {
+		file = strings.ReplaceAll(file, replace, "_")
+	}
+	return file
+}
+
 // NewScript create a new script
 func NewScript(file string, id string, timeout ...time.Duration) *Script {
 
@@ -246,7 +255,7 @@ func loadModule(file string, tsCode string) error {
 		return nil
 	}
 
-	globalName := strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(file, "/", "_"), ".", "_"), "-", "_")
+	globalName := GetModuleName(file)
 	entryPoints := []entry{}
 	loaded := map[string]bool{}
 	tsCode, entryPoints, err := getEntryPoints(file, tsCode, loaded)
