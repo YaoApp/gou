@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
 	"io"
 	"strings"
+	"sync"
 	"unicode"
+
+	jsoniter "github.com/json-iterator/go"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yaoapp/gou/helper"
@@ -26,8 +28,6 @@ func (path Path) defaultHandler(getArgs func(c *gin.Context) []interface{}) func
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		// defer debug.FreeOSMemory()
-
 		path.setPayload(c)
 		var status int = path.Out.Status
 		var contentType = path.reqContentType(c)
@@ -143,8 +143,11 @@ func (path Path) streamHandler(getArgs func(c *gin.Context) []interface{}) func(
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
 		go func() {
 			defer func() {
+				wg.Done()
 				close(chanStream)
 				close(chanError)
 			}()
@@ -166,6 +169,7 @@ func (path Path) streamHandler(getArgs func(c *gin.Context) []interface{}) func(
 		}()
 
 		c.Stream(func(w io.Writer) bool {
+
 			select {
 			case err := <-chanError:
 				if err != nil {
@@ -179,10 +183,11 @@ func (path Path) streamHandler(getArgs func(c *gin.Context) []interface{}) func(
 				return true
 
 			case <-ctx.Done():
-				// log.Info("[DONE] %s", path.Path)
 				return false
 			}
 		})
+
+		wg.Wait()
 	}
 }
 
