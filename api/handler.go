@@ -23,7 +23,7 @@ import (
 )
 
 // defaultHandler default handler
-func (path Path) defaultHandler(getArgs func(c *gin.Context) []interface{}) func(c *gin.Context) {
+func (path Path) defaultHandler(getArgs argsHandler) func(c *gin.Context) {
 	return func(c *gin.Context) {
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -94,7 +94,7 @@ func (path Path) defaultHandler(getArgs func(c *gin.Context) []interface{}) func
 	}
 }
 
-func (path Path) processHandler(getArgs func(c *gin.Context) []interface{}) func(c *gin.Context) {
+func (path Path) processHandler() func(c *gin.Context) {
 	process := process.New(path.Process)
 	res := process.Run()
 	handler, ok := res.(func(c *gin.Context))
@@ -107,7 +107,7 @@ func (path Path) processHandler(getArgs func(c *gin.Context) []interface{}) func
 }
 
 // redirectHandler default handler
-func (path Path) redirectHandler(getArgs func(c *gin.Context) []interface{}) func(c *gin.Context) {
+func (path Path) redirectHandler(getArgs argsHandler) func(c *gin.Context) {
 	return func(c *gin.Context) {
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -132,7 +132,7 @@ func (path Path) redirectHandler(getArgs func(c *gin.Context) []interface{}) fun
 	}
 }
 
-func (path Path) streamHandler(getArgs func(c *gin.Context) []interface{}) func(c *gin.Context) {
+func (path Path) streamHandler(getArgs argsHandler) func(c *gin.Context) {
 	return func(c *gin.Context) {
 
 		path.setPayload(c)
@@ -191,7 +191,7 @@ func (path Path) streamHandler(getArgs func(c *gin.Context) []interface{}) func(
 	}
 }
 
-func (path Path) runStreamScript(ctx context.Context, c *gin.Context, getArgs func(c *gin.Context) []interface{}, onEvent func(name string, message interface{}), onCancel func(), onError func(error)) {
+func (path Path) runStreamScript(ctx context.Context, c *gin.Context, getArgs argsHandler, onEvent func(name string, message interface{}), onCancel func(), onError func(error)) {
 
 	if !strings.HasPrefix(path.Process, "scripts") {
 		onError(fmt.Errorf("process must be a script"))
@@ -258,7 +258,7 @@ func (path Path) runStreamScript(ctx context.Context, c *gin.Context, getArgs fu
 	}
 }
 
-func (path Path) execProcess(ctx context.Context, chRes chan<- interface{}, c *gin.Context, getArgs func(c *gin.Context) []interface{}) {
+func (path Path) execProcess(ctx context.Context, chRes chan<- interface{}, c *gin.Context, getArgs argsHandler) {
 
 	var args []interface{} = getArgs(c)
 	var process, err = process.Of(path.Process, args...)
@@ -290,7 +290,7 @@ func (path Path) execProcess(ctx context.Context, chRes chan<- interface{}, c *g
 	chRes <- res
 }
 
-func (path Path) runProcess(ctx context.Context, c *gin.Context, getArgs func(c *gin.Context) []interface{}) interface{} {
+func (path Path) runProcess(ctx context.Context, c *gin.Context, getArgs argsHandler) interface{} {
 	var args []interface{} = getArgs(c)
 	var process = process.New(path.Process, args...)
 	defer process.Dispose()

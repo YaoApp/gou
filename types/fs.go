@@ -7,5 +7,6 @@ type UploadFile struct {
 	Name     string               `json:"name"`
 	TempFile string               `json:"tempFile"`
 	Size     int64                `json:"size"`
-	Header   textproto.MIMEHeader `json:"mimeType"`
+	Header   textproto.MIMEHeader `json:"header"`
+	Error    string               `json:"error"`
 }
