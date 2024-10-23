@@ -410,6 +410,13 @@ func (f *File) Move(oldpath string, newpath string) error {
 		return err
 	}
 
+	// Create the new directory if it does not exist
+	dir := filepath.Dir(newpath)
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
+
 	err = os.Rename(oldpath, newpath)
 	if err != nil && strings.Contains(err.Error(), "invalid cross-device link") {
 		return f.copyRemove(f.relPath(oldpath), f.relPath(newpath))
