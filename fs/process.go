@@ -44,6 +44,8 @@ var FileSystemHandlers = map[string]process.Handler{
 	"extname":          processExtName,
 	"mimetype":         processMimeType,
 	"move":             processMove,
+	"moveappend":       processMoveAppend,
+	"moveinsert":       processMoveInsert,
 	"copy":             processCopy,
 	"upload":           processUpload,
 	"download":         processDownload,
@@ -397,6 +399,31 @@ func processMove(process *process.Process) interface{} {
 	src := process.ArgsString(0)
 	dst := process.ArgsString(1)
 	err := Move(stor, src, dst)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
+
+func processMoveAppend(process *process.Process) interface{} {
+	process.ValidateArgNums(2)
+	stor := stor(process)
+	src := process.ArgsString(0)
+	dst := process.ArgsString(1)
+	err := MoveAppend(stor, src, dst)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
+
+func processMoveInsert(process *process.Process) interface{} {
+	process.ValidateArgNums(3)
+	stor := stor(process)
+	src := process.ArgsString(0)
+	dst := process.ArgsString(1)
+	offset := process.ArgsInt(2)
+	err := MoveInsert(stor, src, dst, int64(offset))
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}

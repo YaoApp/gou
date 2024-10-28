@@ -18,16 +18,17 @@ import (
 // var fs = new FS("data")
 // var dataString	  = fs.ReadFile("/root/path/name.file")
 // var dataUnit8Array = fs.ReadFileBuffer("/root/path/name.file")
+// var dataBase64	  = fs.ReadFileBase64("/root/path/name.file")
 // var length	      = fs.WriteFile("/root/path/name.file", "Hello")
 // var length	      = fs.WriteFile("/root/path/name.file", "Hello", 0644 )
 // var length	      = fs.WriteFileBuffer("/root/path/name.file", dataUnit8Array)
 // var length	      = fs.WriteFileBase64("/root/path/name.file", dataUnit8Array, 0644 )
 // var length	      = fs.AppendFile("/root/path/name.file", "Hello")
 // var length	      = fs.AppendFileBuffer("/root/path/name.file", dataUnit8Array)
-// var length	      = fs.AppendFileBase64("/root/path/name.file", 'base64')
+// var length	      = fs.AppendFileBase64("/root/path/name.file", dataBase64)
 // var length	      = fs.InsertFile("/root/path/name.file", 20, "Hello", 0644)
 // var length	      = fs.InsertFileBuffer("/root/path/name.file", 20, dataUnit8Array, 0644)
-// var length	      = fs.InsertFileBase64("/root/path/name.file", 20, 'base64', 0644)
+// var length	      = fs.InsertFileBase64("/root/path/name.file", 20, dataBase64, 0644)
 // var dirs 		  = fs.ReadDir("/root/path");
 // var dirs 		  = fs.ReadDir("/root/path", true);  // recursive
 // var err 		      = fs.Mkdir("/root/path");
@@ -110,8 +111,8 @@ func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	// File operation
 	tmpl.Set("Move", obj.move(iso))
 	tmpl.Set("Copy", obj.copy(iso))
-	// tmpl.Set("MoveAppend", obj.move(iso))
-	// tmpl.Set("MoveInsert", obj.move(iso))
+	tmpl.Set("MoveAppend", obj.moveAppend(iso))
+	tmpl.Set("MoveInsert", obj.moveInsert(iso))
 
 	// Directory operation
 	tmpl.Set("Abs", obj.abs(iso))
@@ -178,6 +179,48 @@ func (obj *Object) move(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		}
 
 		err = fs.Move(stor, args[0].String(), args[1].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return v8go.Null(iso)
+	})
+}
+
+func (obj *Object) moveAppend(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 2 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		err = fs.MoveAppend(stor, args[0].String(), args[1].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return v8go.Null(iso)
+	})
+}
+
+func (obj *Object) moveInsert(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 3 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		err = fs.MoveInsert(stor, args[0].String(), args[1].String(), args[2].Integer())
 		if err != nil {
 			return obj.error(info, err)
 		}

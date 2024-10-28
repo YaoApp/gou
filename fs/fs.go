@@ -281,6 +281,92 @@ func MimeType(xfs FileSystem, name string) (string, error) {
 	return xfs.MimeType(name)
 }
 
+// MoveAppend move the file from src to dest and append the content
+func MoveAppend(xfs FileSystem, src string, dst string) error {
+
+	// check the src file exists
+	if has, _ := xfs.Exists(src); !has {
+		return fmt.Errorf("%s does not exists", src)
+	}
+
+	// Check the src file is a file
+	if (xfs.IsFile(src)) == false {
+		return fmt.Errorf("%s is not a file", src)
+	}
+
+	data, err := xfs.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	// Get file pterm from src
+	pterm := uint32(os.ModePerm)
+	if has, _ := xfs.Exists(dst); has {
+
+		// Check the dst file is a file
+		if (xfs.IsFile(dst)) == false {
+			return fmt.Errorf("%s is not a file", dst)
+		}
+
+		pterm, err = xfs.Mode(dst)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Append the file
+	_, err = xfs.AppendFile(dst, data, pterm)
+	if err != nil {
+		return err
+	}
+
+	// remove the src file
+	return xfs.Remove(src)
+}
+
+// MoveInsert move the file from src to dest and insert the content
+func MoveInsert(xfs FileSystem, src string, dst string, offset int64) error {
+
+	// check the src file exists
+	if has, _ := xfs.Exists(src); !has {
+		return fmt.Errorf("%s does not exists", src)
+	}
+
+	// Check the src file is a file
+	if (xfs.IsFile(src)) == false {
+		return fmt.Errorf("%s is not a file", src)
+	}
+
+	data, err := xfs.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	// Get file pterm from src
+	pterm := uint32(os.ModePerm)
+	if has, _ := xfs.Exists(dst); has {
+
+		// Check the dst file is a file
+		if (xfs.IsFile(dst)) == false {
+			return fmt.Errorf("%s is not a file", dst)
+		}
+
+		pterm, err = xfs.Mode(dst)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Insert the file
+	_, err = xfs.InsertFile(dst, offset, data, pterm)
+	if err != nil {
+		return err
+	}
+
+	// remove the src file
+	return xfs.Remove(src)
+}
+
 // Zip zip the dirs
 func Zip(xfs FileSystem, name string, target string) error {
 

@@ -549,6 +549,174 @@ func TestFSObjectMove(t *testing.T) {
 	checkFileExists(t, f["D2_F2"])
 }
 
+func TestFSObjectMoveAppend(t *testing.T) {
+	testFsClear(t)
+	testFsMakeData(t)
+	f := testFsFiles(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsobj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsobj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// WriteFile
+	data := testFsMakeF1(t)
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function Move() {
+		var res = {}
+		const src = "%s"
+		const dst = "%s"
+		const data = "%s"
+		var fs = new FS("system")
+		fs.WriteFile(src, data, 0644)
+		fs.WriteFile(dst, data, 0644)
+		return fs.MoveAppend(src, dst)
+	
+	}
+	Move()
+	`, f["D1_D2_F1"], f["D1_D2_F2"], data), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.True(t, v.IsNull())
+
+	// Check file
+	content, err := fs.FileSystems["system"].ReadFile(f["D1_D2_F2"])
+	contentDataShouldBe := append(data, data...)
+	assert.Equal(t, contentDataShouldBe, content)
+}
+
+func TestFSObjectMoveAppendError(t *testing.T) {
+
+	testFsClear(t)
+	testFsMakeData(t)
+	f := testFsFiles(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsobj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsobj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// WriteFile
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function Move() {
+		var res = {}
+		const src = "%s"
+		const dst = "%s"
+		var fs = new FS("system")
+		try {
+			return fs.MoveAppend(src, dst)
+		}catch(err) {
+			return err.message
+		}
+	}
+	Move()
+	`, f["D1_D2"], f["D1_D2"]), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Contains(t, v.String(), "is not a file")
+}
+
+func TestFSObjectMoveInsertError(t *testing.T) {
+
+	testFsClear(t)
+	testFsMakeData(t)
+	f := testFsFiles(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsobj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsobj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// WriteFile
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function Move() {
+		var res = {}
+		const src = "%s"
+		const dst = "%s"
+		var fs = new FS("system")
+		try {
+			return fs.MoveInsert(src, dst, 2)
+		}catch(err) {
+			return err.message
+		}
+	}
+	Move()
+	`, f["D1_D2"], f["D1_D2"]), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Contains(t, v.String(), "is not a file")
+}
+
+func TestFSObjectMoveInsert(t *testing.T) {
+	testFsClear(t)
+	testFsMakeData(t)
+	f := testFsFiles(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsobj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsobj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// WriteFile
+	data := testFsMakeF1(t)
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function Move() {
+		var res = {}
+		const src = "%s"
+		const dst = "%s"
+		const data = "%s"
+		var fs = new FS("system")
+		fs.WriteFile(src, data, 0644)
+		fs.WriteFile(dst, data, 0644)
+		return fs.MoveInsert(src, dst, 2)
+	
+	}
+	Move()
+	`, f["D1_D2_F1"], f["D1_D2_F2"], data), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.True(t, v.IsNull())
+
+	// Check file
+	content, err := fs.FileSystems["system"].ReadFile(f["D1_D2_F2"])
+	contentDataShouldBe := append(data[:2], append(data, data[2:]...)...)
+	assert.Equal(t, contentDataShouldBe, content)
+}
+
 func TestFSObjectZip(t *testing.T) {
 
 	testFsClear(t)
