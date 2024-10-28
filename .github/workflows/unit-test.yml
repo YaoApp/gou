@@ -52,19 +52,19 @@ jobs:
         mongo: ["6.0"]
     steps:
       - name: Checkout Kun
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.REPO_KUN }}
           path: kun
 
       - name: Checkout Xun
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.REPO_XUN }}
           path: xun
 
       - name: Checkout Application
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.REPO_APP }}
           path: gou-dev-app
@@ -77,7 +77,7 @@ jobs:
           path: v8go
 
       - name: Checkout Demo WMS
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: yaoapp/demo-wms
           path: demo-wms
@@ -93,7 +93,7 @@ jobs:
           ls -l ../
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Move Application
         run: |
@@ -132,7 +132,7 @@ jobs:
           password: "123456"
 
       - name: Setup Go ${{ matrix.go }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
 
@@ -170,6 +170,6 @@ jobs:
           make test
 
       - name: Codecov Report
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos

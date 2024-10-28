@@ -12,39 +12,46 @@ import (
 	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
+	"github.com/yaoapp/kun/utils"
 )
 
 // FileSystemHandlers the file system handlers
 var FileSystemHandlers = map[string]process.Handler{
-	"readfile":        processReadFile,
-	"readfilebuffer":  processReadFileBuffer,
-	"writefile":       processWirteFile,
-	"writefilebuffer": processWriteFileBuffer,
-	"readdir":         processReadDir,
-	"mkdir":           processMkdir,
-	"mkdirall":        processMkdirAll,
-	"mkdirtemp":       processMkdirTemp,
-	"remove":          processRemove,
-	"removeall":       processRemoveAll,
-	"exists":          processExists,
-	"isdir":           processIsDir,
-	"isfile":          processIsFile,
-	"islink":          processIsLink,
-	"chmod":           processChmod,
-	"size":            processSize,
-	"mode":            processMode,
-	"modtime":         processModTime,
-	"basename":        processBaseName,
-	"dirname":         processDirName,
-	"extname":         processExtName,
-	"mimetype":        processMimeType,
-	"move":            processMove,
-	"copy":            processCopy,
-	"upload":          processUpload,
-	"download":        processDownload,
-	"zip":             processZip,
-	"unzip":           processUnzip,
-	"glob":            processGlob,
+	"readfile":         processReadFile,
+	"readfilebuffer":   processReadFileBuffer,
+	"writefile":        processWirteFile,
+	"writefilebuffer":  processWriteFileBuffer,
+	"appendfile":       processAppendFile,
+	"appendfilebuffer": processAppendFileBuffer,
+	"insertfile":       processInsertFile,
+	"insertfilebuffer": processInsertFileBuffer,
+	"readdir":          processReadDir,
+	"mkdir":            processMkdir,
+	"mkdirall":         processMkdirAll,
+	"mkdirtemp":        processMkdirTemp,
+	"remove":           processRemove,
+	"removeall":        processRemoveAll,
+	"exists":           processExists,
+	"isdir":            processIsDir,
+	"isfile":           processIsFile,
+	"islink":           processIsLink,
+	"chmod":            processChmod,
+	"size":             processSize,
+	"mode":             processMode,
+	"modtime":          processModTime,
+	"basename":         processBaseName,
+	"dirname":          processDirName,
+	"extname":          processExtName,
+	"mimetype":         processMimeType,
+	"move":             processMove,
+	"moveappend":       processMoveAppend,
+	"moveinsert":       processMoveInsert,
+	"copy":             processCopy,
+	"upload":           processUpload,
+	"download":         processDownload,
+	"zip":              processZip,
+	"unzip":            processUnzip,
+	"glob":             processGlob,
 }
 
 func init() {
@@ -109,6 +116,82 @@ func processWriteFileBuffer(process *process.Process) interface{} {
 	}
 
 	length, err := WriteFile(stor, file, data, perm)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return length
+}
+
+func processAppendFile(process *process.Process) interface{} {
+	process.ValidateArgNums(2)
+	stor := stor(process)
+	file := process.ArgsString(0)
+	content := process.ArgsString(1)
+	perm := process.ArgsUint32(2, uint32(os.ModePerm))
+	length, err := AppendFile(stor, file, []byte(content), perm)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return length
+}
+
+func processAppendFileBuffer(process *process.Process) interface{} {
+	process.ValidateArgNums(2)
+	stor := stor(process)
+	file := process.ArgsString(0)
+	content := process.Args[1]
+	perm := process.ArgsUint32(2, uint32(os.ModePerm))
+
+	data := []byte{}
+	switch v := content.(type) {
+	case []byte:
+		data = v
+		break
+
+	default:
+		exception.New("file content type error", 400).Throw()
+	}
+
+	length, err := AppendFile(stor, file, data, perm)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return length
+}
+
+func processInsertFile(process *process.Process) interface{} {
+	process.ValidateArgNums(3)
+	stor := stor(process)
+	file := process.ArgsString(0)
+	offset := process.ArgsInt(1)
+	content := process.ArgsString(2)
+	perm := process.ArgsUint32(3, uint32(os.ModePerm))
+	length, err := InsertFile(stor, file, int64(offset), []byte(content), perm)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return length
+}
+
+func processInsertFileBuffer(process *process.Process) interface{} {
+	process.ValidateArgNums(3)
+	stor := stor(process)
+	file := process.ArgsString(0)
+	offset := process.ArgsInt(1)
+	content := process.Args[2]
+	perm := process.ArgsUint32(3, uint32(os.ModePerm))
+
+	data := []byte{}
+	switch v := content.(type) {
+	case []byte:
+		data = v
+		break
+
+	default:
+		exception.New("file content type error", 400).Throw()
+	}
+
+	length, err := InsertFile(stor, file, int64(offset), data, perm)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
@@ -322,6 +405,31 @@ func processMove(process *process.Process) interface{} {
 	return nil
 }
 
+func processMoveAppend(process *process.Process) interface{} {
+	process.ValidateArgNums(2)
+	stor := stor(process)
+	src := process.ArgsString(0)
+	dst := process.ArgsString(1)
+	err := MoveAppend(stor, src, dst)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
+
+func processMoveInsert(process *process.Process) interface{} {
+	process.ValidateArgNums(3)
+	stor := stor(process)
+	src := process.ArgsString(0)
+	dst := process.ArgsString(1)
+	offset := process.ArgsInt(2)
+	err := MoveInsert(stor, src, dst, int64(offset))
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return nil
+}
+
 func processZip(process *process.Process) interface{} {
 	process.ValidateArgNums(2)
 	stor := stor(process)
@@ -366,10 +474,17 @@ func processUpload(process *process.Process) interface{} {
 		exception.New("parameters error: %v", 400, process.Args[0]).Throw()
 	}
 
-	fingerprint := strings.ToUpper(uuid.NewString())
+	fingerprint := strings.ToUpper(tmpfile.UID)
+	if fingerprint == "" {
+		fingerprint = strings.ToUpper(uuid.NewString())
+	}
 	dir := strings.Join([]string{string(os.PathSeparator), time.Now().Format("20060102")}, "")
 	ext := filepath.Ext(tmpfile.Name)
 	filename := filepath.Join(dir, fmt.Sprintf("%s%s", fingerprint, ext))
+
+	fmt.Println("-----------------, upload, ", filename, tmpfile.Range)
+	utils.Dump(tmpfile)
+	fmt.Println("-----------------, upload, ", filename, tmpfile.Range)
 
 	stor := stor(process)
 	content, err := stor.ReadFile(tmpfile.TempFile)

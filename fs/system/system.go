@@ -147,6 +147,227 @@ func (f *File) Write(file string, reader io.Reader, perm uint32) (int, error) {
 	return int(n), nil
 }
 
+// AppendFile Append writes data to the named file, creating it if necessary.
+// If the file does not exist, AppendFile creates it with permissions perm (before umask); otherwise AppendFile truncates it before writing, without changing permissions.
+func (f *File) AppendFile(file string, data []byte, perm uint32) (int, error) {
+	absfile, err := f.absPath(file)
+	if err != nil {
+		return 0, err
+	}
+
+	dir := filepath.Dir(absfile)
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		return 0, err
+	}
+
+	// Open the file
+	hd, err := os.OpenFile(absfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, fs.FileMode(perm))
+	if err != nil {
+		return 0, err
+	}
+	defer hd.Close()
+
+	// Write the data
+	return hd.Write(data)
+}
+
+// Append Append writes data to the named file, creating it if necessary.
+func (f *File) Append(file string, reader io.Reader, perm uint32) (int, error) {
+
+	absfile, err := f.absPath(file)
+	if err != nil {
+		return 0, err
+	}
+
+	dir := filepath.Dir(absfile)
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		return 0, err
+	}
+
+	hd, err := os.OpenFile(absfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, fs.FileMode(perm))
+	if err != nil {
+		return 0, err
+	}
+	defer hd.Close()
+
+	n, err := io.Copy(hd, reader)
+	if err != nil {
+		return 0, err
+	}
+
+	err = hd.Chmod(fs.FileMode(perm))
+	if err != nil {
+		return 0, err
+	}
+
+	return int(n), nil
+}
+
+// InsertFile Insert writes data to the named file at the specified offset, creating it if necessary.
+// If the file does not exist, InsertFile creates it with permissions perm (before umask); otherwise AppendFile truncates it before writing, without changing permissions.
+// @todo
+//   - It should be improved to support large files and avoid reading the entire file into memory.
+func (f *File) InsertFile(file string, offset int64, data []byte, perm uint32) (int, error) {
+	absfile, err := f.absPath(file)
+	if err != nil {
+		return 0, err
+	}
+
+	// check the file exists
+	_, err = os.Stat(absfile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return f.WriteFile(file, data, perm)
+		}
+		return 0, err
+	}
+
+	// Create the tmp file
+	tmpfile := fmt.Sprintf("%s.tmp", absfile)
+	tempFile, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_RDWR, fs.FileMode(perm))
+	if err != nil {
+		return 0, err
+	}
+
+	// Read the original file
+	origin, err := os.OpenFile(absfile, os.O_RDONLY, fs.FileMode(perm))
+
+	// Merge the data at the specified offset into the tmp file
+	buf := make([]byte, 1048576) // 1MB
+	currentPos := int64(0)
+	for {
+		n, err := origin.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return 0, err
+		}
+
+		if currentPos+int64(n) <= offset {
+			_, err := tempFile.Write(buf[:n])
+			if err != nil {
+				return 0, err
+			}
+		} else {
+			if currentPos < offset {
+				_, err := tempFile.Write(buf[:offset-currentPos])
+				if err != nil {
+					return 0, err
+				}
+			}
+
+			_, err = tempFile.Write(data)
+			if err != nil {
+				return 0, err
+			}
+
+			_, err = tempFile.Write(buf[offset-currentPos : n])
+			if err != nil {
+				return 0, err
+			}
+		}
+		currentPos += int64(n)
+	}
+
+	if err := tempFile.Close(); err != nil {
+		return 0, err
+	}
+
+	dir := filepath.Dir(absfile)
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		return 0, err
+	}
+
+	err = os.Rename(tempFile.Name(), absfile)
+	return len(data), err
+}
+
+// Insert Insert writes data to the named file at the specified offset, creating it if necessary.
+// @todo
+//   - it should be improved to support large files and avoid reading the entire file into memory.
+func (f *File) Insert(file string, offset int64, reader io.Reader, perm uint32) (int, error) {
+
+	absfile, err := f.absPath(file)
+	if err != nil {
+		return 0, err
+	}
+
+	// check the file exists
+	_, err = os.Stat(absfile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return f.Write(file, reader, perm)
+		}
+		return 0, err
+	}
+
+	// Create the tmp file
+	tmpfile := fmt.Sprintf("%s.tmp", absfile)
+	tempFile, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_RDWR, fs.FileMode(perm))
+	if err != nil {
+		return 0, err
+	}
+
+	// Read the original file
+	origin, err := os.OpenFile(absfile, os.O_RDONLY, fs.FileMode(perm))
+
+	// Merge the data at the specified offset into the tmp file
+	buf := make([]byte, 1048576) // 1MB
+	currentPos := int64(0)
+	var length int64 = 0
+	for {
+		n, err := origin.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return 0, err
+		}
+
+		if currentPos+int64(n) <= offset {
+			_, err := tempFile.Write(buf[:n])
+			if err != nil {
+				return 0, err
+			}
+		} else {
+			if currentPos < offset {
+				_, err := tempFile.Write(buf[:offset-currentPos])
+				if err != nil {
+					return 0, err
+				}
+			}
+
+			length, err = io.Copy(tempFile, reader)
+			if err != nil {
+				return 0, err
+			}
+
+			_, err = tempFile.Write(buf[offset-currentPos : n])
+			if err != nil {
+				return 0, err
+			}
+		}
+		currentPos += int64(n)
+	}
+
+	if err := tempFile.Close(); err != nil {
+		return 0, err
+	}
+
+	dir := filepath.Dir(absfile)
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		return 0, err
+	}
+
+	err = os.Rename(tempFile.Name(), absfile)
+	return int(length), err
+}
+
 // ReadDir reads the named directory, returning all its directory entries sorted by filename.
 // If an error occurs reading the directory, ReadDir returns the entries it was able to read before the error, along with the error.
 func (f *File) ReadDir(dir string, recursive bool) ([]string, error) {

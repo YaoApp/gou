@@ -11,6 +11,12 @@ type FileSystem interface {
 	WriteFile(file string, data []byte, perm uint32) (int, error)
 	Write(file string, reader io.Reader, perm uint32) (int, error)
 
+	AppendFile(file string, data []byte, perm uint32) (int, error)
+	Append(file string, reader io.Reader, perm uint32) (int, error)
+
+	InsertFile(file string, offset int64, data []byte, perm uint32) (int, error)
+	Insert(file string, offset int64, reader io.Reader, perm uint32) (int, error)
+
 	ReadDir(dir string, recursive bool) ([]string, error)
 	Mkdir(dir string, perm uint32) error
 	MkdirAll(dir string, perm uint32) error

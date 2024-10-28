@@ -286,6 +286,126 @@ func TestWrite(t *testing.T) {
 	}
 }
 
+func TestAppendFile(t *testing.T) {
+	stores := testStores(t)
+	f := testFiles(t)
+	for name, stor := range stores {
+		clear(stor, t)
+		data := testData(t)
+
+		// AppendFile does not exist create
+		length, err := AppendFile(stor, f["F1"], data, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F1"], name)
+		checkFileSize(stor, t, f["F1"], length, name)
+		checkFileMode(stor, t, f["F1"], 0644, name)
+
+		// AppendFile exist append data
+		appendData := testData(t)
+		appendLength, err := AppendFile(stor, f["F1"], appendData, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F1"], name)
+		checkFileSize(stor, t, f["F1"], appendLength+length, name)
+		checkFileMode(stor, t, f["F1"], 0644, name)
+
+		// Check the content
+		fileContent, err := ReadFile(stor, f["F1"])
+		assert.Nil(t, err, name)
+		contentDataShouldBe := append(data, appendData...)
+		assert.Equal(t, contentDataShouldBe, fileContent, name)
+	}
+}
+
+func TestAppend(t *testing.T) {
+	stores := testStores(t)
+	f := testFiles(t)
+	for name, stor := range stores {
+		clear(stor, t)
+
+		// Append does not exist create
+		f1 := strings.NewReader("Hello F1")
+		length, err := Append(stor, f["F1"], f1, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F1"], name)
+		checkFileSize(stor, t, f["F1"], length, name)
+		checkFileMode(stor, t, f["F1"], 0644, name)
+
+		// Append exist append data
+		f2 := strings.NewReader("Hello F2")
+		appendLength, err := Append(stor, f["F1"], f2, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F1"], name)
+		checkFileSize(stor, t, f["F1"], appendLength+length, name)
+		checkFileMode(stor, t, f["F1"], 0644, name)
+
+		// Check the content
+		fileContent, err := ReadFile(stor, f["F1"])
+		assert.Nil(t, err, name)
+		contentDataShouldBe := []byte("Hello F1Hello F2")
+		assert.Equal(t, contentDataShouldBe, fileContent, name)
+	}
+}
+
+func TestInsertFile(t *testing.T) {
+	stores := testStores(t)
+	f := testFiles(t)
+	for name, stor := range stores {
+		clear(stor, t)
+		data := testData(t)
+
+		// InsertFile does not exist create
+		length, err := InsertFile(stor, f["F1"], 0, data, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F1"], name)
+		checkFileSize(stor, t, f["F1"], length, name)
+		checkFileMode(stor, t, f["F1"], 0644, name)
+
+		// InsertFile exist insert data
+		insertData := []byte(fmt.Sprintf("|%s|", testData(t)))
+		insertLength, err := InsertFile(stor, f["F1"], 5, insertData, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F1"], name)
+		checkFileSize(stor, t, f["F1"], insertLength+length, name)
+		checkFileMode(stor, t, f["F1"], 0644, name)
+
+		// Check the content
+		fileContent, err := ReadFile(stor, f["F1"])
+		assert.Nil(t, err, name)
+		contentDataShouldBe := append(data[:5], append(insertData, data[5:]...)...)
+		assert.Equal(t, contentDataShouldBe, fileContent, name)
+	}
+}
+
+func TestInsert(t *testing.T) {
+	stores := testStores(t)
+	f := testFiles(t)
+	for name, stor := range stores {
+		clear(stor, t)
+
+		// Insert does not exist create
+		f1 := strings.NewReader("Hello F1")
+		length, err := Insert(stor, f["F1"], 0, f1, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F1"], name)
+		checkFileSize(stor, t, f["F1"], length, name)
+		checkFileMode(stor, t, f["F1"], 0644, name)
+
+		// Insert exist insert data
+		f2 := strings.NewReader("Hello F2")
+		insertLength, err := Insert(stor, f["F1"], 5, f2, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F1"], name)
+		checkFileSize(stor, t, f["F1"], insertLength+length, name)
+		checkFileMode(stor, t, f["F1"], 0644, name)
+
+		// Check the content
+		fileContent, err := ReadFile(stor, f["F1"])
+		assert.Nil(t, err, name)
+		contentDataShouldBe := []byte("HelloHello F2 F1")
+		assert.Equal(t, contentDataShouldBe, fileContent, name)
+	}
+}
+
 func TestReadFile(t *testing.T) {
 	stores := testStores(t)
 	f := testFiles(t)
@@ -607,6 +727,85 @@ func TestMove(t *testing.T) {
 		checkFileExists(stor, t, f["D2_F1"], name)
 		checkFileExists(stor, t, f["D2_F2"], name)
 
+	}
+}
+
+func TestMoveAppend(t *testing.T) {
+	stores := testStores(t)
+	f := testFiles(t)
+	for name, stor := range stores {
+		clear(stor, t)
+		data := testData(t)
+
+		// Mkdir
+		err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["D1"], name)
+		checkFileExists(stor, t, f["D1_D2"], name)
+
+		// Write
+		_, err = WriteFile(stor, f["D1_D2_F1"], data, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["D1_D2_F1"], name)
+
+		_, err = WriteFile(stor, f["D1_D2_F2"], data, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["D1_D2_F2"], name)
+
+		// MoveAppend Error is not empty
+		err = MoveAppend(stor, f["D1_D2"], f["D2"])
+		assert.NotEmpty(t, err, name)
+
+		// MoveAppend
+		err = MoveAppend(stor, f["D1_D2_F1"], f["D1_D2_F2"])
+		assert.Nil(t, err, name)
+
+		// Check the content
+		fileContent, err := ReadFile(stor, f["D1_D2_F2"])
+		assert.Nil(t, err, name)
+		contentDataShouldBe := append(data, data...)
+		assert.Equal(t, contentDataShouldBe, fileContent, name)
+		checkFileNotExists(stor, t, f["D1_D2_F1"], name)
+	}
+}
+
+func TestMoveInsert(t *testing.T) {
+
+	stores := testStores(t)
+	f := testFiles(t)
+	for name, stor := range stores {
+		clear(stor, t)
+		data := testData(t)
+
+		// Mkdir
+		err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["D1"], name)
+		checkFileExists(stor, t, f["D1_D2"], name)
+
+		// Write
+		_, err = WriteFile(stor, f["D1_D2_F1"], data, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["D1_D2_F1"], name)
+
+		_, err = WriteFile(stor, f["D1_D2_F2"], data, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["D1_D2_F2"], name)
+
+		// MoveInsert Error is not empty
+		err = MoveInsert(stor, f["D1_D2"], f["D2"], 2)
+		assert.NotEmpty(t, err, name)
+
+		// MoveInsert
+		err = MoveInsert(stor, f["D1_D2_F1"], f["D1_D2_F2"], 2)
+		assert.Nil(t, err, name)
+
+		// Check the content
+		fileContent, err := ReadFile(stor, f["D1_D2_F2"])
+		assert.Nil(t, err, name)
+		contentDataShouldBe := append(data[:2], append(data, data[2:]...)...)
+		assert.Equal(t, contentDataShouldBe, fileContent, name)
+		checkFileNotExists(stor, t, f["D1_D2_F1"], name)
 	}
 }
 

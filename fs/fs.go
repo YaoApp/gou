@@ -156,6 +156,28 @@ func Write(xfs FileSystem, file string, reader io.Reader, perm uint32) (int, err
 	return xfs.Write(file, reader, perm)
 }
 
+// AppendFile Append writes data to the named file, creating it if necessary.
+// If the file does not exist, AppendFile creates it with permissions perm (before umask); otherwise AppendFile truncates it before writing, without changing permissions.
+func AppendFile(xfs FileSystem, file string, data []byte, perm uint32) (int, error) {
+	return xfs.AppendFile(file, data, perm)
+}
+
+// Append Append writes data to the named file, creating it if necessary.
+func Append(xfs FileSystem, file string, reader io.Reader, perm uint32) (int, error) {
+	return xfs.Append(file, reader, perm)
+}
+
+// InsertFile Insert writes data to the named file, creating it if necessary.
+// If the file does not exist, InsertFile creates it with permissions perm (before umask); otherwise InsertFile truncates it before writing, without changing permissions.
+func InsertFile(xfs FileSystem, file string, offset int64, data []byte, perm uint32) (int, error) {
+	return xfs.InsertFile(file, offset, data, perm)
+}
+
+// Insert Insert writes data to the named file, creating it if necessary.
+func Insert(xfs FileSystem, file string, offset int64, reader io.Reader, perm uint32) (int, error) {
+	return xfs.Insert(file, offset, reader, perm)
+}
+
 // ReadDir reads the named directory, returning all its directory entries sorted by filename.
 // If an error occurs reading the directory, ReadDir returns the entries it was able to read before the error, along with the error.
 func ReadDir(xfs FileSystem, dir string, recursive bool) ([]string, error) {
@@ -257,6 +279,92 @@ func IsLink(xfs FileSystem, name string) bool {
 // MimeType return the MimeType
 func MimeType(xfs FileSystem, name string) (string, error) {
 	return xfs.MimeType(name)
+}
+
+// MoveAppend move the file from src to dest and append the content
+func MoveAppend(xfs FileSystem, src string, dst string) error {
+
+	// check the src file exists
+	if has, _ := xfs.Exists(src); !has {
+		return fmt.Errorf("%s does not exists", src)
+	}
+
+	// Check the src file is a file
+	if (xfs.IsFile(src)) == false {
+		return fmt.Errorf("%s is not a file", src)
+	}
+
+	data, err := xfs.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	// Get file pterm from src
+	pterm := uint32(os.ModePerm)
+	if has, _ := xfs.Exists(dst); has {
+
+		// Check the dst file is a file
+		if (xfs.IsFile(dst)) == false {
+			return fmt.Errorf("%s is not a file", dst)
+		}
+
+		pterm, err = xfs.Mode(dst)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Append the file
+	_, err = xfs.AppendFile(dst, data, pterm)
+	if err != nil {
+		return err
+	}
+
+	// remove the src file
+	return xfs.Remove(src)
+}
+
+// MoveInsert move the file from src to dest and insert the content
+func MoveInsert(xfs FileSystem, src string, dst string, offset int64) error {
+
+	// check the src file exists
+	if has, _ := xfs.Exists(src); !has {
+		return fmt.Errorf("%s does not exists", src)
+	}
+
+	// Check the src file is a file
+	if (xfs.IsFile(src)) == false {
+		return fmt.Errorf("%s is not a file", src)
+	}
+
+	data, err := xfs.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	// Get file pterm from src
+	pterm := uint32(os.ModePerm)
+	if has, _ := xfs.Exists(dst); has {
+
+		// Check the dst file is a file
+		if (xfs.IsFile(dst)) == false {
+			return fmt.Errorf("%s is not a file", dst)
+		}
+
+		pterm, err = xfs.Mode(dst)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Insert the file
+	_, err = xfs.InsertFile(dst, offset, data, pterm)
+	if err != nil {
+		return err
+	}
+
+	// remove the src file
+	return xfs.Remove(src)
 }
 
 // Zip zip the dirs

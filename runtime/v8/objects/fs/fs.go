@@ -15,13 +15,20 @@ import (
 	"rogchap.com/v8go"
 )
 
-// var fs = new FS("system")
+// var fs = new FS("data")
 // var dataString	  = fs.ReadFile("/root/path/name.file")
 // var dataUnit8Array = fs.ReadFileBuffer("/root/path/name.file")
+// var dataBase64	  = fs.ReadFileBase64("/root/path/name.file")
 // var length	      = fs.WriteFile("/root/path/name.file", "Hello")
 // var length	      = fs.WriteFile("/root/path/name.file", "Hello", 0644 )
 // var length	      = fs.WriteFileBuffer("/root/path/name.file", dataUnit8Array)
-// var length	      = fs.WriteFileBuffer("/root/path/name.file", dataUnit8Array, 0644 )
+// var length	      = fs.WriteFileBase64("/root/path/name.file", dataUnit8Array, 0644 )
+// var length	      = fs.AppendFile("/root/path/name.file", "Hello")
+// var length	      = fs.AppendFileBuffer("/root/path/name.file", dataUnit8Array)
+// var length	      = fs.AppendFileBase64("/root/path/name.file", dataBase64)
+// var length	      = fs.InsertFile("/root/path/name.file", 20, "Hello", 0644)
+// var length	      = fs.InsertFileBuffer("/root/path/name.file", 20, dataUnit8Array, 0644)
+// var length	      = fs.InsertFileBase64("/root/path/name.file", 20, dataBase64, 0644)
 // var dirs 		  = fs.ReadDir("/root/path");
 // var dirs 		  = fs.ReadDir("/root/path", true);  // recursive
 // var err 		      = fs.Mkdir("/root/path");
@@ -62,25 +69,36 @@ func New() *Object {
 // ExportObject Export as a FS Object
 func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl := v8go.NewObjectTemplate(iso)
+
+	// Check file
 	tmpl.Set("Exists", obj.exists(iso))
 	tmpl.Set("IsDir", obj.isdir(iso))
 	tmpl.Set("IsFile", obj.isfile(iso))
 	tmpl.Set("IsLink", obj.islink(iso))
 
+	// Basic file operation
 	tmpl.Set("ReadFile", obj.readFile(iso))
 	tmpl.Set("ReadFileBuffer", obj.readFileBuffer(iso))
 	tmpl.Set("ReadFileBase64", obj.readFileBase64(iso))
 	tmpl.Set("WriteFile", obj.writeFile(iso))
 	tmpl.Set("WriteFileBuffer", obj.writeFileBuffer(iso))
 	tmpl.Set("WriteFileBase64", obj.writeFileBase64(iso))
+	tmpl.Set("AppendFile", obj.appendFile(iso))
+	tmpl.Set("AppendBuffer", obj.appendFileBuffer(iso))
+	tmpl.Set("AppendBase64", obj.appendFileBase64(iso))
+	tmpl.Set("InsertFile", obj.insertFile(iso))
+	tmpl.Set("InsertBuffer", obj.insertFileBuffer(iso))
+	tmpl.Set("InsertBase64", obj.insertFileBase64(iso))
 	tmpl.Set("Remove", obj.remove(iso))
 	tmpl.Set("RemoveAll", obj.removeAll(iso))
 
+	// Directory
 	tmpl.Set("ReadDir", obj.readdir(iso))
 	tmpl.Set("Mkdir", obj.mkdir(iso))
 	tmpl.Set("MkdirAll", obj.mkdirAll(iso))
 	tmpl.Set("MkdirTemp", obj.mkdirTemp(iso))
 
+	// File info
 	tmpl.Set("Chmod", obj.chmod(iso))
 	tmpl.Set("BaseName", obj.baseName(iso))
 	tmpl.Set("DirName", obj.dirName(iso))
@@ -90,13 +108,20 @@ func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl.Set("Size", obj.size(iso))
 	tmpl.Set("ModTime", obj.modTime(iso))
 
+	// File operation
 	tmpl.Set("Move", obj.move(iso))
 	tmpl.Set("Copy", obj.copy(iso))
+	tmpl.Set("MoveAppend", obj.moveAppend(iso))
+	tmpl.Set("MoveInsert", obj.moveInsert(iso))
+
+	// Directory operation
 	tmpl.Set("Abs", obj.abs(iso))
 
+	// Compression
 	tmpl.Set("Zip", obj.zip(iso))
 	tmpl.Set("Unzip", obj.unzip(iso))
 
+	// Glob
 	tmpl.Set("Glob", obj.glob(iso))
 	return tmpl
 }
@@ -154,6 +179,48 @@ func (obj *Object) move(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		}
 
 		err = fs.Move(stor, args[0].String(), args[1].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return v8go.Null(iso)
+	})
+}
+
+func (obj *Object) moveAppend(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 2 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		err = fs.MoveAppend(stor, args[0].String(), args[1].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return v8go.Null(iso)
+	})
+}
+
+func (obj *Object) moveInsert(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 3 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		err = fs.MoveInsert(stor, args[0].String(), args[1].String(), args[2].Integer())
 		if err != nil {
 			return obj.error(info, err)
 		}
@@ -790,6 +857,218 @@ func (obj *Object) writeFileBase64(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		}
 
 		length, err := fs.WriteFile(stor, name, dataDecode, perm)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.intValue(info, int32(length))
+	})
+}
+
+func (obj *Object) appendFile(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 2 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		name := args[0].String()
+		data := []byte(args[1].String())
+		perm := uint32(os.ModePerm)
+		if len(args) > 2 {
+			perm = args[2].Uint32()
+		}
+
+		length, err := fs.AppendFile(stor, name, data, perm)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.intValue(info, int32(length))
+	})
+}
+
+func (obj *Object) appendFileBuffer(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 2 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		name := args[0].String()
+		data := []byte{}
+		if info.Args()[1].IsUint32Array() || info.Args()[1].IsArrayBufferView() {
+			codes := strings.Split(info.Args()[1].String(), ",")
+			for _, code := range codes {
+				c, err := strconv.Atoi(code)
+				if err != nil {
+					return obj.error(info, err)
+				}
+				data = append(data, byte(c))
+			}
+		} else {
+			data = []byte(info.Args()[1].String())
+		}
+
+		perm := uint32(os.ModePerm)
+		if len(args) > 2 {
+			perm = args[2].Uint32()
+		}
+
+		length, err := fs.AppendFile(stor, name, data, perm)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.intValue(info, int32(length))
+	})
+}
+
+// appendFileBase64 appends a base64 encoded string to a file
+func (obj *Object) appendFileBase64(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 2 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		name := args[0].String()
+		data := args[1].String()
+
+		// Decode base64
+		dataDecode, err := base64.StdEncoding.DecodeString(data)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		perm := uint32(os.ModePerm)
+		if len(args) > 2 {
+			perm = args[2].Uint32()
+		}
+
+		length, err := fs.AppendFile(stor, name, dataDecode, perm)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.intValue(info, int32(length))
+	})
+}
+
+func (obj *Object) insertFile(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 3 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		name := args[0].String()
+		offset := args[1].Integer()
+		data := []byte(args[2].String())
+		perm := uint32(os.ModePerm)
+		if len(args) > 3 {
+			perm = args[3].Uint32()
+		}
+
+		length, err := fs.InsertFile(stor, name, offset, data, perm)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.intValue(info, int32(length))
+	})
+}
+
+func (obj *Object) insertFileBuffer(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 3 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		name := args[0].String()
+		offset := args[1].Integer()
+		data := []byte{}
+		if info.Args()[2].IsUint32Array() || info.Args()[2].IsArrayBufferView() {
+			codes := strings.Split(info.Args()[2].String(), ",")
+			for _, code := range codes {
+				c, err := strconv.Atoi(code)
+				if err != nil {
+					return obj.error(info, err)
+				}
+				data = append(data, byte(c))
+			}
+		} else {
+			data = []byte(info.Args()[2].String())
+		}
+
+		perm := uint32(os.ModePerm)
+		if len(args) > 3 {
+			perm = args[3].Uint32()
+		}
+
+		length, err := fs.InsertFile(stor, name, offset, data, perm)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.intValue(info, int32(length))
+	})
+}
+
+func (obj *Object) insertFileBase64(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 3 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		name := args[0].String()
+		offset := args[1].Integer()
+		data := args[2].String()
+
+		// Decode base64
+		dataDecode, err := base64.StdEncoding.DecodeString(data)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		perm := uint32(os.ModePerm)
+		if len(args) > 3 {
+			perm = args[3].Uint32()
+		}
+
+		length, err := fs.InsertFile(stor, name, offset, dataDecode, perm)
 		if err != nil {
 			return obj.error(info, err)
 		}

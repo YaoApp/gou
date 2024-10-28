@@ -83,6 +83,151 @@ func TestProcessFsWriteBuffer(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestProcessFsAppendFile(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(FileSystems["system"], t)
+	data := testFsData(t)
+
+	processName := "fs.system.AppendFile"
+
+	// Append new file
+	args := []interface{}{f["F1"], string(data), 0644}
+	res, err := process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res.(int))
+
+	// Append to existing file
+	args = []interface{}{f["F1"], string(data), 0644}
+	res, err = process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res.(int))
+
+	// Check file content
+	processName = "fs.system.ReadFile"
+	args = []interface{}{f["F1"]}
+	res, err = process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	content, ok := res.(string)
+	assert.True(t, ok)
+	assert.Equal(t, string(data)+string(data), content)
+}
+
+func TestProcessFsAppendBuffer(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(FileSystems["system"], t)
+	data := testFsData(t)
+
+	processName := "fs.system.AppendFileBuffer"
+
+	// Append new file
+	args := []interface{}{f["F1"], data, 0644}
+	res, err := process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res.(int))
+
+	// Append to existing file
+	args = []interface{}{f["F1"], data, 0644}
+	res, err = process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res.(int))
+
+	// Check file content
+	processName = "fs.system.ReadFile"
+	args = []interface{}{f["F1"]}
+	res, err = process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, ok := res.(string)
+	assert.True(t, ok)
+	assert.Equal(t, string(data)+string(data), content)
+}
+
+func TestProcessFsInsertFile(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(FileSystems["system"], t)
+	data := testFsData(t)
+
+	processName := "fs.system.InsertFile"
+
+	// Insert new file
+	args := []interface{}{f["F1"], 0, string(data), 0644}
+	res, err := process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res.(int))
+
+	// Insert to existing file
+	args = []interface{}{f["F1"], 5, string(data), 0644}
+	res, err = process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res.(int))
+
+	// Check file content
+	processName = "fs.system.ReadFile"
+	args = []interface{}{f["F1"]}
+	res, err = process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	contentDataShouldBe := append(data[:5], append(data, data[5:]...)...)
+	content, ok := res.(string)
+	assert.True(t, ok)
+	assert.Equal(t, string(contentDataShouldBe), content)
+}
+
+func TestProcessFsInsertBuffer(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(FileSystems["system"], t)
+	data := testFsData(t)
+
+	processName := "fs.system.InsertFileBuffer"
+
+	// Insert new file
+	args := []interface{}{f["F1"], 0, data, 0644}
+	res, err := process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res.(int))
+
+	// Insert to existing file
+	args = []interface{}{f["F1"], 5, data, 0644}
+	res, err = process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res.(int))
+
+	// Check file content
+	processName = "fs.system.ReadFile"
+	args = []interface{}{f["F1"]}
+	res, err = process.New(processName, args...).Exec()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	contentDataShouldBe := append(data[:5], append(data, data[5:]...)...)
+	content, ok := res.(string)
+	assert.True(t, ok)
+	assert.Equal(t, string(contentDataShouldBe), content)
+}
+
 func TestProcessFsDir(t *testing.T) {
 	f := testFsFiles(t)
 	testFsClear(FileSystems["system"], t)
@@ -366,6 +511,78 @@ func TestProcessFsMove(t *testing.T) {
 	processCheckFileNotExists(t, f["D1_D2"])
 	processCheckFileExists(t, f["D2_F1"])
 	processCheckFileExists(t, f["D2_F2"])
+}
+
+func TestProcessMoveAppend(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(FileSystems["system"], t)
+	testFsMakeData(t)
+
+	// Mkdir
+	stor := FileSystems["system"]
+	data := testData(t)
+	name := "TestProcessMoveAppend"
+	err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
+	assert.Nil(t, err, "TestProcessMoveAppend")
+	checkFileExists(stor, t, f["D1"], name)
+	checkFileExists(stor, t, f["D1_D2"], name)
+
+	// Write
+	_, err = WriteFile(stor, f["D1_D2_F1"], data, 0644)
+	assert.Nil(t, err, name)
+	checkFileExists(stor, t, f["D1_D2_F1"], name)
+
+	_, err = WriteFile(stor, f["D1_D2_F2"], data, 0644)
+	assert.Nil(t, err, name)
+	checkFileExists(stor, t, f["D1_D2_F2"], name)
+
+	processName := "fs.system.MoveAppend"
+	args := []interface{}{f["D1_D2_F1"], f["D1_D2_F2"]}
+	_, err = process.New(processName, args...).Exec()
+	assert.Nil(t, err, name)
+
+	// Check the content
+	fileContent, err := ReadFile(stor, f["D1_D2_F2"])
+	assert.Nil(t, err, name)
+	contentDataShouldBe := append(data, data...)
+	assert.Equal(t, contentDataShouldBe, fileContent, name)
+	checkFileNotExists(stor, t, f["D1_D2_F1"], name)
+}
+
+func TestProcessMoveInsert(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(FileSystems["system"], t)
+	testFsMakeData(t)
+
+	// Mkdir
+	stor := FileSystems["system"]
+	data := testData(t)
+	name := "TestProcessMoveAppend"
+	err := MkdirAll(stor, f["D1_D2"], uint32(os.ModePerm))
+	assert.Nil(t, err, "TestProcessMoveInsert")
+	checkFileExists(stor, t, f["D1"], name)
+	checkFileExists(stor, t, f["D1_D2"], name)
+
+	// Write
+	_, err = WriteFile(stor, f["D1_D2_F1"], data, 0644)
+	assert.Nil(t, err, name)
+	checkFileExists(stor, t, f["D1_D2_F1"], name)
+
+	_, err = WriteFile(stor, f["D1_D2_F2"], data, 0644)
+	assert.Nil(t, err, name)
+	checkFileExists(stor, t, f["D1_D2_F2"], name)
+
+	processName := "fs.system.MoveInsert"
+	args := []interface{}{f["D1_D2_F1"], f["D1_D2_F2"], 2}
+	_, err = process.New(processName, args...).Exec()
+	assert.Nil(t, err, name)
+
+	// Check the content
+	fileContent, err := ReadFile(stor, f["D1_D2_F2"])
+	assert.Nil(t, err, name)
+	contentDataShouldBe := append(data[:2], append(data, data[2:]...)...)
+	assert.Equal(t, contentDataShouldBe, fileContent, name)
+	checkFileNotExists(stor, t, f["D1_D2_F1"], name)
 }
 
 func TestProcessFsZip(t *testing.T) {
