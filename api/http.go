@@ -373,6 +373,9 @@ func (http HTTP) parseIn(in []interface{}) func(c *gin.Context) []interface{} {
 				}
 
 				return types.UploadFile{
+					UID:      c.GetHeader("Content-Uid"),
+					Range:    c.GetHeader("Content-Range"),
+					Chunk:    c.GetHeader("Content-Chunk"),
 					Name:     file.Filename,
 					TempFile: tmpfile.Name(),
 					Size:     file.Size,

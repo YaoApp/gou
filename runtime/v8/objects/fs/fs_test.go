@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"encoding/base64"
 	"fmt"
 	iofs "io/fs"
 	"math/rand"
@@ -244,6 +245,137 @@ func TestFSObjectWriteFile(t *testing.T) {
 	}
 	assert.Equal(t, len(data), res)
 
+	// WriteFileBase64
+	v, err = ctx.RunScript(fmt.Sprintf(`
+	function WriteFileBase64() {
+		var fs = new FS("system")
+		var data = fs.ReadFileBase64("%s")
+		return fs.WriteFileBase64("%s", data, 0644);
+	}
+	WriteFileBase64()
+	`, f["F1"], f["F2"]), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(data), res)
+}
+
+func TestAppendFile(t *testing.T) {
+
+	testFsClear(t)
+	f := testFsFiles(t)
+	data := testFsMakeF1(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsobj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsobj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// AppendFile
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function AppendFile() {
+		var fs = new FS("system")
+		const name = "%s"
+		const data = "%s"
+		fs.Remove(name)
+		fs.AppendFile(name, data, 0644);
+
+		const base64 = fs.ReadFileBase64(name)
+		const buffer = fs.ReadFileBuffer(name)
+		fs.AppendBuffer(name, buffer, 0644);
+		fs.AppendBase64(name, base64, 0644);
+		return fs.ReadFileBase64(name)
+	}
+	AppendFile()
+	`, f["F1"], string(data)), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	str, ok := res.(string)
+	if !ok {
+		t.Fatal("res is not string")
+	}
+	content, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		t.Fatal(err)
+	}
+	contentShouldBe := append(data, append(data, data...)...)
+	assert.Equal(t, contentShouldBe, content)
+}
+
+func TestFSObjectInsertFile(t *testing.T) {
+
+	testFsClear(t)
+	f := testFsFiles(t)
+	data := testFsMakeF1(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsobj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsobj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// InsertFile
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function InsertFile() {
+		var fs = new FS("system")
+		const name = "%s"
+		const data = "%s"
+		fs.Remove(name)
+		
+		fs.InsertFile(name, 0, data, 0644);
+		const base64 = fs.ReadFileBase64(name)
+		const buffer = fs.ReadFileBuffer(name)
+		fs.InsertBuffer(name, 2, buffer, 0644);
+		fs.InsertBase64(name, 2, base64, 0644);
+		return fs.ReadFileBase64(name)
+	}
+	InsertFile()
+	`, f["F1"], string(data)), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	str, ok := res.(string)
+	if !ok {
+		t.Fatal("res is not string")
+	}
+	content, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	contentShouldBe := append(data[:2], append(data, data[2:]...)...)
+	contentShouldBe = append(contentShouldBe[:2], append(data, contentShouldBe[2:]...)...)
+	assert.Equal(t, contentShouldBe, content)
 }
 
 func TestFSObjectExistRemove(t *testing.T) {

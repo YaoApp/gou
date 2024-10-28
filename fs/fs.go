@@ -156,6 +156,28 @@ func Write(xfs FileSystem, file string, reader io.Reader, perm uint32) (int, err
 	return xfs.Write(file, reader, perm)
 }
 
+// AppendFile Append writes data to the named file, creating it if necessary.
+// If the file does not exist, AppendFile creates it with permissions perm (before umask); otherwise AppendFile truncates it before writing, without changing permissions.
+func AppendFile(xfs FileSystem, file string, data []byte, perm uint32) (int, error) {
+	return xfs.AppendFile(file, data, perm)
+}
+
+// Append Append writes data to the named file, creating it if necessary.
+func Append(xfs FileSystem, file string, reader io.Reader, perm uint32) (int, error) {
+	return xfs.Append(file, reader, perm)
+}
+
+// InsertFile Insert writes data to the named file, creating it if necessary.
+// If the file does not exist, InsertFile creates it with permissions perm (before umask); otherwise InsertFile truncates it before writing, without changing permissions.
+func InsertFile(xfs FileSystem, file string, offset int64, data []byte, perm uint32) (int, error) {
+	return xfs.InsertFile(file, offset, data, perm)
+}
+
+// Insert Insert writes data to the named file, creating it if necessary.
+func Insert(xfs FileSystem, file string, offset int64, reader io.Reader, perm uint32) (int, error) {
+	return xfs.Insert(file, offset, reader, perm)
+}
+
 // ReadDir reads the named directory, returning all its directory entries sorted by filename.
 // If an error occurs reading the directory, ReadDir returns the entries it was able to read before the error, along with the error.
 func ReadDir(xfs FileSystem, dir string, recursive bool) ([]string, error) {
