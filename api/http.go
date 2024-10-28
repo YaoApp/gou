@@ -375,7 +375,7 @@ func (http HTTP) parseIn(in []interface{}) func(c *gin.Context) []interface{} {
 				return types.UploadFile{
 					UID:      c.GetHeader("Content-Uid"),
 					Range:    c.GetHeader("Content-Range"),
-					Chunk:    c.GetHeader("Content-Chunk"),
+					Sync:     c.GetHeader("Content-Sync") == "true", // sync upload or not
 					Name:     file.Filename,
 					TempFile: tmpfile.Name(),
 					Size:     file.Size,
