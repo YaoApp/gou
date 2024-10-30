@@ -30,7 +30,7 @@ func (path Path) defaultHandler(getArgs argsHandler) func(c *gin.Context) {
 		defer cancel()
 		path.setPayload(c)
 		var status int = path.Out.Status
-		var contentType = path.reqContentType(c)
+		var contentType = path.reqContentType(c) // Get the defined content type at API DSL
 
 		chRes := make(chan interface{}, 1)
 		go path.execProcess(ctx, chRes, c, getArgs)
@@ -43,7 +43,7 @@ func (path Path) defaultHandler(getArgs argsHandler) func(c *gin.Context) {
 				return
 			}
 
-			// Set ContentType
+			// Set Headers and renew Content-Type
 			contentType = path.setResponseHeaders(c, resp, contentType)
 
 			// Format Body
@@ -335,6 +335,9 @@ func (path Path) reqContentType(c *gin.Context) string {
 }
 
 func (path Path) setResponseHeaders(c *gin.Context, resp interface{}, contentType string) string {
+
+	// Get Content-Type
+	headers := map[string]string{}
 	if len(path.Out.Headers) > 0 {
 		res := any.Of(resp)
 
@@ -342,15 +345,16 @@ func (path Path) setResponseHeaders(c *gin.Context, resp interface{}, contentTyp
 		if res.IsMap() {
 			data := res.Map().MapStrAny.Dot()
 			for name, value := range path.Out.Headers {
+				headers[name] = value
 				v := helper.Bind(value, data)
 				if v != nil {
-					path.Out.Headers[name] = fmt.Sprintf("%v", v)
+					headers[name] = fmt.Sprintf("%v", v)
 				}
 			}
 		}
 
 		// Set Headers and replace Content-Type if exists
-		for name, value := range path.Out.Headers {
+		for name, value := range headers {
 			c.Writer.Header().Set(name, value)
 			if name == "Content-Type" {
 				contentType = value
