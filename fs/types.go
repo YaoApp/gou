@@ -23,6 +23,9 @@ type FileSystem interface {
 	MkdirTemp(dir string, pattern string) (string, error)
 	Glob(pattern string) ([]string, error)
 
+	ReadCloser(file string) (io.ReadCloser, error)
+	WriteCloser(file string, perm uint32) (io.WriteCloser, error)
+
 	Remove(name string) error
 	RemoveAll(name string) error
 

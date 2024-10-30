@@ -144,11 +144,21 @@ func ReadFile(xfs FileSystem, file string) ([]byte, error) {
 	return xfs.ReadFile(file)
 }
 
+// ReadCloser returns a ReadCloser to read the named file.
+func ReadCloser(xfs FileSystem, file string) (io.ReadCloser, error) {
+	return xfs.ReadCloser(file)
+}
+
 // WriteFile writes data to the named file, creating it if necessary.
 //
 //	If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.
 func WriteFile(xfs FileSystem, file string, data []byte, perm uint32) (int, error) {
 	return xfs.WriteFile(file, data, perm)
+}
+
+// WriteCloser returns a WriteCloser that writes to the named file.
+func WriteCloser(xfs FileSystem, file string, perm uint32) (io.WriteCloser, error) {
+	return xfs.WriteCloser(file, perm)
 }
 
 // Write writes the content of reader to the named file, creating it if necessary.

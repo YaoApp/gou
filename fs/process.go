@@ -575,7 +575,7 @@ func processDownload(process *process.Process) interface{} {
 	process.ValidateArgNums(1)
 	stor := stor(process)
 	file := process.ArgsString(0)
-	data, err := ReadFile(stor, file)
+	reader, err := ReadCloser(stor, file)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
@@ -586,7 +586,7 @@ func processDownload(process *process.Process) interface{} {
 	}
 
 	return map[string]interface{}{
-		"content": data,
+		"content": reader,
 		"type":    mimeType,
 	}
 }

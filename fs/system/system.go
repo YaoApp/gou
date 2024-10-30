@@ -91,6 +91,31 @@ func (f *File) ReadFile(file string) ([]byte, error) {
 	return os.ReadFile(file)
 }
 
+// ReadCloser returns a ReadCloser with the file content
+func (f *File) ReadCloser(file string) (io.ReadCloser, error) {
+	file, err := f.absPath(file)
+	if err != nil {
+		return nil, err
+	}
+	return os.OpenFile(file, os.O_RDONLY, 0)
+}
+
+// WriteCloser returns a WriteCloser with the file content
+func (f *File) WriteCloser(file string, perm uint32) (io.WriteCloser, error) {
+	file, err := f.absPath(file)
+	if err != nil {
+		return nil, err
+	}
+
+	dir := filepath.Dir(file)
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		return nil, err
+	}
+
+	return os.OpenFile(file, os.O_CREATE|os.O_WRONLY, fs.FileMode(perm))
+}
+
 // WriteFile writes data to the named file, creating it if necessary.
 //
 //	If the file does not exist, WriteFile creates it with permissions perm (before umask); otherwise WriteFile truncates it before writing, without changing permissions.

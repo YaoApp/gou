@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -283,6 +284,52 @@ func TestWrite(t *testing.T) {
 		l32, err := Write(stor, f["D1_D2_F1"], d1d2f1, 0644)
 		assert.NotNil(t, err, name)
 		assert.Equal(t, l32, 0)
+	}
+}
+
+func TestReadCloser(t *testing.T) {
+	stores := testStores(t)
+	f := testFiles(t)
+	for name, stor := range stores {
+		clear(stor, t)
+		data := testData(t)
+
+		// Write
+		length, err := WriteFile(stor, f["F1"], data, 0644)
+		assert.Nil(t, err, name)
+		checkFileExists(stor, t, f["F1"], name)
+		checkFileSize(stor, t, f["F1"], length, name)
+		checkFileMode(stor, t, f["F1"], 0644, name)
+
+		// ReadCloser
+		rc, err := ReadCloser(stor, f["F1"])
+		assert.Nil(t, err, name)
+		content, err := io.ReadAll(rc)
+		assert.Nil(t, err, name)
+		assert.Equal(t, data, content, name)
+		rc.Close()
+	}
+}
+
+func TestWriteCloser(t *testing.T) {
+	stores := testStores(t)
+	f := testFiles(t)
+	for name, stor := range stores {
+		clear(stor, t)
+
+		// WriteCloser
+		wc, err := WriteCloser(stor, f["F1"], 0644)
+		assert.Nil(t, err, name)
+		data := testData(t)
+		n, err := wc.Write(data)
+		assert.Nil(t, err, name)
+		assert.Equal(t, len(data), n, name)
+		wc.Close()
+
+		// Check the content
+		fileContent, err := ReadFile(stor, f["F1"])
+		assert.Nil(t, err, name)
+		assert.Equal(t, data, fileContent, name)
 	}
 }
 

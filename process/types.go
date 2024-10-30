@@ -16,6 +16,7 @@ type Process struct {
 	Sid     string                 // Session ID
 	Context context.Context        // Context
 	Runtime Runtime                // Runtime
+	_val    *interface{}           // Value // The result of the process
 }
 
 // Runtime interface

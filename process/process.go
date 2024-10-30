@@ -30,7 +30,54 @@ func Of(name string, args ...interface{}) (*Process, error) {
 	return process, nil
 }
 
+// Execute execute the process and return error only
+func (process *Process) Execute() error {
+	var hd Handler
+	hd, err := process.handler()
+	if err != nil {
+		return err
+	}
+
+	defer func() { err = exception.Catch(recover()) }()
+	value := hd(process)
+	process._val = &value
+	return err
+}
+
+// Release the value of the process
+func (process *Process) Release() {
+	process._val = nil
+}
+
+// Dispose the process after run success
+func (process *Process) Dispose() {
+	if process.Runtime != nil {
+		process.Runtime.Dispose()
+	}
+
+	process.Args = nil
+	process.Global = nil
+	process.Context = nil
+	process.Runtime = nil
+	process._val = nil
+	process = nil
+}
+
+// Value get the result of the process
+func (process *Process) Value() interface{} {
+	if process._val != nil {
+		return *process._val
+	}
+	return nil
+}
+
 // Run the process
+// ****
+//
+// This function casues a memory leak, will be disposed in the future,
+// Use Execute() instead
+//
+// ****
 func (process *Process) Run() interface{} {
 	hd, err := process.handler()
 	if err != nil {
@@ -42,6 +89,22 @@ func (process *Process) Run() interface{} {
 }
 
 // Exec execute the process and return error
+//
+// ****
+//
+// This function casues a memory leak, will be disposed in the future,
+// Use Execute() instead
+// Example:
+//
+//	process := Of("models.user.pet.Find", 1, {})
+//	err := process.Execute();
+//	if err != nil {
+//	 	// handle error
+//	}
+//	defer process.Release()  // or  process.Dispose() if you want to relese the runtime isolate after run success
+//	result := process.Value() // Get the result
+//
+// ****
 func (process *Process) Exec() (value interface{}, err error) {
 
 	var hd Handler
@@ -102,19 +165,6 @@ func (process *Process) WithContext(ctx context.Context) *Process {
 func (process *Process) WithRuntime(runtime Runtime) *Process {
 	process.Runtime = runtime
 	return process
-}
-
-// Dispose the process after run success
-func (process *Process) Dispose() {
-	if process.Runtime != nil {
-		process.Runtime.Dispose()
-	}
-
-	process.Args = nil
-	process.Global = nil
-	process.Context = nil
-	process.Runtime = nil
-	process = nil
 }
 
 // handler get the process handler

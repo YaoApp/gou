@@ -209,6 +209,76 @@ func TestExec(t *testing.T) {
 	assert.Equal(t, "Exception|404:models.widget.Notfound Handler -> models.notfound not found", err.Error())
 }
 
+func TestExectueAndRelease(t *testing.T) {
+
+	prepare(t)
+	var p *Process = nil
+
+	// unit.test.prepare
+	p = New("unit.test.prepare", "foo", "bar")
+	err := p.Execute()
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := p.Value()
+	data, ok := res.(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, "unit", data["group"])
+	assert.Equal(t, "", data["method"])
+	assert.Equal(t, "", data["id"])
+	assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
+	p.Release()
+	assert.Equal(t, nil, p.Value())
+
+	// models.widget.Test
+	p = New("models.widget.Test", "foo", "bar")
+	err = p.Execute()
+	res = p.Value()
+	data, ok = res.(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, "models", data["group"])
+	assert.Equal(t, "Test", data["method"])
+	assert.Equal(t, "widget", data["id"])
+	assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
+	p.Release()
+	assert.Equal(t, nil, p.Value())
+
+	// flows.widget
+	p = New("flows.widget", "foo", "bar")
+	err = p.Execute()
+	res = p.Value()
+	data, ok = res.(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, "flows", data["group"])
+	assert.Equal(t, "", data["method"])
+	assert.Equal(t, "widget", data["id"])
+	assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
+	p.Release()
+	assert.Equal(t, nil, p.Value())
+
+	// session.Get
+	p = New("session.Get", "foo", "bar")
+	err = p.Execute()
+	res = p.Value()
+	data, ok = res.(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, "session", data["group"])
+	assert.Equal(t, "Get", data["method"])
+	assert.Equal(t, "", data["id"])
+	assert.Equal(t, []interface{}{"foo", "bar"}, data["args"])
+	p.Release()
+	assert.Equal(t, nil, p.Value())
+
+	// models.widget.Notfound
+	p = New("models.widget.Notfound", "foo", "bar")
+	err = p.Execute()
+	res = p.Value()
+	assert.Equal(t, nil, res)
+	assert.Equal(t, "Exception|404:models.widget.Notfound Handler -> models.notfound not found", err.Error())
+	p.Release()
+	assert.Equal(t, nil, p.Value())
+}
+
 func TestWithSID(t *testing.T) {
 
 	prepare(t)
