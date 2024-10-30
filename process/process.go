@@ -31,9 +31,9 @@ func Of(name string, args ...interface{}) (*Process, error) {
 }
 
 // Execute execute the process and return error only
-func (process *Process) Execute() error {
+func (process *Process) Execute() (err error) {
 	var hd Handler
-	hd, err := process.handler()
+	hd, err = process.handler()
 	if err != nil {
 		return err
 	}
