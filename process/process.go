@@ -74,7 +74,7 @@ func (process *Process) Value() interface{} {
 // Run the process
 // ****
 //
-// This function casues a memory leak, will be disposed in the future,
+// This function causes a memory leak, will be disposed in the future,
 // Use Execute() instead
 //
 // ****
@@ -92,7 +92,7 @@ func (process *Process) Run() interface{} {
 //
 // ****
 //
-// This function casues a memory leak, will be disposed in the future,
+// This function causes a memory leak, will be disposed in the future,
 // Use Execute() instead
 // Example:
 //
