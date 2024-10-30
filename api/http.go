@@ -357,7 +357,7 @@ func (http HTTP) parseIn(in []interface{}) func(c *gin.Context) []interface{} {
 				}
 
 				ext := filepath.Ext(file.Filename)
-				dir, err := os.MkdirTemp(os.TempDir(), "upload")
+				dir, err := os.MkdirTemp("", "upload")
 				if err != nil {
 					return types.UploadFile{Error: fmt.Sprintf("%s %s", arg[1], err.Error())}
 				}
@@ -366,13 +366,13 @@ func (http HTTP) parseIn(in []interface{}) func(c *gin.Context) []interface{} {
 				if err != nil {
 					return types.UploadFile{Error: fmt.Sprintf("%s %s", arg[1], err.Error())}
 				}
+				defer tmpfile.Close()
 
-				err = c.SaveUploadedFile(file, tmpfile.Name())
-				if err != nil {
+				if err := c.SaveUploadedFile(file, tmpfile.Name()); err != nil {
 					return types.UploadFile{Error: fmt.Sprintf("%s %s", arg[1], err.Error())}
 				}
 
-				return types.UploadFile{
+				uploadFile := types.UploadFile{
 					UID:      c.GetHeader("Content-Uid"),
 					Range:    c.GetHeader("Content-Range"),
 					Sync:     c.GetHeader("Content-Sync") == "true", // sync upload or not
@@ -381,6 +381,9 @@ func (http HTTP) parseIn(in []interface{}) func(c *gin.Context) []interface{} {
 					Size:     file.Size,
 					Header:   file.Header,
 				}
+				file = nil
+				tmpfile = nil
+				return uploadFile
 			})
 		} else { // 原始数值
 			new := v

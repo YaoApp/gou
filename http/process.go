@@ -349,12 +349,15 @@ func processHTTPStream(p *process.Process) interface{} {
 			return HandlerReturnError
 		}
 
-		res, err := procesHandler.WithSID(p.Sid).WithGlobal(p.Global).Exec()
+		err = procesHandler.WithSID(p.Sid).WithGlobal(p.Global).Execute()
 		if err != nil {
 			log.Error("[http.Stream] %s %s", handler, err.Error())
 			return HandlerReturnError
 		}
+		defer procesHandler.Release()
 
+		// Get the result
+		res := procesHandler.Value()
 		if v, ok := res.(int); ok {
 			return v
 		}
