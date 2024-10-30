@@ -575,12 +575,15 @@ func processDownload(process *process.Process) interface{} {
 	process.ValidateArgNums(1)
 	stor := stor(process)
 	file := process.ArgsString(0)
-	reader, err := ReadCloser(stor, file)
+
+	// Get the file mime type
+	mimeType, err := MimeType(stor, file)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
 
-	mimeType, err := MimeType(stor, file)
+	// Get the file reader
+	reader, err := ReadCloser(stor, file)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
