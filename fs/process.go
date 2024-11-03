@@ -13,6 +13,7 @@ import (
 	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
+	"github.com/yaoapp/kun/maps"
 )
 
 // FileSystemHandlers the file system handlers
@@ -480,6 +481,7 @@ func processUpload(process *process.Process) interface{} {
 	filename := filepath.Join(dir, fmt.Sprintf("%s%s", uid, ext))
 
 	stor := stor(process)
+	props := process.ArgsMap(1, maps.Map{}) // Get the props from the process, for validate the file type and size.
 
 	// For chunk upload.
 	if tmpfile.IsChunk() {
@@ -560,6 +562,16 @@ func processUpload(process *process.Process) interface{} {
 			"uid":      tmpfile.UID,
 			"progress": progress,
 		}
+	}
+
+	// Validate the file type
+	if props.Has("accept") {
+		fmt.Println("Validate the file type")
+	}
+
+	// Validate the file size
+	if props.Has("maxSize") {
+		fmt.Println("Validate the file size")
 	}
 
 	// For normal upload.

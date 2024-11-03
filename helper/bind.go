@@ -11,7 +11,7 @@ import (
 )
 
 var reVar = regexp.MustCompile("{{[ ]*([^\\s]+)[ ]*}}")                     // {{in.2}}
-var reVarStyle2 = regexp.MustCompile("\\?:([^\\s]+)")                       // ?:$in.2
+var reVarStyle2 = regexp.MustCompile("\\?:([^\\s^%]+)")                     // ?:$in.2
 var reFun = regexp.MustCompile("{{[ ]*([0-9a-zA-Z_]+)[ ]*\\((.*)\\)[ ]*}}") // {{pluck($res.users, 'id')}}
 var reFunArg = regexp.MustCompile("([^\\s,]+)")                             // $res.users, 'id'
 
@@ -60,6 +60,11 @@ func Bind(v interface{}, data map[string]interface{}, vars ...*regexp.Regexp) in
 			if length == 1 { // "{{in.0}}"
 				name := input[matches[0][2]:matches[0][3]]
 				res = data[name]
+				// Replace the string if the value is a string
+				if v, ok := data[name].(string); ok {
+					orignal := input[matches[0][0]:matches[0][1]]
+					res = strings.Replace(input, orignal, fmt.Sprintf("%v", v), 1)
+				}
 				break
 			} else if length > 1 {
 				var sb strings.Builder
