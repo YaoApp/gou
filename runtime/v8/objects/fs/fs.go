@@ -3,6 +3,7 @@ package fs
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -80,6 +81,7 @@ func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl.Set("ReadFile", obj.readFile(iso))
 	tmpl.Set("ReadFileBuffer", obj.readFileBuffer(iso))
 	tmpl.Set("ReadFileBase64", obj.readFileBase64(iso))
+	tmpl.Set("ReadCloser", obj.readCloser(iso))
 	tmpl.Set("WriteFile", obj.writeFile(iso))
 	tmpl.Set("WriteFileBuffer", obj.writeFileBuffer(iso))
 	tmpl.Set("WriteFileBase64", obj.writeFileBase64(iso))
@@ -760,6 +762,27 @@ func (obj *Object) readFileBase64(iso *v8go.Isolate) *v8go.FunctionTemplate {
 	})
 }
 
+func (obj *Object) readCloser(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		readCloser, err := fs.ReadCloser(stor, args[0].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		return obj.readCloserValue(info, readCloser)
+	})
+}
+
 func (obj *Object) writeFile(iso *v8go.Isolate) *v8go.FunctionTemplate {
 	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		args := info.Args()
@@ -1139,6 +1162,14 @@ func (obj *Object) uint32Value(info *v8go.FunctionCallbackInfo, value uint32) *v
 
 func (obj *Object) boolValue(info *v8go.FunctionCallbackInfo, value bool) *v8go.Value {
 	res, err := v8go.NewValue(info.Context().Isolate(), value)
+	if err != nil {
+		return obj.error(info, err)
+	}
+	return res
+}
+
+func (obj *Object) readCloserValue(info *v8go.FunctionCallbackInfo, value io.ReadCloser) *v8go.Value {
+	res, err := v8go.NewExternal(info.Context().Isolate(), value)
 	if err != nil {
 		return obj.error(info, err)
 	}
