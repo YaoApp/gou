@@ -93,6 +93,29 @@ func TestFSObjectReadFile(t *testing.T) {
 	res, err = bridge.GoValue(v, ctx)
 	assert.True(t, v.IsUint8Array())
 	assert.Equal(t, data, res)
+
+	// ReadCloser
+	v, err = ctx.RunScript(fmt.Sprintf(`
+		function ReadCloser() {
+			var fs = new FS("system")
+			var hd = fs.ReadCloser("%s");
+			return hd
+		}
+		ReadCloser()
+		`, f["F1"]), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	readCloser, ok := res.(*os.File)
+	if !ok {
+		t.Fatal("res is not *os.File")
+	}
+
+	err = readCloser.Close()
+	assert.Nil(t, err)
 }
 
 func TestFSObjectRootFs(t *testing.T) {
