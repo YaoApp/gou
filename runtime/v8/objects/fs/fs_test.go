@@ -116,6 +116,40 @@ func TestFSObjectReadFile(t *testing.T) {
 
 	err = readCloser.Close()
 	assert.Nil(t, err)
+
+	// Download
+	v, err = ctx.RunScript(fmt.Sprintf(`
+		function Download() {
+			var fs = new FS("system")
+			var hd = fs.Download("%s");
+			return hd
+		}
+		Download()
+		`, f["F1"]), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	download, ok := res.(map[string]interface{})
+	if !ok {
+		t.Fatal("res is not not map[string]interface{}")
+	}
+
+	readCloser, ok = download["content"].(*os.File)
+	if !ok {
+		t.Fatal("res is not *os.File")
+	}
+	err = readCloser.Close()
+	assert.Nil(t, err)
+
+	mimetype, ok := download["type"].(string)
+	if !ok {
+		t.Fatal("res is not string")
+	}
+
+	assert.Equal(t, "text/plain; charset=utf-8", mimetype)
 }
 
 func TestFSObjectRootFs(t *testing.T) {

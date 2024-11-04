@@ -20,6 +20,8 @@ import (
 // var dataString	  = fs.ReadFile("/root/path/name.file")
 // var dataUnit8Array = fs.ReadFileBuffer("/root/path/name.file")
 // var dataBase64	  = fs.ReadFileBase64("/root/path/name.file")
+// var handler		  = fs.ReadCloser("/root/path/name.file")
+// var res 			  = fs.Download('/data/path/file.txt') // { type: MimeType, content: ReadCloser }
 // var length	      = fs.WriteFile("/root/path/name.file", "Hello")
 // var length	      = fs.WriteFile("/root/path/name.file", "Hello", 0644 )
 // var length	      = fs.WriteFileBuffer("/root/path/name.file", dataUnit8Array)
@@ -93,6 +95,9 @@ func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl.Set("InsertBase64", obj.insertFileBase64(iso))
 	tmpl.Set("Remove", obj.remove(iso))
 	tmpl.Set("RemoveAll", obj.removeAll(iso))
+
+	// Download
+	tmpl.Set("Download", obj.download(iso))
 
 	// Directory
 	tmpl.Set("ReadDir", obj.readdir(iso))
@@ -783,6 +788,35 @@ func (obj *Object) readCloser(iso *v8go.Isolate) *v8go.FunctionTemplate {
 	})
 }
 
+func (obj *Object) download(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			return obj.errorString(info, "Missing parameters")
+		}
+
+		stor, err := obj.getFS(info)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		var file = args[0].String()
+
+		mimetype, err := fs.MimeType(stor, file)
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		readCloser, err := fs.ReadCloser(stor, args[0].String())
+		if err != nil {
+			return obj.error(info, err)
+		}
+
+		var res = map[string]interface{}{"type": mimetype, "content": readCloser}
+		return obj.downloadValue(info, res)
+	})
+}
+
 func (obj *Object) writeFile(iso *v8go.Isolate) *v8go.FunctionTemplate {
 	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		args := info.Args()
@@ -1169,6 +1203,14 @@ func (obj *Object) boolValue(info *v8go.FunctionCallbackInfo, value bool) *v8go.
 }
 
 func (obj *Object) readCloserValue(info *v8go.FunctionCallbackInfo, value io.ReadCloser) *v8go.Value {
+	res, err := v8go.NewExternal(info.Context().Isolate(), value)
+	if err != nil {
+		return obj.error(info, err)
+	}
+	return res
+}
+
+func (obj *Object) downloadValue(info *v8go.FunctionCallbackInfo, value map[string]interface{}) *v8go.Value {
 	res, err := v8go.NewExternal(info.Context().Isolate(), value)
 	if err != nil {
 		return obj.error(info, err)
