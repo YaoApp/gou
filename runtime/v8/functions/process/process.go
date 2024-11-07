@@ -30,9 +30,12 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
 	goArgs := []interface{}{}
 	if len(jsArgs) > 1 {
-		goArgs, err = bridge.GoValues(jsArgs[1:], info.Context())
-		if err != nil {
-			return bridge.JsException(info.Context(), err)
+		for _, arg := range jsArgs[1:] {
+			v, err := bridge.GoValue(arg, info.Context())
+			if err != nil {
+				return bridge.JsException(info.Context(), err)
+			}
+			goArgs = append(goArgs, v)
 		}
 	}
 

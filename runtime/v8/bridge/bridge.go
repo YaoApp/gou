@@ -2,8 +2,10 @@ package bridge
 
 import (
 	"fmt"
+	"io"
 	"math/big"
 
+	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/kun/exception"
 	"rogchap.com/v8go"
@@ -155,6 +157,12 @@ func GoValues(jsValues []*v8go.Value, ctx *v8go.Context) ([]interface{}, error) 
 // * | ✅ | struct                  | object                    |
 // * | ✅ | bridge.PromiseT         | object(Promise)           |
 // * | ✅ | bridge.FunctionT        | function                  |
+// * | ✅ | io.Writer               | object(external)          |
+// * | ✅ | io.Reader               | object(external)          |
+// * | ✅ | io.ReadCloser           | object(external)          |
+// * | ✅ | io.WriteCloser          | object(external)          |
+// * | ✅ | *gin.Context            | object(external)          |
+// * | ✅ | *gin.ResponseWriter     | object(external)          |
 // * |-----------------------------------------------------------
 func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
@@ -219,6 +227,10 @@ func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 	case UndefinedT:
 		return v8go.Undefined(ctx.Isolate()), nil
 
+	// For io stream
+	case io.Writer, io.Reader, io.ReadCloser, io.WriteCloser, gin.ResponseWriter, *gin.Context:
+		return v8go.NewExternal(ctx.Isolate(), v)
+
 	default:
 		return jsValueParse(ctx, v)
 	}
@@ -258,6 +270,7 @@ func jsValueParse(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 // *  | ✅ | array                     | []interface{}           |
 // *  | ✅ | object(Promise)           | bridge.PromiseT         |
 // *  | ✅ | function                  | bridge.FunctionT        |
+// *  | ✅ | object(external)          | interface{}             |
 // *  |-----------------------------------------------------------
 func GoValue(value *v8go.Value, ctx *v8go.Context) (interface{}, error) {
 
