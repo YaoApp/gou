@@ -3,9 +3,11 @@ package model
 import (
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/kun/log"
 )
 
 const reURLWhereStr = "(where|orwhere|wherein|orwherein)\\.(.+)\\.(eq|gt|lt|ge|le|like|match|in|null|notnull)"
@@ -60,6 +62,9 @@ func URLToQueryParam(values url.Values) QueryParam {
 			continue
 		} else if strings.HasSuffix(name, ".select") {
 			param.setWithSelect(name, values.Get(name))
+			continue
+		} else if strings.HasSuffix(name, ".limit") {
+			param.setWithLimit(name, values.Get(name))
 			continue
 		}
 	}
@@ -205,5 +210,23 @@ func (param *QueryParam) setWithSelect(name string, value string) {
 
 	with := param.Withs[withName]
 	with.Query.Select = selects
+	param.Withs[withName] = with
+}
+
+func (param *QueryParam) setWithLimit(name string, value string) {
+	namer := strings.Split(name, ".")
+	withName := namer[0]
+	if _, has := param.Withs[withName]; !has {
+		param.setWith(withName)
+	}
+
+	limit, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		log.Error("got invalid limit value: %v", value)
+		return
+	}
+
+	with := param.Withs[withName]
+	with.Query.Limit = int(limit)
 	param.Withs[withName] = with
 }
