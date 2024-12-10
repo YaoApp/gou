@@ -111,10 +111,11 @@ func (sch *Schedule) handler() (func(), error) {
 				log.Error("[Schedule] %s %s %s", sch.name, sch.Process, err)
 			}
 
-			_, err = p.Exec()
+			err = p.Execute()
 			if err != nil {
 				log.Error("[Schedule] %s %s %s", sch.name, sch.Process, err)
 			}
+			defer p.Release()
 		}, nil
 	}
 
