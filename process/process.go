@@ -21,6 +21,15 @@ func New(name string, args ...interface{}) *Process {
 	return process
 }
 
+// NewWithContext make a new process with context
+func NewWithContext(ctx context.Context, name string, args ...interface{}) *Process {
+	process, err := Of(name, args...)
+	if err != nil {
+		exception.New("%s", 500, err.Error()).Throw()
+	}
+	return process
+}
+
 // Of make a new process and return error
 func Of(name string, args ...interface{}) (*Process, error) {
 	process := &Process{Name: name, Args: args, Global: map[string]interface{}{}}
