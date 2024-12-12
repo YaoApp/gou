@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/yaoapp/kun/exception"
 )
@@ -32,16 +33,32 @@ func Of(name string, args ...interface{}) (*Process, error) {
 
 // Execute execute the process and return error only
 func (process *Process) Execute() (err error) {
+	if process.Context == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		process.Context = ctx
+	}
+
 	var hd Handler
 	hd, err = process.handler()
 	if err != nil {
 		return err
 	}
 
-	defer func() { err = exception.Catch(recover()) }()
-	value := hd(process)
-	process._val = &value
-	return err
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer func() { err = exception.Catch(recover()) }()
+		value := hd(process)
+		process._val = &value
+	}()
+
+	select {
+	case <-process.Context.Done():
+		return process.Context.Err()
+	case <-done:
+		return err
+	}
 }
 
 // Release the value of the process
@@ -51,6 +68,9 @@ func (process *Process) Release() {
 
 // Dispose the process after run success
 func (process *Process) Dispose() {
+	if process == nil {
+		return
+	}
 	if process.Runtime != nil {
 		process.Runtime.Dispose()
 	}
@@ -60,7 +80,6 @@ func (process *Process) Dispose() {
 	process.Context = nil
 	process.Runtime = nil
 	process._val = nil
-	process = nil
 }
 
 // Value get the result of the process
@@ -85,6 +104,7 @@ func (process *Process) Run() interface{} {
 		return nil
 	}
 
+	defer func() { process.Release() }()
 	return hd(process)
 }
 
@@ -106,7 +126,6 @@ func (process *Process) Run() interface{} {
 //
 // ****
 func (process *Process) Exec() (value interface{}, err error) {
-
 	var hd Handler
 	hd, err = process.handler()
 	if err != nil {
