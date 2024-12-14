@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/runtime/v8/objects/console"
@@ -230,7 +229,7 @@ func (runner *Runner) _exec() {
 	jsRes, err := global.MethodCall(runner.method, bridge.Valuers(jsArgs)...)
 	if err != nil {
 		if e, ok := err.(*v8go.JSError); ok {
-			color.Red("%s\n\n", StackTrace(e, runner.script.SourceRoots))
+			PrintException(runner.method, runner.args, e, runner.script.SourceRoots)
 		}
 		runner.chResp <- err
 		return

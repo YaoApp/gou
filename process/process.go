@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/kun/exception"
 )
 
@@ -57,7 +59,13 @@ func (process *Process) Execute() (err error) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		defer func() { err = exception.Catch(recover()) }()
+		defer func() {
+			recovered := recover()
+			err = exception.Catch(recovered)
+			if err != nil {
+				exception.DebugPrint(err, "%s", process)
+			}
+		}()
 		value := hd(process)
 		process._val = &value
 	}()
@@ -193,6 +201,22 @@ func (process *Process) WithContext(ctx context.Context) *Process {
 func (process *Process) WithRuntime(runtime Runtime) *Process {
 	process.Runtime = runtime
 	return process
+}
+
+// String the process as string
+func (process Process) String() string {
+	args, _ := jsoniter.MarshalToString(process.Args)
+	global, _ := jsoniter.MarshalToString(process.Global)
+	return fmt.Sprintf("%s%s\n%s%s\n%s%s\n%s%s\n",
+		color.YellowString("Process: "),
+		color.WhiteString(process.Name),
+		color.YellowString("Sid: "),
+		color.WhiteString(process.Sid),
+		color.YellowString("Args: \n"),
+		color.WhiteString(args),
+		color.YellowString("Global: \n"),
+		color.WhiteString(global),
+	)
 }
 
 // handler get the process handler
