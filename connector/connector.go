@@ -2,6 +2,7 @@ package connector
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector/database"
@@ -43,12 +44,18 @@ func Load(file string, id string) (Connector, error) {
 }
 
 // New create a new connector
-func New(typ string, id string, data []byte) (Connector, error) {
+func New(typ string, id string, dsl []byte) (Connector, error) {
 	c, err := make(typ)
 	if err != nil {
 		return nil, err
 	}
-	c.Register(id, "__source__", data)
+
+	file := "__source__" + strings.Replace(id, ".", "/", -1) + ".conn.yao"
+	err = c.Register(file, id, dsl)
+	if err != nil {
+		return nil, err
+	}
+
 	Connectors[id] = c
 	return Connectors[id], nil
 }
