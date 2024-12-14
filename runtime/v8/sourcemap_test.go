@@ -64,7 +64,7 @@ func TestStackTrace(t *testing.T) {
 
 	trace := StackTrace(e, nil)
 	assert.NotEmpty(t, trace)
-	assert.Contains(t, trace, "Exception|400: Error occurred")
+	assert.Contains(t, trace, "400 Error occurred")
 	assert.Contains(t, trace, "/scripts/runtime/ts/page.ts:12:2")
 	assert.Contains(t, trace, "/scripts/runtime/ts/lib/bar.ts:7:2")
 	assert.Contains(t, trace, "/scripts/runtime/ts/lib/err.ts:8:10")
@@ -72,7 +72,7 @@ func TestStackTrace(t *testing.T) {
 	// with source root
 	trace = StackTrace(e, map[string]string{"/scripts": "/iscripts"})
 	assert.NotEmpty(t, trace)
-	assert.Contains(t, trace, "Exception|400: Error occurred")
+	assert.Contains(t, trace, "400 Error occurred")
 	assert.Contains(t, trace, "/iscripts/runtime/ts/page.ts:12:2")
 	assert.Contains(t, trace, "/iscripts/runtime/ts/lib/bar.ts:7:2")
 	assert.Contains(t, trace, "/iscripts/runtime/ts/lib/err.ts:8:10")
@@ -87,7 +87,7 @@ func TestStackTrace(t *testing.T) {
 
 	trace = StackTrace(e, replace)
 	assert.NotEmpty(t, trace)
-	assert.Contains(t, trace, "Exception|400: Error occurred")
+	assert.Contains(t, trace, "400 Error occurred")
 	assert.Contains(t, trace, "/fscripts/runtime/ts/page.ts:12:2")
 	assert.Contains(t, trace, "/fscripts/runtime/ts/lib/bar.ts:7:2")
 	assert.Contains(t, trace, "/fscripts/runtime/ts/lib/err.ts:8:10")

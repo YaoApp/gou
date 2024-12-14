@@ -14,6 +14,7 @@ import (
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/session"
 	"github.com/yaoapp/gou/types"
+	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/maps"
 )
 
@@ -55,26 +56,35 @@ func ProcessGuard(name string) gin.HandlerFunc {
 
 		process, err := process.Of(name, args...)
 		if err != nil {
-			c.JSON(400, gin.H{"code": 400, "message": fmt.Sprintf("Guard: %s %s", name, err.Error())})
+			c.JSON(500, gin.H{"code": 500, "message": "Guard process error: " + err.Error()})
 			c.Abort()
 			return
 		}
 
-		if sid, has := c.Get("__sid"); has { // 设定会话ID
+		if sid, has := c.Get("__sid"); has { // Set session id
 			if sid, ok := sid.(string); ok {
 				process.WithSID(sid)
 			}
 		}
 
-		if global, has := c.Get("__global"); has { // 设定全局变量
+		if global, has := c.Get("__global"); has { // Set global variables
 			if global, ok := global.(map[string]interface{}); ok {
 				process.WithGlobal(global)
 			}
 		}
 
-		v := process.Run()
+		err = process.Execute()
+		if err != nil {
+			ex := exception.New(err.Error(), 500)
+			c.JSON(ex.Code, gin.H{"code": ex.Code, "message": ex.Message})
+			c.Abort()
+			return
+		}
+		defer process.Release()
+
+		v := process.Value()
 		if data, ok := v.(map[string]interface{}); ok {
-			if sid, ok := data["__sid"].(string); ok {
+			if sid, ok := data["sid"].(string); ok {
 				c.Set("__sid", sid)
 			}
 

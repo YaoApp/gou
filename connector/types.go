@@ -27,6 +27,9 @@ const (
 	// WEAVIATE the weaviate connector
 	WEAVIATE
 
+	// MOAPI the moapi connector
+	MOAPI
+
 	// SCRIPT ? the script connector ( difference with widget ?)
 	SCRIPT
 )
@@ -45,6 +48,7 @@ var types = map[string]int{
 	"openai":        OPENAI,
 	"weaviate":      WEAVIATE,
 	"script":        SCRIPT, // ?
+	"moapi":         MOAPI,
 }
 
 // Connector the connector interface

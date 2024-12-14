@@ -7,9 +7,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/go-sourcemap/sourcemap"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/kun/exception"
 	"rogchap.com/v8go"
 )
 
@@ -65,13 +67,27 @@ func clearSourceMaps() {
 	SourceCodes = map[string][]byte{}
 }
 
+// PrintException print the exception
+func PrintException(method string, args []interface{}, jserr *v8go.JSError, rootMapping interface{}) {
+
+	if runtimeOption.Debug {
+		ex := exception.New(jserr.Message, 500)
+		color.Red("\n----------------------------------")
+		color.Red("Script Exception: %s", fmt.Sprintf("%d %s", ex.Code, ex.Message))
+		color.Red("----------------------------------")
+
+		color.Red("%s\n", StackTrace(jserr, rootMapping))
+		fmt.Println(color.YellowString("\nMethod:"), color.WhiteString("%s", method))
+		color.Yellow("Args:")
+		raw, _ := jsoniter.MarshalToString(args)
+		color.White("%s\n", raw)
+	}
+}
+
 // StackTrace get the stack trace
 func StackTrace(jserr *v8go.JSError, rootMapping interface{}) string {
 
-	// Production mode will not show the stack trace
-	if runtimeOption.Debug == false {
-		return jserr.Message
-	}
+	ex := exception.New(jserr.Message, 500)
 
 	// Development mode will show the stack trace
 	entries := parseStackTrace(jserr.StackTrace)
@@ -84,7 +100,7 @@ func StackTrace(jserr *v8go.JSError, rootMapping interface{}) string {
 		return err.Error() + "\n" + jserr.StackTrace
 	}
 
-	return fmt.Sprintf("%s\n%s", jserr.Message, output)
+	return fmt.Sprintf("%s\n%s", fmt.Sprintf("%d %s", ex.Code, ex.Message), output)
 }
 
 func (entry *StackLogEntry) String() string {
