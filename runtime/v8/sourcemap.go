@@ -69,13 +69,14 @@ func clearSourceMaps() {
 
 // PrintException print the exception
 func PrintException(method string, args []interface{}, jserr *v8go.JSError, rootMapping interface{}) {
-	ex := exception.New(jserr.Message, 500)
-	color.Red("\n----------------------------------")
-	color.Red("Script Exception: %s", fmt.Sprintf("%d %s", ex.Code, ex.Message))
-	color.Red("----------------------------------")
 
-	color.Red("%s\n", StackTrace(jserr, rootMapping))
 	if runtimeOption.Debug {
+		ex := exception.New(jserr.Message, 500)
+		color.Red("\n----------------------------------")
+		color.Red("Script Exception: %s", fmt.Sprintf("%d %s", ex.Code, ex.Message))
+		color.Red("----------------------------------")
+
+		color.Red("%s\n", StackTrace(jserr, rootMapping))
 		fmt.Println(color.YellowString("\nMethod:"), color.WhiteString("%s", method))
 		color.Yellow("Args:")
 		raw, _ := jsoniter.MarshalToString(args)
@@ -87,11 +88,6 @@ func PrintException(method string, args []interface{}, jserr *v8go.JSError, root
 func StackTrace(jserr *v8go.JSError, rootMapping interface{}) string {
 
 	ex := exception.New(jserr.Message, 500)
-
-	// Production mode will not show the stack trace
-	if runtimeOption.Debug == false {
-		return fmt.Sprintf("%d %s", ex.Code, ex.Message)
-	}
 
 	// Development mode will show the stack trace
 	entries := parseStackTrace(jserr.StackTrace)
