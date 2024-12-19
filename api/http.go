@@ -23,7 +23,7 @@ var HTTPGuards = map[string]gin.HandlerFunc{}
 var registeredOptions = map[string]bool{}
 
 // ProcessGuard guard process
-func ProcessGuard(name string) gin.HandlerFunc {
+func ProcessGuard(name string, cors ...gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body interface{}
 		if c.Request.Body != nil {
@@ -56,7 +56,11 @@ func ProcessGuard(name string) gin.HandlerFunc {
 
 		process, err := process.Of(name, args...)
 		if err != nil {
-			c.JSON(500, gin.H{"code": 500, "message": "Guard process error: " + err.Error()})
+			if len(cors) > 0 {
+				cors[0](c)
+			}
+			ex := exception.New(err.Error(), 500)
+			c.JSON(ex.Code, gin.H{"code": ex.Code, "message": ex.Message})
 			c.Abort()
 			return
 		}
@@ -76,6 +80,9 @@ func ProcessGuard(name string) gin.HandlerFunc {
 		err = process.Execute()
 		if err != nil {
 			ex := exception.New(err.Error(), 500)
+			if len(cors) > 0 {
+				cors[0](c)
+			}
 			c.JSON(ex.Code, gin.H{"code": ex.Code, "message": ex.Message})
 			c.Abort()
 			return
