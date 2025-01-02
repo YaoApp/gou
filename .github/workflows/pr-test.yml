@@ -38,13 +38,24 @@ env:
   MONGO_TEST_PASS: "123456"
 
   OPENAI_TEST_KEY: ${{ secrets.OPENAI_TEST_KEY }}
+  QDRANT_TEST_HOST: "127.0.0.1"
+  QDRANT_TEST_PORT: "6334"
+  QDRANT_TEST_HTTP_PORT: "6333"
 
 jobs:
   unit-test:
     runs-on: ubuntu-latest
+    
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333  # HTTP API
+          - 6334:6334  # gRPC
+
     strategy:
       matrix:
-        go: [1.20.0]
+        go: [1.23.0]
         db: [MySQL8.0, SQLite3]
         redis: [4, 5, 6]
         mongo: ["6.0"]
