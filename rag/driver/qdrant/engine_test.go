@@ -73,7 +73,7 @@ func TestBasicOperations(t *testing.T) {
 
 	// Test document operations
 	doc := &driver.Document{
-		DocID:    "123e4567-e89b-12d3-a456-426614174000",
+		DocID:    "test-doc-123",
 		Content:  "This is a test document for Qdrant vector search.",
 		Metadata: map[string]interface{}{"type": "test", "version": 1.0},
 	}
@@ -130,8 +130,7 @@ func TestBatchOperations(t *testing.T) {
 	docs := make([]*driver.Document, 10)
 	docIDs := make([]string, 10)
 	for i := 0; i < 10; i++ {
-		// Use proper UUID format
-		docID := fmt.Sprintf("00000000-0000-0000-0000-%012d", i)
+		docID := fmt.Sprintf("test-doc-%d", i)
 		docs[i] = &driver.Document{
 			DocID:    docID,
 			Content:  fmt.Sprintf("This is test document %d", i),
@@ -222,8 +221,7 @@ func TestTaskManagement(t *testing.T) {
 	// Create a batch operation to get a task ID
 	docs := make([]*driver.Document, 5)
 	for i := 0; i < 5; i++ {
-		// Use proper UUID format
-		docID := fmt.Sprintf("00000000-0000-0000-0000-%012d", i)
+		docID := fmt.Sprintf("test-doc-%d", i)
 		docs[i] = &driver.Document{
 			DocID:   docID,
 			Content: fmt.Sprintf("Test document for task management %d", i),
@@ -317,7 +315,7 @@ func TestResourceLeaks(t *testing.T) {
 			}()
 
 			// Use proper UUID format
-			docID := fmt.Sprintf("00000000-0000-0000-0000-%012d", i)
+			docID := fmt.Sprintf("test-doc-%d", i)
 			doc := &driver.Document{
 				DocID:   docID,
 				Content: "Test document for leak detection",
@@ -423,8 +421,7 @@ func TestConcurrentOperations(t *testing.T) {
 	for i := 0; i < numOps; i++ {
 		go func(i int) {
 			defer wg.Done()
-			// Use proper UUID format
-			docID := fmt.Sprintf("00000000-0000-0000-0000-%012d", i)
+			docID := fmt.Sprintf("test-doc-concurrent-%d", i)
 			doc := &driver.Document{
 				DocID:    docID,
 				Content:  fmt.Sprintf("Concurrent test document %d", i),
@@ -556,7 +553,7 @@ func TestQdrantEngineErrors(t *testing.T) {
 
 	// Test invalid vector dimension
 	invalidDoc := &driver.Document{
-		DocID:      "00000000-0000-0000-0000-000000000001",
+		DocID:      "test-doc-invalid",
 		Content:    "Test document",
 		Embeddings: []float32{0.1, 0.2}, // Invalid dimension
 	}

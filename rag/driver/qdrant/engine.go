@@ -15,6 +15,16 @@ import (
 	"google.golang.org/grpc/keepalive"
 )
 
+// stringToUint64ID converts a string ID to uint64 using FNV-1a hash
+func stringToUint64ID(s string) uint64 {
+	h := uint64(14695981039346656037) // FNV offset basis
+	for i := 0; i < len(s); i++ {
+		h ^= uint64(s[i])
+		h *= 1099511628211 // FNV prime
+	}
+	return h
+}
+
 // Engine implements the driver.Engine interface using Qdrant as the vector store backend
 type Engine struct {
 	client     *qdrant.Client
@@ -142,10 +152,11 @@ func (e *Engine) IndexDoc(ctx context.Context, indexName string, doc *driver.Doc
 	}
 
 	point := &qdrant.PointStruct{
-		Id:      qdrant.NewID(doc.DocID),
+		Id:      qdrant.NewIDNum(stringToUint64ID(doc.DocID)),
 		Vectors: qdrant.NewVectors(embeddings...),
 		Payload: map[string]*qdrant.Value{
-			"content": qdrant.NewValueString(doc.Content),
+			"content":     qdrant.NewValueString(doc.Content),
+			"original_id": qdrant.NewValueString(doc.DocID),
 		},
 	}
 
@@ -205,6 +216,7 @@ func (e *Engine) Search(ctx context.Context, indexName string, vector []float32,
 	results := make([]driver.SearchResult, len(points))
 	for i, point := range points {
 		content := point.Payload["content"].GetStringValue()
+		originalID := point.Payload["original_id"].GetStringValue()
 		var metadata map[string]interface{}
 		if metadataValue := point.Payload["metadata"]; metadataValue != nil {
 			if metadataStruct := metadataValue.GetStructValue(); metadataStruct != nil {
@@ -213,7 +225,7 @@ func (e *Engine) Search(ctx context.Context, indexName string, vector []float32,
 		}
 
 		results[i] = driver.SearchResult{
-			DocID:    point.Id.GetUuid(),
+			DocID:    originalID,
 			Score:    float64(point.Score),
 			Content:  content,
 			Metadata: metadata,
@@ -226,7 +238,7 @@ func (e *Engine) Search(ctx context.Context, indexName string, vector []float32,
 func (e *Engine) GetDocument(ctx context.Context, indexName string, DocID string) (*driver.Document, error) {
 	points, err := e.client.Get(ctx, &qdrant.GetPoints{
 		CollectionName: indexName,
-		Ids:            []*qdrant.PointId{qdrant.NewID(DocID)},
+		Ids:            []*qdrant.PointId{qdrant.NewIDNum(stringToUint64ID(DocID))},
 		WithPayload:    qdrant.NewWithPayload(true),
 		WithVectors:    qdrant.NewWithVectors(true),
 	})
@@ -243,6 +255,7 @@ func (e *Engine) GetDocument(ctx context.Context, indexName string, DocID string
 
 	point := points[0]
 	content := point.Payload["content"].GetStringValue()
+	originalID := point.Payload["original_id"].GetStringValue()
 	var metadata map[string]interface{}
 	if metadataValue := point.Payload["metadata"]; metadataValue != nil {
 		if metadataStruct := metadataValue.GetStructValue(); metadataStruct != nil {
@@ -251,7 +264,7 @@ func (e *Engine) GetDocument(ctx context.Context, indexName string, DocID string
 	}
 
 	return &driver.Document{
-		DocID:      DocID,
+		DocID:      originalID,
 		Content:    content,
 		Metadata:   metadata,
 		Embeddings: point.Vectors.GetVector().Data,
@@ -380,10 +393,11 @@ func (e *Engine) IndexBatch(ctx context.Context, indexName string, docs []*drive
 		}
 
 		point := &qdrant.PointStruct{
-			Id:      qdrant.NewID(doc.DocID),
+			Id:      qdrant.NewIDNum(stringToUint64ID(doc.DocID)),
 			Vectors: qdrant.NewVectors(embeddings...),
 			Payload: map[string]*qdrant.Value{
-				"content": qdrant.NewValueString(doc.Content),
+				"content":     qdrant.NewValueString(doc.Content),
+				"original_id": qdrant.NewValueString(doc.DocID),
 			},
 		}
 
@@ -421,7 +435,7 @@ func (e *Engine) DeleteDoc(ctx context.Context, indexName string, DocID string) 
 		Points: &qdrant.PointsSelector{
 			PointsSelectorOneOf: &qdrant.PointsSelector_Points{
 				Points: &qdrant.PointsIdsList{
-					Ids: []*qdrant.PointId{qdrant.NewID(DocID)},
+					Ids: []*qdrant.PointId{qdrant.NewIDNum(stringToUint64ID(DocID))},
 				},
 			},
 		},
@@ -447,7 +461,7 @@ func (e *Engine) DeleteBatch(ctx context.Context, indexName string, DocIDs []str
 
 	pointIDs := make([]*qdrant.PointId, len(DocIDs))
 	for i, id := range DocIDs {
-		pointIDs[i] = qdrant.NewID(id)
+		pointIDs[i] = qdrant.NewIDNum(stringToUint64ID(id))
 	}
 
 	_, err := e.client.Delete(ctx, &qdrant.DeletePoints{

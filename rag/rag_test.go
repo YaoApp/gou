@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/rag/driver"
 )
@@ -55,7 +55,8 @@ func TestRAGIntegration(t *testing.T) {
 
 	// Test file upload
 	t.Run("file upload", func(t *testing.T) {
-		indexName := fmt.Sprintf("%s_file_%s", baseIndexName, uuid.New().String())
+		timestamp := time.Now().UnixNano()
+		indexName := fmt.Sprintf("%s_file_%d", baseIndexName, timestamp)
 		vectorizeConfig, indexConfig := getTestConfig(t, indexName)
 
 		// Create vectorizer first
@@ -201,7 +202,8 @@ func TestRAGIntegration(t *testing.T) {
 
 	// Test basic vectorization
 	t.Run("vectorization", func(t *testing.T) {
-		indexName := fmt.Sprintf("%s_vec_%s", baseIndexName, uuid.New().String())
+		timestamp := time.Now().UnixNano()
+		indexName := fmt.Sprintf("%s_vec_%d", baseIndexName, timestamp)
 		vectorizeConfig, _ := getTestConfig(t, indexName)
 
 		vectorizer, err := NewVectorizer(DriverOpenAI, vectorizeConfig)
@@ -216,7 +218,8 @@ func TestRAGIntegration(t *testing.T) {
 
 	// Test batch vectorization
 	t.Run("batch vectorization", func(t *testing.T) {
-		indexName := fmt.Sprintf("%s_batch_vec_%s", baseIndexName, uuid.New().String())
+		timestamp := time.Now().UnixNano()
+		indexName := fmt.Sprintf("%s_batch_vec_%d", baseIndexName, timestamp)
 		vectorizeConfig, _ := getTestConfig(t, indexName)
 
 		vectorizer, err := NewVectorizer(DriverOpenAI, vectorizeConfig)
@@ -238,7 +241,8 @@ func TestRAGIntegration(t *testing.T) {
 
 	// Test index operations
 	t.Run("index operations", func(t *testing.T) {
-		indexName := fmt.Sprintf("%s_ops_%s", baseIndexName, uuid.New().String())
+		timestamp := time.Now().UnixNano()
+		indexName := fmt.Sprintf("%s_ops_%d", baseIndexName, timestamp)
 		vectorizeConfig, indexConfig := getTestConfig(t, indexName)
 
 		vectorizer, err := NewVectorizer(DriverOpenAI, vectorizeConfig)
@@ -260,8 +264,9 @@ func TestRAGIntegration(t *testing.T) {
 		assert.Contains(t, indexes, indexConfig.Name)
 
 		// Test document operations
+		docID := fmt.Sprintf("test-doc-%d", time.Now().UnixNano())
 		doc := &driver.Document{
-			DocID:    uuid.New().String(), // Generate UUID
+			DocID:    docID,
 			Content:  "This is a test document for RAG integration.",
 			Metadata: map[string]interface{}{"type": "test"},
 		}
@@ -274,6 +279,7 @@ func TestRAGIntegration(t *testing.T) {
 		retrieved, err := engine.GetDocument(ctx, indexConfig.Name, doc.DocID)
 		assert.NoError(t, err)
 		assert.Equal(t, doc.Content, retrieved.Content)
+		assert.Equal(t, doc.DocID, retrieved.DocID)
 
 		// Search
 		results, err := engine.Search(ctx, indexConfig.Name, nil, driver.VectorSearchOptions{
@@ -295,7 +301,8 @@ func TestRAGIntegration(t *testing.T) {
 
 	// Test batch operations
 	t.Run("batch operations", func(t *testing.T) {
-		indexName := fmt.Sprintf("%s_batch_%s", baseIndexName, uuid.New().String())
+		timestamp := time.Now().UnixNano()
+		indexName := fmt.Sprintf("%s_batch_%d", baseIndexName, timestamp)
 		vectorizeConfig, indexConfig := getTestConfig(t, indexName)
 
 		vectorizer, err := NewVectorizer(DriverOpenAI, vectorizeConfig)
@@ -310,18 +317,15 @@ func TestRAGIntegration(t *testing.T) {
 		assert.NoError(t, err)
 		defer engine.DeleteIndex(ctx, indexConfig.Name)
 
-		// Generate UUIDs for batch documents
-		id1 := uuid.New().String()
-		id2 := uuid.New().String()
-
+		// Create test documents with meaningful IDs
 		docs := []*driver.Document{
 			{
-				DocID:    id1,
+				DocID:    fmt.Sprintf("test-doc-batch-1-%d", timestamp),
 				Content:  "First batch document",
 				Metadata: map[string]interface{}{"index": 1},
 			},
 			{
-				DocID:    id2,
+				DocID:    fmt.Sprintf("test-doc-batch-2-%d", timestamp),
 				Content:  "Second batch document",
 				Metadata: map[string]interface{}{"index": 2},
 			},
@@ -338,7 +342,7 @@ func TestRAGIntegration(t *testing.T) {
 		assert.NotNil(t, taskInfo)
 
 		// Batch delete
-		docIDs := []string{id1, id2}
+		docIDs := []string{docs[0].DocID, docs[1].DocID}
 		deleteTaskID, err := engine.DeleteBatch(ctx, indexConfig.Name, docIDs)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, deleteTaskID)
