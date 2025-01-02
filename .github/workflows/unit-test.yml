@@ -40,10 +40,24 @@ env:
   MONGO_TEST_PASS: "123456"
 
   OPENAI_TEST_KEY: ${{ secrets.OPENAI_TEST_KEY }}
+  QDRANT_TEST_HOST: "127.0.0.1"
+  QDRANT_TEST_PORT: "6334"
 
 jobs:
   unit-test:
     runs-on: ubuntu-latest
+    
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6334:6334
+        options: >-
+          --health-cmd "curl -f http://localhost:6334/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     strategy:
       matrix:
         go: [1.23.0]
