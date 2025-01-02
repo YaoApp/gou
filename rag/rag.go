@@ -17,13 +17,14 @@ const (
 )
 
 // NewEngine creates a new RAG engine instance
-func NewEngine(driverName string, config driver.IndexConfig) (driver.Engine, error) {
+func NewEngine(driverName string, config driver.IndexConfig, vectorizer driver.Vectorizer) (driver.Engine, error) {
 	switch driverName {
 	case DriverQdrant:
 		// Convert IndexConfig to qdrant.Config
 		qConfig := qdrant.Config{
-			Host:   config.Options["host"],
-			APIKey: config.Options["api_key"],
+			Host:       config.Options["host"],
+			APIKey:     config.Options["api_key"],
+			Vectorizer: vectorizer,
 		}
 		if portStr, ok := config.Options["port"]; ok {
 			if port, err := strconv.ParseUint(portStr, 10, 32); err == nil {
