@@ -42,6 +42,7 @@ env:
   OPENAI_TEST_KEY: ${{ secrets.OPENAI_TEST_KEY }}
   QDRANT_TEST_HOST: "127.0.0.1"
   QDRANT_TEST_PORT: "6334"
+  QDRANT_TEST_HTTP_PORT: "6333"
 
 jobs:
   unit-test:
@@ -51,9 +52,10 @@ jobs:
       qdrant:
         image: qdrant/qdrant:latest
         ports:
-          - 6334:6334
+          - 6333:6333  # HTTP API
+          - 6334:6334  # gRPC
         options: >-
-          --health-cmd "curl -f http://localhost:6334/health"
+          --health-cmd "curl -f http://localhost:6333/healthz"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
