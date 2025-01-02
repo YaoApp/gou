@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/yaoapp/gou/rag/driver"
 )
 
@@ -43,8 +42,8 @@ func (f *FileUpload) Upload(ctx context.Context, reader io.Reader, opts driver.F
 		buffer += line + "\n"
 
 		if len(buffer) >= opts.ChunkSize {
-			// Generate UUID for the document
-			docUUID := uuid.New().String()
+			// Generate numeric string ID for the document
+			docIDStr := fmt.Sprintf("file-%s-chunk-%d", filepath.Base(opts.IndexName), docID)
 
 			// Vectorize the chunk
 			embeddings, err := f.vectorizer.Vectorize(ctx, buffer)
@@ -53,13 +52,14 @@ func (f *FileUpload) Upload(ctx context.Context, reader io.Reader, opts driver.F
 			}
 
 			doc := &driver.Document{
-				DocID:        docUUID,
+				DocID:        docIDStr,
 				Content:      buffer,
 				ChunkSize:    opts.ChunkSize,
 				ChunkOverlap: opts.ChunkOverlap,
 				Embeddings:   embeddings,
 				Metadata: map[string]interface{}{
 					"chunk_number": docID,
+					"file_name":    opts.IndexName,
 				},
 			}
 			documents = append(documents, doc)
@@ -70,20 +70,21 @@ func (f *FileUpload) Upload(ctx context.Context, reader io.Reader, opts driver.F
 
 	// Handle any remaining content
 	if len(buffer) > 0 {
-		docUUID := uuid.New().String()
+		docIDStr := fmt.Sprintf("file-%s-chunk-%d", filepath.Base(opts.IndexName), docID)
 		embeddings, err := f.vectorizer.Vectorize(ctx, buffer)
 		if err != nil {
 			return nil, fmt.Errorf("failed to vectorize final content chunk: %w", err)
 		}
 
 		doc := &driver.Document{
-			DocID:        docUUID,
+			DocID:        docIDStr,
 			Content:      buffer,
 			ChunkSize:    opts.ChunkSize,
 			ChunkOverlap: opts.ChunkOverlap,
 			Embeddings:   embeddings,
 			Metadata: map[string]interface{}{
 				"chunk_number": docID,
+				"file_name":    opts.IndexName,
 			},
 		}
 		documents = append(documents, doc)
