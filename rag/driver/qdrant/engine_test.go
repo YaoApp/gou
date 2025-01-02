@@ -596,3 +596,67 @@ func TestQdrantEngineErrors(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "empty batch", err.Error())
 }
+
+// TestGetMetadata tests the GetMetadata functionality
+func TestGetMetadata(t *testing.T) {
+	ctx := context.Background()
+	config := getTestConfig(t)
+
+	engine, err := NewEngine(config)
+	assert.NoError(t, err)
+	defer engine.Close()
+
+	indexName := fmt.Sprintf("test_metadata_index_%d", time.Now().UnixNano())
+	err = engine.CreateIndex(ctx, driver.IndexConfig{Name: indexName})
+	assert.NoError(t, err)
+	defer engine.DeleteIndex(ctx, indexName)
+
+	// Test document with metadata
+	doc := &driver.Document{
+		DocID:   "test-doc-metadata",
+		Content: "Test document with metadata",
+		Metadata: map[string]interface{}{
+			"type":    "test",
+			"version": 1.0,
+			"tags":    []string{"test", "metadata"},
+			"nested": map[string]interface{}{
+				"key": "value",
+			},
+		},
+	}
+
+	// Index the document
+	err = engine.IndexDoc(ctx, indexName, doc)
+	assert.NoError(t, err)
+
+	// Test GetMetadata
+	metadata, err := engine.GetMetadata(ctx, indexName, doc.DocID)
+	assert.NoError(t, err)
+	assert.NotNil(t, metadata)
+	assert.Equal(t, "test", metadata["type"])
+	assert.Equal(t, 1.0, metadata["version"])
+
+	// Test GetMetadata with non-existent document
+	_, err = engine.GetMetadata(ctx, indexName, "non-existent-doc")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "document not found")
+
+	// Test GetMetadata with non-existent collection
+	_, err = engine.GetMetadata(ctx, "non-existent-index", doc.DocID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "collection doesn't exist")
+
+	// Test GetMetadata with nil context
+	_, err = engine.GetMetadata(nil, indexName, doc.DocID)
+	assert.Error(t, err)
+	assert.Equal(t, "nil context", err.Error())
+
+	// Test GetMetadata after engine is closed
+	closedEngine, err := NewEngine(config)
+	assert.NoError(t, err)
+	err = closedEngine.Close()
+	assert.NoError(t, err)
+	_, err = closedEngine.GetMetadata(ctx, indexName, doc.DocID)
+	assert.Error(t, err)
+	assert.Equal(t, "engine is closed", err.Error())
+}

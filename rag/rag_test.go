@@ -300,6 +300,12 @@ func TestRAGIntegration(t *testing.T) {
 		assert.Equal(t, doc.Content, retrieved.Content)
 		assert.Equal(t, doc.DocID, retrieved.DocID)
 
+		// Test GetMetadata
+		metadata, err := engine.GetMetadata(ctx, indexConfig.Name, doc.DocID)
+		assert.NoError(t, err)
+		assert.NotNil(t, metadata)
+		assert.Equal(t, "test", metadata["type"])
+
 		// Search
 		results, err := engine.Search(ctx, indexConfig.Name, nil, driver.VectorSearchOptions{
 			QueryText: "test document",

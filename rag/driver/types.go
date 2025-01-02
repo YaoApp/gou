@@ -94,6 +94,7 @@ type Engine interface {
 	DeleteDoc(ctx context.Context, indexName string, DocID string) error
 	DeleteBatch(ctx context.Context, indexName string, DocIDs []string) (string, error) // Returns TaskID
 	HasDocument(ctx context.Context, indexName string, DocID string) (bool, error)
+	GetMetadata(ctx context.Context, indexName string, DocID string) (map[string]interface{}, error) // Get document metadata only
 
 	// Task operations
 	GetTaskInfo(ctx context.Context, taskID string) (*TaskInfo, error)

@@ -161,11 +161,34 @@ func (e *Engine) IndexDoc(ctx context.Context, indexName string, doc *driver.Doc
 	}
 
 	if doc.Metadata != nil {
-		metadataStruct, err := qdrant.NewStruct(doc.Metadata)
-		if err != nil {
-			return fmt.Errorf("failed to convert metadata: %w", err)
+		payload := make(map[string]*qdrant.Value)
+		for k, v := range doc.Metadata {
+			switch val := v.(type) {
+			case string:
+				payload[k] = qdrant.NewValueString(val)
+			case float64:
+				payload[k] = qdrant.NewValueDouble(val)
+			case bool:
+				payload[k] = qdrant.NewValueBool(val)
+			case []string:
+				values := make([]*qdrant.Value, len(val))
+				for i, s := range val {
+					values[i] = qdrant.NewValueString(s)
+				}
+				payload[k] = &qdrant.Value{
+					Kind: &qdrant.Value_ListValue{
+						ListValue: &qdrant.ListValue{
+							Values: values,
+						},
+					},
+				}
+			case map[string]interface{}:
+				if nested, err := qdrant.NewStruct(val); err == nil {
+					payload[k] = qdrant.NewValueStruct(nested)
+				}
+			}
 		}
-		point.Payload["metadata"] = qdrant.NewValueStruct(metadataStruct)
+		point.Payload["metadata"] = qdrant.NewValueStruct(&qdrant.Struct{Fields: payload})
 	}
 
 	_, err = e.client.Upsert(ctx, &qdrant.UpsertPoints{
@@ -354,6 +377,23 @@ func convertStructToMap(s *qdrant.Struct) map[string]interface{} {
 			result[k] = x.DoubleValue
 		case *qdrant.Value_BoolValue:
 			result[k] = x.BoolValue
+		case *qdrant.Value_ListValue:
+			if x.ListValue != nil {
+				list := make([]interface{}, len(x.ListValue.Values))
+				for i, lv := range x.ListValue.Values {
+					switch lx := lv.Kind.(type) {
+					case *qdrant.Value_StringValue:
+						list[i] = lx.StringValue
+					case *qdrant.Value_DoubleValue:
+						list[i] = lx.DoubleValue
+					case *qdrant.Value_BoolValue:
+						list[i] = lx.BoolValue
+					case *qdrant.Value_StructValue:
+						list[i] = convertStructToMap(lx.StructValue)
+					}
+				}
+				result[k] = list
+			}
 		case *qdrant.Value_StructValue:
 			result[k] = convertStructToMap(x.StructValue)
 		}
@@ -590,4 +630,37 @@ func (e *Engine) HasIndex(ctx context.Context, name string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// GetMetadata retrieves only the metadata of a document by its ID from the specified collection
+func (e *Engine) GetMetadata(ctx context.Context, indexName string, DocID string) (map[string]interface{}, error) {
+	if err := e.checkContext(ctx); err != nil {
+		return nil, err
+	}
+
+	points, err := e.client.Get(ctx, &qdrant.GetPoints{
+		CollectionName: indexName,
+		Ids:            []*qdrant.PointId{qdrant.NewIDNum(stringToUint64ID(DocID))},
+		WithPayload:    qdrant.NewWithPayload(true),
+		WithVectors:    qdrant.NewWithVectors(false), // Don't fetch vectors to save memory
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "doesn't exist") {
+			return nil, fmt.Errorf("collection doesn't exist: %w", err)
+		}
+		return nil, fmt.Errorf("failed to get document metadata: %w", err)
+	}
+
+	if len(points) == 0 {
+		return nil, fmt.Errorf("document not found")
+	}
+
+	point := points[0]
+	if metadataValue := point.Payload["metadata"]; metadataValue != nil {
+		if metadataStruct := metadataValue.GetStructValue(); metadataStruct != nil {
+			return convertStructToMap(metadataStruct), nil
+		}
+	}
+
+	return make(map[string]interface{}), nil
 }
