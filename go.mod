@@ -2,8 +2,6 @@ module github.com/yaoapp/gou
 
 go 1.22.2
 
-toolchain go1.23.4
-
 require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/fatih/color v1.16.0

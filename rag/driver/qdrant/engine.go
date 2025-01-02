@@ -9,16 +9,16 @@ import (
 	"time"
 
 	"github.com/qdrant/go-client/qdrant"
-	"github.com/yaoapp/gou/rag"
+	"github.com/yaoapp/gou/rag/driver"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 )
 
-// Engine implements the rag.Engine interface using Qdrant as the vector store backend
+// Engine implements the driver.Engine interface using Qdrant as the vector store backend
 type Engine struct {
 	client     *qdrant.Client
-	vectorizer rag.Vectorizer
+	vectorizer driver.Vectorizer
 	ctx        context.Context
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
@@ -33,7 +33,7 @@ type Config struct {
 	Host       string // Host address of Qdrant server, e.g., "localhost"
 	Port       uint32 // Port number of Qdrant server, default is 6334 for gRPC
 	APIKey     string // Optional API key for authentication
-	Vectorizer rag.Vectorizer
+	Vectorizer driver.Vectorizer
 }
 
 // NewEngine creates a new instance of the Qdrant engine with the given configuration
@@ -74,7 +74,7 @@ func NewEngine(config Config) (*Engine, error) {
 }
 
 // CreateIndex creates a new vector collection in Qdrant with the given configuration
-func (e *Engine) CreateIndex(ctx context.Context, config rag.IndexConfig) error {
+func (e *Engine) CreateIndex(ctx context.Context, config driver.IndexConfig) error {
 	// Get vector dimension from vectorizer
 	dims, err := e.getVectorDimension()
 	if err != nil {
@@ -116,7 +116,7 @@ func (e *Engine) ListIndexes(ctx context.Context) ([]string, error) {
 }
 
 // IndexDoc adds or updates a document in the specified vector collection
-func (e *Engine) IndexDoc(ctx context.Context, indexName string, doc *rag.Document) error {
+func (e *Engine) IndexDoc(ctx context.Context, indexName string, doc *driver.Document) error {
 	if err := e.checkContext(ctx); err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (e *Engine) IndexDoc(ctx context.Context, indexName string, doc *rag.Docume
 }
 
 // Search performs a vector similarity search in the specified collection
-func (e *Engine) Search(ctx context.Context, indexName string, vector []float32, opts rag.VectorSearchOptions) ([]rag.SearchResult, error) {
+func (e *Engine) Search(ctx context.Context, indexName string, vector []float32, opts driver.VectorSearchOptions) ([]driver.SearchResult, error) {
 	if err := e.checkContext(ctx); err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (e *Engine) Search(ctx context.Context, indexName string, vector []float32,
 		return nil, fmt.Errorf("failed to search: %w", err)
 	}
 
-	results := make([]rag.SearchResult, len(points))
+	results := make([]driver.SearchResult, len(points))
 	for i, point := range points {
 		content := point.Payload["content"].GetStringValue()
 		var metadata map[string]interface{}
@@ -212,7 +212,7 @@ func (e *Engine) Search(ctx context.Context, indexName string, vector []float32,
 			}
 		}
 
-		results[i] = rag.SearchResult{
+		results[i] = driver.SearchResult{
 			DocID:    point.Id.GetUuid(),
 			Score:    float64(point.Score),
 			Content:  content,
@@ -223,7 +223,7 @@ func (e *Engine) Search(ctx context.Context, indexName string, vector []float32,
 }
 
 // GetDocument retrieves a document by its ID from the specified collection
-func (e *Engine) GetDocument(ctx context.Context, indexName string, DocID string) (*rag.Document, error) {
+func (e *Engine) GetDocument(ctx context.Context, indexName string, DocID string) (*driver.Document, error) {
 	points, err := e.client.Get(ctx, &qdrant.GetPoints{
 		CollectionName: indexName,
 		Ids:            []*qdrant.PointId{qdrant.NewID(DocID)},
@@ -250,7 +250,7 @@ func (e *Engine) GetDocument(ctx context.Context, indexName string, DocID string
 		}
 	}
 
-	return &rag.Document{
+	return &driver.Document{
 		DocID:      DocID,
 		Content:    content,
 		Metadata:   metadata,
@@ -307,14 +307,11 @@ func (e *Engine) Close() error {
 
 	// Return combined errors if any
 	if len(errs) > 0 {
-		var errMsg string
+		errMsgs := make([]string, len(errs))
 		for i, err := range errs {
-			if i > 0 {
-				errMsg += "; "
-			}
-			errMsg += err.Error()
+			errMsgs[i] = err.Error()
 		}
-		return fmt.Errorf(errMsg)
+		return fmt.Errorf("multiple errors: %s", strings.Join(errMsgs, "; "))
 	}
 
 	return nil
@@ -352,7 +349,7 @@ func convertStructToMap(s *qdrant.Struct) map[string]interface{} {
 }
 
 // IndexBatch adds or updates multiple documents in batch
-func (e *Engine) IndexBatch(ctx context.Context, indexName string, docs []*rag.Document) (string, error) {
+func (e *Engine) IndexBatch(ctx context.Context, indexName string, docs []*driver.Document) (string, error) {
 	if err := e.checkContext(ctx); err != nil {
 		return "", err
 	}
@@ -474,7 +471,7 @@ func (e *Engine) DeleteBatch(ctx context.Context, indexName string, DocIDs []str
 }
 
 // GetTaskInfo retrieves information about an asynchronous task
-func (e *Engine) GetTaskInfo(ctx context.Context, taskID string) (*rag.TaskInfo, error) {
+func (e *Engine) GetTaskInfo(ctx context.Context, taskID string) (*driver.TaskInfo, error) {
 	// Parse the task type and timestamp from the taskID
 	parts := strings.Split(taskID, "-")
 	if len(parts) != 3 || (parts[0] != "batch" && parts[1] != "index" && parts[1] != "delete") {
@@ -488,12 +485,12 @@ func (e *Engine) GetTaskInfo(ctx context.Context, taskID string) (*rag.TaskInfo,
 
 	// For now, we'll consider tasks as completed after 5 seconds
 	elapsed := time.Since(time.Unix(0, timestamp))
-	status := rag.StatusRunning
+	status := driver.StatusRunning
 	if elapsed > 5*time.Second {
-		status = rag.StatusComplete
+		status = driver.StatusComplete
 	}
 
-	return &rag.TaskInfo{
+	return &driver.TaskInfo{
 		TaskID:    taskID,
 		Status:    status,
 		Created:   timestamp,
@@ -505,10 +502,10 @@ func (e *Engine) GetTaskInfo(ctx context.Context, taskID string) (*rag.TaskInfo,
 }
 
 // ListTasks returns a list of all tasks for the specified collection
-func (e *Engine) ListTasks(ctx context.Context, indexName string) ([]*rag.TaskInfo, error) {
+func (e *Engine) ListTasks(ctx context.Context, indexName string) ([]*driver.TaskInfo, error) {
 	// Since Qdrant doesn't provide direct task listing,
 	// we'll return an empty list for now
-	return []*rag.TaskInfo{}, nil
+	return []*driver.TaskInfo{}, nil
 }
 
 // CancelTask cancels an ongoing asynchronous task

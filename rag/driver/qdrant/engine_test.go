@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yaoapp/gou/rag"
-	"github.com/yaoapp/gou/rag/openai"
+	"github.com/yaoapp/gou/rag/driver"
+	"github.com/yaoapp/gou/rag/driver/openai"
 )
 
 func getTestConfig(t *testing.T) Config {
@@ -63,7 +63,7 @@ func TestBasicOperations(t *testing.T) {
 
 	// Test index operations
 	indexName := "test_index"
-	err = engine.CreateIndex(ctx, rag.IndexConfig{Name: indexName})
+	err = engine.CreateIndex(ctx, driver.IndexConfig{Name: indexName})
 	assert.NoError(t, err)
 
 	// List indexes
@@ -72,7 +72,7 @@ func TestBasicOperations(t *testing.T) {
 	assert.Contains(t, indexes, indexName)
 
 	// Test document operations
-	doc := &rag.Document{
+	doc := &driver.Document{
 		DocID:    "123e4567-e89b-12d3-a456-426614174000",
 		Content:  "This is a test document for Qdrant vector search.",
 		Metadata: map[string]interface{}{"type": "test", "version": 1.0},
@@ -90,7 +90,7 @@ func TestBasicOperations(t *testing.T) {
 	assert.Equal(t, doc.Metadata["version"], retrieved.Metadata["version"])
 
 	// Search
-	searchOpts := rag.VectorSearchOptions{
+	searchOpts := driver.VectorSearchOptions{
 		QueryText: "test document",
 		TopK:      5,
 	}
@@ -122,17 +122,17 @@ func TestBatchOperations(t *testing.T) {
 	defer engine.Close()
 
 	indexName := "test_batch_index"
-	err = engine.CreateIndex(ctx, rag.IndexConfig{Name: indexName})
+	err = engine.CreateIndex(ctx, driver.IndexConfig{Name: indexName})
 	assert.NoError(t, err)
 	defer engine.DeleteIndex(ctx, indexName)
 
 	// Prepare batch documents
-	docs := make([]*rag.Document, 10)
+	docs := make([]*driver.Document, 10)
 	docIDs := make([]string, 10)
 	for i := 0; i < 10; i++ {
 		// Use proper UUID format
 		docID := fmt.Sprintf("00000000-0000-0000-0000-%012d", i)
-		docs[i] = &rag.Document{
+		docs[i] = &driver.Document{
 			DocID:    docID,
 			Content:  fmt.Sprintf("This is test document %d", i),
 			Metadata: map[string]interface{}{"index": i},
@@ -148,18 +148,18 @@ func TestBatchOperations(t *testing.T) {
 	assert.NotEmpty(t, taskID)
 
 	// Wait for indexing to complete and verify with retries
-	var taskInfo *rag.TaskInfo
+	var taskInfo *driver.TaskInfo
 	for i := 0; i < 10; i++ {
 		taskInfo, err = engine.GetTaskInfo(ctx, taskID)
 		if err != nil {
 			t.Fatalf("Failed to get task info: %v", err)
 		}
-		if taskInfo.Status == rag.StatusComplete {
+		if taskInfo.Status == driver.StatusComplete {
 			break
 		}
 		time.Sleep(time.Second)
 	}
-	assert.Equal(t, rag.StatusComplete, taskInfo.Status)
+	assert.Equal(t, driver.StatusComplete, taskInfo.Status)
 
 	// Wait a bit more to ensure documents are fully indexed
 	time.Sleep(2 * time.Second)
@@ -182,18 +182,18 @@ func TestBatchOperations(t *testing.T) {
 	assert.NotEmpty(t, deleteTaskID)
 
 	// Wait for deletion to complete and verify with retries
-	var deleteTaskInfo *rag.TaskInfo
+	var deleteTaskInfo *driver.TaskInfo
 	for i := 0; i < 10; i++ {
 		deleteTaskInfo, err = engine.GetTaskInfo(ctx, deleteTaskID)
 		if err != nil {
 			t.Fatalf("Failed to get delete task info: %v", err)
 		}
-		if deleteTaskInfo.Status == rag.StatusComplete {
+		if deleteTaskInfo.Status == driver.StatusComplete {
 			break
 		}
 		time.Sleep(time.Second)
 	}
-	assert.Equal(t, rag.StatusComplete, deleteTaskInfo.Status)
+	assert.Equal(t, driver.StatusComplete, deleteTaskInfo.Status)
 
 	// Wait a bit more to ensure documents are fully deleted
 	time.Sleep(2 * time.Second)
@@ -215,16 +215,16 @@ func TestTaskManagement(t *testing.T) {
 	defer engine.Close()
 
 	indexName := "test_task_index"
-	err = engine.CreateIndex(ctx, rag.IndexConfig{Name: indexName})
+	err = engine.CreateIndex(ctx, driver.IndexConfig{Name: indexName})
 	assert.NoError(t, err)
 	defer engine.DeleteIndex(ctx, indexName)
 
 	// Create a batch operation to get a task ID
-	docs := make([]*rag.Document, 5)
+	docs := make([]*driver.Document, 5)
 	for i := 0; i < 5; i++ {
 		// Use proper UUID format
 		docID := fmt.Sprintf("00000000-0000-0000-0000-%012d", i)
-		docs[i] = &rag.Document{
+		docs[i] = &driver.Document{
 			DocID:   docID,
 			Content: fmt.Sprintf("Test document for task management %d", i),
 		}
@@ -237,7 +237,7 @@ func TestTaskManagement(t *testing.T) {
 	assert.NotEmpty(t, taskID)
 
 	// Test GetTaskInfo with retries
-	var taskInfo *rag.TaskInfo
+	var taskInfo *driver.TaskInfo
 	var getTaskErr error
 	for i := 0; i < 5; i++ {
 		taskInfo, getTaskErr = engine.GetTaskInfo(ctx, taskID)
@@ -305,7 +305,7 @@ func TestResourceLeaks(t *testing.T) {
 	for i := 0; i < 2; i++ { // Further reduce iterations
 		func() {
 			indexName := fmt.Sprintf("test_leak_index_%d", i)
-			err = engine.CreateIndex(ctx, rag.IndexConfig{Name: indexName})
+			err = engine.CreateIndex(ctx, driver.IndexConfig{Name: indexName})
 			assert.NoError(t, err)
 
 			// Ensure index is deleted even if test fails
@@ -318,7 +318,7 @@ func TestResourceLeaks(t *testing.T) {
 
 			// Use proper UUID format
 			docID := fmt.Sprintf("00000000-0000-0000-0000-%012d", i)
-			doc := &rag.Document{
+			doc := &driver.Document{
 				DocID:   docID,
 				Content: "Test document for leak detection",
 			}
@@ -329,7 +329,7 @@ func TestResourceLeaks(t *testing.T) {
 			time.Sleep(time.Second)
 
 			// Search operations
-			searchOpts := rag.VectorSearchOptions{
+			searchOpts := driver.VectorSearchOptions{
 				QueryText: "test document",
 				TopK:      5,
 			}
@@ -384,7 +384,7 @@ func TestConcurrentOperations(t *testing.T) {
 
 	// Ensure index name is unique
 	indexName := fmt.Sprintf("test_concurrent_index_%d", time.Now().UnixNano())
-	err = engine.CreateIndex(ctx, rag.IndexConfig{Name: indexName})
+	err = engine.CreateIndex(ctx, driver.IndexConfig{Name: indexName})
 	assert.NoError(t, err)
 
 	// Use sync.Once to ensure cleanup happens only once
@@ -425,7 +425,7 @@ func TestConcurrentOperations(t *testing.T) {
 			defer wg.Done()
 			// Use proper UUID format
 			docID := fmt.Sprintf("00000000-0000-0000-0000-%012d", i)
-			doc := &rag.Document{
+			doc := &driver.Document{
 				DocID:    docID,
 				Content:  fmt.Sprintf("Concurrent test document %d", i),
 				Metadata: map[string]interface{}{"index": i},
@@ -448,7 +448,7 @@ func TestConcurrentOperations(t *testing.T) {
 	for i := 0; i < numOps; i++ {
 		go func(i int) {
 			defer wg.Done()
-			searchOpts := rag.VectorSearchOptions{
+			searchOpts := driver.VectorSearchOptions{
 				QueryText: fmt.Sprintf("test document %d", i),
 				TopK:      5,
 			}
@@ -497,7 +497,7 @@ func TestQdrantEngineErrors(t *testing.T) {
 
 	// Ensure index name is unique
 	indexName := fmt.Sprintf("test_error_index_%d", time.Now().UnixNano())
-	err = engine.CreateIndex(ctx, rag.IndexConfig{Name: indexName})
+	err = engine.CreateIndex(ctx, driver.IndexConfig{Name: indexName})
 	assert.NoError(t, err)
 
 	// Use defer to ensure proper cleanup order
@@ -530,7 +530,7 @@ func TestQdrantEngineErrors(t *testing.T) {
 	assert.Equal(t, "invalid task ID format", err.Error())
 
 	// Test batch operations with empty input
-	_, err = engine.IndexBatch(ctx, indexName, []*rag.Document{})
+	_, err = engine.IndexBatch(ctx, indexName, []*driver.Document{})
 	assert.Error(t, err)
 	assert.Equal(t, "empty document batch", err.Error())
 
@@ -539,7 +539,7 @@ func TestQdrantEngineErrors(t *testing.T) {
 	assert.Equal(t, "empty batch", err.Error())
 
 	// Test operations with nil context
-	searchOpts := rag.VectorSearchOptions{
+	searchOpts := driver.VectorSearchOptions{
 		QueryText: "test",
 		TopK:      5,
 	}
@@ -555,7 +555,7 @@ func TestQdrantEngineErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "context canceled")
 
 	// Test invalid vector dimension
-	invalidDoc := &rag.Document{
+	invalidDoc := &driver.Document{
 		DocID:      "00000000-0000-0000-0000-000000000001",
 		Content:    "Test document",
 		Embeddings: []float32{0.1, 0.2}, // Invalid dimension

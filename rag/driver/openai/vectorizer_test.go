@@ -1,9 +1,11 @@
-package openai
+package openai_test
 
 import (
 	"context"
 	"os"
 	"testing"
+
+	"github.com/yaoapp/gou/rag/driver/openai"
 )
 
 func TestOpenAIVectorizer(t *testing.T) {
@@ -13,7 +15,7 @@ func TestOpenAIVectorizer(t *testing.T) {
 	}
 
 	// Create vectorizer
-	vectorizer, err := New(Config{
+	vectorizer, err := openai.New(openai.Config{
 		APIKey: apiKey,
 		Model:  "text-embedding-ada-002",
 	})

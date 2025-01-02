@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yaoapp/gou/rag"
+	"github.com/yaoapp/gou/rag/driver"
 )
 
 func TestFileUploader_Upload(t *testing.T) {
@@ -21,25 +21,26 @@ func TestFileUploader_Upload(t *testing.T) {
 	indexName := fmt.Sprintf("test_upload_%d", time.Now().UnixNano())
 
 	// Create a test index
-	err = engine.CreateIndex(context.Background(), rag.IndexConfig{
+	err = engine.CreateIndex(context.Background(), driver.IndexConfig{
 		Name:   indexName,
 		Driver: "qdrant",
 	})
 	assert.NoError(t, err)
 	defer engine.DeleteIndex(context.Background(), indexName)
 
-	uploader := NewFileUploader(engine)
+	uploader, err := NewFileUpload(engine, engine.vectorizer)
+	assert.NoError(t, err)
 
 	tests := []struct {
 		name    string
 		content string
-		opts    rag.FileUploadOptions
+		opts    driver.FileUploadOptions
 		wantErr bool
 	}{
 		{
 			name:    "Basic upload",
 			content: "This is a test document",
-			opts: rag.FileUploadOptions{
+			opts: driver.FileUploadOptions{
 				IndexName: indexName,
 				ChunkSize: 100,
 			},
@@ -48,7 +49,7 @@ func TestFileUploader_Upload(t *testing.T) {
 		{
 			name:    "Async upload",
 			content: "This is an async test document",
-			opts: rag.FileUploadOptions{
+			opts: driver.FileUploadOptions{
 				IndexName: indexName,
 				ChunkSize: 100,
 				Async:     true,
@@ -58,7 +59,7 @@ func TestFileUploader_Upload(t *testing.T) {
 		{
 			name:    "Upload with chunks",
 			content: strings.Repeat("Test content ", 100),
-			opts: rag.FileUploadOptions{
+			opts: driver.FileUploadOptions{
 				IndexName:    indexName,
 				ChunkSize:    100,
 				ChunkOverlap: 20,
@@ -101,14 +102,15 @@ func TestFileUploader_UploadFile(t *testing.T) {
 	indexName := fmt.Sprintf("test_file_upload_%d", time.Now().UnixNano())
 
 	// Create a test index
-	err = engine.CreateIndex(context.Background(), rag.IndexConfig{
+	err = engine.CreateIndex(context.Background(), driver.IndexConfig{
 		Name:   indexName,
 		Driver: "qdrant",
 	})
 	assert.NoError(t, err)
 	defer engine.DeleteIndex(context.Background(), indexName)
 
-	uploader := NewFileUploader(engine)
+	uploader, err := NewFileUpload(engine, engine.vectorizer)
+	assert.NoError(t, err)
 
 	// Create a temporary test file
 	content := "This is a test file content\nWith multiple lines\nFor testing purposes"
@@ -123,12 +125,12 @@ func TestFileUploader_UploadFile(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		opts    rag.FileUploadOptions
+		opts    driver.FileUploadOptions
 		wantErr bool
 	}{
 		{
 			name: "Basic file upload",
-			opts: rag.FileUploadOptions{
+			opts: driver.FileUploadOptions{
 				IndexName: indexName,
 				ChunkSize: 100,
 			},
@@ -136,7 +138,7 @@ func TestFileUploader_UploadFile(t *testing.T) {
 		},
 		{
 			name: "Async file upload",
-			opts: rag.FileUploadOptions{
+			opts: driver.FileUploadOptions{
 				IndexName: indexName,
 				ChunkSize: 100,
 				Async:     true,

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Vectorizer implements rag.Vectorizer using OpenAI's embeddings API
+// Vectorizer implements driver.Vectorizer using OpenAI's embeddings API
 type Vectorizer struct {
 	apiKey     string
 	model      string
@@ -59,7 +59,7 @@ func New(config Config) (*Vectorizer, error) {
 	}, nil
 }
 
-// Vectorize implements rag.Vectorizer
+// Vectorize implements driver.Vectorizer
 func (v *Vectorizer) Vectorize(ctx context.Context, text string) ([]float32, error) {
 	// Prepare request body
 	reqBody := map[string]interface{}{
@@ -105,7 +105,7 @@ func (v *Vectorizer) Vectorize(ctx context.Context, text string) ([]float32, err
 	return embedResp.Data[0].Embedding, nil
 }
 
-// VectorizeBatch implements rag.Vectorizer
+// VectorizeBatch implements driver.Vectorizer
 func (v *Vectorizer) VectorizeBatch(ctx context.Context, texts []string) ([][]float32, error) {
 	// Prepare request body
 	reqBody := map[string]interface{}{
@@ -157,7 +157,7 @@ func (v *Vectorizer) VectorizeBatch(ctx context.Context, texts []string) ([][]fl
 	return embeddings, nil
 }
 
-// Close implements rag.Vectorizer
+// Close implements driver.Vectorizer
 func (v *Vectorizer) Close() error {
 	return nil
 }
