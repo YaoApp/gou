@@ -66,6 +66,15 @@ func TestBasicOperations(t *testing.T) {
 	err = engine.CreateIndex(ctx, driver.IndexConfig{Name: indexName})
 	assert.NoError(t, err)
 
+	// Test HasIndex
+	exists, err := engine.HasIndex(ctx, indexName)
+	assert.NoError(t, err)
+	assert.True(t, exists)
+
+	exists, err = engine.HasIndex(ctx, "non_existent_index")
+	assert.NoError(t, err)
+	assert.False(t, exists)
+
 	// List indexes
 	indexes, err := engine.ListIndexes(ctx)
 	assert.NoError(t, err)
@@ -78,9 +87,19 @@ func TestBasicOperations(t *testing.T) {
 		Metadata: map[string]interface{}{"type": "test", "version": 1.0},
 	}
 
+	// Test HasDocument before indexing
+	exists, err = engine.HasDocument(ctx, indexName, doc.DocID)
+	assert.NoError(t, err)
+	assert.False(t, exists)
+
 	// Index document
 	err = engine.IndexDoc(ctx, indexName, doc)
 	assert.NoError(t, err)
+
+	// Test HasDocument after indexing
+	exists, err = engine.HasDocument(ctx, indexName, doc.DocID)
+	assert.NoError(t, err)
+	assert.True(t, exists)
 
 	// Get document
 	retrieved, err := engine.GetDocument(ctx, indexName, doc.DocID)

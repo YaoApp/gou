@@ -551,3 +551,43 @@ func (e *Engine) checkContext(ctx context.Context) error {
 		return nil
 	}
 }
+
+// HasDocument checks if a document exists in the specified collection
+func (e *Engine) HasDocument(ctx context.Context, indexName string, DocID string) (bool, error) {
+	if err := e.checkContext(ctx); err != nil {
+		return false, err
+	}
+
+	points, err := e.client.Get(ctx, &qdrant.GetPoints{
+		CollectionName: indexName,
+		Ids:            []*qdrant.PointId{qdrant.NewIDNum(stringToUint64ID(DocID))},
+		WithPayload:    qdrant.NewWithPayload(false), // We don't need payload, just checking existence
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "doesn't exist") {
+			return false, nil // Collection doesn't exist
+		}
+		return false, fmt.Errorf("failed to check document existence: %w", err)
+	}
+
+	return len(points) > 0, nil
+}
+
+// HasIndex checks if a collection exists
+func (e *Engine) HasIndex(ctx context.Context, name string) (bool, error) {
+	if err := e.checkContext(ctx); err != nil {
+		return false, err
+	}
+
+	collections, err := e.client.ListCollections(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to list collections: %w", err)
+	}
+
+	for _, collection := range collections {
+		if collection == name {
+			return true, nil
+		}
+	}
+	return false, nil
+}

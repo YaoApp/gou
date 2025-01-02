@@ -86,12 +86,14 @@ type Engine interface {
 	CreateIndex(ctx context.Context, config IndexConfig) error
 	DeleteIndex(ctx context.Context, name string) error
 	ListIndexes(ctx context.Context) ([]string, error)
+	HasIndex(ctx context.Context, name string) (bool, error)
 
 	// Document operations
 	IndexDoc(ctx context.Context, indexName string, doc *Document) error
 	IndexBatch(ctx context.Context, indexName string, docs []*Document) (string, error) // Returns TaskID
 	DeleteDoc(ctx context.Context, indexName string, DocID string) error
 	DeleteBatch(ctx context.Context, indexName string, DocIDs []string) (string, error) // Returns TaskID
+	HasDocument(ctx context.Context, indexName string, DocID string) (bool, error)
 
 	// Task operations
 	GetTaskInfo(ctx context.Context, taskID string) (*TaskInfo, error)

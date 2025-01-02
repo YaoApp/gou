@@ -258,6 +258,15 @@ func TestRAGIntegration(t *testing.T) {
 		assert.NoError(t, err)
 		defer engine.DeleteIndex(ctx, indexConfig.Name)
 
+		// Test HasIndex
+		exists, err := engine.HasIndex(ctx, indexConfig.Name)
+		assert.NoError(t, err)
+		assert.True(t, exists)
+
+		exists, err = engine.HasIndex(ctx, "non_existent_index")
+		assert.NoError(t, err)
+		assert.False(t, exists)
+
 		// List indexes
 		indexes, err := engine.ListIndexes(ctx)
 		assert.NoError(t, err)
@@ -271,9 +280,19 @@ func TestRAGIntegration(t *testing.T) {
 			Metadata: map[string]interface{}{"type": "test"},
 		}
 
+		// Test HasDocument before indexing
+		exists, err = engine.HasDocument(ctx, indexConfig.Name, doc.DocID)
+		assert.NoError(t, err)
+		assert.False(t, exists)
+
 		// Index document
 		err = engine.IndexDoc(ctx, indexConfig.Name, doc)
 		assert.NoError(t, err)
+
+		// Test HasDocument after indexing
+		exists, err = engine.HasDocument(ctx, indexConfig.Name, doc.DocID)
+		assert.NoError(t, err)
+		assert.True(t, exists)
 
 		// Get document
 		retrieved, err := engine.GetDocument(ctx, indexConfig.Name, doc.DocID)
