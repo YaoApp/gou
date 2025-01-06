@@ -125,11 +125,22 @@ func (e *Engine) ListIndexes(ctx context.Context) ([]string, error) {
 	return collections, nil
 }
 
+// sanitizeUTF8 ensures the string is valid UTF-8 and replaces invalid characters
+func sanitizeUTF8(s string) string {
+	if strings.ToValidUTF8(s, "") != s {
+		return strings.ToValidUTF8(s, "")
+	}
+	return s
+}
+
 // IndexDoc adds or updates a document in the specified vector collection
 func (e *Engine) IndexDoc(ctx context.Context, indexName string, doc *driver.Document) error {
 	if err := e.checkContext(ctx); err != nil {
 		return err
 	}
+
+	// Sanitize content to ensure valid UTF-8
+	doc.Content = sanitizeUTF8(doc.Content)
 
 	var embeddings []float32
 	var err error
@@ -420,6 +431,9 @@ func (e *Engine) IndexBatch(ctx context.Context, indexName string, docs []*drive
 
 	points := make([]*qdrant.PointStruct, len(docs))
 	for i, doc := range docs {
+		// Sanitize content to ensure valid UTF-8
+		doc.Content = sanitizeUTF8(doc.Content)
+
 		var embeddings []float32
 		var err error
 
