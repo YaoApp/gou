@@ -132,7 +132,7 @@ func (context *Context) CallWith(ctx context.Context, method string, args ...int
 		return nil, ctx.Err()
 
 	case err := <-errChan:
-		log.Error("%s.%s %s", context.ID, method, err.Error())
+		log.Error("%s.%s %v", context.ID, method, err)
 		return nil, err
 
 	case goRes := <-resChan:
