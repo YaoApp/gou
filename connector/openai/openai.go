@@ -20,6 +20,7 @@ type Options struct {
 	Proxy string `json:"proxy,omitempty"`
 	Model string `json:"model,omitempty"`
 	Key   string `json:"key"`
+	Azure string `json:"azure,omitempty"` // "true" or "false"
 }
 
 // Register the connections from dsl
@@ -34,6 +35,7 @@ func (o *Connector) Register(file string, id string, dsl []byte) error {
 	o.Options.Proxy = helper.EnvString(o.Options.Proxy)
 	o.Options.Model = helper.EnvString(o.Options.Model)
 	o.Options.Key = helper.EnvString(o.Options.Key)
+	o.Options.Azure = helper.EnvString(o.Options.Azure)
 	return nil
 }
 
@@ -74,5 +76,6 @@ func (o *Connector) Setting() map[string]interface{} {
 		"host":  host,
 		"key":   o.Options.Key,
 		"model": o.Options.Model,
+		"azure": o.Options.Azure,
 	}
 }
