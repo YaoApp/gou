@@ -16,6 +16,8 @@ func init() {
 	process.Register("encoding.hex.Decode", hex.ProcessDecode)
 	process.Register("encoding.json.Encode", json.ProcessEncode)
 	process.Register("encoding.json.Decode", json.ProcessDecode)
+	process.Register("encoding.json.Repair", json.ProcessRepair)
+	process.Register("encoding.json.Parse", json.ProcessParse)
 	process.Register("encoding.yaml.Encode", yaml.ProcessEncode)
 	process.Register("encoding.yaml.Decode", yaml.ProcessDecode)
 	process.Register("encoding.xml.Encode", xml.ProcessEncode)
