@@ -47,14 +47,14 @@ func ProcessParse(process *process.Process) interface{} {
 	var res interface{}
 	err := jsoniter.UnmarshalFromString(data, &res)
 	if err != nil {
-		repaired, err := jsonrepair.JSONRepair(data)
-		if err != nil {
+		repaired, errRepair := jsonrepair.JSONRepair(data)
+		if errRepair != nil {
 			exception.New("JSON parse error: %s", 500, err).Throw()
 		}
 
 		// Retry
-		err = jsoniter.UnmarshalFromString(repaired, &res)
-		if err != nil {
+		errRepair = jsoniter.UnmarshalFromString(repaired, &res)
+		if errRepair != nil {
 			exception.New("JSON parse error: %s", 500, err).Throw()
 		}
 	}
