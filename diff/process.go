@@ -26,7 +26,20 @@ func ProcessPatchApply(p *process.Process) interface{} {
 	return applied
 }
 
+// ProcessReplace Replace text using a patch string
+func ProcessReplace(p *process.Process) interface{} {
+	p.ValidateArgNums(2)
+	text := p.ArgsString(0)
+	patch := p.ArgsString(1)
+	applied, err := Replace(text, patch)
+	if err != nil {
+		exception.New("Replace error: %s", 500, err).Throw()
+	}
+	return applied
+}
+
 func init() {
 	process.Register("diff.Patch", ProcessPatch)
-	process.Register("diff.PatchApply", ProcessPatchApply)
+	process.Register("diff.Apply", ProcessPatchApply)
+	process.Register("diff.Replace", ProcessReplace)
 }

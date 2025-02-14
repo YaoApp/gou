@@ -7,6 +7,8 @@ import (
 	"github.com/yaoapp/gou/process"
 )
 
+// Core function tests
+
 func TestPatch(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -94,36 +96,97 @@ func TestPatchApplyString(t *testing.T) {
 	}
 }
 
-func TestPatchFrom(t *testing.T) {
+func TestReplace(t *testing.T) {
 	tests := []struct {
-		name      string
-		patch     string
-		wantError bool
+		name    string
+		text    string
+		patch   string
+		want    string
+		wantErr bool
+		errMsg  string
 	}{
 		{
-			name:      "valid patch",
-			patch:     "@@ -1,11 +1,20 @@\n Hello \n+Beautiful \n World\n",
-			wantError: false,
+			name: "single replacement",
+			text: "Hello World",
+			patch: "<<<<<<< SEARCH\n" +
+				"Hello World\n" +
+				"=======\n" +
+				"Hello Beautiful World\n" +
+				">>>>>>> REPLACE",
+			want:    "Hello Beautiful World",
+			wantErr: false,
 		},
 		{
-			name:      "invalid patch",
-			patch:     "invalid patch format",
-			wantError: true,
+			name: "multiple replacements",
+			text: "First line\nSecond line\nThird line",
+			patch: "<<<<<<< SEARCH\n" +
+				"First line\n" +
+				"=======\n" +
+				"Line One\n" +
+				">>>>>>> REPLACE\n" +
+				"<<<<<<< SEARCH\n" +
+				"Third line\n" +
+				"=======\n" +
+				"Last line\n" +
+				">>>>>>> REPLACE",
+			want:    "Line One\nSecond line\nLast line",
+			wantErr: false,
+		},
+		{
+			name: "single not found",
+			text: "Hello World",
+			patch: "<<<<<<< SEARCH\n" +
+				"Not Found\n" +
+				"=======\n" +
+				"Replacement\n" +
+				">>>>>>> REPLACE",
+			want:    "Hello World",
+			wantErr: true,
+			errMsg:  "search text not found: Not Found",
+		},
+		{
+			name: "multiple not found",
+			text: "Hello World",
+			patch: "<<<<<<< SEARCH\n" +
+				"Not Found 1\n" +
+				"=======\n" +
+				"Replacement 1\n" +
+				">>>>>>> REPLACE\n" +
+				"<<<<<<< SEARCH\n" +
+				"Not Found 2\n" +
+				"=======\n" +
+				"Replacement 2\n" +
+				">>>>>>> REPLACE",
+			want:    "Hello World",
+			wantErr: true,
+			errMsg:  "search text not found: Not Found 1, Not Found 2",
+		},
+		{
+			name:    "empty patch",
+			text:    "Hello World",
+			patch:   "",
+			want:    "Hello World",
+			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			patches, err := PatchFrom(tt.patch)
-			if tt.wantError {
+			got, err := Replace(tt.text, tt.patch)
+			if tt.wantErr {
 				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.NotEmpty(t, patches)
+				if tt.errMsg != "" {
+					assert.Equal(t, tt.errMsg, err.Error())
+				}
+				return
 			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
+
+// Process handler tests
 
 func TestProcessPatch(t *testing.T) {
 	// Test case 1: Basic text difference
@@ -147,7 +210,7 @@ func TestProcessPatch(t *testing.T) {
 	assert.Equal(t, "", patch2)
 }
 
-func TestProcessPatchApply(t *testing.T) {
+func TestProcessApply(t *testing.T) {
 	// Test case 1: Apply patch to text
 	original := "Hello World"
 	modified := "Hello Beautiful World"
@@ -157,7 +220,7 @@ func TestProcessPatchApply(t *testing.T) {
 	}
 
 	// Apply the patch
-	result, err := process.New("diff.PatchApply", original, patch).Exec()
+	result, err := process.New("diff.Apply", original, patch).Exec()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,9 +231,99 @@ func TestProcessPatchApply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result2, err := process.New("diff.PatchApply", original, emptyPatch).Exec()
+	result2, err := process.New("diff.Apply", original, emptyPatch).Exec()
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, original, result2)
+}
+
+func TestProcessReplace(t *testing.T) {
+	tests := []struct {
+		name    string
+		text    string
+		patch   string
+		want    string
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "basic replacement",
+			text: "Hello World",
+			patch: "<<<<<<< SEARCH\n" +
+				"Hello World\n" +
+				"=======\n" +
+				"Hello Beautiful World\n" +
+				">>>>>>> REPLACE",
+			want:    "Hello Beautiful World",
+			wantErr: false,
+		},
+		{
+			name: "multiple replacements",
+			text: "First line\nSecond line\nThird line",
+			patch: "<<<<<<< SEARCH\n" +
+				"First line\n" +
+				"=======\n" +
+				"Line One\n" +
+				">>>>>>> REPLACE\n" +
+				"<<<<<<< SEARCH\n" +
+				"Third line\n" +
+				"=======\n" +
+				"Last line\n" +
+				">>>>>>> REPLACE",
+			want:    "Line One\nSecond line\nLast line",
+			wantErr: false,
+		},
+		{
+			name: "single not found",
+			text: "Hello World",
+			patch: "<<<<<<< SEARCH\n" +
+				"Not Found\n" +
+				"=======\n" +
+				"Replacement\n" +
+				">>>>>>> REPLACE",
+			want:    "Hello World",
+			wantErr: true,
+			errMsg:  "Exception|500: Replace error: search text not found: Not Found",
+		},
+		{
+			name: "multiple not found",
+			text: "Hello World",
+			patch: "<<<<<<< SEARCH\n" +
+				"Not Found 1\n" +
+				"=======\n" +
+				"Replacement 1\n" +
+				">>>>>>> REPLACE\n" +
+				"<<<<<<< SEARCH\n" +
+				"Not Found 2\n" +
+				"=======\n" +
+				"Replacement 2\n" +
+				">>>>>>> REPLACE",
+			want:    "Hello World",
+			wantErr: true,
+			errMsg:  "Exception|500: Replace error: search text not found: Not Found 1, Not Found 2",
+		},
+		{
+			name:    "empty patch",
+			text:    "Hello World",
+			patch:   "",
+			want:    "Hello World",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := process.New("diff.Replace", tt.text, tt.patch).Exec()
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Equal(t, tt.errMsg, err.Error())
+				}
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, result)
+		})
+	}
 }
