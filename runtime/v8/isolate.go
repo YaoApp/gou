@@ -14,6 +14,7 @@ import (
 	httpT "github.com/yaoapp/gou/runtime/v8/objects/http"
 	jobT "github.com/yaoapp/gou/runtime/v8/objects/job"
 	logT "github.com/yaoapp/gou/runtime/v8/objects/log"
+	planT "github.com/yaoapp/gou/runtime/v8/objects/plan"
 	queryT "github.com/yaoapp/gou/runtime/v8/objects/query"
 	storeT "github.com/yaoapp/gou/runtime/v8/objects/store"
 	timeT "github.com/yaoapp/gou/runtime/v8/objects/time"
@@ -73,6 +74,7 @@ func MakeTemplate(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	template.Set("FS", fsT.New().ExportFunction(iso))
 	template.Set("Job", jobT.New().ExportFunction(iso))
 	template.Set("Store", storeT.New().ExportFunction(iso))
+	template.Set("Plan", planT.New().ExportFunction(iso))
 	template.Set("Query", queryT.New().ExportFunction(iso))
 	template.Set("WebSocket", websocketT.New().ExportFunction(iso))
 	template.Set("$L", langT.ExportFunction(iso))

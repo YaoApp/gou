@@ -16,6 +16,7 @@ const (
 	StatusCompleted
 	StatusFailed
 	StatusDestroyed
+	StatusUnknown
 )
 
 // Signal represents control signals for tasks
