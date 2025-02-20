@@ -227,6 +227,15 @@ func (p *Plan) GetStatus() (Status, map[string]Status) {
 	return p.Status, taskStatuses
 }
 
+// GetTaskStatus returns the status of a specific task
+func (p *Plan) GetTaskStatus(taskID string) (Status, error) {
+	task, exists := p.Tasks[taskID]
+	if !exists {
+		return StatusUnknown, fmt.Errorf("task with ID %s not found", taskID)
+	}
+	return task.Status, nil
+}
+
 // GetTaskData returns the data associated with a specific task
 func (p *Plan) GetTaskData(taskID string) (interface{}, error) {
 	task, exists := p.Tasks[taskID]
