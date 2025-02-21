@@ -179,6 +179,12 @@ func Alias(name string, alias string) {
 	exception.New("Process: %s does not exist", 404, name).Throw()
 }
 
+// Exists check if the process exists
+func Exists(name string) bool {
+	name = strings.ToLower(name)
+	return Handlers[name] != nil
+}
+
 // WithSID set the session id
 func (process *Process) WithSID(sid string) *Process {
 	process.Sid = sid
