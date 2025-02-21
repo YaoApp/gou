@@ -218,6 +218,19 @@ func (p *Plan) Stop() error {
 	return nil
 }
 
+// Release releases the plan
+func (p *Plan) Release() {
+	p.SharedSpace.Clear()
+	p.SharedSpace = nil
+	p.Tasks = nil
+	p = nil
+}
+
+// Trigger triggers an event on the plan
+func (p *Plan) Trigger(event string, data interface{}) {
+	p.SharedSpace.Set(event, data)
+}
+
 // GetStatus returns the current status of the plan and its tasks
 func (p *Plan) GetStatus() (Status, map[string]Status) {
 	taskStatuses := make(map[string]Status)

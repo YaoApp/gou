@@ -94,6 +94,15 @@ func MakeScript(source []byte, file string, timeout time.Duration, isroot ...boo
 	return script, nil
 }
 
+// Exists check if the script exists
+func Exists(id string) bool {
+	if strings.HasPrefix(id, "scripts.") {
+		id = strings.Replace(id, "scripts.", "", 1)
+	}
+	_, has := Scripts[id]
+	return has
+}
+
 // Load load the script
 func Load(file string, id string) (*Script, error) {
 	source, err := application.App.Read(file)
