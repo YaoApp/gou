@@ -2,12 +2,17 @@ package v8
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 
+	"github.com/google/uuid"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/runtime/v8/objects/console"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
 )
+
+var reFuncHead = regexp.MustCompile(`\s*function\s+(\w+)\s*\(([^)]*)\)\s*\{`)
 
 // Call call the script function
 func (context *Context) Call(method string, args ...interface{}) (interface{}, error) {
@@ -56,6 +61,59 @@ func (context *Context) Call(method string, args ...interface{}) (interface{}, e
 	}
 
 	return goRes, nil
+}
+
+// CallAnonymous call the script function with anonymous function
+func (context *Context) CallAnonymous(source string, args ...interface{}) (interface{}, error) {
+
+	// Remove the function name from the source, if it exists regex
+	source = reFuncHead.ReplaceAllString(source, "")
+	name := fmt.Sprintf("__anonymous_%s", uuid.New().String())
+
+	script, err := context.Isolate.CompileUnboundScript(source, name, v8go.CompileOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	fn, err := script.Run(context.Context)
+	if err != nil {
+		return nil, err
+	}
+	defer fn.Release()
+
+	global := context.Global()
+	global.Set(name, fn)
+	defer global.Delete(name)
+
+	res, err := context.Call(name, args...)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+// CallAnonymousWith call the script function with anonymous function
+func (context *Context) CallAnonymousWith(ctx context.Context, source string, args ...interface{}) (interface{}, error) {
+
+	source = reFuncHead.ReplaceAllString(source, "($2) => {")
+	name := fmt.Sprintf("__anonymous_%s", uuid.New().String())
+
+	script, err := context.Isolate.CompileUnboundScript(source, name, v8go.CompileOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	fn, err := script.Run(context.Context)
+	if err != nil {
+		return nil, err
+	}
+	defer fn.Release()
+
+	global := context.Global()
+	global.Set(name, fn)
+	defer global.Delete(name)
+
+	return context.CallWith(ctx, name, args...)
 }
 
 // CallWith call the script function
