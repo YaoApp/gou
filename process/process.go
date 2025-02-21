@@ -181,6 +181,12 @@ func Alias(name string, alias string) {
 
 // Exists check if the process exists
 func Exists(name string) bool {
+
+	// Exclude the scripts, assistants, agents, ai, services
+	if strings.HasPrefix(name, "scripts.") || strings.HasPrefix(name, "assistants.") || strings.HasPrefix(name, "agents.") || strings.HasPrefix(name, "ai.") || strings.HasPrefix(name, "services.") {
+		return true
+	}
+
 	name = strings.ToLower(name)
 	return Handlers[name] != nil
 }
@@ -264,6 +270,40 @@ func (process *Process) make() error {
 		process.ID = strings.ToLower(strings.ToLower(strings.Join(fields[1:], ".")))
 		break
 
+	// The services scripts under the services directory
+	case "services":
+		if len(fields) < 3 {
+			return fmt.Errorf("Exception|404:%s not found", process.Name)
+		}
+
+		// add scripts to the beginning of the fields
+		fields = append([]string{"scripts"}, fields...)
+		fields[1] = "__yao_service"
+		process.Group = "scripts"
+
+		// services.foo.Bar
+		process.Handler = strings.ToLower(process.Group)
+		process.ID = strings.ToLower(strings.ToLower(strings.Join(fields[1:len(fields)-1], ".")))
+		process.Method = fields[len(fields)-1]
+		break
+
+	// The assistants scripts under the assistants directory
+	case "agents", "assistants", "ai":
+		if len(fields) < 3 {
+			return fmt.Errorf("Exception|404:%s not found", process.Name)
+		}
+
+		// add scripts to the beginning of the fields
+		fields = append([]string{"scripts"}, fields...)
+		process.Group = "scripts"
+		fields[1] = "assistants"
+
+		// agents.foo.Bar
+		process.Handler = strings.ToLower(process.Group)
+		process.ID = strings.ToLower(strings.ToLower(strings.Join(fields[1:len(fields)-1], ".")))
+		process.Method = fields[len(fields)-1]
+
+	// the scripts under the scripts directory, or plugins under the plugins directory
 	case "scripts", "studio", "plugins":
 		if len(fields) < 3 {
 			return fmt.Errorf("Exception|404:%s not found", process.Name)

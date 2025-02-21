@@ -3,7 +3,6 @@ package plan
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/yaoapp/gou/plan"
 	"github.com/yaoapp/gou/process"
@@ -167,7 +166,7 @@ func (obj *Object) add(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		method := args[2].String()
 
 		// Validate the process exists
-		if !strings.HasPrefix(method, "scripts.") && !process.Exists(method) {
+		if !process.Exists(method) {
 			return bridge.JsException(info.Context(), fmt.Sprintf("the process %s does not exist", method))
 		}
 
@@ -278,7 +277,7 @@ func (obj *Object) subscribe(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		method := args[1].String()
 
 		// Validate the process exists
-		if !strings.HasPrefix(method, "scripts.") && !process.Exists(method) {
+		if !process.Exists(method) {
 			return bridge.JsException(info.Context(), fmt.Sprintf("the process %s does not exist", method))
 		}
 
