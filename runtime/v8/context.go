@@ -204,6 +204,21 @@ func (context *Context) WithFunction(name string, cb v8go.FunctionCallback) {
 	context.Global().Set(name, tmpl.GetFunction(context.Context))
 }
 
+// WithGlobal add a global variable to the context
+func (context *Context) WithGlobal(name string, value interface{}) error {
+	switch value.(type) {
+	case v8go.Valuer:
+		context.Global().Set(name, value)
+	default:
+		jsValue, err := bridge.JsValue(context.Context, value)
+		if err != nil {
+			return err
+		}
+		context.Global().Set(name, jsValue)
+	}
+	return nil
+}
+
 // Close Context
 func (context *Context) Close() error {
 
