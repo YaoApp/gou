@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/fatih/color"
 	"github.com/yaoapp/gou/plan"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
@@ -22,7 +23,21 @@ var keepKeys = map[string]bool{
 
 // Object Plan Object
 type Object struct {
+	taskfn      TaskCallback
+	subscribefn SubscribeCallback
 }
+
+// Options are the options for the plan object
+type Options struct {
+	TaskFn      TaskCallback
+	SubscribeFn SubscribeCallback
+}
+
+// TaskCallback is the callback for the task function
+type TaskCallback func(plan_id string, task_id string, source bool, method string, args ...interface{}) (interface{}, error)
+
+// SubscribeCallback is the callback for the subscribe function
+type SubscribeCallback func(plan_id string, key string, value interface{}, source bool, method string, args ...interface{})
 
 // Instance is the instance of the plan
 type Instance struct {
@@ -31,11 +46,71 @@ type Instance struct {
 	shared plan.SharedSpace
 	ctx    *context.Context
 	cancel context.CancelFunc
+	data   interface{} // custom data
+}
+
+// DefaultTaskFn is the default task function
+func DefaultTaskFn(plan_id string, task_id string, source bool, method string, args ...interface{}) (interface{}, error) {
+	fnargs := []interface{}{plan_id, task_id}
+	fnargs = append(fnargs, args...)
+
+	if source {
+		color.Red("The default task function does not support passing anonymous functions, use process instead")
+		return nil, fmt.Errorf("The default task function does not support passing anonymous functions, use process instead")
+	}
+
+	p, err := process.Of(method, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer p.Release()
+
+	err = p.Execute()
+	if err != nil {
+		return nil, err
+	}
+
+	result := p.Value()
+	return result, nil
+}
+
+// DefaultSubscribeFn is the default subscribe function
+func DefaultSubscribeFn(plan_id string, key string, value interface{}, source bool, method string, args ...interface{}) {
+	if source {
+		color.Red("The default subscribe function does not support passing anonymous functions, use process instead")
+		return
+	}
+	fnargs := []interface{}{plan_id, key, value}
+	fnargs = append(fnargs, args...)
+	p, err := process.Of(method, fnargs...)
+	if err != nil {
+		return
+	}
+	defer p.Release()
+	p.Execute()
 }
 
 // New create a new Plan Object
-func New() *Object {
+func New(options ...Options) *Object {
 	obj := &Object{}
+	obj.taskfn = DefaultTaskFn
+	obj.subscribefn = DefaultSubscribeFn
+
+	// Set the options
+	if len(options) > 0 {
+
+		// Set the subscribe function
+		if options[0].SubscribeFn != nil {
+			obj.subscribefn = options[0].SubscribeFn
+		}
+
+		// Set the task function
+		if options[0].TaskFn != nil {
+			obj.taskfn = options[0].TaskFn
+		}
+		return obj
+	}
+
 	return obj
 }
 
@@ -108,29 +183,55 @@ func (obj *Object) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to create plan object %s", err.Error()))
 		}
 
-		// Get the existing plan
-		if _, ok := plans[id]; ok {
-			this.Set("id", id)
-			return this.Value
-		}
-
-		// Create a new plan
-		instance := &Instance{id: id}
-		ctx, cancel := context.WithCancel(context.Background())
-		instance.ctx = &ctx
-		instance.cancel = cancel
-
-		shared := plan.NewMemorySharedSpace()
-		instance.shared = shared
-		instance.plan = plan.NewPlan(ctx, id, shared)
-
-		// Create a new object for the task functions
-		// Store the plan object in the plans map
-		plans[id] = instance // Store the plan object in the plans map
-		this.Set("id", id)
-		return this.Value
+		return obj.NewInstance(id, this)
 	})
 	return tmpl
+}
+
+// GetPlan get the instance of the plan
+func GetPlan(id string) (*Instance, error) {
+	instance, ok := plans[id]
+	if !ok {
+		return nil, fmt.Errorf("plan %s not found", id)
+	}
+	return instance, nil
+}
+
+// Data get the data of the plan
+func (plan *Instance) Data() interface{} {
+	return plan.data
+}
+
+// NewInstance create a new plan instance
+func (obj *Object) NewInstance(id string, this *v8go.Object, data ...interface{}) *v8go.Value {
+
+	// Get the existing plan
+	if _, ok := plans[id]; ok {
+		this.Set("id", id)
+		return this.Value
+	}
+
+	// Create a new plan
+	instance := &Instance{id: id}
+	ctx, cancel := context.WithCancel(context.Background())
+	instance.ctx = &ctx
+	instance.cancel = cancel
+
+	shared := plan.NewMemorySharedSpace()
+	instance.shared = shared
+	instance.plan = plan.NewPlan(ctx, id, shared)
+
+	// Set the data if provided
+	if len(data) > 0 {
+		instance.data = data[0]
+	}
+
+	// Create a new object for the task functions
+	// Store the plan object in the plans map
+	plans[id] = instance // Store the plan object in the plans map
+	this.Set("id", id)
+
+	return this.Value
 }
 
 func (obj *Object) add(iso *v8go.Isolate) *v8go.FunctionTemplate {
@@ -150,9 +251,10 @@ func (obj *Object) add(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		if !args[1].IsNumber() {
 			return bridge.JsException(info.Context(), "the order should be a number")
 		}
+		isSource := args[2].IsFunction()
 
 		// Validate the task process name
-		if !args[2].IsString() {
+		if !isSource && !args[2].IsString() {
 			return bridge.JsException(info.Context(), "the task function should be a string")
 		}
 
@@ -166,7 +268,7 @@ func (obj *Object) add(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		method := args[2].String()
 
 		// Validate the process exists
-		if !process.Exists(method) {
+		if !isSource && !process.Exists(method) {
 			return bridge.JsException(info.Context(), fmt.Sprintf("the process %s does not exist", method))
 		}
 
@@ -188,26 +290,12 @@ func (obj *Object) add(iso *v8go.Isolate) *v8go.FunctionTemplate {
 
 		// Add the task to the plan
 		instance.plan.AddTask(taskID, order, func(ctx context.Context, shared plan.SharedSpace, signals <-chan plan.Signal) error {
-
-			// Trigger the TaskStarted signal
 			instance.plan.Trigger("TaskStarted", map[string]any{"task": taskID})
-			args := []interface{}{instance.plan.ID, taskID}
-			args = append(args, rest...)
-
-			p, err := process.Of(method, args...)
+			result, err := obj.taskfn(id, taskID, isSource, method, rest...)
 			if err != nil {
 				instance.plan.Trigger("TaskError", map[string]any{"message": err.Error(), "task": taskID})
 				return err
 			}
-			defer p.Release()
-
-			err = p.Execute()
-			if err != nil {
-				instance.plan.Trigger("TaskError", map[string]any{"message": err.Error(), "task": taskID})
-				return err
-			}
-
-			result := p.Value()
 			instance.plan.Trigger("TaskCompleted", map[string]any{"task": taskID, "result": result})
 			return nil
 		})
@@ -268,7 +356,8 @@ func (obj *Object) subscribe(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		}
 
 		// Validate the callback
-		if !args[1].IsString() {
+		isSource := args[1].IsFunction()
+		if !isSource && !args[1].IsString() {
 			return bridge.JsException(info.Context(), "the callback should be a string")
 		}
 
@@ -277,7 +366,7 @@ func (obj *Object) subscribe(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		method := args[1].String()
 
 		// Validate the process exists
-		if !process.Exists(method) {
+		if !isSource && !process.Exists(method) {
 			return bridge.JsException(info.Context(), fmt.Sprintf("the process %s does not exist", method))
 		}
 
@@ -299,14 +388,7 @@ func (obj *Object) subscribe(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		// Subscribe to the key
 		instance := plans[id]
 		err = instance.shared.Subscribe(key, func(key string, value interface{}) {
-			args := []interface{}{instance.plan.ID, key, value}
-			args = append(args, rest...)
-			p, err := process.Of(method, args...)
-			if err != nil {
-				return
-			}
-			defer p.Release()
-			p.Execute()
+			obj.subscribefn(id, key, value, isSource, method, rest...)
 		})
 
 		if err != nil {
