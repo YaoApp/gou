@@ -92,6 +92,9 @@ type SharedSpace interface {
 	// Clear removes all values from the shared space
 	Clear() error
 
+	// ClearNotify removes all values from the shared space and notifies subscribers
+	ClearNotify() error
+
 	// Subscribe subscribes to changes in the shared space
 	Subscribe(key string, callback func(key string, value interface{})) error
 
