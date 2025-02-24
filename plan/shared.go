@@ -79,7 +79,7 @@ func (m *MemorySharedSpace) Clear() error {
 	m.subMu.RLock()
 	for key, callbacks := range m.subscribers {
 		for _, callback := range callbacks {
-			go callback(key, nil)
+			callback(key, nil)
 		}
 	}
 	m.subMu.RUnlock()

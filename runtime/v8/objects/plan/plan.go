@@ -3,6 +3,7 @@ package plan
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/fatih/color"
 	"github.com/yaoapp/gou/plan"
@@ -11,7 +12,7 @@ import (
 	"rogchap.com/v8go"
 )
 
-var plans = map[string]*Instance{}
+var plans sync.Map
 
 // KeepKeys are the keys that should not be set in the shared space
 var keepKeys = map[string]bool{
@@ -190,11 +191,14 @@ func (obj *Object) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 
 // GetPlan get the instance of the plan
 func GetPlan(id string) (*Instance, error) {
-	instance, ok := plans[id]
+	instance, ok := plans.Load(id)
 	if !ok {
 		return nil, fmt.Errorf("plan %s not found", id)
 	}
-	return instance, nil
+	if inst, ok := instance.(*Instance); ok {
+		return inst, nil
+	}
+	return nil, fmt.Errorf("invalid plan instance type for %s", id)
 }
 
 // Data get the data of the plan
@@ -206,7 +210,7 @@ func (plan *Instance) Data() interface{} {
 func (obj *Object) NewInstance(id string, this *v8go.Object, data ...interface{}) *v8go.Value {
 
 	// Get the existing plan
-	if _, ok := plans[id]; ok {
+	if _, ok := plans.Load(id); ok {
 		this.Set("id", id)
 		return this.Value
 	}
@@ -226,9 +230,8 @@ func (obj *Object) NewInstance(id string, this *v8go.Object, data ...interface{}
 		instance.data = data[0]
 	}
 
-	// Create a new object for the task functions
 	// Store the plan object in the plans map
-	plans[id] = instance // Store the plan object in the plans map
+	plans.Store(id, instance)
 	this.Set("id", id)
 
 	return this.Value
@@ -236,7 +239,6 @@ func (obj *Object) NewInstance(id string, this *v8go.Object, data ...interface{}
 
 func (obj *Object) add(iso *v8go.Isolate) *v8go.FunctionTemplate {
 	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
-
 		args := info.Args()
 		if len(args) < 3 {
 			return bridge.JsException(info.Context(), "missing parameters")
@@ -286,7 +288,12 @@ func (obj *Object) add(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		if err != nil {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
 		}
-		instance := plans[id]
+
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
 
 		// Add the task to the plan
 		instance.plan.AddTask(taskID, order, func(ctx context.Context, shared plan.SharedSpace, signals <-chan plan.Signal) error {
@@ -311,7 +318,11 @@ func (obj *Object) run(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
 		}
 
-		instance := plans[id]
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
 		err = instance.plan.Start()
 		if err != nil {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to start the plan %s", err.Error()))
@@ -324,12 +335,18 @@ func (obj *Object) release(iso *v8go.Isolate) *v8go.FunctionTemplate {
 	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		id, err := obj.ID(info)
 		if err != nil {
+			fmt.Printf("failed to get the id %s\n", err.Error())
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
 		}
-
-		instance := plans[id]
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
 		instance.plan.Release()
-		delete(plans, id)
+		instance.data = nil
+		instance.shared = nil
+		plans.Delete(id)
 		return nil
 	})
 }
@@ -385,8 +402,13 @@ func (obj *Object) subscribe(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
 		}
 
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
+
 		// Subscribe to the key
-		instance := plans[id]
 		err = instance.shared.Subscribe(key, func(key string, value interface{}) {
 			obj.subscribefn(id, key, value, isSource, method, rest...)
 		})
@@ -430,7 +452,11 @@ func (obj *Object) set(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
 		}
 
-		instance := plans[id]
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
 		err = instance.shared.Set(key, goValue)
 		if err != nil {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to set the value %s", err.Error()))
@@ -459,7 +485,11 @@ func (obj *Object) get(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
 		}
 
-		instance := plans[id]
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
 		value, err := instance.shared.Get(key)
 		if err != nil {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the value %s", err.Error()))
@@ -493,7 +523,11 @@ func (obj *Object) del(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
 		}
 
-		instance := plans[id]
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
 		err = instance.shared.Delete(key)
 		if err != nil {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to delete the value %s", err.Error()))
@@ -509,7 +543,11 @@ func (obj *Object) clear(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
 		}
 
-		instance := plans[id]
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
 		err = instance.shared.Clear()
 		if err != nil {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to clear the shared space %s", err.Error()))
@@ -537,9 +575,12 @@ func (obj *Object) taskData(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
 		}
 
-		// Get the task
-		instance := plans[id]
-		task, exists := instance.plan.Tasks[args[0].String()]
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
+		task, exists := instance.plan.Tasks[taskID]
 		if !exists {
 			return bridge.JsException(info.Context(), fmt.Sprintf("the task %s does not exist", taskID))
 		}
@@ -587,7 +628,11 @@ func (obj *Object) taskStatus(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
 		}
 
-		instance := plans[id]
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
 		status, err := instance.plan.GetTaskStatus(taskID)
 		if err != nil {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the status %s", err.Error()))
@@ -609,7 +654,11 @@ func (obj *Object) status(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
 		}
 
-		instance := plans[id]
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
 		plan, tasks := instance.plan.GetStatus()
 
 		// Convert the plan status to a string
