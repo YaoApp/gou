@@ -3,6 +3,7 @@ package plan
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/fatih/color"
@@ -492,6 +493,12 @@ func (obj *Object) get(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		instance := val.(*Instance)
 		value, err := instance.shared.Get(key)
 		if err != nil {
+
+			// If the key is not found, return null
+			if strings.Contains(err.Error(), "not found") {
+				return v8go.Null(info.Context().Isolate())
+			}
+
 			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the value %s", err.Error()))
 		}
 
