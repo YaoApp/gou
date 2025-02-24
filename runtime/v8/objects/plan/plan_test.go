@@ -176,6 +176,31 @@ func TestPlanEvents(t *testing.T) {
 	assert.Equal(t, "completed", dot.Get("tasks.task-4"))
 }
 
+func TestPlanGetSet(t *testing.T) {
+	ctx := prepare()
+	defer close(ctx)
+
+	v, err := ctx.RunScript(`
+	function test() {
+		const plan = new Plan("test-plan");
+		plan.Set("some-key", "foo");
+		value = plan.Get("some-key");
+		plan.Release();
+		return value;
+	}
+	test();
+	`, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, "foo", res)
+}
+
 // close close the v8go context
 func close(ctx *v8go.Context) {
 	ctx.Isolate().Dispose()

@@ -59,7 +59,7 @@ func DefaultTaskFn(plan_id string, task_id string, source bool, method string, a
 		return nil, fmt.Errorf("The default task function does not support passing anonymous functions, use process instead")
 	}
 
-	p, err := process.Of(method, args...)
+	p, err := process.Of(method, fnargs...)
 	if err != nil {
 		return nil, err
 	}
