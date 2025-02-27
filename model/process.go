@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/kun/any"
@@ -36,6 +37,55 @@ var ModelHandlers = map[string]process.Handler{
 
 func init() {
 	process.RegisterGroup("models", ModelHandlers)
+	process.RegisterGroup("model", map[string]process.Handler{
+		"list": processList,
+	})
+}
+
+// Return the loaded models
+func processList(process *process.Process) interface{} {
+	models := []map[string]interface{}{}
+	options := process.ArgsMap(0)
+	withMetadata := false
+	withColumns := false
+	if v, ok := options["metadata"].(bool); ok && v {
+		withMetadata = v
+	}
+
+	if v, ok := options["columns"].(bool); ok && v {
+		withColumns = v
+	}
+
+	for _, model := range Models {
+		file := model.File
+		if !strings.HasPrefix(file, "/") {
+			file = fmt.Sprintf("/models/%s", file)
+		}
+
+		description := ""
+		if model.MetaData.Table.Comment != "" {
+			description = model.MetaData.Table.Comment
+		}
+
+		data := map[string]interface{}{
+			"id":          model.ID,
+			"name":        model.MetaData.Name,
+			"description": description,
+			"file":        file,
+			"table":       model.MetaData.Table,
+			"primary":     model.PrimaryKey,
+		}
+
+		if withMetadata {
+			data["metadata"] = model.MetaData
+		}
+
+		if withColumns {
+			data["columns"] = model.Columns
+		}
+		models = append(models, data)
+	}
+	return models
 }
 
 // processFind 运行模型 MustFind
