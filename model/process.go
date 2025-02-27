@@ -36,10 +36,84 @@ var ModelHandlers = map[string]process.Handler{
 }
 
 func init() {
+
+	// Model instance
 	process.RegisterGroup("models", ModelHandlers)
+
+	// Model management
 	process.RegisterGroup("model", map[string]process.Handler{
-		"list": processList,
+		"list":    processList,
+		"get":     processGetModel,
+		"exists":  processModelExists,
+		"reload":  processModelReload,
+		"migrate": processModelMigrate,
+		"load":    processModelLoad,
+		"unload":  processModelUnload,
 	})
+}
+
+// processModelReload reload the model
+func processModelReload(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	id := process.ArgsString(0)
+	mod := Select(id)
+	_, err := mod.Reload()
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return nil
+}
+
+// processModelMigrate migrate the model
+func processModelMigrate(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	id := process.ArgsString(0)
+	mod := Select(id)
+	return mod.Migrate(process.ArgsBool(1))
+}
+
+// processModelLoad load the model
+func processModelLoad(process *process.Process) interface{} {
+	process.ValidateArgNums(2)
+	id := process.ArgsString(0)
+	source := process.ArgsString(1)
+	_, err := LoadSourceSync([]byte(source), id, "")
+	return err
+}
+
+// processModelUnload unload the model
+func processModelUnload(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	id := process.ArgsString(0)
+	lock.Lock()
+	defer lock.Unlock()
+	delete(Models, id)
+	return nil
+}
+
+// processModelExists Check if the model is loaded
+func processModelExists(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	id := process.ArgsString(0)
+	return Exists(id)
+}
+
+// processGetModel get the model
+func processGetModel(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	id := process.ArgsString(0)
+	options := process.ArgsMap(1)
+	mod := Select(id)
+	data := map[string]interface{}{
+		"id": id,
+	}
+	if v, ok := options["metadata"].(bool); ok && v {
+		data["metadata"] = mod.MetaData
+	}
+	if v, ok := options["columns"].(bool); ok && v {
+		data["columns"] = mod.Columns
+	}
+	return data
 }
 
 // Return the loaded models
