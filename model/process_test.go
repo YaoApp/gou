@@ -139,3 +139,66 @@ func TestProcessPaginate(t *testing.T) {
 	_, err := p.Exec()
 	assert.Nil(t, err)
 }
+
+func TestProcessList(t *testing.T) {
+	prepare(t)
+	defer clean()
+
+	// Test with default options
+	p := process.New("model.list", map[string]interface{}{})
+	result, err := p.Exec()
+	assert.Nil(t, err)
+	models := result.([]map[string]interface{})
+	assert.Greater(t, len(models), 0)
+
+	// Check structure of returned model data
+	for _, model := range models {
+		assert.Contains(t, model, "id")
+		assert.Contains(t, model, "name")
+		assert.Contains(t, model, "description")
+		assert.Contains(t, model, "file")
+		assert.Contains(t, model, "table")
+		assert.Contains(t, model, "primary")
+		assert.NotContains(t, model, "metadata")
+		assert.NotContains(t, model, "columns")
+	}
+
+	// Test with metadata option
+	p = process.New("model.list", map[string]interface{}{"metadata": true})
+	result, err = p.Exec()
+	assert.Nil(t, err)
+	models = result.([]map[string]interface{})
+	assert.Greater(t, len(models), 0)
+
+	// Check that metadata is included
+	for _, model := range models {
+		assert.Contains(t, model, "metadata")
+		assert.NotContains(t, model, "columns")
+	}
+
+	// Test with columns option
+	p = process.New("model.list", map[string]interface{}{"columns": true})
+	result, err = p.Exec()
+	assert.Nil(t, err)
+	models = result.([]map[string]interface{})
+	assert.Greater(t, len(models), 0)
+
+	// Check that columns are included
+	for _, model := range models {
+		assert.Contains(t, model, "columns")
+		assert.NotContains(t, model, "metadata")
+	}
+
+	// Test with both options
+	p = process.New("model.list", map[string]interface{}{"metadata": true, "columns": true})
+	result, err = p.Exec()
+	assert.Nil(t, err)
+	models = result.([]map[string]interface{})
+	assert.Greater(t, len(models), 0)
+
+	// Check that both metadata and columns are included
+	for _, model := range models {
+		assert.Contains(t, model, "metadata")
+		assert.Contains(t, model, "columns")
+	}
+}
