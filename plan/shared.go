@@ -13,6 +13,17 @@ type MemorySharedSpace struct {
 	subMu       sync.RWMutex
 }
 
+// Space interface
+type Space interface {
+	Set(key string, value interface{}) error
+	Get(key string) (interface{}, error)
+	Delete(key string) error
+	Clear() error
+	ClearNotify() error
+	Subscribe(key string, callback func(key string, value interface{})) error
+	Unsubscribe(key string) error
+}
+
 // NewMemorySharedSpace creates a new MemorySharedSpace instance
 func NewMemorySharedSpace() *MemorySharedSpace {
 	return &MemorySharedSpace{
