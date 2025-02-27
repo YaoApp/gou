@@ -105,7 +105,12 @@ func processGetModel(process *process.Process) interface{} {
 	options := process.ArgsMap(1)
 	mod := Select(id)
 	data := map[string]interface{}{
-		"id": id,
+		"id":          id,
+		"name":        mod.MetaData.Name,
+		"description": mod.MetaData.Table.Comment,
+		"file":        mod.File,
+		"table":       mod.MetaData.Table,
+		"primary":     mod.PrimaryKey,
 	}
 	if v, ok := options["metadata"].(bool); ok && v {
 		data["metadata"] = mod.MetaData
