@@ -376,6 +376,15 @@ func GoValue(value *v8go.Value, ctx *v8go.Context) (interface{}, error) {
 	return goValueParse(value, goValue)
 }
 
+// Unmarshal cast javascript value to golang value
+func Unmarshal(value *v8go.Value, v interface{}) error {
+	data, err := value.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	return jsoniter.Unmarshal(data, v)
+}
+
 func goValueParse(value *v8go.Value, v interface{}) (interface{}, error) {
 
 	data, err := value.MarshalJSON()
