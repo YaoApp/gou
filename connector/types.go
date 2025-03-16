@@ -62,6 +62,12 @@ type Connector interface {
 	Setting() map[string]interface{}
 }
 
+// Option the option interface
+type Option struct {
+	Label string `json:"label,omitempty"`
+	Value string `json:"value,omitempty"`
+}
+
 // DSL the connector DSL
 type DSL struct {
 	ID      string                 `json:"-"`

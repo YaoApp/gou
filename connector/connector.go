@@ -15,6 +15,9 @@ import (
 // Connectors the loaded connectors
 var Connectors = map[string]Connector{}
 
+// AIConnectors the AI connectors
+var AIConnectors = []Option{}
+
 // Load a connector from source
 func Load(file string, id string) (Connector, error) {
 
@@ -37,6 +40,21 @@ func Load(file string, id string) (Connector, error) {
 	err = c.Register(file, id, data)
 	if err != nil {
 		return nil, err
+	}
+
+	// The AI connectors
+	if dsl.Type == "openai" {
+		label := dsl.Label
+		if label == "" {
+			label = dsl.Name
+		}
+		if label == "" {
+			label = id
+		}
+		AIConnectors = append(AIConnectors, Option{
+			Label: label,
+			Value: id,
+		})
 	}
 
 	Connectors[id] = c
