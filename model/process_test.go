@@ -387,3 +387,131 @@ func TestProcessModelUnload(t *testing.T) {
 	_, err = p.Exec()
 	assert.Nil(t, err)
 }
+
+func TestProcessTakeSnapshot(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	p := process.New("models.user.takesnapshot", false)
+	name, err := p.Exec()
+	assert.Nil(t, err)
+	assert.NotNil(t, name)
+	assert.Contains(t, name.(string), "user_snapshot_")
+
+	// Drop the snapshot table
+	p = process.New("models.user.dropsnapshot", name)
+	_, err = p.Exec()
+	assert.Nil(t, err)
+}
+
+func TestProcessSnapshotExists(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	// Create a snapshot first
+	p := process.New("models.user.takesnapshot", false)
+	name, err := p.Exec()
+	assert.Nil(t, err)
+	assert.NotNil(t, name)
+
+	// Test snapshot exists
+	p = process.New("models.user.snapshotexists", name)
+	exists, err := p.Exec()
+	assert.Nil(t, err)
+	assert.True(t, exists.(bool))
+
+	// Drop the snapshot table
+	p = process.New("models.user.dropsnapshot", name)
+	_, err = p.Exec()
+	assert.Nil(t, err)
+}
+
+func TestProcessRestoreSnapshot(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	// Create a snapshot first
+	p := process.New("models.user.takesnapshot", false)
+	name, err := p.Exec()
+	assert.Nil(t, err)
+	assert.NotNil(t, name)
+
+	// Test restore snapshot
+	p = process.New("models.user.restoresnapshot", name)
+	_, err = p.Exec()
+	assert.Nil(t, err)
+
+	// Drop the snapshot table
+	p = process.New("models.user.dropsnapshot", name)
+	_, err = p.Exec()
+	assert.Nil(t, err)
+}
+
+func TestProcessRestoreSnapshotByRename(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	// Create a snapshot first
+	p := process.New("models.user.takesnapshot", false)
+	name, err := p.Exec()
+	assert.Nil(t, err)
+	assert.NotNil(t, name)
+
+	// Test restore snapshot by rename
+	p = process.New("models.user.restoresnapshotbyrename", name)
+	_, err = p.Exec()
+	assert.Nil(t, err)
+}
+
+func TestProcessDropSnapshot(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	// Create a snapshot first
+	p := process.New("models.user.takesnapshot", false)
+	name, err := p.Exec()
+	assert.Nil(t, err)
+	assert.NotNil(t, name)
+
+	// Test drop snapshot
+	p = process.New("models.user.dropsnapshot", name)
+	_, err = p.Exec()
+	assert.Nil(t, err)
+
+	// Verify snapshot was dropped
+	p = process.New("models.user.snapshotexists", name)
+	exists, err := p.Exec()
+	assert.Nil(t, err)
+	assert.False(t, exists.(bool))
+}
+
+func TestProcessSnapshotErrors(t *testing.T) {
+	prepare(t)
+	defer clean()
+
+	// Test snapshot exists with invalid name
+	p := process.New("models.user.snapshotexists", "invalid_snapshot")
+	exists, err := p.Exec()
+	assert.Nil(t, err)
+	assert.False(t, exists.(bool))
+
+	// Test restore snapshot with non-existent snapshot
+	p = process.New("models.user.restoresnapshot", "invalid_snapshot")
+	_, err = p.Exec()
+	assert.NotNil(t, err)
+
+	// Test restore snapshot by rename with non-existent snapshot
+	p = process.New("models.user.restoresnapshotbyrename", "invalid_snapshot")
+	_, err = p.Exec()
+	assert.NotNil(t, err)
+
+	// Test drop snapshot with invalid name
+	p = process.New("models.user.dropsnapshot", "invalid_snapshot")
+	_, err = p.Exec()
+	assert.NotNil(t, err)
+}
