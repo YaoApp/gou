@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/yaoapp/gou/schema/types"
 	"github.com/yaoapp/kun/log"
 	"github.com/yaoapp/xun/capsule"
+	"github.com/yaoapp/xun/dbal"
 	"github.com/yaoapp/xun/dbal/schema"
 )
 
@@ -141,10 +143,25 @@ func (x *Xun) TableExists(name string) (bool, error) {
 // TableCreate a table
 func (x *Xun) TableCreate(name string, blueprint types.Blueprint) error {
 	sch := x.Manager.Schema()
+	option := dbal.CreateTableOption{}
+
+	// Temporary table
+	if blueprint.Temporary {
+		option.Engine = "MEMORY"
+		option.Temporary = true
+	}
+
 	err := sch.CreateTable(name, func(table schema.Blueprint) {
 
 		// Create columns
 		for _, column := range blueprint.Columns {
+
+			// Blob / Text to varchar
+			if option.Engine == "MEMORY" && (column.Type == "blob" || column.Type == "text" || column.Type == "json") {
+				column.Type = "string"
+				color.Yellow("[TableCreate] table:%s column: %s %s is converted to string, because the engine is MEMORY", name, column.Name, column.Type)
+			}
+
 			_, err := setColumn(table, column)
 			if err != nil {
 				log.Error("[TableCreate] table:%s column: %s %s", name, column.Name, err)
@@ -167,10 +184,13 @@ func (x *Xun) TableCreate(name string, blueprint types.Blueprint) error {
 		// +deleted_at
 		if blueprint.Option.SoftDeletes {
 			table.SoftDeletes()
-			table.JSON("__restore_data").Null()
+			if option.Engine != "MEMORY" {
+				table.JSON("__restore_data").Null()
+			} else {
+				table.String("__restore_data").Null()
+			}
 		}
-	})
-
+	}, option)
 	return err
 }
 

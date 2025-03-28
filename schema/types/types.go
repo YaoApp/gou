@@ -43,9 +43,10 @@ type Diff struct {
 
 // Blueprint the blueprint of schema
 type Blueprint struct {
-	Columns []Column        `json:"columns,omitempty"`
-	Indexes []Index         `json:"indexes,omitempty"`
-	Option  BlueprintOption `json:"option,omitempty"`
+	Columns   []Column        `json:"columns,omitempty"`
+	Indexes   []Index         `json:"indexes,omitempty"`
+	Option    BlueprintOption `json:"option,omitempty"`
+	Temporary bool            `json:"temporary,omitempty"` // If true, the table will be created as a temporary table (in memory)
 }
 
 // BlueprintOption the blueprint option

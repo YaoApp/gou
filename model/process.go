@@ -13,26 +13,31 @@ import (
 
 // ModelHandlers 模型运行器
 var ModelHandlers = map[string]process.Handler{
-	"find":                processFind,
-	"get":                 processGet,
-	"paginate":            processPaginate,
-	"selectoption":        processSelectOption,
-	"create":              processCreate,
-	"update":              processUpdate,
-	"save":                processSave,
-	"delete":              processDelete,
-	"destroy":             processDestroy,
-	"insert":              processInsert,
-	"updatewhere":         processUpdateWhere,
-	"deletewhere":         processDeleteWhere,
-	"destroywhere":        processDestroyWhere,
-	"eachsave":            processEachSave,
-	"eachsaveafterdelete": processEachSaveAfterDelete,
-	"migrate":             processMigrate,
-	"load":                processLoad,
-	"reload":              processReload,
-	"read":                processRead,
-	"exists":              processExists,
+	"find":                    processFind,
+	"get":                     processGet,
+	"paginate":                processPaginate,
+	"selectoption":            processSelectOption,
+	"create":                  processCreate,
+	"update":                  processUpdate,
+	"save":                    processSave,
+	"delete":                  processDelete,
+	"destroy":                 processDestroy,
+	"insert":                  processInsert,
+	"updatewhere":             processUpdateWhere,
+	"deletewhere":             processDeleteWhere,
+	"destroywhere":            processDestroyWhere,
+	"eachsave":                processEachSave,
+	"eachsaveafterdelete":     processEachSaveAfterDelete,
+	"migrate":                 processMigrate,
+	"load":                    processLoad,
+	"reload":                  processReload,
+	"read":                    processRead,
+	"exists":                  processExists,
+	"takesnapshot":            processTakeSnapshot,
+	"restoresnapshot":         processRestoreSnapshot,
+	"restoresnapshotbyrename": processRestoreSnapshotByRename,
+	"dropsnapshot":            processDropSnapshot,
+	"snapshotexists":          processSnapshotExists,
 }
 
 func init() {
@@ -434,4 +439,64 @@ func processRead(process *process.Process) interface{} {
 // processExists Check if the model is loaded
 func processExists(process *process.Process) interface{} {
 	return Exists(process.ID)
+}
+
+// processTakeSnapshot Create a snapshot of the model
+func processTakeSnapshot(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	mod := Select(process.ID)
+	inMemory := process.ArgsBool(0)
+	name, err := mod.TakeSnapshot(inMemory)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return name
+}
+
+// processRestoreSnapshot Restore the model from the snapshot
+func processRestoreSnapshot(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	mod := Select(process.ID)
+	name := process.ArgsString(0)
+	err := mod.RestoreSnapshot(name)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return nil
+}
+
+// processRestoreSnapshotByRename Restore the model from the snapshot by renaming
+func processRestoreSnapshotByRename(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	mod := Select(process.ID)
+	name := process.ArgsString(0)
+	err := mod.RestoreSnapshotByRename(name)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return nil
+}
+
+// processDropSnapshot Drop the snapshot table
+func processDropSnapshot(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	mod := Select(process.ID)
+	name := process.ArgsString(0)
+	err := mod.DropSnapshotTable(name)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return nil
+}
+
+// processSnapshotExists Check if the snapshot table exists
+func processSnapshotExists(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	mod := Select(process.ID)
+	name := process.ArgsString(0)
+	exists, err := mod.SnapshotExists(name)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return exists
 }
