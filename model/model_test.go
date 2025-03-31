@@ -73,14 +73,21 @@ func TestExists(t *testing.T) {
 	assert.False(t, Exists("not-found"))
 }
 
+func TestGetMetaData(t *testing.T) {
+	prepare(t)
+	defer clean()
+	meta := GetMetaData("user")
+	assert.Equal(t, meta.Name, "User")
+	assert.Panics(t, func() {
+		GetMetaData("not-found")
+	})
+}
+
 func TestRead(t *testing.T) {
 	prepare(t)
 	defer clean()
-	dsl := Read("user")
-	assert.Equal(t, dsl.Name, "User")
-	assert.Panics(t, func() {
-		Read("not-found")
-	})
+	source := Read("user")
+	assert.NotNil(t, source)
 }
 
 func TestModelMustFind(t *testing.T) {
