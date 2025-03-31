@@ -15,7 +15,7 @@ import (
 // ModelHandlers 模型运行器
 var ModelHandlers = map[string]process.Handler{
 
-	// Data operations
+	// Atomic operations
 	"find":                processFind,
 	"get":                 processGet,
 	"paginate":            processPaginate,
@@ -30,6 +30,7 @@ var ModelHandlers = map[string]process.Handler{
 	"destroywhere":        processDestroyWhere,
 	"eachsave":            processEachSave,
 	"eachsaveafterdelete": processEachSaveAfterDelete,
+	"upsert":              processUpsert,
 
 	// Select operations - will be deprecated
 	"selectoption": processSelectOption,
@@ -520,4 +521,51 @@ func processSnapshotExists(process *process.Process) interface{} {
 		exception.Err(err, 500).Throw()
 	}
 	return exists
+}
+
+// processUpsert runs the model Upsert method
+func processUpsert(process *process.Process) interface{} {
+	process.ValidateArgNums(2)
+	mod := Select(process.ID)
+	row := any.Of(process.Args[0]).Map().MapStrAny
+
+	// Validate uniqueBy parameter
+	var uniqueBy []interface{}
+	switch v := process.Args[1].(type) {
+	case string:
+		uniqueBy = []interface{}{v}
+	case []string:
+		for _, s := range v {
+			uniqueBy = append(uniqueBy, s)
+		}
+	case []interface{}:
+		uniqueBy = v
+	default:
+		exception.New("uniqueBy parameter must be a string or string array", 400).Throw()
+	}
+
+	if len(uniqueBy) == 0 {
+		exception.New("uniqueBy parameter cannot be empty", 400).Throw()
+	}
+
+	// Process updateColumns parameter if provided
+	var updateColumns []interface{}
+	if process.NumOfArgsIs(3) {
+		switch v := process.Args[2].(type) {
+		case []string:
+			for _, s := range v {
+				updateColumns = append(updateColumns, s)
+			}
+		case []interface{}:
+			updateColumns = v
+		default:
+			exception.New("updateColumns parameter must be a string array", 400).Throw()
+		}
+	}
+
+	id, err := mod.Upsert(row, uniqueBy, updateColumns)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return id
 }
