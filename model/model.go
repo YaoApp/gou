@@ -57,6 +57,7 @@ func LoadSource(source []byte, id string, file string) (*Model, error) {
 		Name:     id,
 		File:     file,
 		MetaData: metadata,
+		source:   source,
 	}
 
 	// 解析常用数值
@@ -192,19 +193,22 @@ func (mod *Model) Migrate(force bool, opts ...MigrateOption) error {
 	return mod.SaveTable()
 }
 
+// MigrateOptions Migrate options
 type MigrateOptions struct {
 	DonotInsertValues bool `json:"donot_insert_values"`
 }
 
+// MigrateOption Migrate option
 type MigrateOption func(*MigrateOptions)
 
+// WithDonotInsertValues with donot insert values
 func WithDonotInsertValues(v bool) MigrateOption {
 	return func(mo *MigrateOptions) {
 		mo.DonotInsertValues = v
 	}
 }
 
-// Select 读取已加载模型
+// Select select the model
 func Select(id string) *Model {
 	mod, has := Models[id]
 	if !has {
@@ -222,9 +226,14 @@ func Exists(id string) bool {
 	return has
 }
 
-// Read read the model dsl
-func Read(id string) MetaData {
+// GetMetaData get the model meta data
+func GetMetaData(id string) MetaData {
 	return Select(id).MetaData
+}
+
+// Read read the model source
+func Read(id string) []byte {
+	return Select(id).source
 }
 
 // Validate 数值校验

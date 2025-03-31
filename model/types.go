@@ -31,6 +31,7 @@ type Model struct {
 	PrimaryKey    string             // 主键(单一主键)
 	PrimaryKeys   []string           // 主键(联合主键)
 	UniqueColumns []*Column          // 唯一字段清单
+	source        []byte             // Source code
 }
 
 // MetaData 元数据

@@ -82,6 +82,20 @@ func TestProcessReload(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestProcessMetadata(t *testing.T) {
+	prepare(t)
+	defer clean()
+
+	p := process.New("models.user.metadata")
+	data, err := p.Exec()
+	assert.Nil(t, err)
+	assert.Equal(t, data.(MetaData).Name, "User")
+
+	p = process.New("models.not-found.metadata")
+	_, err = p.Exec()
+	assert.NotNil(t, err)
+}
+
 func TestProcessRead(t *testing.T) {
 	prepare(t)
 	defer clean()
@@ -89,7 +103,7 @@ func TestProcessRead(t *testing.T) {
 	p := process.New("models.user.read")
 	data, err := p.Exec()
 	assert.Nil(t, err)
-	assert.Equal(t, data.(MetaData).Name, "User")
+	assert.NotNil(t, data)
 
 	p = process.New("models.not-found.read")
 	_, err = p.Exec()
@@ -203,12 +217,12 @@ func TestProcessList(t *testing.T) {
 	}
 }
 
-func TestProcessGetModel(t *testing.T) {
+func TestProcessDSL(t *testing.T) {
 	prepare(t)
 	defer clean()
 
 	// Test with default options (no metadata or columns)
-	p := process.New("model.get", "user", map[string]interface{}{})
+	p := process.New("model.dsl", "user", map[string]interface{}{})
 	result, err := p.Exec()
 	assert.Nil(t, err)
 	modelData := result.(map[string]interface{})
@@ -219,7 +233,7 @@ func TestProcessGetModel(t *testing.T) {
 	assert.NotContains(t, modelData, "columns")
 
 	// Test with metadata option
-	p = process.New("model.get", "user", map[string]interface{}{"metadata": true})
+	p = process.New("model.dsl", "user", map[string]interface{}{"metadata": true})
 	result, err = p.Exec()
 	assert.Nil(t, err)
 	modelData = result.(map[string]interface{})
@@ -230,7 +244,7 @@ func TestProcessGetModel(t *testing.T) {
 	assert.NotContains(t, modelData, "columns")
 
 	// Test with columns option
-	p = process.New("model.get", "user", map[string]interface{}{"columns": true})
+	p = process.New("model.dsl", "user", map[string]interface{}{"columns": true})
 	result, err = p.Exec()
 	assert.Nil(t, err)
 	modelData = result.(map[string]interface{})
@@ -241,7 +255,7 @@ func TestProcessGetModel(t *testing.T) {
 	assert.NotContains(t, modelData, "metadata")
 
 	// Test with both options
-	p = process.New("model.get", "user", map[string]interface{}{"metadata": true, "columns": true})
+	p = process.New("model.dsl", "user", map[string]interface{}{"metadata": true, "columns": true})
 	result, err = p.Exec()
 	assert.Nil(t, err)
 	modelData = result.(map[string]interface{})
@@ -252,7 +266,7 @@ func TestProcessGetModel(t *testing.T) {
 	assert.Contains(t, modelData, "columns")
 
 	// Test with non-existent model
-	p = process.New("model.get", "non_existent_model", map[string]interface{}{})
+	p = process.New("model.dsl", "non_existent_model", map[string]interface{}{})
 	_, err = p.Exec()
 	assert.NotNil(t, err)
 }
