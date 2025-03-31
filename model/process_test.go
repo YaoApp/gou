@@ -535,10 +535,9 @@ func TestProcessUpsert(t *testing.T) {
 	defer clean()
 	prepareTestData(t)
 
-	// Test upsert with string uniqueBy parameter
+	// Test upsert with string uniqueBy parameter - create a new record
 	p := process.New("models.user.upsert", map[string]interface{}{
-		"id":     1,
-		"name":   "Updated User",
+		"name":   "Upsert User 1",
 		"mobile": "13900001111",
 		"status": "enabled",
 	}, "mobile")
@@ -546,10 +545,19 @@ func TestProcessUpsert(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, result)
 
+	// Update the record with the same mobile
+	p = process.New("models.user.upsert", map[string]interface{}{
+		"name":   "Upsert User 1 Updated",
+		"mobile": "13900001111",
+		"status": "enabled",
+	}, "mobile")
+	result, err = p.Exec()
+	assert.Nil(t, err)
+	assert.NotNil(t, result)
+
 	// Test upsert with string array uniqueBy parameter
 	p = process.New("models.user.upsert", map[string]interface{}{
-		"id":     2,
-		"name":   "New User",
+		"name":   "Upsert User 2",
 		"mobile": "13900002222",
 		"status": "enabled",
 	}, []string{"mobile"})
@@ -559,8 +567,7 @@ func TestProcessUpsert(t *testing.T) {
 
 	// Test upsert with interface array uniqueBy parameter
 	p = process.New("models.user.upsert", map[string]interface{}{
-		"id":     3,
-		"name":   "Another User",
+		"name":   "Upsert User 3",
 		"mobile": "13900003333",
 		"status": "enabled",
 	}, []interface{}{"mobile"})
@@ -568,10 +575,9 @@ func TestProcessUpsert(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, result)
 
-	// Test upsert with updateColumns parameter
+	// Test upsert with updateColumns parameter - create a new record
 	p = process.New("models.user.upsert", map[string]interface{}{
-		"id":     4,
-		"name":   "User with Update Columns",
+		"name":   "Upsert User 4",
 		"mobile": "13900004444",
 		"status": "enabled",
 	}, "mobile", []string{"name", "status"})
@@ -579,10 +585,19 @@ func TestProcessUpsert(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, result)
 
+	// Update with specific columns
+	p = process.New("models.user.upsert", map[string]interface{}{
+		"name":   "Upsert User 4 Updated",
+		"mobile": "13900004444",
+		"status": "disabled",
+	}, "mobile", []string{"name", "status"})
+	result, err = p.Exec()
+	assert.Nil(t, err)
+	assert.NotNil(t, result)
+
 	// Test upsert with interface array updateColumns parameter
 	p = process.New("models.user.upsert", map[string]interface{}{
-		"id":     5,
-		"name":   "User with Interface Update Columns",
+		"name":   "Upsert User 5",
 		"mobile": "13900005555",
 		"status": "enabled",
 	}, "mobile", []interface{}{"name", "status"})
