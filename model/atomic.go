@@ -152,6 +152,54 @@ func (mod *Model) MustUpdate(id interface{}, row maps.MapStrAny) {
 	}
 }
 
+// Upsert new records or update the existing ones.
+func (mod *Model) Upsert(row maps.MapStrAny, uniqueBy []interface{}, updateColumns []interface{}) (int, error) {
+
+	errs := mod.Validate(row) // validate the input data
+	if len(errs) > 0 {
+		msgs := []string{}
+		for _, err := range errs {
+			msgs = append(msgs, err.Column, strings.Join(err.Messages, ","))
+			log.Error("[Model] %s Update %v", mod.ID, err)
+		}
+		exception.New("%s", 400, strings.Join(msgs, ";")).Ctx(errs).Throw()
+	}
+
+	mod.FliterIn(row) // preprocess the input data
+
+	if mod.MetaData.Option.Timestamps {
+		row.Set("updated_at", dbal.Raw("CURRENT_TIMESTAMP"))
+	}
+
+	// If updateColumns is not provided, use all columns
+	if updateColumns == nil {
+		columns := []interface{}{}
+		for _, col := range mod.Columns {
+			columns = append(columns, col.Name)
+		}
+		updateColumns = columns
+	}
+
+	effect, err := capsule.Query().
+		Table(mod.MetaData.Table.Name).
+		Upsert(row, uniqueBy, updateColumns)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return int(effect), nil
+}
+
+// MustUpsert Create or update a record matching the attributes, and fill it with values.
+func (mod *Model) MustUpsert(row maps.MapStrAny, uniqueBy []interface{}, updateColumns []interface{}) int {
+	id, err := mod.Upsert(row, uniqueBy, updateColumns)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return id
+}
+
 // Save 保存单条数据, 不存在创建记录, 存在更新记录,  返回数据ID
 func (mod *Model) Save(row maps.MapStrAny) (interface{}, error) {
 
