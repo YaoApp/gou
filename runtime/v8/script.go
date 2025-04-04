@@ -554,7 +554,7 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 	defer v.Release()
 
 	// console.log("foo", "bar", 1, 2, 3, 4)
-	err = console.New().Set("console", ctx)
+	err = console.New(runtimeOption.ConsoleMode).Set("console", ctx)
 	if err != nil {
 		return nil, fmt.Errorf("scripts.%s %s", script.ID, err.Error())
 	}
@@ -645,7 +645,7 @@ func (script *Script) execStandard(process *process.Process) interface{} {
 	}
 
 	// console.log("foo", "bar", 1, 2, 3, 4)
-	err = console.New().Set("console", ctx)
+	err = console.New(runtimeOption.ConsoleMode).Set("console", ctx)
 	if err != nil {
 		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
 		return nil

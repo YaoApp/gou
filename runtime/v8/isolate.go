@@ -6,9 +6,9 @@ import (
 
 	atobT "github.com/yaoapp/gou/runtime/v8/functions/atob"
 	btoaT "github.com/yaoapp/gou/runtime/v8/functions/btoa"
+	evalT "github.com/yaoapp/gou/runtime/v8/functions/eval"
 	langT "github.com/yaoapp/gou/runtime/v8/functions/lang"
 	processT "github.com/yaoapp/gou/runtime/v8/functions/process"
-	studioT "github.com/yaoapp/gou/runtime/v8/functions/studio"
 	exceptionT "github.com/yaoapp/gou/runtime/v8/objects/exception"
 	fsT "github.com/yaoapp/gou/runtime/v8/objects/fs"
 	httpT "github.com/yaoapp/gou/runtime/v8/objects/http"
@@ -79,8 +79,11 @@ func MakeTemplate(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	template.Set("WebSocket", websocketT.New().ExportFunction(iso))
 	template.Set("$L", langT.ExportFunction(iso))
 	template.Set("Process", processT.ExportFunction(iso))
-	template.Set("Studio", studioT.ExportFunction(iso))
-	template.Set("Require", Require(iso))
+	template.Set("Eval", evalT.ExportFunction(iso))
+
+	// Deprecated Studio and Require
+	// template.Set("Studio", studioT.ExportFunction(iso))
+	// template.Set("Require", Require(iso))
 
 	// Window object (std functions)
 	template.Set("atob", atobT.ExportFunction(iso))
