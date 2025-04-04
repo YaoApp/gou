@@ -199,7 +199,7 @@ func (runner *Runner) _exec() {
 	defer v.Release()
 
 	// console.log("foo", "bar", 1, 2, 3, 4)
-	err = console.New().Set("console", runner.ctx)
+	err = console.New(runtimeOption.ConsoleMode).Set("console", runner.ctx)
 	if err != nil {
 		runner.chResp <- err
 		return

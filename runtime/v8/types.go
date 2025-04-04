@@ -28,10 +28,11 @@ type Option struct {
 	DataRoot          string    `json:"dataRoot,omitempty"`          // the data root path
 	TSConfig          *TSConfig `json:"tsconfig,omitempty"`          // the TypeScript config
 	Debug             bool      `json:"debug,omitempty"`             // if true, the debug mode will be enabled, default value is false
+	ConsoleMode       string    `json:"consoleMode,omitempty"`       // the console mode, default value is "production", the other value is "development"
 
 	// The following options are experimental features and not stable.
 	// They may be removed once the features become stable. Please do not use them in a production environment.
-	Import bool `json:"import,omitempty"` // If true, TypeScript import will be enabled. Default value is false.
+	Import bool `json:"import,omitempty"` // Always true, do not change it.
 
 }
 
