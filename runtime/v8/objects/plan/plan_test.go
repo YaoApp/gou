@@ -201,6 +201,41 @@ func TestPlanGetSet(t *testing.T) {
 	assert.Equal(t, "foo", res)
 }
 
+func TestPlanResults(t *testing.T) {
+	ctx := prepare()
+	defer close(ctx)
+
+	v, err := ctx.RunScript(`
+	function test() {
+		const plan = new Plan("test-plan");
+		plan.Add("task-1", 1, "unit.test.task11");
+		plan.Add("task-2", 2, "unit.test.task12");
+		plan.Run();
+		results = plan.Results();
+		plan.Release();
+		return results;
+	}
+	test();
+	`, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resMap, ok := res.(map[string]interface{})
+	if !ok {
+		t.Fatal("res is not a map")
+	}
+
+	// Check that we have results for both tasks
+	assert.Contains(t, resMap, "task-1")
+	assert.Contains(t, resMap, "task-2")
+}
+
 // close close the v8go context
 func close(ctx *v8go.Context) {
 	ctx.Isolate().Dispose()
