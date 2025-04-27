@@ -143,10 +143,11 @@ func StringStatus(status plan.Status) string {
 // ExportObject Export as a FS Object
 func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl := v8go.NewObjectTemplate(iso)
-	tmpl.Set("Run", obj.run(iso))         // Run the plan
-	tmpl.Set("Add", obj.add(iso))         // Add a task to the plan
-	tmpl.Set("Status", obj.status(iso))   // Get the status of the plan and each task
-	tmpl.Set("Release", obj.release(iso)) // Release the plan
+	tmpl.Set("Run", obj.run(iso))            // Run the plan
+	tmpl.Set("Add", obj.add(iso))            // Add a task to the plan
+	tmpl.Set("Status", obj.status(iso))      // Get the status of the plan and each task
+	tmpl.Set("Release", obj.release(iso))    // Release the plan
+	tmpl.Set("Results", obj.getResults(iso)) // Get the data of the plan
 
 	// Tasks methods
 	tmpl.Set("TaskStatus", obj.taskStatus(iso)) // Get the status of a task
@@ -304,11 +305,56 @@ func (obj *Object) add(iso *v8go.Isolate) *v8go.FunctionTemplate {
 				instance.plan.Trigger("TaskError", map[string]any{"message": err.Error(), "task": taskID})
 				return err
 			}
+
+			// Save the result to the shared space
+			key := fmt.Sprintf("__result.%s", taskID)
+			err = shared.Set(key, result)
+			if err != nil {
+				return err
+			}
+
 			instance.plan.Trigger("TaskCompleted", map[string]any{"task": taskID, "result": result})
 			return nil
 		})
 
 		return info.This().Value
+	})
+}
+
+func (obj *Object) getResults(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		id, err := obj.ID(info)
+		if err != nil {
+			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the id %s", err.Error()))
+		}
+
+		val, ok := plans.Load(id)
+		if !ok {
+			return bridge.JsException(info.Context(), fmt.Sprintf("plan %s not found", id))
+		}
+		instance := val.(*Instance)
+
+		// Tasks
+		ids := []string{}
+		for k := range instance.plan.Tasks {
+			ids = append(ids, k)
+		}
+
+		results := map[string]interface{}{}
+		for _, id := range ids {
+			result, err := instance.shared.Get(fmt.Sprintf("__result.%s", id))
+			if err != nil {
+				return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the result %s", err.Error()))
+			}
+
+			results[id] = result
+		}
+
+		jsValue, err := bridge.JsValue(info.Context(), results)
+		if err != nil {
+			return bridge.JsException(info.Context(), fmt.Sprintf("failed to get the result %s", err.Error()))
+		}
+		return jsValue
 	})
 }
 
