@@ -473,11 +473,22 @@ func (r *Request) text() bool {
 }
 
 func (r *Request) jsonBody() ([]byte, *Response) {
-	body, err := jsoniter.Marshal(r.data)
-	if err != nil {
-		return nil, ResponseError(0, err.Error())
+
+	switch value := r.data.(type) {
+
+	case []byte:
+		return value, nil
+
+	case string:
+		return []byte(value), nil
+
+	default:
+		body, err := jsoniter.Marshal(r.data)
+		if err != nil {
+			return nil, ResponseError(0, err.Error())
+		}
+		return body, nil
 	}
-	return body, nil
 }
 
 func (r *Request) urlencodedBody() ([]byte, *Response) {
