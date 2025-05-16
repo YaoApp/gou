@@ -372,7 +372,7 @@ func (obj *Object) run(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		instance := val.(*Instance)
 		err = instance.plan.Start()
 		if err != nil {
-			return bridge.JsException(info.Context(), fmt.Sprintf("failed to start the plan %s", err.Error()))
+			return bridge.JsException(info.Context(), fmt.Sprintf("failed to execute the plan %s", err.Error()))
 		}
 		return info.This().Value
 	})
