@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
+	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/runtime/v8/objects/console"
@@ -113,7 +115,19 @@ func (context *Context) CallAnonymousWith(ctx context.Context, source string, ar
 	global.Set(name, fn)
 	defer global.Delete(name)
 
-	return context.CallWith(ctx, name, args...)
+	res, err := context.CallWith(ctx, name, args...)
+	if err != nil {
+		color.White("Source:\n")
+		lines := strings.Split(source, "\n")
+		total := fmt.Sprintf("%d", len(lines))
+		for i, line := range lines {
+			num := fmt.Sprintf("%d", i+1)
+			num = strings.Repeat(" ", len(total)-len(num)) + num
+			fmt.Printf("%s: %s\n", num, line)
+		}
+		return nil, err
+	}
+	return res, nil
 }
 
 // CallWith call the script function
