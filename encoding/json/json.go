@@ -2,7 +2,7 @@ package json
 
 import (
 	jsoniter "github.com/json-iterator/go"
-	"github.com/watchfultele/jsonrepair"
+	"github.com/kaptinlin/jsonrepair"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/kun/exception"
 )
