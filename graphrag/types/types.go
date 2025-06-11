@@ -1,6 +1,10 @@
 package types
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+	"strings"
+)
 
 // ===== Vector Index Type Enums =====
 
@@ -87,6 +91,204 @@ func GetSupportedDistanceMetrics() []DistanceMetric {
 		DistanceEuclidean,
 		DistanceDot,
 		DistanceManhattan,
+	}
+}
+
+// ===== Chunking Types =====
+
+// TextPosition represents position information for text-based content
+type TextPosition struct {
+	StartIndex int `json:"start_index"` // Character offset from beginning of text
+	EndIndex   int `json:"end_index"`   // Character offset end position
+	StartLine  int `json:"start_line"`  // Line number where chunk starts
+	EndLine    int `json:"end_line"`    // Line number where chunk ends
+}
+
+// MediaPosition represents position information for media content
+type MediaPosition struct {
+	StartTime int `json:"start_time"` // Start time in seconds (for video/audio)
+	EndTime   int `json:"end_time"`   // End time in seconds (for video/audio)
+	Page      int `json:"page"`       // Page number (for PDF, Word, etc.)
+}
+
+// Chunk represents a chunk of content with position information
+type Chunk struct {
+	ID       string       `json:"id,omitempty"`
+	Text     string       `json:"text"`
+	Type     ChunkingType `json:"type"` // Chunking type from ChunkingType enum
+	ParentID string       `json:"parent_id,omitempty"`
+	Depth    int          `json:"depth"`
+
+	// Position information (only one should be populated based on content type)
+	TextPos  *TextPosition  `json:"text_position,omitempty"`  // For text, code, etc.
+	MediaPos *MediaPosition `json:"media_position,omitempty"` // For PDF, video, audio, etc.
+}
+
+// ChunkingOptions represents options for chunking
+type ChunkingOptions struct {
+	Type              ChunkingType `json:"type,omitempty"` // Content type, auto-detected if not provided
+	Size              int          `json:"size"`           // For text, PDF, Word, only, default is QA 300, Code 800,
+	Overlap           int          `json:"overlap"`        // For text, PDF, Word, only, default is QA 20, Code 100,
+	MaxDepth          int          `json:"max_depth"`      // For text, PDF, Word, only, default is 3, L1 Size * 6 , L2 Size * 3, L3 Size * 1
+	MaxConcurrent     int          `json:"max_concurrent"`
+	VideoConnector    string       `json:"video_connector"`    // For Video recognition, etc.
+	AudioConnector    string       `json:"audio_connector"`    // For Audio recognition, etc.
+	ImageConnector    string       `json:"image_connector"`    // For Image recognition, etc.
+	SemanticConnector string       `json:"semantic_connector"` // For Semantic recognition, etc.
+	FFmpegPath        string       `json:"ffmpeg_path"`        // ffmpeg path, for video, audio, etc.
+	FFprobePath       string       `json:"ffprobe_path"`       // ffprobe path, for video, audio, etc.
+	FFmpegOptions     string       `json:"ffmpeg_options"`     // ffmpeg options, for video, audio, etc.
+	FFprobeOptions    string       `json:"ffprobe_options"`    // ffprobe options, for video, audio, etc.
+}
+
+// ChunkingType for chunking type
+type ChunkingType string
+
+const (
+	// ChunkingTypeText is for text
+	ChunkingTypeText ChunkingType = "text"
+
+	// ChunkingTypeCode is for Code
+	ChunkingTypeCode ChunkingType = "code"
+
+	// ChunkingTypePDF is for PDF
+	ChunkingTypePDF ChunkingType = "pdf"
+
+	// ChunkingTypeWord is for Word
+	ChunkingTypeWord ChunkingType = "word"
+
+	// ChunkingTypeCSV is for CSV
+	ChunkingTypeCSV ChunkingType = "csv"
+
+	// ChunkingTypeExcel is for Excel
+	ChunkingTypeExcel ChunkingType = "excel"
+
+	// ChunkingTypeJSON is for JSON
+	ChunkingTypeJSON ChunkingType = "json"
+
+	// ChunkingTypeImage is for Image
+	ChunkingTypeImage ChunkingType = "image"
+
+	// ChunkingTypeVideo is for Video
+	ChunkingTypeVideo ChunkingType = "video"
+
+	// ChunkingTypeAudio is for Audio
+	ChunkingTypeAudio ChunkingType = "audio"
+)
+
+// MimeToChunkingType maps MIME types to ChunkingType
+var MimeToChunkingType = map[string]ChunkingType{
+	// Text types
+	"text/plain":      ChunkingTypeText,
+	"text/markdown":   ChunkingTypeText,
+	"text/html":       ChunkingTypeText,
+	"text/xml":        ChunkingTypeText,
+	"text/rtf":        ChunkingTypeText,
+	"application/rtf": ChunkingTypeText,
+
+	// Code types
+	"text/x-go":              ChunkingTypeCode,
+	"text/x-python":          ChunkingTypeCode,
+	"text/x-java":            ChunkingTypeCode,
+	"text/x-c":               ChunkingTypeCode,
+	"text/x-c++":             ChunkingTypeCode,
+	"text/x-csharp":          ChunkingTypeCode,
+	"text/javascript":        ChunkingTypeCode,
+	"application/javascript": ChunkingTypeCode,
+	"text/typescript":        ChunkingTypeCode,
+	"application/typescript": ChunkingTypeCode,
+	"text/x-php":             ChunkingTypeCode,
+	"text/x-ruby":            ChunkingTypeCode,
+	"text/x-shell":           ChunkingTypeCode,
+	"application/x-sh":       ChunkingTypeCode,
+
+	// JSON types
+	"application/json": ChunkingTypeJSON,
+	"text/json":        ChunkingTypeJSON,
+
+	// PDF types
+	"application/pdf": ChunkingTypePDF,
+
+	// Word types
+	"application/msword": ChunkingTypeWord,
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ChunkingTypeWord,
+
+	// Excel types
+	"application/vnd.ms-excel": ChunkingTypeExcel,
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ChunkingTypeExcel,
+
+	// CSV types
+	"text/csv":        ChunkingTypeCSV,
+	"application/csv": ChunkingTypeCSV,
+
+	// Image types
+	"image/jpeg":    ChunkingTypeImage,
+	"image/jpg":     ChunkingTypeImage,
+	"image/png":     ChunkingTypeImage,
+	"image/gif":     ChunkingTypeImage,
+	"image/bmp":     ChunkingTypeImage,
+	"image/webp":    ChunkingTypeImage,
+	"image/tiff":    ChunkingTypeImage,
+	"image/svg+xml": ChunkingTypeImage,
+
+	// Video types
+	"video/mp4":       ChunkingTypeVideo,
+	"video/avi":       ChunkingTypeVideo,
+	"video/mov":       ChunkingTypeVideo,
+	"video/wmv":       ChunkingTypeVideo,
+	"video/flv":       ChunkingTypeVideo,
+	"video/webm":      ChunkingTypeVideo,
+	"video/mkv":       ChunkingTypeVideo,
+	"video/quicktime": ChunkingTypeVideo,
+
+	// Audio types
+	"audio/mp3":  ChunkingTypeAudio,
+	"audio/mpeg": ChunkingTypeAudio,
+	"audio/wav":  ChunkingTypeAudio,
+	"audio/flac": ChunkingTypeAudio,
+	"audio/aac":  ChunkingTypeAudio,
+	"audio/ogg":  ChunkingTypeAudio,
+	"audio/wma":  ChunkingTypeAudio,
+	"audio/m4a":  ChunkingTypeAudio,
+}
+
+// GetChunkingTypeFromMime returns the ChunkingType for a given MIME type
+func GetChunkingTypeFromMime(mimeType string) ChunkingType {
+	if chunkingType, exists := MimeToChunkingType[mimeType]; exists {
+		return chunkingType
+	}
+	// Default to text for unknown types
+	return ChunkingTypeText
+}
+
+// GetChunkingTypeFromFilename returns the ChunkingType based on file extension
+func GetChunkingTypeFromFilename(filename string) ChunkingType {
+	// Simple extension-based detection as fallback
+	extension := filepath.Ext(strings.ToLower(filename))
+
+	switch extension {
+	case ".go", ".py", ".java", ".c", ".cpp", ".cs", ".js", ".ts", ".php", ".rb", ".sh":
+		return ChunkingTypeCode
+	case ".json":
+		return ChunkingTypeJSON
+	case ".pdf":
+		return ChunkingTypePDF
+	case ".doc", ".docx":
+		return ChunkingTypeWord
+	case ".xls", ".xlsx":
+		return ChunkingTypeExcel
+	case ".csv":
+		return ChunkingTypeCSV
+	case ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".svg":
+		return ChunkingTypeImage
+	case ".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".mkv":
+		return ChunkingTypeVideo
+	case ".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a":
+		return ChunkingTypeAudio
+	case ".md", ".txt", ".html", ".xml", ".rtf":
+		return ChunkingTypeText
+	default:
+		return ChunkingTypeText
 	}
 }
 
