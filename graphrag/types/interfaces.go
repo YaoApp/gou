@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"io"
 )
 
 // ===== Vector Database Interfaces =====
@@ -73,6 +74,14 @@ type EmbeddingFunction interface {
 
 	// GetDimension returns the dimension of the embedding vectors
 	GetDimension() int
+}
+
+// ChunkingFunction represents a chunking function interface
+// This handles text-to-chunk conversion, separate from chunk storage
+type ChunkingFunction interface {
+	Chunk(ctx context.Context, text string, options *ChunkingOptions, callback func(chunk *Chunk) error) error
+	ChunkFile(ctx context.Context, file string, options *ChunkingOptions, callback func(chunk *Chunk) error) error
+	ChunkStream(ctx context.Context, stream io.ReadSeeker, options *ChunkingOptions, callback func(chunk *Chunk) error) error
 }
 
 // VectorStoreFactory represents a factory for creating vector stores

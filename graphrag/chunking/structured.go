@@ -1,0 +1,499 @@
+package chunking
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
+
+	"github.com/google/uuid"
+	"github.com/yaoapp/gou/graphrag/types"
+)
+
+// StructuredChunker is the chunker for structured data
+type StructuredChunker struct{}
+
+// NewStructuredChunker creates a new structured chunker
+func NewStructuredChunker() *StructuredChunker {
+	return &StructuredChunker{}
+}
+
+// NewStructuredOptions creates a new structured chunker options by chunking type
+func NewStructuredOptions(chunkingType types.ChunkingType) *types.ChunkingOptions {
+
+	switch chunkingType {
+	case types.ChunkingTypeCode, types.ChunkingTypeJSON:
+		return &types.ChunkingOptions{Size: 800, Overlap: 100, MaxDepth: 3, MaxConcurrent: 10}
+
+	case types.ChunkingTypeVideo, types.ChunkingTypeAudio, types.ChunkingTypeImage:
+		return &types.ChunkingOptions{Size: 300, Overlap: 20, MaxDepth: 1, MaxConcurrent: 10}
+
+	default:
+		return &types.ChunkingOptions{Size: 300, Overlap: 20, MaxDepth: 1, MaxConcurrent: 10}
+	}
+}
+
+// Chunk is the main function to chunk text
+func (chunker *StructuredChunker) Chunk(ctx context.Context, text string, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+	// Auto-detect content type if not provided
+	if options.Type == "" {
+		options.Type = types.ChunkingTypeText // Default to text for string input
+	}
+
+	// Convert text to ReadSeeker
+	reader := strings.NewReader(text)
+	return chunker.ChunkStream(ctx, reader, options, callback)
+}
+
+// ChunkFile is the function to chunk file
+func (chunker *StructuredChunker) ChunkFile(ctx context.Context, file string, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+	// Open file
+	f, err := os.Open(file)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %w", file, err)
+	}
+	defer f.Close()
+
+	// Auto-detect content type if not provided
+	if options.Type == "" {
+		// Try to detect MIME type from file content
+		buffer := make([]byte, 512)
+		n, _ := f.Read(buffer)
+		if n > 0 {
+			mimeType := http.DetectContentType(buffer[:n])
+			options.Type = types.GetChunkingTypeFromMime(mimeType)
+		}
+
+		// Fallback to filename-based detection
+		if options.Type == "" || options.Type == types.ChunkingTypeText {
+			options.Type = types.GetChunkingTypeFromFilename(file)
+		}
+
+		// Reset file pointer to beginning
+		f.Seek(0, io.SeekStart)
+	}
+
+	// Use ChunkStream to process the file
+	return chunker.ChunkStream(ctx, f, options, callback)
+}
+
+// ChunkStream is the function to chunk stream
+func (chunker *StructuredChunker) ChunkStream(ctx context.Context, stream io.ReadSeeker, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+	// Get stream size
+	streamSize, err := chunker.getStreamSize(stream)
+	if err != nil {
+		return fmt.Errorf("failed to get stream size: %w", err)
+	}
+
+	// Process level 1 chunks directly from stream
+	return chunker.processStreamLevels(ctx, stream, 0, streamSize, "", 1, options, callback)
+}
+
+// getStreamSize gets the total size of the stream
+func (chunker *StructuredChunker) getStreamSize(stream io.ReadSeeker) (int64, error) {
+	// Seek to end to get size
+	size, err := stream.Seek(0, io.SeekEnd)
+	if err != nil {
+		return 0, err
+	}
+
+	// Seek back to beginning
+	_, err = stream.Seek(0, io.SeekStart)
+	if err != nil {
+		return 0, err
+	}
+
+	return size, nil
+}
+
+// processStreamLevels processes chunks at different levels directly from stream
+func (chunker *StructuredChunker) processStreamLevels(ctx context.Context, stream io.ReadSeeker, offset, size int64, parentID string, currentDepth int, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+	// Check if maximum depth is reached
+	if currentDepth > options.MaxDepth {
+		return nil
+	}
+
+	// Calculate chunk size for current level
+	chunkSize := chunker.calculateSubSize(options.Size, currentDepth-1)
+	overlap := chunker.calculateSubOverlap(options.Overlap, currentDepth-1)
+
+	// Generate chunks for current level and process them concurrently
+	chunks, err := chunker.generateStreamChunksWithLines(stream, offset, size, chunkSize, overlap, parentID, currentDepth, options.Type)
+	if err != nil {
+		return err
+	}
+
+	// Process current level chunks concurrently
+	if err := chunker.processCurrentLevel(ctx, chunks, options.MaxConcurrent, callback); err != nil {
+		return err
+	}
+
+	// If not at maximum depth, process sub-levels
+	if currentDepth < options.MaxDepth {
+		for _, chunk := range chunks {
+			// Only create sub-chunks if current chunk is large enough
+			subChunkSize := chunker.calculateSubSize(options.Size, currentDepth)
+			if int64(len(chunk.Text)) > int64(subChunkSize) {
+				// Process sub-chunks from the text content with line tracking
+				baseStartLine := 1
+				if chunk.TextPos != nil {
+					baseStartLine = chunk.TextPos.StartLine
+				}
+				err := chunker.processTextLevelsWithLines(ctx, chunk.Text, baseStartLine, chunk.ID, currentDepth+1, options, callback)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// generateStreamChunksWithLines generates chunks by reading from stream with line number tracking
+func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSeeker, offset, totalSize int64, chunkSize, overlap int, parentID string, depth int, chunkType types.ChunkingType) ([]*types.Chunk, error) {
+	var chunks []*types.Chunk
+
+	if totalSize <= int64(chunkSize) {
+		// If total size is smaller than chunk size, read all as single chunk
+		_, err := stream.Seek(offset, io.SeekStart)
+		if err != nil {
+			return nil, err
+		}
+
+		data := make([]byte, totalSize)
+		n, err := io.ReadFull(stream, data)
+		if err != nil && err != io.ErrUnexpectedEOF {
+			return nil, err
+		}
+
+		text := string(data[:n])
+		startLine, endLine := chunker.calculateLinesFromOffset(stream, offset, int64(n))
+
+		chunk := &types.Chunk{
+			ID:       uuid.NewString(),
+			Text:     text,
+			ParentID: parentID,
+			Depth:    depth,
+			Type:     chunkType,
+			TextPos: &types.TextPosition{
+				StartIndex: int(offset),
+				EndIndex:   int(offset) + n,
+				StartLine:  startLine,
+				EndLine:    endLine,
+			},
+		}
+		chunks = append(chunks, chunk)
+		return chunks, nil
+	}
+
+	// Process in chunks
+	pos := int64(0)
+	for pos < totalSize {
+		// Calculate current chunk end position
+		end := pos + int64(chunkSize)
+		if end > totalSize {
+			end = totalSize
+		}
+
+		// Seek to current position
+		_, err := stream.Seek(offset+pos, io.SeekStart)
+		if err != nil {
+			return nil, err
+		}
+
+		// Read chunk data
+		chunkLen := end - pos
+		data := make([]byte, chunkLen)
+		n, err := io.ReadFull(stream, data)
+		if err != nil && err != io.ErrUnexpectedEOF {
+			return nil, err
+		}
+
+		text := string(data[:n])
+		startLine, endLine := chunker.calculateLinesFromOffset(stream, offset+pos, int64(n))
+
+		chunk := &types.Chunk{
+			ID:       uuid.NewString(),
+			Text:     text,
+			ParentID: parentID,
+			Depth:    depth,
+			Type:     chunkType,
+			TextPos: &types.TextPosition{
+				StartIndex: int(offset + pos),
+				EndIndex:   int(offset+pos) + n,
+				StartLine:  startLine,
+				EndLine:    endLine,
+			},
+		}
+		chunks = append(chunks, chunk)
+
+		// Calculate next position considering overlap
+		pos += int64(chunkSize) - int64(overlap)
+		if pos >= totalSize {
+			break
+		}
+	}
+
+	return chunks, nil
+}
+
+// processTextLevelsWithLines processes chunks from text content with line tracking (for sub-levels)
+func (chunker *StructuredChunker) processTextLevelsWithLines(ctx context.Context, text string, baseStartLine int, parentID string, currentDepth int, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+	// Check if maximum depth is reached
+	if currentDepth > options.MaxDepth {
+		return nil
+	}
+
+	// Calculate chunk size for current level
+	chunkSize := chunker.calculateSubSize(options.Size, currentDepth-1)
+	overlap := chunker.calculateSubOverlap(options.Overlap, currentDepth-1)
+
+	// Create chunks from text with line tracking
+	chunks := chunker.createChunksWithLines(text, chunkSize, overlap, baseStartLine, parentID, currentDepth, options.Type)
+
+	// Process current level chunks concurrently
+	if err := chunker.processCurrentLevel(ctx, chunks, options.MaxConcurrent, callback); err != nil {
+		return err
+	}
+
+	// If not at maximum depth, recursively process next level
+	if currentDepth < options.MaxDepth {
+		for _, chunk := range chunks {
+			subChunkSize := chunker.calculateSubSize(options.Size, currentDepth)
+			if len(chunk.Text) > subChunkSize {
+				baseStartLine := 1
+				if chunk.TextPos != nil {
+					baseStartLine = chunk.TextPos.StartLine
+				}
+				err := chunker.processTextLevelsWithLines(ctx, chunk.Text, baseStartLine, chunk.ID, currentDepth+1, options, callback)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// createChunksWithLines creates text chunks with specified size, overlap and line tracking
+func (chunker *StructuredChunker) createChunksWithLines(text string, size, overlap, baseStartLine int, parentID string, depth int, chunkType types.ChunkingType) []*types.Chunk {
+	var chunks []*types.Chunk
+	textBytes := []byte(text)
+	totalLen := len(textBytes)
+
+	if totalLen <= size {
+		// If text length is less than or equal to specified size, return single chunk
+		endLine := baseStartLine + strings.Count(text, "\n")
+		chunk := &types.Chunk{
+			ID:       uuid.NewString(),
+			Text:     text,
+			ParentID: parentID,
+			Depth:    depth,
+			Type:     chunkType,
+			TextPos: &types.TextPosition{
+				StartIndex: 0,
+				EndIndex:   totalLen,
+				StartLine:  baseStartLine,
+				EndLine:    endLine,
+			},
+		}
+		chunks = append(chunks, chunk)
+		return chunks
+	}
+
+	pos := 0
+	currentLine := baseStartLine
+	for pos < totalLen {
+		end := pos + size
+		if end > totalLen {
+			end = totalLen
+		}
+
+		chunkText := string(textBytes[pos:end])
+		linesInChunk := strings.Count(chunkText, "\n")
+		endLine := currentLine + linesInChunk
+
+		chunk := &types.Chunk{
+			ID:       uuid.NewString(),
+			Text:     chunkText,
+			ParentID: parentID,
+			Depth:    depth,
+			Type:     chunkType,
+			TextPos: &types.TextPosition{
+				StartIndex: pos,
+				EndIndex:   end,
+				StartLine:  currentLine,
+				EndLine:    endLine,
+			},
+		}
+		chunks = append(chunks, chunk)
+
+		// Calculate next position considering overlap
+		pos += size - overlap
+		if pos >= totalLen {
+			break
+		}
+
+		// Update current line for next chunk (considering overlap)
+		if overlap > 0 && pos < totalLen {
+			// Ensure we don't go before the beginning of the text
+			overlapStart := pos - overlap
+			if overlapStart < 0 {
+				overlapStart = 0
+			}
+			if overlapStart < pos {
+				overlapText := string(textBytes[overlapStart:pos])
+				overlapLines := strings.Count(overlapText, "\n")
+				currentLine = endLine - overlapLines
+			} else {
+				currentLine = endLine
+			}
+		} else {
+			currentLine = endLine
+		}
+	}
+
+	return chunks
+}
+
+// calculateLinesFromOffset calculates start and end line numbers for a chunk at given offset
+func (chunker *StructuredChunker) calculateLinesFromOffset(stream io.ReadSeeker, offset, length int64) (int, int) {
+	// Save current position
+	currentPos, err := stream.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return 1, 1 // fallback to line 1 if error
+	}
+	defer stream.Seek(currentPos, io.SeekStart) // restore position
+
+	// Seek to beginning to count lines before offset
+	_, err = stream.Seek(0, io.SeekStart)
+	if err != nil {
+		return 1, 1 // fallback to line 1 if error
+	}
+
+	startLine := 1
+	if offset > 0 {
+		// Read data from start to offset to count newlines
+		buffer := make([]byte, 4096) // 4KB buffer for efficient reading
+		bytesRead := int64(0)
+
+		for bytesRead < offset {
+			remaining := offset - bytesRead
+			readSize := int64(len(buffer))
+			if remaining < readSize {
+				readSize = remaining
+			}
+
+			n, err := stream.Read(buffer[:readSize])
+			if err != nil && err != io.EOF {
+				return 1, 1 // fallback if error
+			}
+			if n == 0 {
+				break
+			}
+
+			startLine += strings.Count(string(buffer[:n]), "\n")
+			bytesRead += int64(n)
+		}
+	}
+
+	// Now count lines in the chunk itself
+	_, err = stream.Seek(offset, io.SeekStart)
+	if err != nil {
+		return startLine, startLine
+	}
+
+	chunkData := make([]byte, length)
+	n, err := io.ReadFull(stream, chunkData)
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return startLine, startLine
+	}
+
+	linesInChunk := strings.Count(string(chunkData[:n]), "\n")
+	endLine := startLine + linesInChunk
+
+	return startLine, endLine
+}
+
+// processCurrentLevel processes all chunks at current level concurrently
+func (chunker *StructuredChunker) processCurrentLevel(ctx context.Context, chunks []*types.Chunk, maxConcurrent int, callback func(chunk *types.Chunk) error) error {
+	if len(chunks) == 0 {
+		return nil
+	}
+
+	// Limit concurrent goroutines
+	if maxConcurrent <= 0 {
+		maxConcurrent = 10 // default value
+	}
+
+	// Create semaphore to control concurrency
+	semaphore := make(chan struct{}, maxConcurrent)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var firstError error
+
+	for _, chunk := range chunks {
+		// Check if context is cancelled
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		wg.Add(1)
+		semaphore <- struct{}{} // acquire semaphore
+
+		go func(c *types.Chunk) {
+			defer func() {
+				<-semaphore // release semaphore
+				wg.Done()
+			}()
+
+			if err := callback(c); err != nil {
+				mu.Lock()
+				if firstError == nil {
+					firstError = err
+				}
+				mu.Unlock()
+			}
+		}(chunk)
+	}
+
+	wg.Wait()
+	return firstError
+}
+
+// calculateSubSize calculates sub-level chunk size based on current depth
+func (chunker *StructuredChunker) calculateSubSize(baseSize, depth int) int {
+	// Based on comment: L1 Size * 6, L2 Size * 3, L3 Size * 1
+	switch depth {
+	case 1:
+		return baseSize * 6
+	case 2:
+		return baseSize * 3
+	case 3:
+		return baseSize
+	default:
+		return baseSize
+	}
+}
+
+// calculateSubOverlap calculates sub-level overlap based on current depth
+func (chunker *StructuredChunker) calculateSubOverlap(baseOverlap, depth int) int {
+	// Maintain relative proportion
+	switch depth {
+	case 1:
+		return baseOverlap * 6
+	case 2:
+		return baseOverlap * 3
+	case 3:
+		return baseOverlap
+	default:
+		return baseOverlap
+	}
+}
