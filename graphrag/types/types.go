@@ -118,6 +118,7 @@ type Chunk struct {
 	Type     ChunkingType `json:"type"` // Chunking type from ChunkingType enum
 	ParentID string       `json:"parent_id,omitempty"`
 	Depth    int          `json:"depth"`
+	Leaf     bool         `json:"leaf"` // Whether the chunk is a leaf node
 
 	// Position information (only one should be populated based on content type)
 	TextPos  *TextPosition  `json:"text_position,omitempty"`  // For text, code, etc.
@@ -126,19 +127,27 @@ type Chunk struct {
 
 // ChunkingOptions represents options for chunking
 type ChunkingOptions struct {
-	Type              ChunkingType `json:"type,omitempty"` // Content type, auto-detected if not provided
-	Size              int          `json:"size"`           // For text, PDF, Word, only, default is QA 300, Code 800,
-	Overlap           int          `json:"overlap"`        // For text, PDF, Word, only, default is QA 20, Code 100,
-	MaxDepth          int          `json:"max_depth"`      // For text, PDF, Word, only, default is 3, L1 Size * 6 , L2 Size * 3, L3 Size * 1
-	MaxConcurrent     int          `json:"max_concurrent"`
-	VideoConnector    string       `json:"video_connector"`    // For Video recognition, etc.
-	AudioConnector    string       `json:"audio_connector"`    // For Audio recognition, etc.
-	ImageConnector    string       `json:"image_connector"`    // For Image recognition, etc.
-	SemanticConnector string       `json:"semantic_connector"` // For Semantic recognition, etc.
-	FFmpegPath        string       `json:"ffmpeg_path"`        // ffmpeg path, for video, audio, etc.
-	FFprobePath       string       `json:"ffprobe_path"`       // ffprobe path, for video, audio, etc.
-	FFmpegOptions     string       `json:"ffmpeg_options"`     // ffmpeg options, for video, audio, etc.
-	FFprobeOptions    string       `json:"ffprobe_options"`    // ffprobe options, for video, audio, etc.
+	Type            ChunkingType     `json:"type,omitempty"` // Content type, auto-detected if not provided
+	Size            int              `json:"size"`           // For text, PDF, Word, only, default is QA 300, Code 800,
+	Overlap         int              `json:"overlap"`        // For text, PDF, Word, only, default is QA 20, Code 100,
+	MaxDepth        int              `json:"max_depth"`      // For text, PDF, Word, only, default is 3, L1 Size * 6 , L2 Size * 3, L3 Size * 1
+	MaxConcurrent   int              `json:"max_concurrent"`
+	SemanticOptions *SemanticOptions `json:"semantic_options"` // For Semantic recognition, etc.
+	VideoConnector  string           `json:"video_connector"`  // For Video recognition, etc.
+	AudioConnector  string           `json:"audio_connector"`  // For Audio recognition, etc.
+	ImageConnector  string           `json:"image_connector"`  // For Image recognition, etc.
+	FFmpegPath      string           `json:"ffmpeg_path"`      // ffmpeg path, for video, audio, etc.
+	FFprobePath     string           `json:"ffprobe_path"`     // ffprobe path, for video, audio, etc.
+	FFmpegOptions   string           `json:"ffmpeg_options"`   // ffmpeg options, for video, audio, etc.
+	FFprobeOptions  string           `json:"ffprobe_options"`  // ffprobe options, for video, audio, etc.
+}
+
+// SemanticOptions represents options for semantic recognition
+type SemanticOptions struct {
+	Connector   string `json:"connector"`    // For Semantic recognition, etc.
+	ContextSize int    `json:"context_size"` // Context size for Semantic recognition. Default L1 Size (ChunkSize * 6)
+	Options     string `json:"options"`      // Model options, for example, temperature, top_p, etc.
+	Prompt      string `json:"prompt"`       // System prompt for Semantic recognition.
 }
 
 // ChunkingType for chunking type

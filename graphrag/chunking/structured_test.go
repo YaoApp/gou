@@ -628,8 +628,8 @@ func TestProcessCurrentLevel(t *testing.T) {
 
 	t.Run("Normal processing", func(t *testing.T) {
 		chunks := []*types.Chunk{
-			{ID: "1", Text: "test1", Type: types.ChunkingTypeText},
-			{ID: "2", Text: "test2", Type: types.ChunkingTypeText},
+			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false},
+			{ID: "2", Text: "test2", Type: types.ChunkingTypeText, Leaf: false},
 		}
 
 		var processed []string
@@ -653,7 +653,7 @@ func TestProcessCurrentLevel(t *testing.T) {
 
 	t.Run("Callback error", func(t *testing.T) {
 		chunks := []*types.Chunk{
-			{ID: "1", Text: "test1", Type: types.ChunkingTypeText},
+			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false},
 		}
 
 		err := chunker.processCurrentLevel(ctx, chunks, 1, func(chunk *types.Chunk) error {
@@ -667,7 +667,7 @@ func TestProcessCurrentLevel(t *testing.T) {
 
 	t.Run("Context cancellation", func(t *testing.T) {
 		chunks := []*types.Chunk{
-			{ID: "1", Text: "test1", Type: types.ChunkingTypeText},
+			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false},
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -684,7 +684,7 @@ func TestProcessCurrentLevel(t *testing.T) {
 
 	t.Run("Zero max concurrent", func(t *testing.T) {
 		chunks := []*types.Chunk{
-			{ID: "1", Text: "test1", Type: types.ChunkingTypeText},
+			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false},
 		}
 
 		err := chunker.processCurrentLevel(ctx, chunks, 0, func(chunk *types.Chunk) error {
@@ -759,7 +759,13 @@ func TestCreateChunksWithLines(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			chunks := chunker.createChunksWithLines(tt.text, tt.size, tt.overlap, tt.baseStartLine, "", 1, types.ChunkingTypeText)
+			options := &types.ChunkingOptions{
+				Size:          tt.size,
+				Overlap:       tt.overlap,
+				MaxDepth:      3,
+				MaxConcurrent: 1,
+			}
+			chunks := chunker.createChunksWithLines(tt.text, tt.size, tt.overlap, tt.baseStartLine, "", 1, types.ChunkingTypeText, options)
 
 			if len(chunks) != tt.expectedChunks {
 				t.Errorf("Expected %d chunks, got %d", tt.expectedChunks, len(chunks))
@@ -772,6 +778,110 @@ func TestCreateChunksWithLines(t *testing.T) {
 				}
 				if chunk.TextPos.StartLine < tt.baseStartLine {
 					t.Errorf("Chunk %d StartLine %d < baseStartLine %d", i, chunk.TextPos.StartLine, tt.baseStartLine)
+				}
+				// Test Leaf field
+				expectedLeaf := 1 >= options.MaxDepth || len(chunk.Text) <= chunker.calculateSubSize(options.Size, 1)
+				if chunk.Leaf != expectedLeaf {
+					t.Errorf("Chunk %d Leaf = %t, expected %t", i, chunk.Leaf, expectedLeaf)
+				}
+			}
+		})
+	}
+}
+
+func TestLeafNodeDetection(t *testing.T) {
+	chunker := NewStructuredChunker()
+	ctx := context.Background()
+
+	tests := []struct {
+		name             string
+		text             string
+		maxDepth         int
+		size             int
+		expectedLeafRate float64 // Expected percentage of leaf nodes
+	}{
+		{
+			name:             "Max depth 1 - all leaves",
+			text:             strings.Repeat("This is a test line.\n", 20),
+			maxDepth:         1,
+			size:             50,
+			expectedLeafRate: 1.0, // All chunks should be leaves at max depth
+		},
+		{
+			name:             "Max depth 3 - mixed leaves",
+			text:             strings.Repeat("This is a test line with more content.\n", 50),
+			maxDepth:         3,
+			size:             100,
+			expectedLeafRate: 0.5, // Some should be leaves, some not
+		},
+		{
+			name:             "Small chunks - mostly leaves",
+			text:             "Small text content",
+			maxDepth:         3,
+			size:             20,
+			expectedLeafRate: 1.0, // Should all be leaves due to size
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := &types.ChunkingOptions{
+				Type:          types.ChunkingTypeText,
+				Size:          tt.size,
+				Overlap:       10,
+				MaxDepth:      tt.maxDepth,
+				MaxConcurrent: 2,
+			}
+
+			var chunks []*types.Chunk
+			var mu sync.Mutex
+			err := chunker.Chunk(ctx, tt.text, options, func(chunk *types.Chunk) error {
+				mu.Lock()
+				chunks = append(chunks, chunk)
+				mu.Unlock()
+				return nil
+			})
+
+			if err != nil {
+				t.Errorf("Chunk() error = %v", err)
+				return
+			}
+
+			if len(chunks) == 0 {
+				t.Error("No chunks returned")
+				return
+			}
+
+			// Count leaf nodes
+			leafCount := 0
+			for _, chunk := range chunks {
+				if chunk.Leaf {
+					leafCount++
+				}
+			}
+
+			leafRate := float64(leafCount) / float64(len(chunks))
+			t.Logf("Leaf rate: %.2f (%d/%d)", leafRate, leafCount, len(chunks))
+
+			// Verify that leaves are properly marked
+			for i, chunk := range chunks {
+				// Check if leaf marking is correct
+				nextLevelSize := chunker.calculateSubSize(options.Size, chunk.Depth)
+				shouldBeLeaf := chunk.Depth >= options.MaxDepth || len(chunk.Text) <= nextLevelSize
+
+				if chunk.Leaf != shouldBeLeaf {
+					t.Errorf("Chunk %d (depth %d, len %d) Leaf = %t, expected %t",
+						i, chunk.Depth, len(chunk.Text), chunk.Leaf, shouldBeLeaf)
+				}
+			}
+
+			// Verify depth constraints
+			for i, chunk := range chunks {
+				if chunk.Depth > options.MaxDepth {
+					t.Errorf("Chunk %d has depth %d > maxDepth %d", i, chunk.Depth, options.MaxDepth)
+				}
+				if chunk.Depth >= options.MaxDepth && !chunk.Leaf {
+					t.Errorf("Chunk %d at max depth %d should be leaf", i, chunk.Depth)
 				}
 			}
 		})
@@ -1198,7 +1308,8 @@ func TestGenerateStreamChunksWithLinesEdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reader := strings.NewReader(tt.content)
-			chunks, err := chunker.generateStreamChunksWithLines(reader, 0, int64(len(tt.content)), tt.chunkSize, tt.overlap, "parent", 1, types.ChunkingTypeText)
+			options := &types.ChunkingOptions{Size: tt.chunkSize, Overlap: tt.overlap, MaxDepth: 3, MaxConcurrent: 1}
+			chunks, err := chunker.generateStreamChunksWithLines(reader, 0, int64(len(tt.content)), tt.chunkSize, tt.overlap, "parent", 1, types.ChunkingTypeText, options)
 
 			if err != nil {
 				t.Errorf("generateStreamChunksWithLines() error = %v", err)
@@ -1218,6 +1329,11 @@ func TestGenerateStreamChunksWithLinesEdgeCases(t *testing.T) {
 				}
 				if chunk.Depth != 1 {
 					t.Errorf("Chunk %d has wrong Depth: %d", i, chunk.Depth)
+				}
+				// Test Leaf field
+				expectedLeaf := 1 >= options.MaxDepth || len(chunk.Text) <= chunker.calculateSubSize(options.Size, 1)
+				if chunk.Leaf != expectedLeaf {
+					t.Errorf("Chunk %d Leaf = %t, expected %t", i, chunk.Leaf, expectedLeaf)
 				}
 			}
 		})
@@ -1311,10 +1427,19 @@ func TestCreateChunksWithLinesEdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			chunks := chunker.createChunksWithLines(tt.text, tt.size, tt.overlap, 1, "", 1, types.ChunkingTypeText)
+			options := &types.ChunkingOptions{Size: tt.size, Overlap: tt.overlap, MaxDepth: 3, MaxConcurrent: 1}
+			chunks := chunker.createChunksWithLines(tt.text, tt.size, tt.overlap, 1, "", 1, types.ChunkingTypeText, options)
 
 			if len(chunks) != tt.expected {
 				t.Errorf("Expected %d chunks, got %d", tt.expected, len(chunks))
+			}
+
+			// Test Leaf field
+			for i, chunk := range chunks {
+				expectedLeaf := 1 >= options.MaxDepth || len(chunk.Text) <= chunker.calculateSubSize(options.Size, 1)
+				if chunk.Leaf != expectedLeaf {
+					t.Errorf("Chunk %d Leaf = %t, expected %t", i, chunk.Leaf, expectedLeaf)
+				}
 			}
 		})
 	}
@@ -1333,7 +1458,8 @@ func TestStreamErrors(t *testing.T) {
 
 	t.Run("Generate chunks with failing stream", func(t *testing.T) {
 		reader := &partialFailingReader{data: "test data", failAfter: 2}
-		_, err := chunker.generateStreamChunksWithLines(reader, 0, 9, 5, 1, "", 1, types.ChunkingTypeText)
+		options := &types.ChunkingOptions{Size: 100, Overlap: 10, MaxDepth: 3, MaxConcurrent: 1}
+		_, err := chunker.generateStreamChunksWithLines(reader, 0, 9, 5, 1, "", 1, types.ChunkingTypeText, options)
 		if err == nil {
 			t.Error("Expected error from failing reader")
 		}
