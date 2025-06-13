@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -628,8 +629,8 @@ func TestProcessCurrentLevel(t *testing.T) {
 
 	t.Run("Normal processing", func(t *testing.T) {
 		chunks := []*types.Chunk{
-			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false},
-			{ID: "2", Text: "test2", Type: types.ChunkingTypeText, Leaf: false},
+			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false, Root: false, Index: 0, Status: types.ChunkingStatusPending},
+			{ID: "2", Text: "test2", Type: types.ChunkingTypeText, Leaf: false, Root: false, Index: 1, Status: types.ChunkingStatusPending},
 		}
 
 		var processed []string
@@ -653,7 +654,7 @@ func TestProcessCurrentLevel(t *testing.T) {
 
 	t.Run("Callback error", func(t *testing.T) {
 		chunks := []*types.Chunk{
-			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false},
+			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false, Root: false, Index: 0, Status: types.ChunkingStatusPending},
 		}
 
 		err := chunker.processCurrentLevel(ctx, chunks, 1, func(chunk *types.Chunk) error {
@@ -667,7 +668,7 @@ func TestProcessCurrentLevel(t *testing.T) {
 
 	t.Run("Context cancellation", func(t *testing.T) {
 		chunks := []*types.Chunk{
-			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false},
+			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false, Root: false, Index: 0, Status: types.ChunkingStatusPending},
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -684,7 +685,7 @@ func TestProcessCurrentLevel(t *testing.T) {
 
 	t.Run("Zero max concurrent", func(t *testing.T) {
 		chunks := []*types.Chunk{
-			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false},
+			{ID: "1", Text: "test1", Type: types.ChunkingTypeText, Leaf: false, Root: false, Index: 0, Status: types.ChunkingStatusPending},
 		}
 
 		err := chunker.processCurrentLevel(ctx, chunks, 0, func(chunk *types.Chunk) error {
@@ -885,6 +886,176 @@ func TestLeafNodeDetection(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestNewFieldsHierarchy(t *testing.T) {
+	chunker := NewStructuredChunker()
+	ctx := context.Background()
+
+	tests := []struct {
+		name    string
+		text    string
+		options *types.ChunkingOptions
+	}{
+		{
+			name: "Root node detection",
+			text: "This is a test text that should create root nodes",
+			options: &types.ChunkingOptions{
+				Type:          types.ChunkingTypeText,
+				Size:          20,
+				Overlap:       5,
+				MaxDepth:      2,
+				MaxConcurrent: 2,
+			},
+		},
+		{
+			name: "Multi-level hierarchy",
+			text: strings.Repeat("This is a test line with content that will create multiple levels.\n", 10),
+			options: &types.ChunkingOptions{
+				Type:          types.ChunkingTypeText,
+				Size:          50,
+				Overlap:       10,
+				MaxDepth:      3,
+				MaxConcurrent: 2,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var chunks []*types.Chunk
+			var mu sync.Mutex
+			err := chunker.Chunk(ctx, tt.text, tt.options, func(chunk *types.Chunk) error {
+				mu.Lock()
+				chunks = append(chunks, chunk)
+				mu.Unlock()
+				return nil
+			})
+
+			if err != nil {
+				t.Errorf("Chunk() error = %v", err)
+				return
+			}
+
+			if len(chunks) == 0 {
+				t.Error("No chunks returned")
+				return
+			}
+
+			// Test Root field
+			rootCount := 0
+			for _, chunk := range chunks {
+				if chunk.Root {
+					rootCount++
+					// Root nodes should have depth 1 and no parent
+					if chunk.Depth != 1 {
+						t.Errorf("Root chunk has depth %d, expected 1", chunk.Depth)
+					}
+					if chunk.ParentID != "" {
+						t.Errorf("Root chunk has ParentID %s, expected empty", chunk.ParentID)
+					}
+					if len(chunk.Parents) != 0 {
+						t.Errorf("Root chunk has %d parents, expected 0", len(chunk.Parents))
+					}
+				}
+			}
+
+			if rootCount == 0 {
+				t.Error("No root nodes found")
+			}
+
+			// Test Index field
+			parentGroups := make(map[string][]*types.Chunk)
+			for _, chunk := range chunks {
+				if chunk.ParentID == "" {
+					parentGroups[""] = append(parentGroups[""], chunk)
+				} else {
+					parentGroups[chunk.ParentID] = append(parentGroups[chunk.ParentID], chunk)
+				}
+			}
+
+			for parentID, siblings := range parentGroups {
+				// Sort siblings by Index to ensure proper order
+				sort.Slice(siblings, func(i, j int) bool {
+					return siblings[i].Index < siblings[j].Index
+				})
+
+				// Verify indexes are sequential starting from 0
+				for i, chunk := range siblings {
+					expectedIndex := i
+					if chunk.Index != expectedIndex {
+						t.Errorf("Chunk with parent %s has index %d, expected %d", parentID, chunk.Index, expectedIndex)
+					}
+				}
+			}
+
+			// Test Status field
+			for _, chunk := range chunks {
+				if chunk.Status == "" {
+					t.Errorf("Chunk %s has empty status", chunk.ID)
+				}
+
+				// Leaf nodes should be completed (unless there was an error)
+				if chunk.Leaf && chunk.Status != types.ChunkingStatusCompleted {
+					t.Errorf("Leaf chunk %s has status %s, expected %s", chunk.ID, chunk.Status, types.ChunkingStatusCompleted)
+				}
+			}
+
+			// Test Parents field for non-root nodes
+			for _, chunk := range chunks {
+				if !chunk.Root && chunk.ParentID != "" {
+					if len(chunk.Parents) == 0 {
+						t.Errorf("Non-root chunk %s has no parents", chunk.ID)
+					}
+
+					// Verify parent chain consistency
+					for i, parent := range chunk.Parents {
+						if i == 0 && parent.Root != true {
+							t.Errorf("First parent of chunk %s is not root", chunk.ID)
+						}
+						if i > 0 {
+							prevParent := chunk.Parents[i-1]
+							if parent.ParentID != prevParent.ID {
+								t.Errorf("Parent chain broken for chunk %s", chunk.ID)
+							}
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestStatusUpdate(t *testing.T) {
+	chunker := NewStructuredChunker()
+
+	// Test chunk manager status updates
+	chunk1 := &types.Chunk{
+		ID:     "test1",
+		Text:   "test",
+		Depth:  1,
+		Leaf:   true,
+		Status: types.ChunkingStatusPending,
+	}
+
+	chunk2 := &types.Chunk{
+		ID:       "test2",
+		Text:     "test",
+		ParentID: "test1",
+		Depth:    2,
+		Leaf:     true,
+		Status:   types.ChunkingStatusPending,
+	}
+
+	chunker.chunkManager.AddChunk(chunk1)
+	chunker.chunkManager.AddChunk(chunk2)
+
+	// Update child status
+	chunker.chunkManager.UpdateChunkStatus("test2", types.ChunkingStatusCompleted)
+
+	if chunk2.Status != types.ChunkingStatusCompleted {
+		t.Errorf("Chunk2 status = %s, expected %s", chunk2.Status, types.ChunkingStatusCompleted)
 	}
 }
 

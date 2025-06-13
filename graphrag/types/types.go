@@ -94,6 +94,25 @@ func GetSupportedDistanceMetrics() []DistanceMetric {
 	}
 }
 
+// ==== Chunking Enums =====
+
+// ChunkingStatus represents the status of a chunk
+type ChunkingStatus string
+
+const (
+	// ChunkingStatusPending is the status of a chunk that is pending
+	ChunkingStatusPending ChunkingStatus = "pending"
+
+	// ChunkingStatusProcessing is the status of a chunk that is processing
+	ChunkingStatusProcessing ChunkingStatus = "processing"
+
+	// ChunkingStatusCompleted is the status of a chunk that is completed
+	ChunkingStatusCompleted ChunkingStatus = "completed"
+
+	// ChunkingStatusFailed is the status of a chunk that is failed
+	ChunkingStatusFailed ChunkingStatus = "failed"
+)
+
 // ===== Chunking Types =====
 
 // TextPosition represents position information for text-based content
@@ -119,6 +138,14 @@ type Chunk struct {
 	ParentID string       `json:"parent_id,omitempty"`
 	Depth    int          `json:"depth"`
 	Leaf     bool         `json:"leaf"` // Whether the chunk is a leaf node
+	Root     bool         `json:"root"` // Whether the chunk is a root node
+
+	// Status and index
+	Index  int            `json:"index"`  // Index of the chunk in the parent chunk
+	Status ChunkingStatus `json:"status"` // Status of the chunk, for example, "pending", "processing", "completed", "failed"
+
+	// Parents of the chunk
+	Parents []Chunk `json:"parents"` // Parents of the chunk
 
 	// Position information (only one should be populated based on content type)
 	TextPos  *TextPosition  `json:"text_position,omitempty"`  // For text, code, etc.
