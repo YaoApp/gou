@@ -1736,3 +1736,98 @@ func TestIntegrationWithTestData(t *testing.T) {
 		}
 	}
 }
+
+func TestMaxDepthValidation(t *testing.T) {
+	chunker := NewStructuredChunker()
+	ctx := context.Background()
+
+	tests := []struct {
+		name          string
+		originalDepth int
+		expectedDepth int
+		shouldWarn    bool
+	}{
+		{
+			name:          "Valid MaxDepth",
+			originalDepth: 3,
+			expectedDepth: 3,
+			shouldWarn:    false,
+		},
+		{
+			name:          "MaxDepth exceeds maximum",
+			originalDepth: 5,
+			expectedDepth: 3,
+			shouldWarn:    true,
+		},
+		{
+			name:          "MaxDepth below minimum",
+			originalDepth: 0,
+			expectedDepth: 1,
+			shouldWarn:    true,
+		},
+		{
+			name:          "Negative MaxDepth",
+			originalDepth: -1,
+			expectedDepth: 1,
+			shouldWarn:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := &types.ChunkingOptions{
+				Type:          types.ChunkingTypeText,
+				Size:          100,
+				Overlap:       10,
+				MaxDepth:      tt.originalDepth,
+				MaxConcurrent: 2,
+			}
+
+			text := "This is a test text for MaxDepth validation"
+
+			err := chunker.Chunk(ctx, text, options, func(chunk *types.Chunk) error {
+				return nil
+			})
+
+			if err != nil {
+				t.Errorf("Chunk() error = %v", err)
+				return
+			}
+
+			if options.MaxDepth != tt.expectedDepth {
+				t.Errorf("Expected MaxDepth to be corrected to %d, got %d", tt.expectedDepth, options.MaxDepth)
+			}
+		})
+	}
+}
+
+func TestValidateAndFixOptionsDirectly(t *testing.T) {
+	chunker := NewStructuredChunker()
+
+	tests := []struct {
+		name          string
+		originalDepth int
+		expectedDepth int
+	}{
+		{"Valid depth", 2, 2},
+		{"Max valid depth", 3, 3},
+		{"Exceeds maximum", 4, 3},
+		{"Far exceeds maximum", 10, 3},
+		{"Zero depth", 0, 1},
+		{"Negative depth", -5, 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := &types.ChunkingOptions{
+				MaxDepth: tt.originalDepth,
+			}
+
+			chunker.validateAndFixOptions(options)
+
+			if options.MaxDepth != tt.expectedDepth {
+				t.Errorf("Expected MaxDepth %d, got %d", tt.expectedDepth, options.MaxDepth)
+			}
+		})
+	}
+}

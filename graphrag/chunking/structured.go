@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yaoapp/gou/graphrag/types"
+	"github.com/yaoapp/kun/log"
 )
 
 // ChunkManager manages chunk hierarchy and status
@@ -119,6 +120,18 @@ func NewStructuredChunker() *StructuredChunker {
 	}
 }
 
+// validateAndFixOptions validates and fixes chunking options
+func (chunker *StructuredChunker) validateAndFixOptions(options *types.ChunkingOptions) {
+	if options.MaxDepth > 3 {
+		log.Warn("MaxDepth is set to %d which exceeds the recommended maximum of 3. Setting MaxDepth to 3 for optimal performance.", options.MaxDepth)
+		options.MaxDepth = 3
+	}
+	if options.MaxDepth < 1 {
+		log.Warn("MaxDepth is set to %d which is below the minimum of 1. Setting MaxDepth to 1.", options.MaxDepth)
+		options.MaxDepth = 1
+	}
+}
+
 // NewStructuredOptions creates a new structured chunker options by chunking type
 func NewStructuredOptions(chunkingType types.ChunkingType) *types.ChunkingOptions {
 
@@ -136,6 +149,9 @@ func NewStructuredOptions(chunkingType types.ChunkingType) *types.ChunkingOption
 
 // Chunk is the main function to chunk text
 func (chunker *StructuredChunker) Chunk(ctx context.Context, text string, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+	// Validate and fix options
+	chunker.validateAndFixOptions(options)
+
 	// Auto-detect content type if not provided
 	if options.Type == "" {
 		options.Type = types.ChunkingTypeText // Default to text for string input
@@ -148,6 +164,9 @@ func (chunker *StructuredChunker) Chunk(ctx context.Context, text string, option
 
 // ChunkFile is the function to chunk file
 func (chunker *StructuredChunker) ChunkFile(ctx context.Context, file string, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+	// Validate and fix options
+	chunker.validateAndFixOptions(options)
+
 	// Open file
 	f, err := os.Open(file)
 	if err != nil {
@@ -180,6 +199,9 @@ func (chunker *StructuredChunker) ChunkFile(ctx context.Context, file string, op
 
 // ChunkStream is the function to chunk stream
 func (chunker *StructuredChunker) ChunkStream(ctx context.Context, stream io.ReadSeeker, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+	// Validate and fix options
+	chunker.validateAndFixOptions(options)
+
 	// Get stream size
 	streamSize, err := chunker.getStreamSize(stream)
 	if err != nil {
