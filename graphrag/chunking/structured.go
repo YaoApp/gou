@@ -13,12 +13,110 @@ import (
 	"github.com/yaoapp/gou/graphrag/types"
 )
 
+// ChunkManager manages chunk hierarchy and status
+type ChunkManager struct {
+	chunks   map[string]*types.Chunk   // ID -> Chunk mapping
+	children map[string][]*types.Chunk // Parent ID -> Children mapping
+	mutex    sync.RWMutex
+}
+
+// NewChunkManager creates a new chunk manager
+func NewChunkManager() *ChunkManager {
+	return &ChunkManager{
+		chunks:   make(map[string]*types.Chunk),
+		children: make(map[string][]*types.Chunk),
+	}
+}
+
+// AddChunk adds a chunk to the manager
+func (cm *ChunkManager) AddChunk(chunk *types.Chunk) {
+	cm.mutex.Lock()
+	defer cm.mutex.Unlock()
+
+	cm.chunks[chunk.ID] = chunk
+	if chunk.ParentID != "" {
+		cm.children[chunk.ParentID] = append(cm.children[chunk.ParentID], chunk)
+	}
+}
+
+// UpdateChunkStatus updates a chunk's status and propagates to parents if needed
+func (cm *ChunkManager) UpdateChunkStatus(chunkID string, status types.ChunkingStatus) {
+	cm.mutex.Lock()
+	defer cm.mutex.Unlock()
+
+	chunk, exists := cm.chunks[chunkID]
+	if !exists {
+		return
+	}
+
+	chunk.Status = status
+
+	// If this is a completed leaf node, check parent status
+	if status == types.ChunkingStatusCompleted && chunk.Leaf && chunk.ParentID != "" {
+		cm.checkParentCompletion(chunk.ParentID)
+	}
+}
+
+// checkParentCompletion checks if all children of a parent are completed
+func (cm *ChunkManager) checkParentCompletion(parentID string) {
+	parent, exists := cm.chunks[parentID]
+	if !exists {
+		return
+	}
+
+	children := cm.children[parentID]
+	if len(children) == 0 {
+		return
+	}
+
+	// Check if all children are completed
+	allCompleted := true
+	for _, child := range children {
+		if child.Status != types.ChunkingStatusCompleted {
+			allCompleted = false
+			break
+		}
+	}
+
+	if allCompleted {
+		parent.Status = types.ChunkingStatusCompleted
+		// Recursively check parent's parent
+		if parent.ParentID != "" {
+			cm.checkParentCompletion(parent.ParentID)
+		}
+	}
+}
+
+// GetParents returns the parents chain for a chunk
+func (cm *ChunkManager) GetParents(chunk *types.Chunk) []types.Chunk {
+	cm.mutex.RLock()
+	defer cm.mutex.RUnlock()
+
+	var parents []types.Chunk
+	currentID := chunk.ParentID
+
+	for currentID != "" {
+		if parent, exists := cm.chunks[currentID]; exists {
+			parents = append([]types.Chunk{*parent}, parents...) // Prepend to maintain order
+			currentID = parent.ParentID
+		} else {
+			break
+		}
+	}
+
+	return parents
+}
+
 // StructuredChunker is the chunker for structured data
-type StructuredChunker struct{}
+type StructuredChunker struct {
+	chunkManager *ChunkManager
+}
 
 // NewStructuredChunker creates a new structured chunker
 func NewStructuredChunker() *StructuredChunker {
-	return &StructuredChunker{}
+	return &StructuredChunker{
+		chunkManager: NewChunkManager(),
+	}
 }
 
 // NewStructuredOptions creates a new structured chunker options by chunking type
@@ -126,8 +224,23 @@ func (chunker *StructuredChunker) processStreamLevels(ctx context.Context, strea
 		return err
 	}
 
-	// Process current level chunks concurrently
-	if err := chunker.processCurrentLevel(ctx, chunks, options.MaxConcurrent, callback); err != nil {
+	// Process current level chunks concurrently with status tracking
+	if err := chunker.processCurrentLevel(ctx, chunks, options.MaxConcurrent, func(chunk *types.Chunk) error {
+		// Call the original callback
+		err := callback(chunk)
+		if err != nil {
+			// Update status to failed on callback error
+			chunker.chunkManager.UpdateChunkStatus(chunk.ID, types.ChunkingStatusFailed)
+			return err
+		}
+
+		// If this is a leaf node and callback succeeded, mark as completed
+		if chunk.Leaf {
+			chunker.chunkManager.UpdateChunkStatus(chunk.ID, types.ChunkingStatusCompleted)
+		}
+
+		return nil
+	}); err != nil {
 		return err
 	}
 
@@ -137,6 +250,9 @@ func (chunker *StructuredChunker) processStreamLevels(ctx context.Context, strea
 			// Only create sub-chunks if current chunk is large enough
 			subChunkSize := chunker.calculateSubSize(options.Size, currentDepth)
 			if int64(len(chunk.Text)) > int64(subChunkSize) {
+				// Update chunk status to processing
+				chunker.chunkManager.UpdateChunkStatus(chunk.ID, types.ChunkingStatusProcessing)
+
 				// Process sub-chunks from the text content with line tracking
 				baseStartLine := 1
 				if chunk.TextPos != nil {
@@ -144,6 +260,8 @@ func (chunker *StructuredChunker) processStreamLevels(ctx context.Context, strea
 				}
 				err := chunker.processTextLevelsWithLines(ctx, chunk.Text, baseStartLine, chunk.ID, currentDepth+1, options, callback)
 				if err != nil {
+					// Update chunk status to failed on error
+					chunker.chunkManager.UpdateChunkStatus(chunk.ID, types.ChunkingStatusFailed)
 					return err
 				}
 			}
@@ -176,6 +294,17 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 		// Determine if this is a leaf node
 		isLeaf := depth >= options.MaxDepth || int64(len(text)) <= int64(chunker.calculateSubSize(options.Size, depth))
 
+		// Determine if this is a root node
+		isRoot := depth == 1 && parentID == ""
+
+		// Determine initial status
+		var status types.ChunkingStatus
+		if isLeaf {
+			status = types.ChunkingStatusCompleted
+		} else {
+			status = types.ChunkingStatusPending
+		}
+
 		chunk := &types.Chunk{
 			ID:       uuid.NewString(),
 			Text:     text,
@@ -183,6 +312,9 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 			Depth:    depth,
 			Type:     chunkType,
 			Leaf:     isLeaf,
+			Root:     isRoot,
+			Index:    0, // Will be set later
+			Status:   status,
 			TextPos: &types.TextPosition{
 				StartIndex: int(offset),
 				EndIndex:   int(offset) + n,
@@ -190,12 +322,18 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 				EndLine:    endLine,
 			},
 		}
+
+		// Add to chunk manager and set parents
+		chunker.chunkManager.AddChunk(chunk)
+		chunk.Parents = chunker.chunkManager.GetParents(chunk)
+
 		chunks = append(chunks, chunk)
 		return chunks, nil
 	}
 
 	// Process in chunks
 	pos := int64(0)
+	chunkIndex := 0
 	for pos < totalSize {
 		// Calculate current chunk end position
 		end := pos + int64(chunkSize)
@@ -223,6 +361,17 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 		// Determine if this is a leaf node
 		isLeaf := depth >= options.MaxDepth || int64(len(text)) <= int64(chunker.calculateSubSize(options.Size, depth))
 
+		// Determine if this is a root node
+		isRoot := depth == 1 && parentID == ""
+
+		// Determine initial status
+		var status types.ChunkingStatus
+		if isLeaf {
+			status = types.ChunkingStatusCompleted
+		} else {
+			status = types.ChunkingStatusPending
+		}
+
 		chunk := &types.Chunk{
 			ID:       uuid.NewString(),
 			Text:     text,
@@ -230,6 +379,9 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 			Depth:    depth,
 			Type:     chunkType,
 			Leaf:     isLeaf,
+			Root:     isRoot,
+			Index:    chunkIndex,
+			Status:   status,
 			TextPos: &types.TextPosition{
 				StartIndex: int(offset + pos),
 				EndIndex:   int(offset+pos) + n,
@@ -237,7 +389,13 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 				EndLine:    endLine,
 			},
 		}
+
+		// Add to chunk manager and set parents
+		chunker.chunkManager.AddChunk(chunk)
+		chunk.Parents = chunker.chunkManager.GetParents(chunk)
+
 		chunks = append(chunks, chunk)
+		chunkIndex++
 
 		// Calculate next position considering overlap
 		pos += int64(chunkSize) - int64(overlap)
@@ -263,8 +421,23 @@ func (chunker *StructuredChunker) processTextLevelsWithLines(ctx context.Context
 	// Create chunks from text with line tracking
 	chunks := chunker.createChunksWithLines(text, chunkSize, overlap, baseStartLine, parentID, currentDepth, options.Type, options)
 
-	// Process current level chunks concurrently
-	if err := chunker.processCurrentLevel(ctx, chunks, options.MaxConcurrent, callback); err != nil {
+	// Process current level chunks concurrently with status tracking
+	if err := chunker.processCurrentLevel(ctx, chunks, options.MaxConcurrent, func(chunk *types.Chunk) error {
+		// Call the original callback
+		err := callback(chunk)
+		if err != nil {
+			// Update status to failed on callback error
+			chunker.chunkManager.UpdateChunkStatus(chunk.ID, types.ChunkingStatusFailed)
+			return err
+		}
+
+		// If this is a leaf node and callback succeeded, mark as completed
+		if chunk.Leaf {
+			chunker.chunkManager.UpdateChunkStatus(chunk.ID, types.ChunkingStatusCompleted)
+		}
+
+		return nil
+	}); err != nil {
 		return err
 	}
 
@@ -273,12 +446,17 @@ func (chunker *StructuredChunker) processTextLevelsWithLines(ctx context.Context
 		for _, chunk := range chunks {
 			subChunkSize := chunker.calculateSubSize(options.Size, currentDepth)
 			if len(chunk.Text) > subChunkSize {
+				// Update chunk status to processing
+				chunker.chunkManager.UpdateChunkStatus(chunk.ID, types.ChunkingStatusProcessing)
+
 				baseStartLine := 1
 				if chunk.TextPos != nil {
 					baseStartLine = chunk.TextPos.StartLine
 				}
 				err := chunker.processTextLevelsWithLines(ctx, chunk.Text, baseStartLine, chunk.ID, currentDepth+1, options, callback)
 				if err != nil {
+					// Update chunk status to failed on error
+					chunker.chunkManager.UpdateChunkStatus(chunk.ID, types.ChunkingStatusFailed)
 					return err
 				}
 			}
@@ -301,6 +479,17 @@ func (chunker *StructuredChunker) createChunksWithLines(text string, size, overl
 		// Determine if this is a leaf node
 		isLeaf := depth >= options.MaxDepth || len(text) <= chunker.calculateSubSize(options.Size, depth)
 
+		// Determine if this is a root node
+		isRoot := depth == 1 && parentID == ""
+
+		// Determine initial status
+		var status types.ChunkingStatus
+		if isLeaf {
+			status = types.ChunkingStatusCompleted
+		} else {
+			status = types.ChunkingStatusPending
+		}
+
 		chunk := &types.Chunk{
 			ID:       uuid.NewString(),
 			Text:     text,
@@ -308,6 +497,9 @@ func (chunker *StructuredChunker) createChunksWithLines(text string, size, overl
 			Depth:    depth,
 			Type:     chunkType,
 			Leaf:     isLeaf,
+			Root:     isRoot,
+			Index:    0, // Single chunk
+			Status:   status,
 			TextPos: &types.TextPosition{
 				StartIndex: 0,
 				EndIndex:   totalLen,
@@ -315,12 +507,18 @@ func (chunker *StructuredChunker) createChunksWithLines(text string, size, overl
 				EndLine:    endLine,
 			},
 		}
+
+		// Add to chunk manager and set parents
+		chunker.chunkManager.AddChunk(chunk)
+		chunk.Parents = chunker.chunkManager.GetParents(chunk)
+
 		chunks = append(chunks, chunk)
 		return chunks
 	}
 
 	pos := 0
 	currentLine := baseStartLine
+	chunkIndex := 0
 	for pos < totalLen {
 		end := pos + size
 		if end > totalLen {
@@ -334,6 +532,17 @@ func (chunker *StructuredChunker) createChunksWithLines(text string, size, overl
 		// Determine if this is a leaf node
 		isLeaf := depth >= options.MaxDepth || len(chunkText) <= chunker.calculateSubSize(options.Size, depth)
 
+		// Determine if this is a root node
+		isRoot := depth == 1 && parentID == ""
+
+		// Determine initial status
+		var status types.ChunkingStatus
+		if isLeaf {
+			status = types.ChunkingStatusCompleted
+		} else {
+			status = types.ChunkingStatusPending
+		}
+
 		chunk := &types.Chunk{
 			ID:       uuid.NewString(),
 			Text:     chunkText,
@@ -341,6 +550,9 @@ func (chunker *StructuredChunker) createChunksWithLines(text string, size, overl
 			Depth:    depth,
 			Type:     chunkType,
 			Leaf:     isLeaf,
+			Root:     isRoot,
+			Index:    chunkIndex,
+			Status:   status,
 			TextPos: &types.TextPosition{
 				StartIndex: pos,
 				EndIndex:   end,
@@ -348,7 +560,13 @@ func (chunker *StructuredChunker) createChunksWithLines(text string, size, overl
 				EndLine:    endLine,
 			},
 		}
+
+		// Add to chunk manager and set parents
+		chunker.chunkManager.AddChunk(chunk)
+		chunk.Parents = chunker.chunkManager.GetParents(chunk)
+
 		chunks = append(chunks, chunk)
+		chunkIndex++
 
 		// Calculate next position considering overlap
 		pos += size - overlap
