@@ -171,10 +171,13 @@ type ChunkingOptions struct {
 
 // SemanticOptions represents options for semantic recognition
 type SemanticOptions struct {
-	Connector   string `json:"connector"`    // For Semantic recognition, etc.
-	ContextSize int    `json:"context_size"` // Context size for Semantic recognition. Default L1 Size (ChunkSize * 6)
-	Options     string `json:"options"`      // Model options, for example, temperature, top_p, etc.
-	Prompt      string `json:"prompt"`       // System prompt for Semantic recognition.
+	Connector     string `json:"connector"`      // For Semantic recognition, etc.
+	ContextSize   int    `json:"context_size"`   // Context size for Semantic recognition. Default L1 Size (ChunkSize * 6)
+	Options       string `json:"options"`        // Model options, for example, temperature, top_p, etc.
+	Prompt        string `json:"prompt"`         // System prompt for Semantic recognition.
+	Toolcall      bool   `json:"toolcall"`       // Whether to use toolcall for Semantic recognition.
+	MaxRetry      int    `json:"max_retry"`      // Max retry times for Semantic recognition.
+	MaxConcurrent int    `json:"max_concurrent"` // Max concurrent requests for Semantic recognition.
 }
 
 // ChunkingType for chunking type

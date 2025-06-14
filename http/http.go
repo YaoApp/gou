@@ -23,6 +23,7 @@ import (
 // New make a new  http Request
 func New(url string) *Request {
 	return &Request{
+		ctx:       nil,
 		url:       url,
 		headers:   http.Header{},
 		query:     neturl.Values{},
@@ -93,6 +94,12 @@ func (r *Request) WithHeader(headers http.Header) *Request {
 // WithQuery set the request query params
 func (r *Request) WithQuery(values neturl.Values) *Request {
 	r.query = values
+	return r
+}
+
+// WithContext set the request context
+func (r *Request) WithContext(ctx context.Context) *Request {
+	r.ctx = ctx
 	return r
 }
 
@@ -176,7 +183,7 @@ func (r *Request) Send(method string, data interface{}) *Response {
 		cast.MergeURLValues(r.query, query)
 	}
 
-	if r.query != nil && len(r.query) > 0 {
+	if len(r.query) > 0 {
 		requestURL = fmt.Sprintf("%s?%s", requestURL, r.query.Encode())
 	}
 
@@ -230,6 +237,11 @@ func (r *Request) Send(method string, data interface{}) *Response {
 		client = &http.Client{Transport: tr}
 	}
 	defer tr.CloseIdleConnections()
+
+	// Set the request context
+	if r.ctx != nil {
+		req = req.WithContext(r.ctx)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
