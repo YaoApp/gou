@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 )
@@ -19,6 +20,7 @@ const (
 
 // Request HTTP Request
 type Request struct {
+	ctx       context.Context
 	url       string
 	query     url.Values
 	headers   http.Header
