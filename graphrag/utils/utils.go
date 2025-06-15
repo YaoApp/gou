@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
-	"github.com/kaptinlin/jsonrepair"
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/http"
 )
@@ -41,8 +41,18 @@ func PostLLM(ctx context.Context, conn connector.Connector, endpoint string, pay
 		return nil, fmt.Errorf("no host found in connector settings")
 	}
 
+	// endpoint not start with /, then add /
+	if !strings.HasPrefix(endpoint, "/") {
+		endpoint = "/" + endpoint
+	}
+
+	// Host is api.openai.com & endpoint not has /v1, then add /v1
+	if host == "https://api.openai.com" && !strings.HasPrefix(endpoint, "/v1") {
+		endpoint = "/v1" + endpoint
+	}
+
 	// Build full URL
-	url := fmt.Sprintf("%s/%s", strings.TrimSuffix(host, "/"), endpoint)
+	url := fmt.Sprintf("%s/%s", strings.TrimSuffix(host, "/"), strings.TrimPrefix(endpoint, "/"))
 
 	// Get API key
 	apiKey, ok := setting["key"].(string)
@@ -75,8 +85,18 @@ func StreamLLM(ctx context.Context, conn connector.Connector, endpoint string, p
 		return fmt.Errorf("no host found in connector settings")
 	}
 
+	// endpoint not start with /, then add /
+	if !strings.HasPrefix(endpoint, "/") {
+		endpoint = "/" + endpoint
+	}
+
+	// Host is api.openai.com & endpoint not has /v1, then add /v1
+	if host == "https://api.openai.com" && !strings.HasPrefix(endpoint, "/v1") {
+		endpoint = "/v1" + endpoint
+	}
+
 	// Build full URL
-	url := fmt.Sprintf("%s/%s", strings.TrimSuffix(host, "/"), endpoint)
+	url := fmt.Sprintf("%s/%s", strings.TrimSuffix(host, "/"), strings.TrimPrefix(endpoint, "/"))
 
 	// Get API key
 	key, ok := setting["key"].(string)
@@ -147,12 +167,13 @@ type SemanticPosition struct {
 	EndPos   int `json:"end_pos"`
 }
 
-// StreamParser handles parsing of streaming LLM responses
+// StreamParser handles streaming LLM responses and accumulates data
 type StreamParser struct {
 	accumulatedContent   string
 	accumulatedArguments string
 	isToolcall           bool
 	finished             bool
+	mutex                sync.Mutex // Add mutex for concurrent safety
 }
 
 // NewStreamParser creates a new stream parser
@@ -162,8 +183,11 @@ func NewStreamParser(isToolcall bool) *StreamParser {
 	}
 }
 
-// ParseStreamChunk parses a single streaming chunk and returns accumulated data with positions
+// ParseStreamChunk parses a single streaming chunk and accumulates data
 func (sp *StreamParser) ParseStreamChunk(chunkData []byte) (*StreamChunkData, error) {
+	sp.mutex.Lock()
+	defer sp.mutex.Unlock()
+
 	// Skip empty chunks
 	if len(chunkData) == 0 {
 		return &StreamChunkData{
@@ -174,49 +198,55 @@ func (sp *StreamParser) ParseStreamChunk(chunkData []byte) (*StreamChunkData, er
 		}, nil
 	}
 
-	// Parse the chunk as JSON with error tolerance
-	chunkStr := strings.TrimSpace(string(chunkData))
-
 	// Handle SSE format (data: prefix)
-	chunkStr = strings.TrimPrefix(chunkStr, "data: ")
-
-	// Skip [DONE] marker
-	if chunkStr == "[DONE]" {
-		sp.finished = true
-		// Try to parse final accumulated content for positions
-		positions := sp.parseAccumulatedContent()
-		return &StreamChunkData{
-			Content:    sp.accumulatedContent,
-			Arguments:  sp.accumulatedArguments,
-			Positions:  positions,
-			IsToolcall: sp.isToolcall,
-			Finished:   true,
-		}, nil
+	dataStr := string(chunkData)
+	if strings.HasPrefix(dataStr, "data: ") {
+		dataStr = strings.TrimPrefix(dataStr, "data: ")
+		if strings.TrimSpace(dataStr) == "[DONE]" {
+			sp.finished = true
+			// When finished, try to parse positions from accumulated data
+			positions := sp.tryParsePositions()
+			return &StreamChunkData{
+				Content:    sp.accumulatedContent,
+				Arguments:  sp.accumulatedArguments,
+				Positions:  positions,
+				IsToolcall: sp.isToolcall,
+				Finished:   sp.finished,
+			}, nil
+		}
+		chunkData = []byte(dataStr)
 	}
 
-	// Parse JSON with tolerance
+	// Parse the streaming chunk JSON
 	var chunkObj map[string]interface{}
-	if err := TolerantJSONUnmarshal([]byte(chunkStr), &chunkObj); err != nil {
-		// If parsing fails, return current state without error
+	if err := json.Unmarshal(chunkData, &chunkObj); err != nil {
+		// If JSON parsing fails, return current state with error info and raw data
 		return &StreamChunkData{
 			Content:    sp.accumulatedContent,
 			Arguments:  sp.accumulatedArguments,
 			IsToolcall: sp.isToolcall,
 			Finished:   sp.finished,
 			Error:      fmt.Sprintf("JSON parse error: %v", err),
-			Raw:        map[string]interface{}{"raw_chunk": chunkStr},
+			Raw:        map[string]interface{}{"raw_data": string(chunkData)},
 		}, nil
 	}
 
-	// Extract content based on toolcall or regular response
+	// Extract and accumulate data based on type
 	if sp.isToolcall {
 		sp.parseToolcallChunk(chunkObj)
 	} else {
 		sp.parseRegularChunk(chunkObj)
 	}
 
-	// Try to parse positions from accumulated content
-	positions := sp.parseAccumulatedContent()
+	// Try to parse positions from current accumulated data
+	// Only attempt parsing if stream is finished or we have very complete data
+	var positions []SemanticPosition
+	if sp.finished {
+		positions = sp.tryParsePositions()
+	} else {
+		// For ongoing streams, only try parsing if data looks very complete
+		positions = sp.tryParsePositionsConservative()
+	}
 
 	return &StreamChunkData{
 		Content:    sp.accumulatedContent,
@@ -224,66 +254,44 @@ func (sp *StreamParser) ParseStreamChunk(chunkData []byte) (*StreamChunkData, er
 		Positions:  positions,
 		IsToolcall: sp.isToolcall,
 		Finished:   sp.finished,
-		Raw:        chunkObj,
 	}, nil
 }
 
-// parseAccumulatedContent tries to parse semantic positions from accumulated content
-func (sp *StreamParser) parseAccumulatedContent() []SemanticPosition {
-	var contentToParse string
-
+// getAccumulatedData returns the relevant accumulated data based on type
+func (sp *StreamParser) getAccumulatedData() string {
 	if sp.isToolcall {
-		// For toolcall, parse from accumulated arguments
-		contentToParse = sp.accumulatedArguments
-	} else {
-		// For regular response, parse from accumulated content
-		contentToParse = sp.accumulatedContent
+		return sp.accumulatedArguments
 	}
+	return sp.accumulatedContent
+}
 
-	if strings.TrimSpace(contentToParse) == "" {
+// tryParsePositions attempts to parse semantic positions from accumulated data
+func (sp *StreamParser) tryParsePositions() []SemanticPosition {
+	data := strings.TrimSpace(sp.getAccumulatedData())
+	if len(data) < 20 { // Need substantial data
 		return nil
 	}
 
-	// Try to extract and parse JSON positions
-	return sp.extractPositionsFromText(contentToParse)
-}
-
-// extractPositionsFromText extracts semantic positions from text content
-func (sp *StreamParser) extractPositionsFromText(text string) []SemanticPosition {
-	// For toolcall, the text should be JSON arguments
 	if sp.isToolcall {
-		return sp.parseToolcallPositions(text)
+		return sp.tryParseToolcallPositions(data)
 	}
-
-	// For regular response, extract JSON from the content
-	return sp.parseRegularPositions(text)
+	return sp.tryParseRegularPositions(data)
 }
 
-// parseToolcallPositions parses positions from toolcall arguments
-func (sp *StreamParser) parseToolcallPositions(arguments string) []SemanticPosition {
-	arguments = strings.TrimSpace(arguments)
-	if arguments == "" {
+// tryParseToolcallPositions attempts to parse positions from toolcall arguments
+func (sp *StreamParser) tryParseToolcallPositions(arguments string) []SemanticPosition {
+	// Must look like JSON with segments structure
+	if !strings.Contains(arguments, "segments") || !strings.Contains(arguments, "start_pos") {
 		return nil
 	}
 
-	// Try to parse the arguments as JSON directly first
+	// Try to parse using TolerantJSONUnmarshal directly
 	var args map[string]interface{}
 	if err := TolerantJSONUnmarshal([]byte(arguments), &args); err != nil {
-		// If parsing fails, try to complete the JSON
-		completedJSON := sp.completeJSON(arguments)
-		if err := TolerantJSONUnmarshal([]byte(completedJSON), &args); err != nil {
-			// If still fails, try jsonrepair as last resort
-			repairedJSON, repairErr := jsonrepair.JSONRepair(arguments)
-			if repairErr != nil {
-				return nil
-			}
-			if err := TolerantJSONUnmarshal([]byte(repairedJSON), &args); err != nil {
-				return nil
-			}
-		}
+		return nil // Parsing failed, wait for more data
 	}
 
-	// Extract segments from arguments
+	// Extract segments
 	segments, ok := args["segments"].([]interface{})
 	if !ok {
 		return nil
@@ -296,68 +304,39 @@ func (sp *StreamParser) parseToolcallPositions(arguments string) []SemanticPosit
 			continue
 		}
 
-		startPos, startOk := segMap["start_pos"]
-		endPos, endOk := segMap["end_pos"]
-		if !startOk || !endOk {
-			continue
-		}
+		startPos := sp.toInt(segMap["start_pos"])
+		endPos := sp.toInt(segMap["end_pos"])
 
-		// Convert to int (handle both float64 and int)
-		var start, end int
-		switch v := startPos.(type) {
-		case float64:
-			start = int(v)
-		case int:
-			start = v
-		default:
-			continue
+		if startPos >= 0 && endPos > startPos {
+			positions = append(positions, SemanticPosition{
+				StartPos: startPos,
+				EndPos:   endPos,
+			})
 		}
-
-		switch v := endPos.(type) {
-		case float64:
-			end = int(v)
-		case int:
-			end = v
-		default:
-			continue
-		}
-
-		// Validate position values
-		if start < 0 || end < 0 || start >= end {
-			continue
-		}
-
-		positions = append(positions, SemanticPosition{
-			StartPos: start,
-			EndPos:   end,
-		})
 	}
 
 	return positions
 }
 
-// parseRegularPositions parses positions from regular response content
-func (sp *StreamParser) parseRegularPositions(content string) []SemanticPosition {
+// tryParseRegularPositions attempts to parse positions from regular content
+func (sp *StreamParser) tryParseRegularPositions(content string) []SemanticPosition {
 	// Extract JSON array from content
-	jsonStr := sp.extractJSONFromText(content)
+	jsonStr := sp.extractJSONArray(content)
 	if jsonStr == "" {
 		return nil
 	}
 
-	// Try to complete incomplete JSON
-	completedJSON := sp.completeJSON(jsonStr)
-
-	// Parse positions
+	// Try to parse using TolerantJSONUnmarshal directly
 	var positions []SemanticPosition
-	if err := TolerantJSONUnmarshal([]byte(completedJSON), &positions); err != nil {
-		return nil
+	if err := TolerantJSONUnmarshal([]byte(jsonStr), &positions); err != nil {
+		return nil // Parsing failed, wait for more data
 	}
 
 	return positions
 }
 
-// extractJSONFromText extracts JSON array from text content
-func (sp *StreamParser) extractJSONFromText(text string) string {
+// extractJSONArray extracts JSON array from text content
+func (sp *StreamParser) extractJSONArray(text string) string {
 	// Remove markdown code blocks
 	text = strings.ReplaceAll(text, "```json", "")
 	text = strings.ReplaceAll(text, "```", "")
@@ -378,108 +357,22 @@ func (sp *StreamParser) extractJSONFromText(text string) string {
 	return text[start : end+1]
 }
 
-// completeJSON tries to complete incomplete JSON for parsing
-func (sp *StreamParser) completeJSON(jsonStr string) string {
-	jsonStr = strings.TrimSpace(jsonStr)
-
-	// If it's toolcall arguments, try to complete the object
-	if sp.isToolcall {
-		return sp.completeToolcallJSON(jsonStr)
+// toInt safely converts interface{} to int
+func (sp *StreamParser) toInt(value interface{}) int {
+	switch v := value.(type) {
+	case int:
+		return v
+	case int32:
+		return int(v)
+	case int64:
+		return int(v)
+	case float32:
+		return int(v)
+	case float64:
+		return int(v)
+	default:
+		return -1
 	}
-
-	// For regular response, try to complete the array
-	return sp.completeArrayJSON(jsonStr)
-}
-
-// completeToolcallJSON completes incomplete toolcall JSON
-func (sp *StreamParser) completeToolcallJSON(jsonStr string) string {
-	jsonStr = strings.TrimSpace(jsonStr)
-
-	// If it doesn't start with {, add it
-	if !strings.HasPrefix(jsonStr, "{") {
-		jsonStr = "{" + jsonStr
-	}
-
-	// Check if we have segments array structure
-	if !strings.Contains(jsonStr, "segments") && !strings.Contains(jsonStr, "\"segments\"") {
-		// If no segments found, try to wrap content in segments structure
-		// This handles cases where only the array content is provided
-		if strings.HasPrefix(jsonStr, "{") && !strings.Contains(jsonStr, "segments") {
-			// Extract any array content and wrap it
-			if strings.Contains(jsonStr, "[") {
-				arrayStart := strings.Index(jsonStr, "[")
-				arrayContent := jsonStr[arrayStart:]
-				jsonStr = `{"segments":` + arrayContent + `}`
-			} else if strings.Contains(jsonStr, `"start_pos"`) {
-				// Looks like segment objects without array wrapper
-				jsonStr = `{"segments":[` + jsonStr[1:] // Remove opening { and wrap in segments array
-			}
-		}
-	}
-
-	// Count braces and brackets to see if we need to close them
-	openBraces := strings.Count(jsonStr, "{") - strings.Count(jsonStr, "}")
-	openBrackets := strings.Count(jsonStr, "[") - strings.Count(jsonStr, "]")
-
-	// Close any open brackets first (arrays)
-	for i := 0; i < openBrackets; i++ {
-		jsonStr += "]"
-	}
-
-	// Close any open braces (objects)
-	for i := 0; i < openBraces; i++ {
-		jsonStr += "}"
-	}
-
-	// If we have segments but it's not properly structured, try to fix it
-	if strings.Contains(jsonStr, "segments") && !strings.Contains(jsonStr, `"segments":[`) {
-		// Try to find and fix segments structure
-		segmentPos := strings.Index(jsonStr, "segments")
-		if segmentPos > 0 {
-			prefix := jsonStr[:segmentPos]
-			suffix := jsonStr[segmentPos:]
-
-			// Ensure proper JSON structure for segments
-			if !strings.Contains(prefix, `"segments"`) {
-				suffix = `"` + suffix
-			}
-			if !strings.Contains(suffix, ":[") && strings.Contains(suffix, "[") {
-				suffix = strings.Replace(suffix, "segments", "segments", 1)
-				if !strings.Contains(suffix, ":") {
-					arrayStart := strings.Index(suffix, "[")
-					if arrayStart > 0 {
-						suffix = suffix[:arrayStart] + ":" + suffix[arrayStart:]
-					}
-				}
-			}
-			jsonStr = prefix + suffix
-		}
-	}
-
-	return jsonStr
-}
-
-// completeArrayJSON completes incomplete array JSON
-func (sp *StreamParser) completeArrayJSON(jsonStr string) string {
-	if !strings.HasPrefix(jsonStr, "[") {
-		jsonStr = "[" + jsonStr
-	}
-
-	// If the array is not closed, close it
-	if !strings.HasSuffix(jsonStr, "]") {
-		// Remove trailing comma if present
-		jsonStr = strings.TrimSuffix(strings.TrimSpace(jsonStr), ",")
-
-		// Count open braces to close them properly
-		openBraces := strings.Count(jsonStr, "{") - strings.Count(jsonStr, "}")
-		for i := 0; i < openBraces; i++ {
-			jsonStr += "}"
-		}
-
-		jsonStr += "]"
-	}
-
-	return jsonStr
 }
 
 // parseToolcallChunk parses toolcall streaming response
@@ -535,25 +428,26 @@ func (sp *StreamParser) parseRegularChunk(chunkObj map[string]interface{}) {
 	}
 }
 
-// TolerantJSONUnmarshal unmarshals JSON with error tolerance using JSONRepair
+// TolerantJSONUnmarshal unmarshals JSON with basic error handling and repair
 func TolerantJSONUnmarshal(data []byte, v interface{}) error {
-	// First try normal unmarshal
+	// First try normal unmarshaling
 	if err := json.Unmarshal(data, v); err == nil {
 		return nil
 	}
 
-	// If failed, try to repair JSON
-	repairedJSON, err := jsonrepair.JSONRepair(string(data))
-	if err != nil {
-		return fmt.Errorf("failed to repair JSON: %w", err)
-	}
+	// Try basic JSON repair for common issues
+	jsonStr := string(data)
 
-	// Try unmarshal again with repaired JSON
-	if err := json.Unmarshal([]byte(repairedJSON), v); err != nil {
-		return fmt.Errorf("failed to unmarshal repaired JSON: %w", err)
-	}
+	// Remove trailing commas
+	jsonStr = strings.ReplaceAll(jsonStr, ",}", "}")
+	jsonStr = strings.ReplaceAll(jsonStr, ",]", "]")
 
-	return nil
+	// Fix missing commas between object key-value pairs (simple case)
+	// This is a basic fix for: {"key": "value" "key2": "value2"}
+	jsonStr = strings.ReplaceAll(jsonStr, "\" \"", "\", \"")
+
+	// Try unmarshaling the repaired JSON
+	return json.Unmarshal([]byte(jsonStr), v)
 }
 
 // GetSemanticPrompt returns semantic analysis prompt, user-defined or default
@@ -567,25 +461,224 @@ func GetSemanticPrompt(userPrompt string) string {
 
 // GetDefaultSemanticPrompt returns the default semantic segmentation prompt
 func GetDefaultSemanticPrompt() string {
-	return `You are an expert text analyst. Please analyze the following text and segment it into semantically coherent chunks. Each chunk should represent a complete thought, topic, or concept.
+	return `You are an expert text analyst. Your task is to segment text based on SEMANTIC BOUNDARIES, not fixed character counts.
 
-Instructions:
-1. Identify natural semantic boundaries in the text
-2. Each segment should be meaningful and self-contained
-3. Avoid splitting sentences or related concepts
-4. Aim for segments that are roughly balanced in size but prioritize semantic coherence
-5. Return the segments as a JSON array with start_pos and end_pos positions
+CRITICAL INSTRUCTIONS:
+1. NEVER create segments with regular intervals or fixed character counts
+2. ALWAYS prioritize natural semantic boundaries (topic changes, paragraph breaks, concept shifts)
+3. Each segment should represent a complete thought, topic, or logical unit
+4. Segment sizes should VARY NATURALLY based on content structure
+5. Look for natural breakpoints: paragraph endings, topic transitions, section breaks
+6. Avoid splitting sentences, related concepts, or coherent thoughts
+7. Small segments (50-200 chars) are acceptable for short complete thoughts
+8. Large segments (500-1200 chars) are acceptable for complex topics that shouldn't be split
 
-Output format:
+WRONG APPROACH (DO NOT DO THIS):
+- Creating segments every 100-150 characters regardless of content
+- Splitting in the middle of sentences or concepts
+- Using regular intervals like 0-130, 130-260, 260-390
+
+CORRECT APPROACH:
+- Find natural topic boundaries and paragraph breaks
+- Keep related sentences together
+- Vary segment sizes based on content structure
+- Example: [{"start_pos": 0, "end_pos": 89}, {"start_pos": 89, "end_pos": 234}, {"start_pos": 234, "end_pos": 567}, {"start_pos": 567, "end_pos": 723}]
+
+Output format: JSON array with start_pos and end_pos positions only (no text content)
 [
-  {"start_pos": 0, "end_pos": 150},
-  {"start_pos": 150, "end_pos": 300},
-  ...
+  {"start_pos": 0, "end_pos": <natural_boundary>},
+  {"start_pos": <natural_boundary>, "end_pos": <next_boundary>}
 ]
 
-Requirements:
-- start_pos and end_pos are character positions (integers)
-- Segments should not overlap
-- All positions should be within the text boundaries
-- Do not include the actual text content in your response, only positions`
+Remember: SEMANTIC COHERENCE is more important than size uniformity. Segments should feel natural to a human reader.`
+}
+
+// tryParsePositionsConservative attempts to parse positions only when data looks very complete
+func (sp *StreamParser) tryParsePositionsConservative() []SemanticPosition {
+	data := strings.TrimSpace(sp.getAccumulatedData())
+	if len(data) < 30 { // Need minimum data
+		return nil
+	}
+
+	if sp.isToolcall {
+		return sp.tryParseToolcallPositionsConservative(data)
+	}
+	return sp.tryParseRegularPositionsConservative(data)
+}
+
+// tryParseToolcallPositionsConservative attempts to parse toolcall positions conservatively
+func (sp *StreamParser) tryParseToolcallPositionsConservative(arguments string) []SemanticPosition {
+	// Must contain complete segments structure and look finished
+	if !strings.Contains(arguments, "segments") || !strings.Contains(arguments, "start_pos") {
+		return nil
+	}
+
+	// Try to intelligently complete the JSON
+	completedJSON := sp.smartCompleteToolcallJSON(arguments)
+	if completedJSON == "" {
+		return nil
+	}
+
+	// Try to parse using TolerantJSONUnmarshal
+	var args map[string]interface{}
+	if err := TolerantJSONUnmarshal([]byte(completedJSON), &args); err != nil {
+		return nil
+	}
+
+	// Extract segments
+	segments, ok := args["segments"].([]interface{})
+	if !ok {
+		return nil
+	}
+
+	var positions []SemanticPosition
+	for _, seg := range segments {
+		segMap, ok := seg.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		startPos := sp.toInt(segMap["start_pos"])
+		endPos := sp.toInt(segMap["end_pos"])
+
+		if startPos >= 0 && endPos > startPos {
+			positions = append(positions, SemanticPosition{
+				StartPos: startPos,
+				EndPos:   endPos,
+			})
+		}
+	}
+
+	return positions
+}
+
+// tryParseRegularPositionsConservative attempts to parse regular positions conservatively
+func (sp *StreamParser) tryParseRegularPositionsConservative(content string) []SemanticPosition {
+	// Extract JSON array from content
+	jsonStr := sp.extractJSONArray(content)
+	if jsonStr == "" {
+		return nil
+	}
+
+	// Try to intelligently complete the JSON
+	completedJSON := sp.smartCompleteRegularJSON(jsonStr)
+	if completedJSON == "" {
+		return nil
+	}
+
+	// Try to parse using TolerantJSONUnmarshal
+	var positions []SemanticPosition
+	if err := TolerantJSONUnmarshal([]byte(completedJSON), &positions); err != nil {
+		return nil
+	}
+
+	return positions
+}
+
+// smartCompleteToolcallJSON intelligently completes toolcall JSON
+func (sp *StreamParser) smartCompleteToolcallJSON(arguments string) string {
+	arguments = strings.TrimSpace(arguments)
+
+	// Must start with { and contain segments
+	if !strings.HasPrefix(arguments, "{") || !strings.Contains(arguments, "segments") {
+		return ""
+	}
+
+	// If already complete, return as-is
+	if strings.HasSuffix(arguments, "}]}") {
+		return arguments
+	}
+
+	// Don't complete if it ends with a comma (more data expected)
+	if strings.HasSuffix(arguments, ",") {
+		return ""
+	}
+
+	// Count braces and brackets
+	openBraces := strings.Count(arguments, "{") - strings.Count(arguments, "}")
+	openBrackets := strings.Count(arguments, "[") - strings.Count(arguments, "]")
+
+	// Only complete if reasonable number of unclosed brackets/braces
+	if openBraces > 5 || openBrackets > 5 {
+		return ""
+	}
+
+	// Must contain at least one complete position object
+	if !strings.Contains(arguments, "start_pos") || !strings.Contains(arguments, "end_pos") {
+		return ""
+	}
+
+	// Don't complete if the last position object looks incomplete
+	// Look for pattern like: "end_pos": 25} to ensure we have a complete object
+	if !strings.Contains(arguments, "}") {
+		return ""
+	}
+
+	result := arguments
+
+	// Close brackets first
+	for i := 0; i < openBrackets && i < 3; i++ {
+		result += "]"
+	}
+
+	// Close braces
+	for i := 0; i < openBraces && i < 3; i++ {
+		result += "}"
+	}
+
+	return result
+}
+
+// smartCompleteRegularJSON intelligently completes regular JSON array
+func (sp *StreamParser) smartCompleteRegularJSON(jsonStr string) string {
+	jsonStr = strings.TrimSpace(jsonStr)
+
+	// Must start with [ and contain position structure
+	if !strings.HasPrefix(jsonStr, "[") {
+		return ""
+	}
+
+	// If already complete, return as-is
+	if strings.HasSuffix(jsonStr, "]") {
+		return jsonStr
+	}
+
+	// Don't complete if it ends with a comma (more data expected)
+	if strings.HasSuffix(jsonStr, ",") {
+		return ""
+	}
+
+	// Must contain at least one position structure
+	if !strings.Contains(jsonStr, "start_pos") || !strings.Contains(jsonStr, "end_pos") {
+		return ""
+	}
+
+	// Don't complete if the last position object looks incomplete
+	// Look for pattern like: "end_pos": 50} to ensure we have a complete object
+	if !strings.Contains(jsonStr, "}") {
+		return ""
+	}
+
+	// Count brackets and braces
+	openBrackets := strings.Count(jsonStr, "[") - strings.Count(jsonStr, "]")
+	openBraces := strings.Count(jsonStr, "{") - strings.Count(jsonStr, "}")
+
+	// Only complete if reasonable number of unclosed brackets/braces
+	if openBrackets > 3 || openBraces > 5 {
+		return ""
+	}
+
+	result := jsonStr
+
+	// Close braces first (for objects)
+	for i := 0; i < openBraces && i < 3; i++ {
+		result += "}"
+	}
+
+	// Close brackets (for array)
+	for i := 0; i < openBrackets && i < 2; i++ {
+		result += "]"
+	}
+
+	return result
 }

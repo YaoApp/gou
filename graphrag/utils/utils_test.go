@@ -789,9 +789,7 @@ func TestStreamParser_Regular(t *testing.T) {
 	}
 
 	expectedFinished := []bool{false, false, false, false, true}
-
-	// Expected positions should be parsed from accumulated content
-	expectedPositionsCount := []int{0, 1, 2, 2, 2} // Parser can extract positions as they become available
+	expectedPositionsCount := []int{0, 0, 2, 2, 2} // Positions parsed when JSON can be completed
 
 	for i, chunk := range testChunks {
 		t.Run(fmt.Sprintf("Chunk_%d", i), func(t *testing.T) {
@@ -852,7 +850,7 @@ func TestStreamParser_Toolcall(t *testing.T) {
 	}
 
 	expectedFinished := []bool{false, false, false, false, true}
-	expectedPositionsCount := []int{0, 1, 2, 2, 2} // Parser can extract positions as they become available
+	expectedPositionsCount := []int{0, 0, 2, 2, 2} // Positions parsed when JSON can be completed
 
 	for i, chunk := range testChunks {
 		t.Run(fmt.Sprintf("ToolcallChunk_%d", i), func(t *testing.T) {
@@ -948,50 +946,55 @@ func TestStreamParser_IncompleteJSON(t *testing.T) {
 }
 
 func TestStreamParser_JSONCompletion(t *testing.T) {
-	parser := NewStreamParser(false)
+	// Test that StreamParser can handle incomplete JSON and complete it internally
 
 	tests := []struct {
-		name     string
-		input    string
-		expected string
+		name           string
+		chunks         []string
+		expectedPosLen int
 	}{
 		{
-			name:     "Incomplete array",
-			input:    `[{"start_pos": 0, "end_pos": 50`,
-			expected: `[{"start_pos": 0, "end_pos": 50}]`,
+			name: "Incomplete array gets completed",
+			chunks: []string{
+				`{"choices":[{"delta":{"content":"[{\"start_pos\": 0, \"end_pos\": 50"}}]}`,
+				`{"choices":[{"delta":{"content":"}]"}}]}`,
+			},
+			expectedPosLen: 1,
 		},
 		{
-			name:     "Missing closing bracket",
-			input:    `[{"start_pos": 0, "end_pos": 50}, {"start_pos": 50, "end_pos": 100}`,
-			expected: `[{"start_pos": 0, "end_pos": 50}, {"start_pos": 50, "end_pos": 100}]`,
-		},
-		{
-			name:     "Trailing comma",
-			input:    `[{"start_pos": 0, "end_pos": 50},`,
-			expected: `[{"start_pos": 0, "end_pos": 50}]`,
+			name: "Multiple positions in single stream",
+			chunks: []string{
+				`{"choices":[{"delta":{"content":"[{\"start_pos\": 0, \"end_pos\": 50}, "}}]}`,
+				`{"choices":[{"delta":{"content":"{\"start_pos\": 50, \"end_pos\": 100}]"}}]}`,
+			},
+			expectedPosLen: 2,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			completed := parser.completeArrayJSON(tt.input)
-			if completed != tt.expected {
-				t.Errorf("Expected '%s', got '%s'", tt.expected, completed)
+			// Create a new parser for each test to avoid state contamination
+			testParser := NewStreamParser(false)
+			var finalData *StreamChunkData
+			var err error
+
+			for _, chunk := range tt.chunks {
+				finalData, err = testParser.ParseStreamChunk([]byte(chunk))
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
 			}
 
-			// Test that completed JSON can be parsed
-			var positions []SemanticPosition
-			err := TolerantJSONUnmarshal([]byte(completed), &positions)
-			if err != nil {
-				t.Errorf("Completed JSON should be parseable: %v", err)
+			// Check that positions were eventually parsed
+			if len(finalData.Positions) != tt.expectedPosLen {
+				t.Errorf("Expected %d positions, got %d. Content: %s",
+					tt.expectedPosLen, len(finalData.Positions), finalData.Content)
 			}
 		})
 	}
 }
 
 func TestStreamParser_SSEFormat(t *testing.T) {
-	parser := NewStreamParser(false)
-
 	// Test SSE format with data: prefix
 	testChunks := []string{
 		`data: {"choices":[{"delta":{"content":"[{\"start_pos\": 0, \"end_pos\": 50}]"}}]}`,
@@ -1004,7 +1007,10 @@ func TestStreamParser_SSEFormat(t *testing.T) {
 	}
 
 	expectedFinished := []bool{false, true}
-	expectedPositionsCount := []int{1, 1} // Should parse 1 position
+	expectedPositionsCount := []int{1, 1} // First chunk parses positions, DONE chunk maintains them
+
+	// Use a single parser for the entire sequence
+	parser := NewStreamParser(false)
 
 	for i, chunk := range testChunks {
 		t.Run(fmt.Sprintf("SSEChunk_%d", i), func(t *testing.T) {

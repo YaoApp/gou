@@ -126,13 +126,16 @@ func NewStructuredChunker() *StructuredChunker {
 
 // validateAndFixOptions validates and fixes chunking options
 func (chunker *StructuredChunker) validateAndFixOptions(options *types.ChunkingOptions) {
-	if options.MaxDepth > 3 {
-		log.Warn("MaxDepth is set to %d which exceeds the recommended maximum of 3. Setting MaxDepth to 3 for optimal performance.", options.MaxDepth)
-		options.MaxDepth = 3
+	if options.MaxDepth > 5 {
+		log.Warn("MaxDepth is set to %d which exceeds the recommended maximum of 5. Setting MaxDepth to 5 for optimal performance.", options.MaxDepth)
+		options.MaxDepth = 5
 	}
 	if options.MaxDepth < 1 {
 		log.Warn("MaxDepth is set to %d which is below the minimum of 1. Setting MaxDepth to 1.", options.MaxDepth)
 		options.MaxDepth = 1
+	}
+	if options.SizeMultiplier <= 0 {
+		options.SizeMultiplier = 3 // Default multiplier
 	}
 }
 
@@ -141,13 +144,13 @@ func NewStructuredOptions(chunkingType types.ChunkingType) *types.ChunkingOption
 
 	switch chunkingType {
 	case types.ChunkingTypeCode, types.ChunkingTypeJSON:
-		return &types.ChunkingOptions{Size: 800, Overlap: 100, MaxDepth: 3, MaxConcurrent: 10}
+		return &types.ChunkingOptions{Size: 800, Overlap: 100, MaxDepth: 3, SizeMultiplier: 3, MaxConcurrent: 10}
 
 	case types.ChunkingTypeVideo, types.ChunkingTypeAudio, types.ChunkingTypeImage:
-		return &types.ChunkingOptions{Size: 300, Overlap: 20, MaxDepth: 1, MaxConcurrent: 10}
+		return &types.ChunkingOptions{Size: 300, Overlap: 20, MaxDepth: 1, SizeMultiplier: 3, MaxConcurrent: 10}
 
 	default:
-		return &types.ChunkingOptions{Size: 300, Overlap: 20, MaxDepth: 1, MaxConcurrent: 10}
+		return &types.ChunkingOptions{Size: 300, Overlap: 20, MaxDepth: 1, SizeMultiplier: 3, MaxConcurrent: 10}
 	}
 }
 
@@ -235,14 +238,17 @@ func (chunker *StructuredChunker) getStreamSize(stream io.ReadSeeker) (int64, er
 
 // processStreamLevels processes chunks at different levels directly from stream
 func (chunker *StructuredChunker) processStreamLevels(ctx context.Context, stream io.ReadSeeker, offset, size int64, parentID string, currentDepth int, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+	// Validate and fix options to ensure defaults are set
+	chunker.validateAndFixOptions(options)
+
 	// Check if maximum depth is reached
 	if currentDepth > options.MaxDepth {
 		return nil
 	}
 
 	// Calculate chunk size for current level
-	chunkSize := chunker.calculateSubSize(options.Size, currentDepth)
-	overlap := chunker.calculateSubOverlap(options.Overlap, currentDepth)
+	chunkSize := chunker.calculateSubSize(options.Size, currentDepth, options.MaxDepth, options.SizeMultiplier)
+	overlap := chunker.calculateSubOverlap(options.Overlap, currentDepth, options.MaxDepth, options.SizeMultiplier)
 
 	// Generate chunks for current level and process them concurrently
 	chunks, err := chunker.generateStreamChunksWithLines(stream, offset, size, chunkSize, overlap, parentID, currentDepth, options.Type, options)
@@ -275,7 +281,7 @@ func (chunker *StructuredChunker) processStreamLevels(ctx context.Context, strea
 
 		for _, chunk := range chunks {
 			// Only create sub-chunks if current chunk is large enough
-			subChunkSize := chunker.calculateSubSize(options.Size, currentDepth+1)
+			subChunkSize := chunker.calculateSubSize(options.Size, currentDepth+1, options.MaxDepth, options.SizeMultiplier)
 
 			if int64(len(chunk.Text)) > int64(subChunkSize) {
 				// Update chunk status to processing
@@ -320,7 +326,7 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 		startLine, endLine := chunker.calculateLinesFromOffset(stream, offset, int64(len(text)))
 
 		// Determine if this is a leaf node
-		isLeaf := depth >= options.MaxDepth || int64(len(text)) <= int64(chunker.calculateSubSize(options.Size, depth+1))
+		isLeaf := depth >= options.MaxDepth || int64(len(text)) <= int64(chunker.calculateSubSize(options.Size, depth+1, options.MaxDepth, options.SizeMultiplier))
 
 		// Determine if this is a root node
 		isRoot := depth == 1 && parentID == ""
@@ -386,7 +392,7 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 		startLine, endLine := chunker.calculateLinesFromOffset(stream, offset+pos, int64(len(text)))
 
 		// Determine if this is a leaf node
-		isLeaf := depth >= options.MaxDepth || int64(len(text)) <= int64(chunker.calculateSubSize(options.Size, depth+1))
+		isLeaf := depth >= options.MaxDepth || int64(len(text)) <= int64(chunker.calculateSubSize(options.Size, depth+1, options.MaxDepth, options.SizeMultiplier))
 
 		// Determine if this is a root node
 		isRoot := depth == 1 && parentID == ""
@@ -435,14 +441,17 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 
 // processTextLevelsWithLines processes chunks from text content with line tracking (for sub-levels)
 func (chunker *StructuredChunker) processTextLevelsWithLines(ctx context.Context, text string, baseStartLine int, parentID string, currentDepth int, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+	// Validate and fix options to ensure defaults are set
+	chunker.validateAndFixOptions(options)
+
 	// Check if maximum depth is reached
 	if currentDepth > options.MaxDepth {
 		return nil
 	}
 
 	// Calculate chunk size for current level
-	chunkSize := chunker.calculateSubSize(options.Size, currentDepth)
-	overlap := chunker.calculateSubOverlap(options.Overlap, currentDepth)
+	chunkSize := chunker.calculateSubSize(options.Size, currentDepth, options.MaxDepth, options.SizeMultiplier)
+	overlap := chunker.calculateSubOverlap(options.Overlap, currentDepth, options.MaxDepth, options.SizeMultiplier)
 
 	// Create chunks from text with line tracking
 	chunks := chunker.createChunksWithLines(text, chunkSize, overlap, baseStartLine, parentID, currentDepth, options.Type, options)
@@ -470,7 +479,7 @@ func (chunker *StructuredChunker) processTextLevelsWithLines(ctx context.Context
 	// If not at maximum depth, recursively process next level
 	if currentDepth < options.MaxDepth {
 		for _, chunk := range chunks {
-			subChunkSize := chunker.calculateSubSize(options.Size, currentDepth+1)
+			subChunkSize := chunker.calculateSubSize(options.Size, currentDepth+1, options.MaxDepth, options.SizeMultiplier)
 			if len(chunk.Text) > subChunkSize {
 				// Update chunk status to processing
 				chunker.chunkManager.UpdateChunkStatus(chunk.ID, types.ChunkingStatusProcessing)
@@ -503,7 +512,7 @@ func (chunker *StructuredChunker) createChunksWithLines(text string, size, overl
 		endLine := baseStartLine + strings.Count(text, "\n")
 
 		// Determine if this is a leaf node
-		isLeaf := depth >= options.MaxDepth || len(text) <= chunker.calculateSubSize(options.Size, depth+1)
+		isLeaf := depth >= options.MaxDepth || len(text) <= chunker.calculateSubSize(options.Size, depth+1, options.MaxDepth, options.SizeMultiplier)
 
 		// Determine if this is a root node
 		isRoot := depth == 1 && parentID == ""
@@ -555,7 +564,7 @@ func (chunker *StructuredChunker) createChunksWithLines(text string, size, overl
 		endLine := currentLine + linesInChunk
 
 		// Determine if this is a leaf node
-		isLeaf := depth >= options.MaxDepth || len(chunkText) <= chunker.calculateSubSize(options.Size, depth+1)
+		isLeaf := depth >= options.MaxDepth || len(chunkText) <= chunker.calculateSubSize(options.Size, depth+1, options.MaxDepth, options.SizeMultiplier)
 
 		// Determine if this is a root node
 		isRoot := depth == 1 && parentID == ""
@@ -727,34 +736,26 @@ func (chunker *StructuredChunker) processCurrentLevel(ctx context.Context, chunk
 	return firstError
 }
 
-// calculateSubSize calculates sub-level chunk size based on current depth
-func (chunker *StructuredChunker) calculateSubSize(baseSize, depth int) int {
-	// Based on comment: L1 Size * 6, L2 Size * 3, L3 Size * 1
-	switch depth {
-	case 1:
-		return baseSize * 6
-	case 2:
-		return baseSize * 3
-	case 3:
-		return baseSize
-	default:
+// calculateSubSize calculates sub-level chunk size based on current depth, max depth, and multiplier
+func (chunker *StructuredChunker) calculateSubSize(baseSize, depth, maxDepth, multiplier int) int {
+	// Calculate remaining levels: maxDepth - depth
+	// Size grows linearly with remaining levels: baseSize * max(1, remainingLevels * multiplier)
+	remainingLevels := maxDepth - depth
+	if remainingLevels <= 0 {
 		return baseSize
 	}
+	return baseSize * remainingLevels * multiplier
 }
 
-// calculateSubOverlap calculates sub-level overlap based on current depth
-func (chunker *StructuredChunker) calculateSubOverlap(baseOverlap, depth int) int {
-	// Maintain relative proportion
-	switch depth {
-	case 1:
-		return baseOverlap * 6
-	case 2:
-		return baseOverlap * 3
-	case 3:
-		return baseOverlap
-	default:
+// calculateSubOverlap calculates sub-level overlap based on current depth, max depth, and multiplier
+func (chunker *StructuredChunker) calculateSubOverlap(baseOverlap, depth, maxDepth, multiplier int) int {
+	// Calculate remaining levels: maxDepth - depth
+	// Overlap grows linearly with remaining levels: baseOverlap * max(1, remainingLevels * multiplier)
+	remainingLevels := maxDepth - depth
+	if remainingLevels <= 0 {
 		return baseOverlap
 	}
+	return baseOverlap * remainingLevels * multiplier
 }
 
 // getNextIndex returns the next index for the given depth level

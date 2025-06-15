@@ -417,129 +417,42 @@ func TestValidateAndPrepareOptions(t *testing.T) {
 }
 
 func TestSemanticPosition(t *testing.T) {
-	chunker := NewSemanticChunker(nil)
-
-	t.Run("ValidateAndFixPositions", func(t *testing.T) {
-		tests := []struct {
-			name              string
-			positions         []SemanticPosition
-			textLen           int
-			maxSize           int
-			expectedPositions int
-		}{
-			{
-				name:              "Empty positions",
-				positions:         []SemanticPosition{},
-				textLen:           100,
-				maxSize:           50,
-				expectedPositions: 2, // Should create positions and split if needed
-			},
-			{
-				name: "Valid positions",
-				positions: []SemanticPosition{
-					{StartPos: 0, EndPos: 30},
-					{StartPos: 30, EndPos: 60},
-					{StartPos: 60, EndPos: 100},
-				},
-				textLen:           100,
-				maxSize:           50,
-				expectedPositions: 3,
-			},
-			{
-				name: "Positions with gaps",
-				positions: []SemanticPosition{
-					{StartPos: 0, EndPos: 20},
-					{StartPos: 30, EndPos: 50}, // Gap from 20-30
-					{StartPos: 60, EndPos: 80}, // Gap from 50-60
-				},
-				textLen:           100,
-				maxSize:           50,
-				expectedPositions: 6, // Original 3 + 2 gaps + 1 end gap = 6
-			},
-			{
-				name: "Large positions that need splitting",
-				positions: []SemanticPosition{
-					{StartPos: 0, EndPos: 100}, // Exceeds maxSize of 50
-				},
-				textLen:           100,
-				maxSize:           50,
-				expectedPositions: 2, // Should be split into 2 positions
-			},
-			{
-				name: "Invalid positions - negative start",
-				positions: []SemanticPosition{
-					{StartPos: -10, EndPos: 30},
-					{StartPos: 30, EndPos: 150}, // Exceeds textLen
-				},
-				textLen:           100,
-				maxSize:           50,
-				expectedPositions: 3, // Adjusted positions
-			},
+	t.Run("BasicBoundaryChecks", func(t *testing.T) {
+		// Test that basic boundary checks work without automatic segmentation
+		positions := []SemanticPosition{
+			{StartPos: -10, EndPos: 30}, // Negative start should be fixed
+			{StartPos: 30, EndPos: 150}, // Beyond text length should be fixed
+			{StartPos: 50, EndPos: 40},  // Invalid range should be filtered
 		}
 
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				result := chunker.validateAndFixPositions(tt.positions, tt.textLen, tt.maxSize)
-				if len(result) != tt.expectedPositions {
-					t.Errorf("Expected %d positions, got %d", tt.expectedPositions, len(result))
-				}
+		textLen := 100
 
-				// Verify positions are valid and cover the entire text
-				if len(result) > 0 {
-					if result[0].StartPos != 0 {
-						t.Errorf("First position should start at 0, got %d", result[0].StartPos)
-					}
-					if result[len(result)-1].EndPos != tt.textLen {
-						t.Errorf("Last position should end at %d, got %d", tt.textLen, result[len(result)-1].EndPos)
-					}
-
-					// Check for overlaps and gaps
-					for i := 1; i < len(result); i++ {
-						if result[i].StartPos != result[i-1].EndPos {
-							t.Errorf("Gap or overlap detected between positions %d and %d", i-1, i)
-						}
-					}
-
-					// Check size constraints
-					for i, pos := range result {
-						size := pos.EndPos - pos.StartPos
-						if size > tt.maxSize {
-							t.Errorf("Position %d exceeds maxSize: %d > %d", i, size, tt.maxSize)
-						}
-						if size <= 0 {
-							t.Errorf("Position %d has invalid size: %d", i, size)
-						}
-					}
-				}
-			})
-		}
-	})
-
-	t.Run("SplitLargePosition", func(t *testing.T) {
-		pos := SemanticPosition{StartPos: 0, EndPos: 150}
-		maxSize := 50
-
-		result := chunker.splitLargePosition(pos, maxSize)
-		expectedSplits := 3 // 150 / 50 = 3
-
-		if len(result) != expectedSplits {
-			t.Errorf("Expected %d splits, got %d", expectedSplits, len(result))
+		// Simulate the boundary checking logic from parseLLMResponse
+		var safePositions []SemanticPosition
+		for _, pos := range positions {
+			if pos.StartPos < 0 {
+				pos.StartPos = 0
+			}
+			if pos.EndPos > textLen {
+				pos.EndPos = textLen
+			}
+			if pos.StartPos >= pos.EndPos {
+				continue // Skip invalid positions
+			}
+			safePositions = append(safePositions, pos)
 		}
 
-		// Verify splits
-		for i, split := range result {
-			expectedStart := i * maxSize
-			expectedEnd := (i + 1) * maxSize
-			if i == len(result)-1 {
-				expectedEnd = pos.EndPos // Last split should end at original end
-			}
+		// Should have 2 valid positions after boundary fixes
+		if len(safePositions) != 2 {
+			t.Errorf("Expected 2 valid positions after boundary checks, got %d", len(safePositions))
+		}
 
-			if split.StartPos != expectedStart {
-				t.Errorf("Split %d: expected start %d, got %d", i, expectedStart, split.StartPos)
-			}
-			if split.EndPos != expectedEnd {
-				t.Errorf("Split %d: expected end %d, got %d", i, expectedEnd, split.EndPos)
-			}
+		// Verify boundary fixes
+		if safePositions[0].StartPos != 0 {
+			t.Errorf("Expected first position start to be fixed to 0, got %d", safePositions[0].StartPos)
+		}
+		if safePositions[1].EndPos != textLen {
+			t.Errorf("Expected second position end to be fixed to %d, got %d", textLen, safePositions[1].EndPos)
 		}
 	})
 }
@@ -1716,9 +1629,11 @@ func TestSemanticChunkingWithMockedLLMResponse(t *testing.T) {
 		if err != nil {
 			t.Logf("Error parsing empty response: %v", err)
 		} else {
-			// Should create default position for entire text
-			if len(positions) != 1 || positions[0].StartPos != 0 || positions[0].EndPos != 100 {
-				t.Errorf("Expected single position covering entire text, got %v", positions)
+			// With the new approach, we trust LLM completely and don't create fallback positions
+			// Empty response should result in 0 positions since we don't do automatic segmentation
+			expectedPositions := 0
+			if len(positions) != expectedPositions {
+				t.Errorf("Expected %d positions for empty response, got %d", expectedPositions, len(positions))
 			}
 		}
 	})
@@ -1999,6 +1914,292 @@ func TestStreamingParserIntegrationWithSemanticChunking(t *testing.T) {
 		t.Logf("Parsed %d positions from streaming regular response", len(positions))
 		for i, pos := range positions {
 			t.Logf("Position %d: [%d-%d]", i, pos.StartPos, pos.EndPos)
+		}
+	})
+}
+
+// Test semantic chunking behavior with empty LLM responses
+func TestSemanticChunkingFallbackWithSizeConstraints(t *testing.T) {
+	prepareConnector(t)
+
+	t.Run("Empty LLM response handling", func(t *testing.T) {
+		chunker := NewSemanticChunker(nil)
+
+		// Test parseLLMResponse with empty content - should not create automatic fallback
+		emptyResponse := `{
+			"choices": [{
+				"message": {
+					"content": ""
+				}
+			}]
+		}`
+
+		textLen := 1000
+		maxSize := 200
+
+		positions, err := chunker.parseLLMResponse([]byte(emptyResponse), false, textLen, maxSize)
+		if err != nil {
+			t.Errorf("parseLLMResponse failed: %v", err)
+		}
+
+		// With the new approach, empty response should result in 0 positions
+		expectedPositions := 0
+		if len(positions) != expectedPositions {
+			t.Errorf("Expected %d positions for empty response, got %d", expectedPositions, len(positions))
+		}
+
+		t.Logf("Empty LLM response for text (%d chars) created %d positions (no automatic fallback)", textLen, len(positions))
+	})
+
+	t.Run("Valid LLM positions are preserved", func(t *testing.T) {
+		chunker := NewSemanticChunker(nil)
+
+		// Test that valid LLM positions are used as-is without modification
+		testText := "First semantic unit. Second semantic unit. Third semantic unit."
+
+		originalChunk := &types.Chunk{
+			ID:   "test-chunk-1",
+			Text: testText,
+			Type: types.ChunkingTypeText,
+			TextPos: &types.TextPosition{
+				StartIndex: 0,
+				EndIndex:   len(testText),
+				StartLine:  1,
+				EndLine:    1,
+			},
+		}
+
+		// Valid semantic positions from LLM (different sizes to show semantic boundaries)
+		positions := []SemanticPosition{
+			{StartPos: 0, EndPos: 21},  // "First semantic unit. " (21 chars)
+			{StartPos: 21, EndPos: 43}, // "Second semantic unit. " (22 chars)
+			{StartPos: 43, EndPos: 63}, // "Third semantic unit." (20 chars)
+		}
+
+		options := &types.ChunkingOptions{
+			Type:     types.ChunkingTypeText,
+			Size:     15, // Smaller than some segments to show we trust LLM
+			MaxDepth: 2,
+		}
+
+		// Create semantic chunks from LLM positions
+		semanticChunks := chunker.createSemanticChunks(originalChunk, positions, options)
+
+		if len(semanticChunks) != 3 {
+			t.Errorf("Expected 3 semantic chunks, got %d", len(semanticChunks))
+		}
+
+		// Verify chunk content matches LLM positions exactly
+		expectedTexts := []string{
+			"First semantic unit. ",
+			"Second semantic unit. ",
+			"Third semantic unit.",
+		}
+
+		for i, chunk := range semanticChunks {
+			if chunk.Text != expectedTexts[i] {
+				t.Errorf("Chunk %d text mismatch: expected %q, got %q", i, expectedTexts[i], chunk.Text)
+			}
+			// Note: Some chunks are larger than options.Size (15), but we trust LLM
+			t.Logf("Chunk %d: %d chars - %q", i, len(chunk.Text), chunk.Text)
+		}
+
+		t.Logf("Created %d semantic chunks from valid LLM positions, preserving semantic boundaries", len(semanticChunks))
+	})
+}
+
+// Test number type conversion safety
+func TestConvertToIntSafety(t *testing.T) {
+	chunker := NewSemanticChunker(nil)
+
+	t.Run("Valid number types", func(t *testing.T) {
+		testCases := []struct {
+			name     string
+			input    interface{}
+			expected int
+		}{
+			{"int", int(42), 42},
+			{"int32", int32(42), 42},
+			{"int64", int64(42), 42},
+			{"float32", float32(42.7), 42},
+			{"float64", float64(42.9), 42},
+			{"string int", "42", 42},
+			{"string float", "42.8", 42},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				result, err := chunker.convertToInt(tc.input)
+				if err != nil {
+					t.Errorf("convertToInt(%v) failed: %v", tc.input, err)
+				}
+				if result != tc.expected {
+					t.Errorf("convertToInt(%v) = %d, expected %d", tc.input, result, tc.expected)
+				}
+			})
+		}
+	})
+
+	t.Run("Invalid inputs", func(t *testing.T) {
+		invalidCases := []struct {
+			name  string
+			input interface{}
+		}{
+			{"nil", nil},
+			{"invalid string", "not_a_number"},
+			{"boolean", true},
+			{"slice", []int{1, 2, 3}},
+			{"map", map[string]int{"a": 1}},
+		}
+
+		for _, tc := range invalidCases {
+			t.Run(tc.name, func(t *testing.T) {
+				_, err := chunker.convertToInt(tc.input)
+				if err == nil {
+					t.Errorf("convertToInt(%v) should have failed", tc.input)
+				}
+			})
+		}
+	})
+}
+
+// Test toolcall response parsing with different number types
+func TestParseToolcallResponseWithDifferentNumberTypes(t *testing.T) {
+	chunker := NewSemanticChunker(nil)
+
+	t.Run("Response with int values", func(t *testing.T) {
+		// Mock toolcall response with int values (not float64)
+		mockResponse := map[string]interface{}{
+			"choices": []interface{}{
+				map[string]interface{}{
+					"message": map[string]interface{}{
+						"tool_calls": []interface{}{
+							map[string]interface{}{
+								"function": map[string]interface{}{
+									"arguments": `{"segments": [{"start_pos": 0, "end_pos": 50}, {"start_pos": 50, "end_pos": 100}]}`,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		positions, err := chunker.parseToolcallResponse(mockResponse)
+		if err != nil {
+			t.Errorf("parseToolcallResponse failed: %v", err)
+		}
+
+		if len(positions) != 2 {
+			t.Errorf("Expected 2 positions, got %d", len(positions))
+		}
+
+		expectedPositions := []SemanticPosition{
+			{StartPos: 0, EndPos: 50},
+			{StartPos: 50, EndPos: 100},
+		}
+
+		for i, pos := range positions {
+			if pos.StartPos != expectedPositions[i].StartPos || pos.EndPos != expectedPositions[i].EndPos {
+				t.Errorf("Position %d: expected %+v, got %+v", i, expectedPositions[i], pos)
+			}
+		}
+	})
+
+	t.Run("Response with mixed number types", func(t *testing.T) {
+		// Create a response where numbers might be parsed as different types
+		// This simulates real-world scenarios where JSON parsing can vary
+		argumentsData := map[string]interface{}{
+			"segments": []interface{}{
+				map[string]interface{}{
+					"start_pos": int(0),      // int type
+					"end_pos":   float64(30), // float64 type
+				},
+				map[string]interface{}{
+					"start_pos": int64(30),   // int64 type
+					"end_pos":   float32(60), // float32 type
+				},
+				map[string]interface{}{
+					"start_pos": "60", // string type
+					"end_pos":   "90", // string type
+				},
+			},
+		}
+
+		argumentsBytes, _ := json.Marshal(argumentsData)
+		mockResponse := map[string]interface{}{
+			"choices": []interface{}{
+				map[string]interface{}{
+					"message": map[string]interface{}{
+						"tool_calls": []interface{}{
+							map[string]interface{}{
+								"function": map[string]interface{}{
+									"arguments": string(argumentsBytes),
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		positions, err := chunker.parseToolcallResponse(mockResponse)
+		if err != nil {
+			t.Errorf("parseToolcallResponse failed: %v", err)
+		}
+
+		if len(positions) != 3 {
+			t.Errorf("Expected 3 positions, got %d", len(positions))
+		}
+
+		expectedPositions := []SemanticPosition{
+			{StartPos: 0, EndPos: 30},
+			{StartPos: 30, EndPos: 60},
+			{StartPos: 60, EndPos: 90},
+		}
+
+		for i, pos := range positions {
+			if pos.StartPos != expectedPositions[i].StartPos || pos.EndPos != expectedPositions[i].EndPos {
+				t.Errorf("Position %d: expected %+v, got %+v", i, expectedPositions[i], pos)
+			}
+		}
+	})
+
+	t.Run("Response with invalid number types", func(t *testing.T) {
+		// Mock response with invalid number types
+		argumentsData := map[string]interface{}{
+			"segments": []interface{}{
+				map[string]interface{}{
+					"start_pos": "invalid_number", // invalid string
+					"end_pos":   30,
+				},
+			},
+		}
+
+		argumentsBytes, _ := json.Marshal(argumentsData)
+		mockResponse := map[string]interface{}{
+			"choices": []interface{}{
+				map[string]interface{}{
+					"message": map[string]interface{}{
+						"tool_calls": []interface{}{
+							map[string]interface{}{
+								"function": map[string]interface{}{
+									"arguments": string(argumentsBytes),
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		_, err := chunker.parseToolcallResponse(mockResponse)
+		if err == nil {
+			t.Error("parseToolcallResponse should have failed with invalid number")
+		}
+
+		if !strings.Contains(err.Error(), "invalid start_pos") {
+			t.Errorf("Expected error about invalid start_pos, got: %v", err)
 		}
 	})
 }

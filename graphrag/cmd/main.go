@@ -373,6 +373,7 @@ func writePositionMapping(mappingFile string, chunks []*types.Chunk) error {
 }
 
 func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir string, conn connector.Connector, size, overlap, maxDepth, maxConcurrent int, toolcall bool) error {
+
 	// Progress callback for semantic chunking
 	progressCallback := func(chunkID, progress, step string, data interface{}) error {
 		fmt.Printf("  Semantic progress [%s]: %s - %s\n", chunkID, progress, step)
@@ -397,9 +398,17 @@ func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir
 		},
 	}
 
+	fmt.Printf("--------------------------------\n")
+	fmt.Printf("Size: %d\n", size)
+	fmt.Printf("Overlap: %d\n", overlap)
+	fmt.Printf("Depth: %d\n", maxDepth)
+	fmt.Printf("Concurrent: %d\n", maxConcurrent)
+	fmt.Printf("Toolcall: %t\n", toolcall)
+	fmt.Printf("Context Size: %d\n", options.SemanticOptions.ContextSize)
+	fmt.Printf("--------------------------------\n")
+
 	var chunks []*types.Chunk
 	var mu sync.Mutex
-	chunkIndex := 0
 
 	// Create mapping file for position information
 	mappingFile := filepath.Join(outputDir, fmt.Sprintf("%s.mapping.json", basename))
@@ -411,7 +420,7 @@ func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir
 		chunks = append(chunks, chunk)
 
 		// Generate filename: basename.chunk-index.ext
-		filename := fmt.Sprintf("%s.%d.chunk-%d-%s%s", basename, chunk.Depth, chunk.Index, chunk.ParentID, ext)
+		filename := fmt.Sprintf("%s.%d.chunk-%d%s", basename, chunk.Depth, chunk.Index, ext)
 		filepath := filepath.Join(outputDir, filename)
 
 		// Write chunk to file
@@ -419,8 +428,7 @@ func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir
 			return fmt.Errorf("failed to write chunk file %s: %w", filepath, err)
 		}
 
-		fmt.Printf("  Semantic chunk %d: %s (depth: %d, size: %d)\n", chunkIndex, filename, chunk.Depth, len(chunk.Text))
-		chunkIndex++
+		fmt.Printf("  Semantic chunk %d: %s (depth: %d, size: %d)\n", chunk.Index, filename, chunk.Depth, len(chunk.Text))
 
 		return nil
 	}
@@ -434,7 +442,17 @@ func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir
 		return fmt.Errorf("failed to write position mapping: %w", err)
 	}
 
+	fmt.Printf("\n--------------------------------\n")
 	fmt.Printf("Semantic chunking completed: %d chunks generated\n", len(chunks))
 	fmt.Printf("Position mapping saved to: %s\n", mappingFile)
+	fmt.Printf("--------------------------------\n")
+	fmt.Printf("Chunks Count: %d\n", len(chunks))
+	fmt.Printf("Size: %d\n", size)
+	fmt.Printf("Overlap: %d\n", overlap)
+	fmt.Printf("Depth: %d\n", maxDepth)
+	fmt.Printf("Concurrent: %d\n", maxConcurrent)
+	fmt.Printf("Toolcall: %t\n", toolcall)
+	fmt.Printf("Context Size: %d\n", options.SemanticOptions.ContextSize)
+	fmt.Printf("--------------------------------\n")
 	return nil
 }
