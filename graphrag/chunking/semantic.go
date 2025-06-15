@@ -405,7 +405,30 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 	// Build response data for parsing
 	var responseData map[string]interface{}
 	if semanticOpts.Toolcall {
-		// For toolcall, create a mock response structure with the accumulated arguments
+		// For toolcall, check if finalArguments is complete and valid
+		if strings.TrimSpace(finalArguments) == "" {
+			log.Warn("Empty finalArguments received from streaming, using fallback")
+			// Use fallback: create a single segment for the entire text
+			return []SemanticPosition{{StartPos: 0, EndPos: len(text)}}, nil
+		}
+
+		// Try to repair incomplete JSON arguments
+		repairedArgs, err := jsonrepair.JSONRepair(finalArguments)
+		if err != nil {
+			log.Warn("Failed to repair finalArguments JSON: %v, using fallback", err)
+			// Use fallback: create a single segment for the entire text
+			return []SemanticPosition{{StartPos: 0, EndPos: len(text)}}, nil
+		}
+
+		// Validate that repaired JSON can be parsed
+		var testArgs map[string]interface{}
+		if err := json.Unmarshal([]byte(repairedArgs), &testArgs); err != nil {
+			log.Warn("Repaired finalArguments is still invalid: %v, using fallback", err)
+			// Use fallback: create a single segment for the entire text
+			return []SemanticPosition{{StartPos: 0, EndPos: len(text)}}, nil
+		}
+
+		// For toolcall, create a mock response structure with the repaired arguments
 		responseData = map[string]interface{}{
 			"choices": []interface{}{
 				map[string]interface{}{
@@ -413,7 +436,7 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 						"tool_calls": []interface{}{
 							map[string]interface{}{
 								"function": map[string]interface{}{
-									"arguments": finalArguments,
+									"arguments": repairedArgs,
 								},
 							},
 						},
@@ -422,6 +445,13 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 			},
 		}
 	} else {
+		// For regular response, check if finalContent is available
+		if strings.TrimSpace(finalContent) == "" {
+			log.Warn("Empty finalContent received from streaming, using fallback")
+			// Use fallback: create a single segment for the entire text
+			return []SemanticPosition{{StartPos: 0, EndPos: len(text)}}, nil
+		}
+
 		// For regular response, create a mock response structure with the accumulated content
 		responseData = map[string]interface{}{
 			"choices": []interface{}{

@@ -27,3 +27,4 @@ tests/app/db
 tests/app/data
 test.log
 *.prompt.md
+graphrag/tests/structured
