@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/yaoapp/gou/graphrag/types"
 )
@@ -1824,6 +1825,365 @@ func TestValidateAndFixOptionsDirectly(t *testing.T) {
 
 			if options.MaxDepth != tt.expectedDepth {
 				t.Errorf("Expected MaxDepth %d, got %d", tt.expectedDepth, options.MaxDepth)
+			}
+		})
+	}
+}
+
+func TestUTF8ChunkFix(t *testing.T) {
+	// 包含多种UTF-8语言的测试文本
+	text := `更多信息，请参见：中文测试 🇨🇳
+
+👉 [构建您的应用程序](../building-your-application)
+
+## 切换到 Yao 的技巧
+
+Yao 是构建 Web 应用程序的新方法。以下是一些帮助您切换到 Yao 的技巧。
+
+**日本語テスト** 🇯🇵
+こんにちは、世界！これは日本語のテストです。ひらがな、カタカナ、漢字が含まれています。
+アプリケーションの構築方法について説明します。
+
+**한국어 테스트** 🇰🇷
+안녕하세요, 세계! 이것은 한국어 테스트입니다. 한글 문자가 포함되어 있습니다.
+애플리케이션 구축에 대해 설명합니다.
+
+**العربية اختبار** 🇸🇦
+مرحبا بالعالم! هذا اختبار للغة العربية. يحتوي على نص عربي.
+سنشرح كيفية بناء التطبيقات.
+
+**Русский тест** 🇷🇺
+Привет, мир! Это тест русского языка. Содержит кириллические символы.
+Мы объясним, как создавать приложения.
+
+**Ελληνικά δοκιμή** 🇬🇷
+Γεια σας κόσμε! Αυτή είναι μια δοκιμή ελληνικών. Περιέχει ελληνικούς χαρακτήρες.
+
+**हिंदी परीक्षण** 🇮🇳
+नमस्ते दुनिया! यह हिंदी का परीक्षण है। इसमें देवनागरी लिपि है।
+
+**ไทย ทดสอบ** 🇹🇭
+สวัสดีชาวโลก! นี่คือการทดสอบภาษาไทย มีอักษรไทย
+
+**Tiếng Việt kiểm tra** 🇻🇳
+Xin chào thế giới! Đây là bài kiểm tra tiếng Việt. Có dấu thanh điệu.
+
+**Emoji 测试** 🎉
+各种emoji: 😀😃😄😁😆😅🤣😂🙂🙃😉😊😇🥰😍🤩😘😗☺️😚😙🥲😋😛😜🤪😝🤑🤗🤭🤫🤔🤐🤨😐😑😶😏😒🙄😬🤥😌😔😪🤤😴😷🤒🤕🤢🤮🤧🥵🥶🥴😵🤯🤠🥳🥸😎🤓🧐😕😟🙁☹️😮😯😲😳🥺😦😧😨😰😥😢😭😱😖😣😞😓😩😫🥱😤😡😠🤬😈👿💀☠️💩🤡👹👺👻👽👾🤖😺😸😹😻😼😽🙀😿😾🙈🙉🙊
+
+**特殊符号测试**
+数学符号: ∑∏∫∂∇∆√∞≠≤≥±×÷∈∉⊂⊃∪∩
+货币符号: $€£¥₹₽₩₪₫₨₦₡₢₣₤₥₦₧₨₩₪₫€₭₮₯₰₱₲₳₴₵₶₷₸₹₺₻₼₽₾₿
+箭头符号: ←↑→↓↔↕↖↗↘↙⇐⇑⇒⇓⇔⇕⇖⇗⇘⇙
+
+您还可以使用它在将进程集成到应用程序之前测试进程。`
+
+	chunker := NewStructuredChunker()
+
+	options := &types.ChunkingOptions{
+		Size:          10, // 小size强制分割
+		Overlap:       5,
+		MaxDepth:      2,
+		MaxConcurrent: 1,
+		Type:          types.ChunkingTypeText,
+	}
+
+	var chunks []*types.Chunk
+	err := chunker.Chunk(context.Background(), text, options, func(chunk *types.Chunk) error {
+		chunks = append(chunks, chunk)
+		return nil
+	})
+
+	if err != nil {
+		t.Fatalf("Chunking failed: %v", err)
+	}
+
+	t.Logf("Generated %d chunks", len(chunks))
+
+	// 检查所有chunks是否都是有效的UTF-8
+	invalidCount := 0
+	languageStats := make(map[string]int)
+
+	for i, chunk := range chunks {
+		isValid := utf8.ValidString(chunk.Text)
+		if !isValid {
+			invalidCount++
+			t.Errorf("Chunk %d contains invalid UTF-8: %q", i, chunk.Text)
+		}
+
+		// 统计包含的语言类型
+		text := chunk.Text
+		if containsChinese(text) {
+			languageStats["Chinese"]++
+		}
+		if containsJapanese(text) {
+			languageStats["Japanese"]++
+		}
+		if containsKorean(text) {
+			languageStats["Korean"]++
+		}
+		if containsArabic(text) {
+			languageStats["Arabic"]++
+		}
+		if containsRussian(text) {
+			languageStats["Russian"]++
+		}
+		if containsGreek(text) {
+			languageStats["Greek"]++
+		}
+		if containsHindi(text) {
+			languageStats["Hindi"]++
+		}
+		if containsThai(text) {
+			languageStats["Thai"]++
+		}
+		if containsVietnamese(text) {
+			languageStats["Vietnamese"]++
+		}
+		if containsEmoji(text) {
+			languageStats["Emoji"]++
+		}
+	}
+
+	if invalidCount == 0 {
+		t.Logf("✅ All %d chunks contain valid UTF-8!", len(chunks))
+	} else {
+		t.Errorf("❌ %d out of %d chunks contain invalid UTF-8", invalidCount, len(chunks))
+	}
+
+	t.Logf("Language distribution in chunks: %+v", languageStats)
+}
+
+// Helper functions to detect different languages
+func containsChinese(text string) bool {
+	for _, r := range text {
+		if r >= 0x4E00 && r <= 0x9FFF { // CJK Unified Ideographs
+			return true
+		}
+	}
+	return false
+}
+
+func containsJapanese(text string) bool {
+	for _, r := range text {
+		if (r >= 0x3040 && r <= 0x309F) || // Hiragana
+			(r >= 0x30A0 && r <= 0x30FF) { // Katakana
+			return true
+		}
+	}
+	return false
+}
+
+func containsKorean(text string) bool {
+	for _, r := range text {
+		if r >= 0xAC00 && r <= 0xD7AF { // Hangul Syllables
+			return true
+		}
+	}
+	return false
+}
+
+func containsArabic(text string) bool {
+	for _, r := range text {
+		if r >= 0x0600 && r <= 0x06FF { // Arabic
+			return true
+		}
+	}
+	return false
+}
+
+func containsRussian(text string) bool {
+	for _, r := range text {
+		if r >= 0x0400 && r <= 0x04FF { // Cyrillic
+			return true
+		}
+	}
+	return false
+}
+
+func containsGreek(text string) bool {
+	for _, r := range text {
+		if r >= 0x0370 && r <= 0x03FF { // Greek and Coptic
+			return true
+		}
+	}
+	return false
+}
+
+func containsHindi(text string) bool {
+	for _, r := range text {
+		if r >= 0x0900 && r <= 0x097F { // Devanagari
+			return true
+		}
+	}
+	return false
+}
+
+func containsThai(text string) bool {
+	for _, r := range text {
+		if r >= 0x0E00 && r <= 0x0E7F { // Thai
+			return true
+		}
+	}
+	return false
+}
+
+func containsVietnamese(text string) bool {
+	// Vietnamese uses Latin script with diacritics
+	for _, r := range text {
+		if (r >= 0x00C0 && r <= 0x024F) || // Latin Extended
+			(r >= 0x1E00 && r <= 0x1EFF) { // Latin Extended Additional
+			return true
+		}
+	}
+	return false
+}
+
+func containsEmoji(text string) bool {
+	for _, r := range text {
+		if (r >= 0x1F600 && r <= 0x1F64F) || // Emoticons
+			(r >= 0x1F300 && r <= 0x1F5FF) || // Misc Symbols and Pictographs
+			(r >= 0x1F680 && r <= 0x1F6FF) || // Transport and Map
+			(r >= 0x1F1E0 && r <= 0x1F1FF) || // Regional Indicator Symbols
+			(r >= 0x2600 && r <= 0x26FF) || // Misc symbols
+			(r >= 0x2700 && r <= 0x27BF) { // Dingbats
+			return true
+		}
+	}
+	return false
+}
+
+func TestFixUTF8Chunk(t *testing.T) {
+	chunker := NewStructuredChunker()
+
+	// 测试被切断的emoji
+	brokenEmoji := "\xf0\x9f\x91" // 👉 的前3个字节，缺少最后一个字节
+	fixed := chunker.fixUTF8Chunk(brokenEmoji)
+	t.Logf("Broken emoji: %q -> %q (valid: %v)", brokenEmoji, fixed, utf8.ValidString(fixed))
+
+	// 测试开头有continuation bytes的情况
+	continuationStart := "\x9f\x91\x89 [构建您的应用程序]" // emoji的后3个字节 + 正常文本
+	fixed2 := chunker.fixUTF8Chunk(continuationStart)
+	t.Logf("Continuation start: %q -> %q (valid: %v)", continuationStart, fixed2, utf8.ValidString(fixed2))
+
+	// 测试末尾被切断的情况
+	brokenEnd := "👉 [构建您的应用\xe7\xa8" // 末尾的"程"字被切断，只有前2个字节
+	fixed3 := chunker.fixUTF8Chunk(brokenEnd)
+	t.Logf("Broken end: %q -> %q (valid: %v)", brokenEnd, fixed3, utf8.ValidString(fixed3))
+
+	// 验证所有修复后的字符串都是有效的UTF-8
+	if !utf8.ValidString(fixed) {
+		t.Errorf("Fixed broken emoji is still invalid UTF-8: %q", fixed)
+	}
+	if !utf8.ValidString(fixed2) {
+		t.Errorf("Fixed continuation start is still invalid UTF-8: %q", fixed2)
+	}
+	if !utf8.ValidString(fixed3) {
+		t.Errorf("Fixed broken end is still invalid UTF-8: %q", fixed3)
+	}
+}
+
+func TestUTF8ComplexBoundaries(t *testing.T) {
+	// 专门测试复杂的UTF-8边界情况
+	testCases := []struct {
+		name string
+		text string
+		size int
+	}{
+		{
+			name: "Mixed_4_byte_emojis",
+			text: "🌟🎉🚀💡🔥⭐🎯🌈🎊🎁🎪🎭🎨🎬🎮🎲🎸🎺🎻🎤🎧🎵🎶🎼🎹🥁🎷📱💻⌨️🖥️🖨️🖱️🖲️💽💾💿📀📼📷📸📹🎥📽️🎞️📞☎️📟📠📺📻🎙️🎚️🎛️⏱️⏲️⏰🕰️⌛⏳📡🔋🔌💡🔦🕯️🪔🧯🛢️💸💰💴💵💶💷💸💳💎⚖️🧰🔧🔨⚒️🛠️⛏️🔩⚙️🧱⛓️🧲🔫💣🧨🪓🔪🗡️⚔️🛡️🚬⚰️⚱️🏺🔮📿🧿💈⚗️🔭🔬🕳️💊💉🧬🦠🧫🧪🌡️🧹🧺🧻🚽🚰🚿🛁🛀🧼🪒🧽🧴🛎️🔑🗝️🚪🪑🛏️🛋️🪞🪟🧳⌚📱💻⌨️🖥️🖨️🖱️",
+			size: 8,
+		},
+		{
+			name: "Complex_CJK_mix",
+			text: "中文漢字ひらがなカタカナ한글조합🇨🇳🇯🇵🇰🇷中文漢字ひらがなカタカナ한글조합🇨🇳🇯🇵🇰🇷中文漢字ひらがなカタカナ한글조합🇨🇳🇯🇵🇰🇷中文漢字ひらがなカタカナ한글조합🇨🇳🇯🇵🇰🇷",
+			size: 6,
+		},
+		{
+			name: "Arabic_RTL_with_diacritics",
+			text: "مَرْحَبًا بِالْعَالَمِ! هَذَا اخْتِبَارٌ لِلُّغَةِ الْعَرَبِيَّةِ مَعَ التَّشْكِيلِ. يَحْتَوِي عَلَى نَصٍّ عَرَبِيٍّ مُشَكَّلٍ. سَنَشْرَحُ كَيْفِيَّةَ بِنَاءِ التَّطْبِيقَاتِ.",
+			size: 12,
+		},
+		{
+			name: "Devanagari_complex",
+			text: "नमस्ते दुनिया! यह हिंदी का परीक्षण है। इसमें देवनागरी लिपि है। संयुक्त अक्षर: क्ष, त्र, ज्ञ, श्र। मात्राएं: का, कि, की, कु, कू, के, कै, को, कौ, कं, कः।",
+			size: 9,
+		},
+		{
+			name: "Thai_complex_clusters",
+			text: "สวัสดีชาวโลก! นี่คือการทดสอบภาษาไทย มีอักษรไทยที่ซับซ้อน เช่น กรรม, ทรรศนะ, สรรพสิ่ง, อรรถกถา, วรรณกรรม, ธรรมชาติ",
+			size: 7,
+		},
+		{
+			name: "Vietnamese_diacritics",
+			text: "Xin chào thế giới! Đây là bài kiểm tra tiếng Việt. Có dấu thanh điệu: à, á, ả, ã, ạ, ằ, ắ, ẳ, ẵ, ặ, è, é, ẻ, ẽ, ẹ, ề, ế, ể, ễ, ệ",
+			size: 11,
+		},
+		{
+			name: "Mathematical_symbols",
+			text: "∑∏∫∂∇∆√∞≠≤≥±×÷∈∉⊂⊃∪∩∀∃∄∅∆∇∈∉∊∋∌∍∎∏∐∑−∓∔∕∖∗∘∙√∛∜∝∞∟∠∡∢∣∤∥∦∧∨∩∪∫∬∭∮∯∰∱∲∳∴∵∶∷∸∹∺∻∼∽∾∿≀≁≂≃≄≅≆≇≈≉≊≋≌≍≎≏≐≑≒≓≔≕≖≗≘≙≚≛≜≝≞≟≠≡≢≣≤≥≦≧≨≩≪≫≬≭≮≯≰≱≲≳≴≵≶≷≸≹≺≻≼≽≾≿⊀⊁⊂⊃⊄⊅⊆⊇⊈⊉⊊⊋⊌⊍⊎⊏⊐⊑⊒⊓⊔⊕⊖⊗⊘⊙⊚⊛⊜⊝⊞⊟⊠⊡⊢⊣⊤⊥⊦⊧⊨⊩⊪⊫⊬⊭⊮⊯⊰⊱⊲⊳⊴⊵⊶⊷⊸⊹⊺⊻⊼⊽⊾⊿⋀⋁⋂⋃⋄⋅⋆⋇⋈⋉⋊⋋⋌⋍⋎⋏⋐⋑⋒⋓⋔⋕⋖⋗⋘⋙⋚⋛⋜⋝⋞⋟⋠⋡⋢⋣⋤⋥⋦⋧⋨⋩⋪⋫⋬⋭⋮⋯⋰⋱⋲⋳⋴⋵⋶⋷⋸⋹⋺⋻⋼⋽⋾⋿",
+			size: 5,
+		},
+		{
+			name: "Currency_symbols",
+			text: "$€£¥₹₽₩₪₫₨₦₡₢₣₤₥₦₧₨₩₪₫€₭₮₯₰₱₲₳₴₵₶₷₸₹₺₻₼₽₾₿＄￠￡￢￣￤￥￦＇＂＃％＆＇（）＊＋，－．／０１２３４５６７８９：；＜＝＞？＠ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ［＼］＾＿｀ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ｛｜｝～",
+			size: 13,
+		},
+	}
+
+	chunker := NewStructuredChunker()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			options := &types.ChunkingOptions{
+				Size:          tc.size,
+				Overlap:       2,
+				MaxDepth:      2,
+				MaxConcurrent: 1,
+				Type:          types.ChunkingTypeText,
+			}
+
+			var chunks []*types.Chunk
+			err := chunker.Chunk(context.Background(), tc.text, options, func(chunk *types.Chunk) error {
+				chunks = append(chunks, chunk)
+				return nil
+			})
+
+			if err != nil {
+				t.Fatalf("Chunking failed for %s: %v", tc.name, err)
+			}
+
+			t.Logf("%s: Generated %d chunks", tc.name, len(chunks))
+
+			// 检查所有chunks是否都是有效的UTF-8
+			invalidCount := 0
+			for i, chunk := range chunks {
+				isValid := utf8.ValidString(chunk.Text)
+				if !isValid {
+					invalidCount++
+					t.Errorf("Chunk %d contains invalid UTF-8: %q", i, chunk.Text)
+					// 显示原始字节以便调试
+					t.Errorf("Raw bytes: %v", []byte(chunk.Text))
+				}
+			}
+
+			if invalidCount == 0 {
+				t.Logf("✅ %s: All %d chunks contain valid UTF-8!", tc.name, len(chunks))
+			} else {
+				t.Errorf("❌ %s: %d out of %d chunks contain invalid UTF-8", tc.name, invalidCount, len(chunks))
+			}
+
+			// 验证没有空chunks
+			emptyCount := 0
+			for _, chunk := range chunks {
+				if len(strings.TrimSpace(chunk.Text)) == 0 {
+					emptyCount++
+				}
+			}
+
+			if emptyCount > 0 {
+				t.Logf("Warning: %s has %d empty chunks", tc.name, emptyCount)
 			}
 		})
 	}
