@@ -154,10 +154,11 @@ type Chunk struct {
 
 // ChunkingOptions represents options for chunking
 type ChunkingOptions struct {
-	Type            ChunkingType     `json:"type,omitempty"` // Content type, auto-detected if not provided
-	Size            int              `json:"size"`           // For text, PDF, Word, only, default is QA 300, Code 800,
-	Overlap         int              `json:"overlap"`        // For text, PDF, Word, only, default is QA 20, Code 100,
-	MaxDepth        int              `json:"max_depth"`      // For text, PDF, Word, only, default is 3, L1 Size * 6 , L2 Size * 3, L3 Size * 1
+	Type            ChunkingType     `json:"type,omitempty"`  // Content type, auto-detected if not provided
+	Size            int              `json:"size"`            // For text, PDF, Word, only, default is QA 300, Code 800,
+	Overlap         int              `json:"overlap"`         // For text, PDF, Word, only, default is QA 20, Code 100,
+	MaxDepth        int              `json:"max_depth"`       // For text, PDF, Word, only, default is 5
+	SizeMultiplier  int              `json:"size_multiplier"` // Base multiplier for chunk size calculation, default is 3
 	MaxConcurrent   int              `json:"max_concurrent"`
 	SemanticOptions *SemanticOptions `json:"semantic_options"` // For Semantic recognition, etc.
 	VideoConnector  string           `json:"video_connector"`  // For Video recognition, etc.

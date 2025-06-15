@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -160,8 +161,8 @@ func (sc *SemanticChunker) getStructuredChunks(ctx context.Context, stream io.Re
 
 	err := sc.structuredChunker.ChunkStream(ctx, stream, structuredOpts, func(chunk *types.Chunk) error {
 		mu.Lock()
+		defer mu.Unlock()
 		chunks = append(chunks, chunk)
-		mu.Unlock()
 		return nil
 	})
 
@@ -252,6 +253,7 @@ func (sc *SemanticChunker) processChunkSemanticSegmentation(ctx context.Context,
 	var err error
 
 	for retry := 0; retry <= semanticOpts.MaxRetry; retry++ {
+		// Use options.Size as the target size for semantic segmentation
 		positions, err = sc.callLLMForSegmentation(ctx, chunk.Text, semanticOpts, options.Size)
 		if err == nil && len(positions) > 0 {
 			break
@@ -285,8 +287,9 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 		return nil, fmt.Errorf("failed to select connector '%s': %w", semanticOpts.Connector, err)
 	}
 
-	// Build prompt using utils function
-	prompt := fmt.Sprintf("%s\n\nText to segment:\n%s", utils.GetSemanticPrompt(semanticOpts.Prompt), text)
+	// Build prompt using utils function with size information
+	basePrompt := utils.GetSemanticPrompt(semanticOpts.Prompt)
+	prompt := fmt.Sprintf("%s\n\nIMPORTANT: Do NOT create segments with regular intervals or fixed character counts. The suggested size of %d characters is only a rough guideline - ALWAYS prioritize natural semantic boundaries over size uniformity. Segments should vary significantly in size based on content structure.\n\nText to segment:\n%s", basePrompt, maxSize, text)
 
 	// Prepare request payload
 	requestData := map[string]interface{}{
@@ -327,22 +330,23 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 				"type": "function",
 				"function": map[string]interface{}{
 					"name":        "segment_text",
-					"description": "Segment text into semantic chunks",
+					"description": "Segment text into semantic chunks based on natural boundaries, NOT fixed character intervals. Prioritize topic changes, paragraph breaks, and concept shifts over uniform sizing.",
 					"parameters": map[string]interface{}{
 						"type": "object",
 						"properties": map[string]interface{}{
 							"segments": map[string]interface{}{
-								"type": "array",
+								"type":        "array",
+								"description": "Array of semantic segments with VARIED sizes based on natural content boundaries",
 								"items": map[string]interface{}{
 									"type": "object",
 									"properties": map[string]interface{}{
 										"start_pos": map[string]interface{}{
 											"type":        "integer",
-											"description": "Start position of the segment",
+											"description": "Start character position of the semantic segment",
 										},
 										"end_pos": map[string]interface{}{
 											"type":        "integer",
-											"description": "End position of the segment",
+											"description": "End character position of the semantic segment",
 										},
 									},
 									"required": []string{"start_pos", "end_pos"},
@@ -364,12 +368,33 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 
 	// Stream callback function with progress reporting
 	streamCallback := func(data []byte) error {
+		// Skip empty data chunks
+		if len(data) == 0 {
+			return nil
+		}
+
 		// Parse streaming chunk
 		chunkData, err := parser.ParseStreamChunk(data)
 		if err != nil {
 			log.Warn("Failed to parse stream chunk: %v", err)
 			return nil // Don't fail the entire stream for parsing errors
 		}
+
+		fmt.Println("--------------------------------")
+		fmt.Println("Streaming data", string(data))
+		fmt.Println("Streaming chunk arguments", chunkData.Arguments)
+		fmt.Println("Streaming chunk content", chunkData.Content)
+		fmt.Println("Streaming chunk finished", chunkData.Finished)
+		fmt.Println("Streaming chunk error", chunkData.Error)
+		fmt.Println("Streaming chunk positions count", len(chunkData.Positions))
+		if len(chunkData.Positions) > 0 {
+			maxShow := 3
+			if len(chunkData.Positions) < maxShow {
+				maxShow = len(chunkData.Positions)
+			}
+			fmt.Printf("First few positions: %+v\n", chunkData.Positions[:maxShow])
+		}
+		fmt.Println("--------------------------------")
 
 		// Update final content/arguments
 		if semanticOpts.Toolcall {
@@ -416,8 +441,9 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 		repairedArgs, err := jsonrepair.JSONRepair(finalArguments)
 		if err != nil {
 			log.Warn("Failed to repair finalArguments JSON: %v, using fallback", err)
-			// Use fallback: create a single segment for the entire text
-			return []SemanticPosition{{StartPos: 0, EndPos: len(text)}}, nil
+			// Use fallback: create a single segment for the entire text, but apply size constraints
+			fallbackPos := []SemanticPosition{{StartPos: 0, EndPos: len(text)}}
+			return sc.validateAndFixPositions(fallbackPos, len(text), maxSize), nil
 		}
 
 		// Validate that repaired JSON can be parsed
@@ -501,10 +527,23 @@ func (sc *SemanticChunker) parseLLMResponse(responseBody []byte, isToolcall bool
 		return nil, err
 	}
 
-	// Validate and fix positions
-	positions = sc.validateAndFixPositions(positions, textLen, maxSize)
+	// Only do basic boundary checks to prevent crashes, no semantic logic
+	var safePositions []SemanticPosition
+	for _, pos := range positions {
+		// Basic boundary safety checks only
+		if pos.StartPos < 0 {
+			pos.StartPos = 0
+		}
+		if pos.EndPos > textLen {
+			pos.EndPos = textLen
+		}
+		if pos.StartPos >= pos.EndPos {
+			continue // Skip invalid positions
+		}
+		safePositions = append(safePositions, pos)
+	}
 
-	return positions, nil
+	return safePositions, nil
 }
 
 // parseToolcallResponse parses toolcall response format
@@ -549,8 +588,19 @@ func (sc *SemanticChunker) parseToolcallResponse(responseData map[string]interfa
 	var positions []SemanticPosition
 	for _, seg := range segments {
 		segMap := seg.(map[string]interface{})
-		startPos := int(segMap["start_pos"].(float64))
-		endPos := int(segMap["end_pos"].(float64))
+
+		// Safe conversion for start_pos
+		startPos, err := sc.convertToInt(segMap["start_pos"])
+		if err != nil {
+			return nil, fmt.Errorf("invalid start_pos: %w", err)
+		}
+
+		// Safe conversion for end_pos
+		endPos, err := sc.convertToInt(segMap["end_pos"])
+		if err != nil {
+			return nil, fmt.Errorf("invalid end_pos: %w", err)
+		}
+
 		positions = append(positions, SemanticPosition{
 			StartPos: startPos,
 			EndPos:   endPos,
@@ -558,6 +608,37 @@ func (sc *SemanticChunker) parseToolcallResponse(responseData map[string]interfa
 	}
 
 	return positions, nil
+}
+
+// convertToInt safely converts interface{} to int, handling different number types
+func (sc *SemanticChunker) convertToInt(value interface{}) (int, error) {
+	if value == nil {
+		return 0, fmt.Errorf("value is nil")
+	}
+
+	switch v := value.(type) {
+	case int:
+		return v, nil
+	case int32:
+		return int(v), nil
+	case int64:
+		return int(v), nil
+	case float32:
+		return int(v), nil
+	case float64:
+		return int(v), nil
+	case string:
+		// Try to parse string as number
+		if parsed, err := strconv.Atoi(v); err == nil {
+			return parsed, nil
+		}
+		if parsed, err := strconv.ParseFloat(v, 64); err == nil {
+			return int(parsed), nil
+		}
+		return 0, fmt.Errorf("cannot convert string '%s' to int", v)
+	default:
+		return 0, fmt.Errorf("unsupported type: %T", v)
+	}
 }
 
 // parseRegularResponse parses regular JSON response format
@@ -578,8 +659,18 @@ func (sc *SemanticChunker) parseRegularResponse(responseData map[string]interfac
 		return nil, fmt.Errorf("no content in message")
 	}
 
+	// Check if content is empty or whitespace only
+	if strings.TrimSpace(content) == "" {
+		return []SemanticPosition{}, nil // Return empty positions for empty content
+	}
+
 	// Try to extract JSON from content (might be wrapped in markdown or have other text)
 	jsonStr := sc.extractJSONFromText(content)
+
+	// Check if extracted JSON is empty
+	if strings.TrimSpace(jsonStr) == "" {
+		return []SemanticPosition{}, nil // Return empty positions for empty JSON
+	}
 
 	// Repair and parse JSON
 	repairedJSON, err := jsonrepair.JSONRepair(jsonStr)
@@ -615,19 +706,17 @@ func (sc *SemanticChunker) extractJSONFromText(text string) string {
 // validateAndFixPositions validates and fixes semantic positions
 func (sc *SemanticChunker) validateAndFixPositions(positions []SemanticPosition, textLen, maxSize int) []SemanticPosition {
 	if len(positions) == 0 {
-		// Create a single position for the entire text, but split if too large
-		pos := SemanticPosition{StartPos: 0, EndPos: textLen}
-		if textLen > maxSize {
-			return sc.splitLargePosition(pos, maxSize)
-		}
-		return []SemanticPosition{pos}
+		// If no positions provided, create a single segment for the entire text
+		// This preserves the original content as one semantic unit
+		log.Warn("No semantic positions provided, creating single segment for entire text (length: %d)", textLen)
+		return []SemanticPosition{{StartPos: 0, EndPos: textLen}}
 	}
 
 	var validPositions []SemanticPosition
 	lastEnd := 0
 
 	for _, pos := range positions {
-		// Fix boundaries
+		// Only fix obvious boundary errors, don't change semantic decisions
 		if pos.StartPos < 0 {
 			pos.StartPos = 0
 		}
@@ -638,7 +727,7 @@ func (sc *SemanticChunker) validateAndFixPositions(positions []SemanticPosition,
 			continue // Skip invalid positions
 		}
 
-		// Fill gaps
+		// Fill gaps between segments (preserve LLM's semantic boundaries)
 		if pos.StartPos > lastEnd {
 			validPositions = append(validPositions, SemanticPosition{
 				StartPos: lastEnd,
@@ -646,20 +735,13 @@ func (sc *SemanticChunker) validateAndFixPositions(positions []SemanticPosition,
 			})
 		}
 
-		// Check size constraints
-		segmentSize := pos.EndPos - pos.StartPos
-		if segmentSize > maxSize {
-			// Split large segments
-			splitPositions := sc.splitLargePosition(pos, maxSize)
-			validPositions = append(validPositions, splitPositions...)
-		} else {
-			validPositions = append(validPositions, pos)
-		}
-
+		// TRUST LLM COMPLETELY - use the segment as-is regardless of size
+		// The LLM has made semantic decisions that we should respect
+		validPositions = append(validPositions, pos)
 		lastEnd = pos.EndPos
 	}
 
-	// Fill remaining gap
+	// Fill remaining gap if any
 	if lastEnd < textLen {
 		validPositions = append(validPositions, SemanticPosition{
 			StartPos: lastEnd,
@@ -670,8 +752,13 @@ func (sc *SemanticChunker) validateAndFixPositions(positions []SemanticPosition,
 	return validPositions
 }
 
-// splitLargePosition splits a large position into smaller ones
+// splitLargePosition splits a large position into smaller ones (legacy method)
 func (sc *SemanticChunker) splitLargePosition(pos SemanticPosition, maxSize int) []SemanticPosition {
+	return sc.splitLargePositionSemantically(pos, maxSize)
+}
+
+// splitLargePositionSemantically splits a large position while trying to preserve semantic boundaries
+func (sc *SemanticChunker) splitLargePositionSemantically(pos SemanticPosition, maxSize int) []SemanticPosition {
 	var positions []SemanticPosition
 	currentStart := pos.StartPos
 

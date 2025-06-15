@@ -532,21 +532,31 @@ func TestCalculateSubSize(t *testing.T) {
 	chunker := NewStructuredChunker()
 
 	tests := []struct {
-		baseSize int
-		depth    int
-		expected int
+		baseSize   int
+		depth      int
+		maxDepth   int
+		multiplier int
+		expected   int
 	}{
-		{100, 1, 600}, // L1: Size * 6
-		{100, 2, 300}, // L2: Size * 3
-		{100, 3, 100}, // L3: Size * 1
-		{100, 4, 100}, // Default
+		// Test with maxDepth = 3, multiplier = 3
+		{100, 1, 3, 3, 600}, // remaining = 3-1 = 2 levels, so baseSize * 2 * 3 = 600
+		{100, 2, 3, 3, 300}, // remaining = 3-2 = 1 level, so baseSize * 1 * 3 = 300
+		{100, 3, 3, 3, 100}, // remaining = 3-3 = 0 levels, so baseSize = 100
+		// Test with maxDepth = 2, multiplier = 3
+		{100, 1, 2, 3, 300}, // remaining = 2-1 = 1 level, so baseSize * 1 * 3 = 300
+		{100, 2, 2, 3, 100}, // remaining = 2-2 = 0 levels, so baseSize = 100
+		// Test with maxDepth = 1, multiplier = 3
+		{100, 1, 1, 3, 100}, // remaining = 1-1 = 0 levels, so baseSize = 100
+		// Test with different multiplier
+		{100, 1, 3, 2, 400}, // remaining = 3-1 = 2 levels, so baseSize * 2 * 2 = 400
+		{100, 2, 3, 2, 200}, // remaining = 3-2 = 1 level, so baseSize * 1 * 2 = 200
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("depth_%d", tt.depth), func(t *testing.T) {
-			result := chunker.calculateSubSize(tt.baseSize, tt.depth)
+		t.Run(fmt.Sprintf("depth_%d_maxDepth_%d_multiplier_%d", tt.depth, tt.maxDepth, tt.multiplier), func(t *testing.T) {
+			result := chunker.calculateSubSize(tt.baseSize, tt.depth, tt.maxDepth, tt.multiplier)
 			if result != tt.expected {
-				t.Errorf("calculateSubSize(%d, %d) = %d, want %d", tt.baseSize, tt.depth, result, tt.expected)
+				t.Errorf("calculateSubSize(%d, %d, %d, %d) = %d, want %d", tt.baseSize, tt.depth, tt.maxDepth, tt.multiplier, result, tt.expected)
 			}
 		})
 	}
@@ -558,19 +568,29 @@ func TestCalculateSubOverlap(t *testing.T) {
 	tests := []struct {
 		baseOverlap int
 		depth       int
+		maxDepth    int
+		multiplier  int
 		expected    int
 	}{
-		{10, 1, 60}, // L1: Overlap * 6
-		{10, 2, 30}, // L2: Overlap * 3
-		{10, 3, 10}, // L3: Overlap * 1
-		{10, 4, 10}, // Default
+		// Test with maxDepth = 3, multiplier = 3
+		{10, 1, 3, 3, 60}, // remaining = 3-1 = 2 levels, so baseOverlap * 2 * 3 = 60
+		{10, 2, 3, 3, 30}, // remaining = 3-2 = 1 level, so baseOverlap * 1 * 3 = 30
+		{10, 3, 3, 3, 10}, // remaining = 3-3 = 0 levels, so baseOverlap = 10
+		// Test with maxDepth = 2, multiplier = 3
+		{10, 1, 2, 3, 30}, // remaining = 2-1 = 1 level, so baseOverlap * 1 * 3 = 30
+		{10, 2, 2, 3, 10}, // remaining = 2-2 = 0 levels, so baseOverlap = 10
+		// Test with maxDepth = 1, multiplier = 3
+		{10, 1, 1, 3, 10}, // remaining = 1-1 = 0 levels, so baseOverlap = 10
+		// Test with different multiplier
+		{10, 1, 3, 2, 40}, // remaining = 3-1 = 2 levels, so baseOverlap * 2 * 2 = 40
+		{10, 2, 3, 2, 20}, // remaining = 3-2 = 1 level, so baseOverlap * 1 * 2 = 20
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("depth_%d", tt.depth), func(t *testing.T) {
-			result := chunker.calculateSubOverlap(tt.baseOverlap, tt.depth)
+		t.Run(fmt.Sprintf("depth_%d_maxDepth_%d_multiplier_%d", tt.depth, tt.maxDepth, tt.multiplier), func(t *testing.T) {
+			result := chunker.calculateSubOverlap(tt.baseOverlap, tt.depth, tt.maxDepth, tt.multiplier)
 			if result != tt.expected {
-				t.Errorf("calculateSubOverlap(%d, %d) = %d, want %d", tt.baseOverlap, tt.depth, result, tt.expected)
+				t.Errorf("calculateSubOverlap(%d, %d, %d, %d) = %d, want %d", tt.baseOverlap, tt.depth, tt.maxDepth, tt.multiplier, result, tt.expected)
 			}
 		})
 	}
@@ -782,7 +802,7 @@ func TestCreateChunksWithLines(t *testing.T) {
 					t.Errorf("Chunk %d StartLine %d < baseStartLine %d", i, chunk.TextPos.StartLine, tt.baseStartLine)
 				}
 				// Test Leaf field
-				expectedLeaf := 1 >= options.MaxDepth || len(chunk.Text) <= chunker.calculateSubSize(options.Size, 1)
+				expectedLeaf := 1 >= options.MaxDepth || len(chunk.Text) <= chunker.calculateSubSize(options.Size, 1, options.MaxDepth, options.SizeMultiplier)
 				if chunk.Leaf != expectedLeaf {
 					t.Errorf("Chunk %d Leaf = %t, expected %t", i, chunk.Leaf, expectedLeaf)
 				}
@@ -868,7 +888,7 @@ func TestLeafNodeDetection(t *testing.T) {
 			// Verify that leaves are properly marked
 			for i, chunk := range chunks {
 				// Check if leaf marking is correct
-				nextLevelSize := chunker.calculateSubSize(options.Size, chunk.Depth+1)
+				nextLevelSize := chunker.calculateSubSize(options.Size, chunk.Depth+1, options.MaxDepth, options.SizeMultiplier)
 				shouldBeLeaf := chunk.Depth >= options.MaxDepth || len(chunk.Text) <= nextLevelSize
 
 				if chunk.Leaf != shouldBeLeaf {
@@ -1516,7 +1536,7 @@ func TestGenerateStreamChunksWithLinesEdgeCases(t *testing.T) {
 					t.Errorf("Chunk %d has wrong Depth: %d", i, chunk.Depth)
 				}
 				// Test Leaf field
-				expectedLeaf := 1 >= options.MaxDepth || len(chunk.Text) <= chunker.calculateSubSize(options.Size, 1)
+				expectedLeaf := 1 >= options.MaxDepth || len(chunk.Text) <= chunker.calculateSubSize(options.Size, 1, options.MaxDepth, options.SizeMultiplier)
 				if chunk.Leaf != expectedLeaf {
 					t.Errorf("Chunk %d Leaf = %t, expected %t", i, chunk.Leaf, expectedLeaf)
 				}
@@ -1621,7 +1641,7 @@ func TestCreateChunksWithLinesEdgeCases(t *testing.T) {
 
 			// Test Leaf field
 			for i, chunk := range chunks {
-				expectedLeaf := 1 >= options.MaxDepth || len(chunk.Text) <= chunker.calculateSubSize(options.Size, 1)
+				expectedLeaf := 1 >= options.MaxDepth || len(chunk.Text) <= chunker.calculateSubSize(options.Size, 1, options.MaxDepth, options.SizeMultiplier)
 				if chunk.Leaf != expectedLeaf {
 					t.Errorf("Chunk %d Leaf = %t, expected %t", i, chunk.Leaf, expectedLeaf)
 				}
@@ -1769,8 +1789,8 @@ func TestMaxDepthValidation(t *testing.T) {
 		},
 		{
 			name:          "MaxDepth exceeds maximum",
-			originalDepth: 5,
-			expectedDepth: 3,
+			originalDepth: 6,
+			expectedDepth: 5,
 			shouldWarn:    true,
 		},
 		{
@@ -1824,9 +1844,9 @@ func TestValidateAndFixOptionsDirectly(t *testing.T) {
 		expectedDepth int
 	}{
 		{"Valid depth", 2, 2},
-		{"Max valid depth", 3, 3},
-		{"Exceeds maximum", 4, 3},
-		{"Far exceeds maximum", 10, 3},
+		{"Max valid depth", 5, 5},
+		{"Exceeds maximum", 6, 5},
+		{"Far exceeds maximum", 10, 5},
 		{"Zero depth", 0, 1},
 		{"Negative depth", -5, 1},
 	}
