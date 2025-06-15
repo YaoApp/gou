@@ -261,17 +261,25 @@ func (sp *StreamParser) extractPositionsFromText(text string) []SemanticPosition
 
 // parseToolcallPositions parses positions from toolcall arguments
 func (sp *StreamParser) parseToolcallPositions(arguments string) []SemanticPosition {
-	if strings.TrimSpace(arguments) == "" {
+	arguments = strings.TrimSpace(arguments)
+	if arguments == "" {
 		return nil
 	}
 
-	// Try to parse the arguments as JSON
+	// Try to parse the arguments as JSON directly first
 	var args map[string]interface{}
 	if err := TolerantJSONUnmarshal([]byte(arguments), &args); err != nil {
 		// If parsing fails, try to complete the JSON
 		completedJSON := sp.completeJSON(arguments)
 		if err := TolerantJSONUnmarshal([]byte(completedJSON), &args); err != nil {
-			return nil
+			// If still fails, try jsonrepair as last resort
+			repairedJSON, repairErr := jsonrepair.JSONRepair(arguments)
+			if repairErr != nil {
+				return nil
+			}
+			if err := TolerantJSONUnmarshal([]byte(repairedJSON), &args); err != nil {
+				return nil
+			}
 		}
 	}
 
@@ -311,6 +319,11 @@ func (sp *StreamParser) parseToolcallPositions(arguments string) []SemanticPosit
 		case int:
 			end = v
 		default:
+			continue
+		}
+
+		// Validate position values
+		if start < 0 || end < 0 || start >= end {
 			continue
 		}
 
@@ -380,14 +393,67 @@ func (sp *StreamParser) completeJSON(jsonStr string) string {
 
 // completeToolcallJSON completes incomplete toolcall JSON
 func (sp *StreamParser) completeToolcallJSON(jsonStr string) string {
+	jsonStr = strings.TrimSpace(jsonStr)
+
+	// If it doesn't start with {, add it
 	if !strings.HasPrefix(jsonStr, "{") {
 		jsonStr = "{" + jsonStr
 	}
 
-	// Count braces to see if we need to close
+	// Check if we have segments array structure
+	if !strings.Contains(jsonStr, "segments") && !strings.Contains(jsonStr, "\"segments\"") {
+		// If no segments found, try to wrap content in segments structure
+		// This handles cases where only the array content is provided
+		if strings.HasPrefix(jsonStr, "{") && !strings.Contains(jsonStr, "segments") {
+			// Extract any array content and wrap it
+			if strings.Contains(jsonStr, "[") {
+				arrayStart := strings.Index(jsonStr, "[")
+				arrayContent := jsonStr[arrayStart:]
+				jsonStr = `{"segments":` + arrayContent + `}`
+			} else if strings.Contains(jsonStr, `"start_pos"`) {
+				// Looks like segment objects without array wrapper
+				jsonStr = `{"segments":[` + jsonStr[1:] // Remove opening { and wrap in segments array
+			}
+		}
+	}
+
+	// Count braces and brackets to see if we need to close them
 	openBraces := strings.Count(jsonStr, "{") - strings.Count(jsonStr, "}")
+	openBrackets := strings.Count(jsonStr, "[") - strings.Count(jsonStr, "]")
+
+	// Close any open brackets first (arrays)
+	for i := 0; i < openBrackets; i++ {
+		jsonStr += "]"
+	}
+
+	// Close any open braces (objects)
 	for i := 0; i < openBraces; i++ {
 		jsonStr += "}"
+	}
+
+	// If we have segments but it's not properly structured, try to fix it
+	if strings.Contains(jsonStr, "segments") && !strings.Contains(jsonStr, `"segments":[`) {
+		// Try to find and fix segments structure
+		segmentPos := strings.Index(jsonStr, "segments")
+		if segmentPos > 0 {
+			prefix := jsonStr[:segmentPos]
+			suffix := jsonStr[segmentPos:]
+
+			// Ensure proper JSON structure for segments
+			if !strings.Contains(prefix, `"segments"`) {
+				suffix = `"` + suffix
+			}
+			if !strings.Contains(suffix, ":[") && strings.Contains(suffix, "[") {
+				suffix = strings.Replace(suffix, "segments", "segments", 1)
+				if !strings.Contains(suffix, ":") {
+					arrayStart := strings.Index(suffix, "[")
+					if arrayStart > 0 {
+						suffix = suffix[:arrayStart] + ":" + suffix[arrayStart:]
+					}
+				}
+			}
+			jsonStr = prefix + suffix
+		}
 	}
 
 	return jsonStr
