@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/yaoapp/gou/graphrag/types"
@@ -315,8 +316,8 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 			return nil, err
 		}
 
-		text := string(data[:n])
-		startLine, endLine := chunker.calculateLinesFromOffset(stream, offset, int64(n))
+		text := chunker.fixUTF8Chunk(string(data[:n]))
+		startLine, endLine := chunker.calculateLinesFromOffset(stream, offset, int64(len(text)))
 
 		// Determine if this is a leaf node
 		isLeaf := depth >= options.MaxDepth || int64(len(text)) <= int64(chunker.calculateSubSize(options.Size, depth+1))
@@ -381,8 +382,8 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 			return nil, err
 		}
 
-		text := string(data[:n])
-		startLine, endLine := chunker.calculateLinesFromOffset(stream, offset+pos, int64(n))
+		text := chunker.fixUTF8Chunk(string(data[:n]))
+		startLine, endLine := chunker.calculateLinesFromOffset(stream, offset+pos, int64(len(text)))
 
 		// Determine if this is a leaf node
 		isLeaf := depth >= options.MaxDepth || int64(len(text)) <= int64(chunker.calculateSubSize(options.Size, depth+1))
@@ -549,7 +550,7 @@ func (chunker *StructuredChunker) createChunksWithLines(text string, size, overl
 			end = totalLen
 		}
 
-		chunkText := string(textBytes[pos:end])
+		chunkText := chunker.fixUTF8Chunk(string(textBytes[pos:end]))
 		linesInChunk := strings.Count(chunkText, "\n")
 		endLine := currentLine + linesInChunk
 
@@ -769,4 +770,55 @@ func (chunker *StructuredChunker) resetIndexCounters() {
 	for i := range chunker.indexCounters {
 		atomic.StoreInt64(&chunker.indexCounters[i], 0)
 	}
+}
+
+// fixUTF8Chunk removes broken UTF-8 characters from the beginning and end of a chunk
+func (chunker *StructuredChunker) fixUTF8Chunk(text string) string {
+	if text == "" {
+		return text
+	}
+
+	data := []byte(text)
+	start := 0
+	end := len(data)
+
+	// Remove broken UTF-8 characters from the beginning
+	for start < len(data) {
+		if (data[start] & 0x80) == 0 {
+			// ASCII character, valid start
+			break
+		}
+		if (data[start] & 0xC0) != 0x80 {
+			// Valid UTF-8 character start
+			break
+		}
+		// This is a continuation byte, skip it
+		start++
+	}
+
+	// Remove broken UTF-8 characters from the end
+	// We need to be more careful here - check if the string is valid
+	// and if not, find the last valid UTF-8 character boundary
+	for end > start {
+		candidate := string(data[start:end])
+		if utf8.ValidString(candidate) {
+			break
+		}
+		// Move back one byte and try again
+		end--
+	}
+
+	if start >= end {
+		return ""
+	}
+
+	result := string(data[start:end])
+
+	// Double-check that the result is valid UTF-8
+	if !utf8.ValidString(result) {
+		// If still invalid, return empty string to be safe
+		return ""
+	}
+
+	return result
 }
