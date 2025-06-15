@@ -867,7 +867,7 @@ func TestLeafNodeDetection(t *testing.T) {
 			// Verify that leaves are properly marked
 			for i, chunk := range chunks {
 				// Check if leaf marking is correct
-				nextLevelSize := chunker.calculateSubSize(options.Size, chunk.Depth)
+				nextLevelSize := chunker.calculateSubSize(options.Size, chunk.Depth+1)
 				shouldBeLeaf := chunk.Depth >= options.MaxDepth || len(chunk.Text) <= nextLevelSize
 
 				if chunk.Leaf != shouldBeLeaf {
@@ -890,9 +890,6 @@ func TestLeafNodeDetection(t *testing.T) {
 }
 
 func TestNewFieldsHierarchy(t *testing.T) {
-	chunker := NewStructuredChunker()
-	ctx := context.Background()
-
 	tests := []struct {
 		name    string
 		text    string
@@ -924,6 +921,9 @@ func TestNewFieldsHierarchy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create new chunker for each test to ensure index independence
+			chunker := NewStructuredChunker()
+			ctx := context.Background()
 			var chunks []*types.Chunk
 			var mu sync.Mutex
 			err := chunker.Chunk(ctx, tt.text, tt.options, func(chunk *types.Chunk) error {
@@ -965,27 +965,24 @@ func TestNewFieldsHierarchy(t *testing.T) {
 				t.Error("No root nodes found")
 			}
 
-			// Test Index field
-			parentGroups := make(map[string][]*types.Chunk)
+			// Test Index field - verify global sequential indexing per depth level
+			depthGroups := make(map[int][]*types.Chunk)
 			for _, chunk := range chunks {
-				if chunk.ParentID == "" {
-					parentGroups[""] = append(parentGroups[""], chunk)
-				} else {
-					parentGroups[chunk.ParentID] = append(parentGroups[chunk.ParentID], chunk)
-				}
+				depthGroups[chunk.Depth] = append(depthGroups[chunk.Depth], chunk)
 			}
 
-			for parentID, siblings := range parentGroups {
-				// Sort siblings by Index to ensure proper order
-				sort.Slice(siblings, func(i, j int) bool {
-					return siblings[i].Index < siblings[j].Index
+			// Verify indexes are sequential starting from 0 for each depth level
+			for depth, depthChunks := range depthGroups {
+				// Sort chunks by Index to ensure proper order
+				sort.Slice(depthChunks, func(i, j int) bool {
+					return depthChunks[i].Index < depthChunks[j].Index
 				})
 
-				// Verify indexes are sequential starting from 0
-				for i, chunk := range siblings {
+				// Verify indexes are sequential starting from 0 for this depth level
+				for i, chunk := range depthChunks {
 					expectedIndex := i
 					if chunk.Index != expectedIndex {
-						t.Errorf("Chunk with parent %s has index %d, expected %d", parentID, chunk.Index, expectedIndex)
+						t.Errorf("Depth %d, Chunk %d: Index = %d, expected %d", depth, i, chunk.Index, expectedIndex)
 					}
 				}
 			}
