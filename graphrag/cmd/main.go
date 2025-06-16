@@ -25,6 +25,8 @@ func main() {
 		maxConcurrent = flag.Int("concurrent", 6, "Maximum concurrent operations")
 		method        = flag.String("method", "structured", "Chunking method: structured, semantic, or both")
 		toolcall      = flag.Bool("toolcall", false, "Use toolcall for semantic chunking")
+		connector     = flag.String("connector", "openai", "Connector type: openai, custom")
+		contextSize   = flag.Int("context", 1000, "Context size")
 		help          = flag.Bool("help", false, "Show help message")
 	)
 
@@ -97,9 +99,14 @@ func main() {
 	}
 
 	// Create OpenAI connector for semantic chunking if needed
-	var openaiConnector connector.Connector
 	if *method == "semantic" || *method == "both" {
-		openaiConnector, err = createOpenAIConnector()
+
+		// Set toolcall to false if connector is not openai
+		if *connector == "openai" {
+			*toolcall = true
+		}
+
+		_, err = createAICConnector(*connector)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Failed to create OpenAI connector: %v\n", err)
 			os.Exit(1)
@@ -119,7 +126,7 @@ func main() {
 
 	case "semantic":
 		fmt.Println("\n=== Running Semantic Chunking ===")
-		if err := runSemanticChunking(ctx, *filePath, basename, ext, semanticDir, openaiConnector, *size, *overlap, *maxDepth, *maxConcurrent, *toolcall); err != nil {
+		if err := runSemanticChunking(ctx, *filePath, basename, ext, semanticDir, "openai-chunking", *size, *overlap, *maxDepth, *maxConcurrent, *toolcall, *contextSize); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Semantic chunking failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -134,7 +141,7 @@ func main() {
 
 		// Process semantic chunking
 		fmt.Println("\n=== Running Semantic Chunking ===")
-		if err := runSemanticChunking(ctx, *filePath, basename, ext, semanticDir, openaiConnector, *size, *overlap, *maxDepth, *maxConcurrent, *toolcall); err != nil {
+		if err := runSemanticChunking(ctx, *filePath, basename, ext, semanticDir, "openai-chunking", *size, *overlap, *maxDepth, *maxConcurrent, *toolcall, *contextSize); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Semantic chunking failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -205,7 +212,51 @@ func setupOutputDirectories(semanticDir, structuredDir, method string) error {
 	return nil
 }
 
-func createOpenAIConnector() (connector.Connector, error) {
+func createAICConnector(name string) (connector.Connector, error) {
+	switch name {
+	case "openai":
+		return createOpenaiConnector()
+	case "custom":
+		return createCustomConnector()
+	}
+	return nil, fmt.Errorf("invalid connector type: %s", name)
+}
+
+func createCustomConnector() (connector.Connector, error) {
+	apiKey := os.Getenv("RAG_LLM_TEST_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("RAG_LLM_TEST_KEY environment variable is not set")
+	}
+	url := os.Getenv("RAG_LLM_TEST_URL")
+	if url == "" {
+		return nil, fmt.Errorf("RAG_LLM_TEST_URL environment variable is not set")
+	}
+
+	model := os.Getenv("RAG_LLM_TEST_SMODEL")
+	if model == "" {
+		return nil, fmt.Errorf("RAG_LLM_TEST_SMODEL environment variable is not set")
+	}
+
+	dsl := map[string]interface{}{
+		"name":    "openai-chunking",
+		"type":    "openai",
+		"options": map[string]interface{}{"key": apiKey, "proxy": url, "model": model},
+	}
+
+	dslBytes, err := json.Marshal(dsl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal connector DSL: %w", err)
+	}
+
+	conn, err := connector.New("openai", "openai-chunking", dslBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OpenAI connector: %w", err)
+	}
+
+	return conn, nil
+}
+
+func createOpenaiConnector() (connector.Connector, error) {
 	// Get API key from environment
 	apiKey := os.Getenv("OPENAI_TEST_KEY")
 	if apiKey == "" {
@@ -214,12 +265,9 @@ func createOpenAIConnector() (connector.Connector, error) {
 
 	// Create connector DSL
 	dsl := map[string]interface{}{
-		"name": "openai-chunking",
-		"type": "openai",
-		"options": map[string]interface{}{
-			"key":   apiKey,
-			"model": "gpt-4o-mini",
-		},
+		"name":    "openai-chunking",
+		"type":    "openai",
+		"options": map[string]interface{}{"key": apiKey, "model": "gpt-4.1"},
 	}
 
 	dslBytes, err := json.Marshal(dsl)
@@ -372,11 +420,15 @@ func writePositionMapping(mappingFile string, chunks []*types.Chunk) error {
 	return nil
 }
 
-func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir string, conn connector.Connector, size, overlap, maxDepth, maxConcurrent int, toolcall bool) error {
+func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir string, conn string, size, overlap, maxDepth, maxConcurrent int, toolcall bool, contextSize int) error {
 
 	// Progress callback for semantic chunking
 	progressCallback := func(chunkID, progress, step string, data interface{}) error {
 		fmt.Printf("  Semantic progress [%s]: %s - %s\n", chunkID, progress, step)
+		fmt.Println("--------------------------------")
+		raw, _ := json.MarshalIndent(data, "", "  ")
+		fmt.Printf("Positions %s\n", string(raw))
+		fmt.Println("--------------------------------")
 		return nil
 	}
 
@@ -388,8 +440,8 @@ func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir
 		MaxDepth:      maxDepth,
 		MaxConcurrent: maxConcurrent,
 		SemanticOptions: &types.SemanticOptions{
-			Connector:     "openai-chunking",
-			ContextSize:   size * maxDepth * 3,
+			Connector:     conn,
+			ContextSize:   contextSize,
 			Options:       `{"temperature": 0.1}`,
 			Prompt:        "", // Use default prompt
 			Toolcall:      toolcall,
@@ -397,15 +449,6 @@ func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir
 			MaxConcurrent: maxConcurrent,
 		},
 	}
-
-	fmt.Printf("--------------------------------\n")
-	fmt.Printf("Size: %d\n", size)
-	fmt.Printf("Overlap: %d\n", overlap)
-	fmt.Printf("Depth: %d\n", maxDepth)
-	fmt.Printf("Concurrent: %d\n", maxConcurrent)
-	fmt.Printf("Toolcall: %t\n", toolcall)
-	fmt.Printf("Context Size: %d\n", options.SemanticOptions.ContextSize)
-	fmt.Printf("--------------------------------\n")
 
 	var chunks []*types.Chunk
 	var mu sync.Mutex

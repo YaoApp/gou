@@ -29,3 +29,4 @@ test.log
 *.prompt.md
 graphrag/tests/structured
 graphrag/tests/semantic
+graphrag/cmd/cmd.md
