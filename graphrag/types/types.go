@@ -130,6 +130,12 @@ type MediaPosition struct {
 	Page      int `json:"page"`       // Page number (for PDF, Word, etc.)
 }
 
+// Position represents a position in the text
+type Position struct {
+	StartPos int `json:"s"`
+	EndPos   int `json:"e"`
+}
+
 // Chunk represents a chunk of content with position information
 type Chunk struct {
 	ID       string       `json:"id,omitempty"`

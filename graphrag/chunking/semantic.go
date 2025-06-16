@@ -2,27 +2,18 @@ package chunking
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kaptinlin/jsonrepair"
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/graphrag/types"
 	"github.com/yaoapp/gou/graphrag/utils"
 	"github.com/yaoapp/kun/log"
 )
-
-// SemanticPosition represents the semantic segment position returned by LLM
-type SemanticPosition struct {
-	StartPos int `json:"start_pos"`
-	EndPos   int `json:"end_pos"`
-}
 
 // ProgressCallback represents the progress callback function
 type ProgressCallback func(chunkID string, progress string, step string, data interface{}) error
@@ -249,12 +240,12 @@ func (sc *SemanticChunker) processChunkSemanticSegmentation(ctx context.Context,
 	semanticOpts := options.SemanticOptions
 
 	// Try with retries
-	var positions []SemanticPosition
+	var positions []types.Position
 	var err error
 
 	for retry := 0; retry <= semanticOpts.MaxRetry; retry++ {
 		// Use options.Size as the target size for semantic segmentation
-		positions, err = sc.callLLMForSegmentation(ctx, chunk.Text, semanticOpts, options.Size)
+		positions, err = sc.callLLMForSegmentation(ctx, chunk, semanticOpts, options.Size)
 		if err == nil && len(positions) > 0 {
 			break
 		}
@@ -271,16 +262,16 @@ func (sc *SemanticChunker) processChunkSemanticSegmentation(ctx context.Context,
 
 	if len(positions) == 0 {
 		// If no positions returned, treat entire chunk as single semantic unit
-		positions = []SemanticPosition{{StartPos: 0, EndPos: len(chunk.Text)}}
+		positions = []types.Position{{StartPos: 0, EndPos: len(chunk.Text)}}
 	}
 
 	// Convert positions to chunks
-	semanticChunks := sc.createSemanticChunks(chunk, positions, options)
+	semanticChunks := chunk.Split(positions)
 	return semanticChunks, nil
 }
 
 // callLLMForSegmentation calls LLM to get semantic segmentation positions using streaming
-func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text string, semanticOpts *types.SemanticOptions, maxSize int) ([]SemanticPosition, error) {
+func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, chunk *types.Chunk, semanticOpts *types.SemanticOptions, maxSize int) ([]types.Position, error) {
 	// Get the connector
 	conn, err := connector.Select(semanticOpts.Connector)
 	if err != nil {
@@ -288,18 +279,22 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 	}
 
 	// Build prompt using utils function with size information
-	basePrompt := utils.GetSemanticPrompt(semanticOpts.Prompt)
-	prompt := fmt.Sprintf("%s\n\nIMPORTANT: Do NOT create segments with regular intervals or fixed character counts. The suggested size of %d characters is only a rough guideline - ALWAYS prioritize natural semantic boundaries over size uniformity. Segments should vary significantly in size based on content structure.\n\nText to segment:\n%s", basePrompt, maxSize, text)
+	prompt := utils.SemanticPrompt(semanticOpts.Prompt, maxSize)
+	// prompt = prompt + "\n\n# Text to segment:\n```text\n" + chunk.Text + "\n```"
+
+	chars := chunk.TextWChars()
+	charsJSON := ""
+	for idx, char := range chars {
+		charsJSON += fmt.Sprintf("%d: %s\n", idx, char)
+	}
 
 	// Prepare request payload
 	requestData := map[string]interface{}{
-		"max_tokens":  4000,
-		"temperature": 0.1,
+		"temperature": 0,         // Slightly higher temperature for more semantic awareness
+		"model":       "gpt-4.1", // Use more capable model for better semantic understanding
 		"messages": []map[string]interface{}{
-			{
-				"role":    "user",
-				"content": prompt,
-			},
+			{"role": "system", "content": prompt},
+			{"role": "user", "content": charsJSON},
 		},
 	}
 
@@ -307,8 +302,6 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 	setting := conn.Setting()
 	if model, ok := setting["model"].(string); ok && model != "" {
 		requestData["model"] = model
-	} else {
-		requestData["model"] = "gpt-4o-mini" // Default model
 	}
 
 	// Add custom options if provided
@@ -325,44 +318,17 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 
 	// Use toolcall if enabled
 	if semanticOpts.Toolcall {
-		requestData["tools"] = []map[string]interface{}{
-			{
-				"type": "function",
-				"function": map[string]interface{}{
-					"name":        "segment_text",
-					"description": "Segment text into semantic chunks based on natural boundaries, NOT fixed character intervals. Prioritize topic changes, paragraph breaks, and concept shifts over uniform sizing.",
-					"parameters": map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"segments": map[string]interface{}{
-								"type":        "array",
-								"description": "Array of semantic segments with VARIED sizes based on natural content boundaries",
-								"items": map[string]interface{}{
-									"type": "object",
-									"properties": map[string]interface{}{
-										"start_pos": map[string]interface{}{
-											"type":        "integer",
-											"description": "Start character position of the semantic segment",
-										},
-										"end_pos": map[string]interface{}{
-											"type":        "integer",
-											"description": "End character position of the semantic segment",
-										},
-									},
-									"required": []string{"start_pos", "end_pos"},
-								},
-							},
-						},
-						"required": []string{"segments"},
-					},
-				},
+		requestData["tools"] = utils.SemanticToolcall
+		requestData["tool_choice"] = map[string]interface{}{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name": "segment_text",
 			},
 		}
-		requestData["tool_choice"] = "auto"
 	}
 
 	// Create stream parser
-	parser := utils.NewStreamParser(semanticOpts.Toolcall)
+	parser := utils.NewSemanticParser(semanticOpts.Toolcall)
 	var finalContent string
 	var finalArguments string
 
@@ -374,50 +340,26 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 		}
 
 		// Parse streaming chunk
-		chunkData, err := parser.ParseStreamChunk(data)
+		positions, err := parser.ParseSemanticPositions(data)
 		if err != nil {
 			log.Warn("Failed to parse stream chunk: %v", err)
 			return nil // Don't fail the entire stream for parsing errors
 		}
 
-		fmt.Println("--------------------------------")
-		fmt.Println("Streaming data", string(data))
-		fmt.Println("Streaming chunk arguments", chunkData.Arguments)
-		fmt.Println("Streaming chunk content", chunkData.Content)
-		fmt.Println("Streaming chunk finished", chunkData.Finished)
-		fmt.Println("Streaming chunk error", chunkData.Error)
-		fmt.Println("Streaming chunk positions count", len(chunkData.Positions))
-		if len(chunkData.Positions) > 0 {
-			maxShow := 3
-			if len(chunkData.Positions) < maxShow {
-				maxShow = len(chunkData.Positions)
-			}
-			fmt.Printf("First few positions: %+v\n", chunkData.Positions[:maxShow])
+		// Ignore nil positions
+		if positions == nil {
+			return nil
 		}
-		fmt.Println("--------------------------------")
 
-		// Update final content/arguments
-		if semanticOpts.Toolcall {
-			finalArguments = chunkData.Arguments
-		} else {
-			finalContent = chunkData.Content
+		// Validate positions
+		err = types.ValidatePositions(chars, positions)
+		if err != nil {
+			log.Warn("Invalid positions: %v", err)
+			return err
 		}
 
 		// Report progress with streaming data including positions
-		sc.reportProgress("", "streaming", "llm_response", map[string]interface{}{
-			"is_toolcall":      chunkData.IsToolcall,
-			"content_length":   len(chunkData.Content),
-			"arguments_length": len(chunkData.Arguments),
-			"positions_count":  len(chunkData.Positions),
-			"finished":         chunkData.Finished,
-			"has_error":        chunkData.Error != "",
-		})
-
-		// If we have positions and the stream is finished, we can potentially return early
-		if chunkData.Finished && len(chunkData.Positions) > 0 {
-			log.Debug("Stream finished with %d positions parsed", len(chunkData.Positions))
-		}
-
+		sc.reportProgress(chunk.ID, "streaming", "llm_response", positions)
 		return nil
 	}
 
@@ -427,399 +369,14 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, text stri
 		return nil, fmt.Errorf("LLM streaming request failed: %w", err)
 	}
 
-	// Build response data for parsing
-	var responseData map[string]interface{}
+	// Extract final results from parser
 	if semanticOpts.Toolcall {
-		// For toolcall, check if finalArguments is complete and valid
-		if strings.TrimSpace(finalArguments) == "" {
-			log.Warn("Empty finalArguments received from streaming, using fallback")
-			// Use fallback: create a single segment for the entire text
-			return []SemanticPosition{{StartPos: 0, EndPos: len(text)}}, nil
-		}
-
-		// Try to repair incomplete JSON arguments
-		repairedArgs, err := jsonrepair.JSONRepair(finalArguments)
-		if err != nil {
-			log.Warn("Failed to repair finalArguments JSON: %v, using fallback", err)
-			// Use fallback: create a single segment for the entire text, but apply size constraints
-			fallbackPos := []SemanticPosition{{StartPos: 0, EndPos: len(text)}}
-			return sc.validateAndFixPositions(fallbackPos, len(text), maxSize), nil
-		}
-
-		// Validate that repaired JSON can be parsed
-		var testArgs map[string]interface{}
-		if err := json.Unmarshal([]byte(repairedArgs), &testArgs); err != nil {
-			log.Warn("Repaired finalArguments is still invalid: %v, using fallback", err)
-			// Use fallback: create a single segment for the entire text
-			return []SemanticPosition{{StartPos: 0, EndPos: len(text)}}, nil
-		}
-
-		// For toolcall, create a mock response structure with the repaired arguments
-		responseData = map[string]interface{}{
-			"choices": []interface{}{
-				map[string]interface{}{
-					"message": map[string]interface{}{
-						"tool_calls": []interface{}{
-							map[string]interface{}{
-								"function": map[string]interface{}{
-									"arguments": repairedArgs,
-								},
-							},
-						},
-					},
-				},
-			},
-		}
-	} else {
-		// For regular response, check if finalContent is available
-		if strings.TrimSpace(finalContent) == "" {
-			log.Warn("Empty finalContent received from streaming, using fallback")
-			// Use fallback: create a single segment for the entire text
-			return []SemanticPosition{{StartPos: 0, EndPos: len(text)}}, nil
-		}
-
-		// For regular response, create a mock response structure with the accumulated content
-		responseData = map[string]interface{}{
-			"choices": []interface{}{
-				map[string]interface{}{
-					"message": map[string]interface{}{
-						"content": finalContent,
-					},
-				},
-			},
-		}
+		finalArguments = parser.Arguments
+		return parser.ParseSemanticToolcall(finalArguments)
 	}
 
-	// Convert response data to JSON bytes for existing parsing logic
-	responseBytes, err := json.Marshal(responseData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal response data: %w", err)
-	}
-
-	// Parse response using existing logic
-	return sc.parseLLMResponse(responseBytes, semanticOpts.Toolcall, len(text), maxSize)
-}
-
-// parseLLMResponse parses LLM response to extract semantic positions
-func (sc *SemanticChunker) parseLLMResponse(responseBody []byte, isToolcall bool, textLen, maxSize int) ([]SemanticPosition, error) {
-	// First try to repair JSON if needed
-	repairedJSON, err := jsonrepair.JSONRepair(string(responseBody))
-	if err != nil {
-		return nil, fmt.Errorf("failed to repair JSON: %w", err)
-	}
-
-	var responseData map[string]interface{}
-	if err := json.Unmarshal([]byte(repairedJSON), &responseData); err != nil {
-		return nil, fmt.Errorf("failed to parse response JSON: %w", err)
-	}
-
-	var positions []SemanticPosition
-
-	if isToolcall {
-		// Parse toolcall response
-		positions, err = sc.parseToolcallResponse(responseData)
-	} else {
-		// Parse regular response
-		positions, err = sc.parseRegularResponse(responseData)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Only do basic boundary checks to prevent crashes, no semantic logic
-	var safePositions []SemanticPosition
-	for _, pos := range positions {
-		// Basic boundary safety checks only
-		if pos.StartPos < 0 {
-			pos.StartPos = 0
-		}
-		if pos.EndPos > textLen {
-			pos.EndPos = textLen
-		}
-		if pos.StartPos >= pos.EndPos {
-			continue // Skip invalid positions
-		}
-		safePositions = append(safePositions, pos)
-	}
-
-	return safePositions, nil
-}
-
-// parseToolcallResponse parses toolcall response format
-func (sc *SemanticChunker) parseToolcallResponse(responseData map[string]interface{}) ([]SemanticPosition, error) {
-	choices, ok := responseData["choices"].([]interface{})
-	if !ok || len(choices) == 0 {
-		return nil, fmt.Errorf("no choices in toolcall response")
-	}
-
-	choice := choices[0].(map[string]interface{})
-	message, ok := choice["message"].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("no message in toolcall choice")
-	}
-
-	toolCalls, ok := message["tool_calls"].([]interface{})
-	if !ok || len(toolCalls) == 0 {
-		return nil, fmt.Errorf("no tool_calls in message")
-	}
-
-	toolCall := toolCalls[0].(map[string]interface{})
-	function, ok := toolCall["function"].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("no function in tool_call")
-	}
-
-	argumentsStr, ok := function["arguments"].(string)
-	if !ok {
-		return nil, fmt.Errorf("no arguments in function")
-	}
-
-	var args map[string]interface{}
-	if err := json.Unmarshal([]byte(argumentsStr), &args); err != nil {
-		return nil, fmt.Errorf("failed to parse function arguments: %w", err)
-	}
-
-	segments, ok := args["segments"].([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("no segments in function arguments")
-	}
-
-	var positions []SemanticPosition
-	for _, seg := range segments {
-		segMap := seg.(map[string]interface{})
-
-		// Safe conversion for start_pos
-		startPos, err := sc.convertToInt(segMap["start_pos"])
-		if err != nil {
-			return nil, fmt.Errorf("invalid start_pos: %w", err)
-		}
-
-		// Safe conversion for end_pos
-		endPos, err := sc.convertToInt(segMap["end_pos"])
-		if err != nil {
-			return nil, fmt.Errorf("invalid end_pos: %w", err)
-		}
-
-		positions = append(positions, SemanticPosition{
-			StartPos: startPos,
-			EndPos:   endPos,
-		})
-	}
-
-	return positions, nil
-}
-
-// convertToInt safely converts interface{} to int, handling different number types
-func (sc *SemanticChunker) convertToInt(value interface{}) (int, error) {
-	if value == nil {
-		return 0, fmt.Errorf("value is nil")
-	}
-
-	switch v := value.(type) {
-	case int:
-		return v, nil
-	case int32:
-		return int(v), nil
-	case int64:
-		return int(v), nil
-	case float32:
-		return int(v), nil
-	case float64:
-		return int(v), nil
-	case string:
-		// Try to parse string as number
-		if parsed, err := strconv.Atoi(v); err == nil {
-			return parsed, nil
-		}
-		if parsed, err := strconv.ParseFloat(v, 64); err == nil {
-			return int(parsed), nil
-		}
-		return 0, fmt.Errorf("cannot convert string '%s' to int", v)
-	default:
-		return 0, fmt.Errorf("unsupported type: %T", v)
-	}
-}
-
-// parseRegularResponse parses regular JSON response format
-func (sc *SemanticChunker) parseRegularResponse(responseData map[string]interface{}) ([]SemanticPosition, error) {
-	choices, ok := responseData["choices"].([]interface{})
-	if !ok || len(choices) == 0 {
-		return nil, fmt.Errorf("no choices in response")
-	}
-
-	choice := choices[0].(map[string]interface{})
-	message, ok := choice["message"].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("no message in choice")
-	}
-
-	content, ok := message["content"].(string)
-	if !ok {
-		return nil, fmt.Errorf("no content in message")
-	}
-
-	// Check if content is empty or whitespace only
-	if strings.TrimSpace(content) == "" {
-		return []SemanticPosition{}, nil // Return empty positions for empty content
-	}
-
-	// Try to extract JSON from content (might be wrapped in markdown or have other text)
-	jsonStr := sc.extractJSONFromText(content)
-
-	// Check if extracted JSON is empty
-	if strings.TrimSpace(jsonStr) == "" {
-		return []SemanticPosition{}, nil // Return empty positions for empty JSON
-	}
-
-	// Repair and parse JSON
-	repairedJSON, err := jsonrepair.JSONRepair(jsonStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to repair extracted JSON: %w", err)
-	}
-
-	var positions []SemanticPosition
-	if err := json.Unmarshal([]byte(repairedJSON), &positions); err != nil {
-		return nil, fmt.Errorf("failed to parse positions JSON: %w", err)
-	}
-
-	return positions, nil
-}
-
-// extractJSONFromText extracts JSON array from text content
-func (sc *SemanticChunker) extractJSONFromText(text string) string {
-	// Remove markdown code blocks
-	text = strings.ReplaceAll(text, "```json", "")
-	text = strings.ReplaceAll(text, "```", "")
-
-	// Find JSON array boundaries
-	start := strings.Index(text, "[")
-	end := strings.LastIndex(text, "]")
-
-	if start == -1 || end == -1 || start >= end {
-		return text // Return as-is if no clear JSON boundaries
-	}
-
-	return text[start : end+1]
-}
-
-// validateAndFixPositions validates and fixes semantic positions
-func (sc *SemanticChunker) validateAndFixPositions(positions []SemanticPosition, textLen, maxSize int) []SemanticPosition {
-	if len(positions) == 0 {
-		// If no positions provided, create a single segment for the entire text
-		// This preserves the original content as one semantic unit
-		log.Warn("No semantic positions provided, creating single segment for entire text (length: %d)", textLen)
-		return []SemanticPosition{{StartPos: 0, EndPos: textLen}}
-	}
-
-	var validPositions []SemanticPosition
-	lastEnd := 0
-
-	for _, pos := range positions {
-		// Only fix obvious boundary errors, don't change semantic decisions
-		if pos.StartPos < 0 {
-			pos.StartPos = 0
-		}
-		if pos.EndPos > textLen {
-			pos.EndPos = textLen
-		}
-		if pos.StartPos >= pos.EndPos {
-			continue // Skip invalid positions
-		}
-
-		// Fill gaps between segments (preserve LLM's semantic boundaries)
-		if pos.StartPos > lastEnd {
-			validPositions = append(validPositions, SemanticPosition{
-				StartPos: lastEnd,
-				EndPos:   pos.StartPos,
-			})
-		}
-
-		// TRUST LLM COMPLETELY - use the segment as-is regardless of size
-		// The LLM has made semantic decisions that we should respect
-		validPositions = append(validPositions, pos)
-		lastEnd = pos.EndPos
-	}
-
-	// Fill remaining gap if any
-	if lastEnd < textLen {
-		validPositions = append(validPositions, SemanticPosition{
-			StartPos: lastEnd,
-			EndPos:   textLen,
-		})
-	}
-
-	return validPositions
-}
-
-// splitLargePosition splits a large position into smaller ones (legacy method)
-func (sc *SemanticChunker) splitLargePosition(pos SemanticPosition, maxSize int) []SemanticPosition {
-	return sc.splitLargePositionSemantically(pos, maxSize)
-}
-
-// splitLargePositionSemantically splits a large position while trying to preserve semantic boundaries
-func (sc *SemanticChunker) splitLargePositionSemantically(pos SemanticPosition, maxSize int) []SemanticPosition {
-	var positions []SemanticPosition
-	currentStart := pos.StartPos
-
-	for currentStart < pos.EndPos {
-		currentEnd := currentStart + maxSize
-		if currentEnd > pos.EndPos {
-			currentEnd = pos.EndPos
-		}
-
-		positions = append(positions, SemanticPosition{
-			StartPos: currentStart,
-			EndPos:   currentEnd,
-		})
-
-		currentStart = currentEnd
-	}
-
-	return positions
-}
-
-// createSemanticChunks creates semantic chunks from positions
-func (sc *SemanticChunker) createSemanticChunks(originalChunk *types.Chunk, positions []SemanticPosition, options *types.ChunkingOptions) []*types.Chunk {
-	var semanticChunks []*types.Chunk
-
-	for i, pos := range positions {
-		// Extract text for this semantic segment
-		chunkText := originalChunk.Text[pos.StartPos:pos.EndPos]
-		if strings.TrimSpace(chunkText) == "" {
-			continue // Skip empty chunks
-		}
-
-		// Calculate text position
-		var textPos *types.TextPosition
-		if originalChunk.TextPos != nil {
-			textPos = &types.TextPosition{
-				StartIndex: originalChunk.TextPos.StartIndex + pos.StartPos,
-				EndIndex:   originalChunk.TextPos.StartIndex + pos.EndPos,
-				StartLine:  originalChunk.TextPos.StartLine + strings.Count(originalChunk.Text[:pos.StartPos], "\n"),
-				EndLine:    originalChunk.TextPos.StartLine + strings.Count(originalChunk.Text[:pos.EndPos], "\n"),
-			}
-		}
-
-		// Create semantic chunk
-		chunk := &types.Chunk{
-			ID:       uuid.NewString(),
-			Text:     chunkText,
-			Type:     originalChunk.Type,
-			ParentID: "",    // Will be set during hierarchy building
-			Depth:    1,     // Semantic chunks start at depth 1
-			Leaf:     false, // Will be determined during hierarchy building
-			Root:     true,  // Semantic chunks are initially root
-			Index:    i,
-			Status:   types.ChunkingStatusCompleted,
-			TextPos:  textPos,
-			Parents:  []types.Chunk{}, // Will be populated during hierarchy building
-		}
-
-		semanticChunks = append(semanticChunks, chunk)
-	}
-
-	return semanticChunks
+	finalContent = parser.Content
+	return parser.ParseSemanticRegular(finalContent)
 }
 
 // buildHierarchyAndOutput builds hierarchy and outputs chunks
