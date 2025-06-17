@@ -805,8 +805,8 @@ func TestChunk_Split(t *testing.T) {
 				Status: ChunkingStatusCompleted,
 			},
 			positions: []Position{
-				{StartPos: 0, EndPos: 15},  // "你好世界！" (5 chars * 3 bytes each)
-				{StartPos: 15, EndPos: 36}, // "这是一个测试。" (7 chars * 3 bytes each)
+				{StartPos: 0, EndPos: 5},  // "你好世界！" (5 characters)
+				{StartPos: 5, EndPos: 12}, // "这是一个测试。" (7 characters)
 			},
 			expectedCount: 2,
 			expectedTexts: []string{"你好世界！", "这是一个测试。"},
@@ -881,7 +881,8 @@ func TestChunk_Split(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.chunk.Split(tt.positions)
+			chars := tt.chunk.TextWChars()
+			result := tt.chunk.Split(chars, tt.positions)
 
 			// Check result count
 			if len(result) != tt.expectedCount {
@@ -1006,9 +1007,18 @@ func TestChunk_Split_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.chunk.Split(tt.positions)
-			if len(result) != tt.expected {
-				t.Errorf("Split() returned %d chunks, expected %d", len(result), tt.expected)
+			if tt.chunk == nil {
+				// Handle nil chunk case
+				result := tt.chunk.Split(nil, tt.positions)
+				if len(result) != tt.expected {
+					t.Errorf("Split() returned %d chunks, expected %d", len(result), tt.expected)
+				}
+			} else {
+				chars := tt.chunk.TextWChars()
+				result := tt.chunk.Split(chars, tt.positions)
+				if len(result) != tt.expected {
+					t.Errorf("Split() returned %d chunks, expected %d", len(result), tt.expected)
+				}
 			}
 		})
 	}
@@ -1032,7 +1042,8 @@ func TestChunk_Split_TextPositionCalculation(t *testing.T) {
 		{StartPos: 14, EndPos: 20}, // "Line 3" - line 12
 	}
 
-	result := chunk.Split(positions)
+	chars := chunk.TextWChars()
+	result := chunk.Split(chars, positions)
 
 	if len(result) != 3 {
 		t.Fatalf("Expected 3 chunks, got %d", len(result))
@@ -1973,9 +1984,10 @@ func BenchmarkChunk_Split(b *testing.B) {
 		{StartPos: 200, EndPos: 300},
 	}
 
+	chars := chunk.TextWChars()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = chunk.Split(positions)
+		_ = chunk.Split(chars, positions)
 	}
 }
 
@@ -2090,7 +2102,8 @@ func TestChunk_ConcurrentSplit(t *testing.T) {
 				Type:    baseChunk.Type,
 				TextPos: baseChunk.TextPos,
 			}
-			splitResult := chunk.Split(positions)
+			chars := chunk.TextWChars()
+			splitResult := chunk.Split(chars, positions)
 			results <- splitResult
 		}(i)
 	}
@@ -2216,7 +2229,8 @@ func TestChunk_LargeDataHandling(t *testing.T) {
 	}
 
 	start = time.Now()
-	splitResult := chunk.Split(positions)
+	splitChars := chunk.TextWChars()
+	splitResult := chunk.Split(splitChars, positions)
 	duration = time.Since(start)
 
 	t.Logf("Splitting large text took %v", duration)
@@ -2326,7 +2340,8 @@ func TestChunk_IntegrationWorkflow(t *testing.T) {
 		{StartPos: 54, EndPos: len(originalText)}, // Third line
 	}
 
-	subChunks := chunk.Split(positions)
+	splitChars := chunk.TextWChars()
+	subChunks := chunk.Split(splitChars, positions)
 	if len(subChunks) != 3 {
 		t.Errorf("Expected 3 sub-chunks, got %d", len(subChunks))
 	}

@@ -150,7 +150,7 @@ func ValidatePositions(chars []string, positions []Position) error {
 // Split splits the chunk into multiple sub-chunks based on the given positions
 // It performs bounds checking and logs warnings for out-of-bounds positions
 // Returns chunks with proper cascading relationships set up
-func (chunk *Chunk) Split(positions []Position) []*Chunk {
+func (chunk *Chunk) Split(chars []string, positions []Position) []*Chunk {
 	if chunk == nil {
 		log.Warn("Split called on nil chunk")
 		return []*Chunk{}
@@ -166,7 +166,12 @@ func (chunk *Chunk) Split(positions []Position) []*Chunk {
 		return []*Chunk{}
 	}
 
-	textLen := len(chunk.Text)
+	if len(chars) == 0 {
+		log.Warn("Split called with empty chars array, chunk ID: %s", chunk.ID)
+		return []*Chunk{}
+	}
+
+	charsLen := len(chars)
 	var validPositions []Position
 
 	// Filter valid positions and log warnings for invalid ones
@@ -183,13 +188,13 @@ func (chunk *Chunk) Split(positions []Position) []*Chunk {
 			log.Warn("Position %d has StartPos (%d) >= EndPos (%d), ignoring. Chunk ID: %s", i, pos.StartPos, pos.EndPos, chunk.ID)
 			continue
 		}
-		if pos.StartPos >= textLen {
-			log.Warn("Position %d StartPos (%d) exceeds text length (%d), ignoring. Chunk ID: %s", i, pos.StartPos, textLen, chunk.ID)
+		if pos.StartPos >= charsLen {
+			log.Warn("Position %d StartPos (%d) exceeds chars length (%d), ignoring. Chunk ID: %s", i, pos.StartPos, charsLen, chunk.ID)
 			continue
 		}
-		if pos.EndPos > textLen {
-			log.Warn("Position %d EndPos (%d) exceeds text length (%d), clamping to text length. Chunk ID: %s", i, pos.EndPos, textLen, chunk.ID)
-			pos.EndPos = textLen
+		if pos.EndPos > charsLen {
+			log.Warn("Position %d EndPos (%d) exceeds chars length (%d), clamping to chars length. Chunk ID: %s", i, pos.EndPos, charsLen, chunk.ID)
+			pos.EndPos = charsLen
 		}
 
 		validPositions = append(validPositions, pos)
@@ -203,8 +208,9 @@ func (chunk *Chunk) Split(positions []Position) []*Chunk {
 	// Create sub-chunks from valid positions
 	var subChunks []*Chunk
 	for i, pos := range validPositions {
-		// Extract text for this position
-		chunkText := chunk.Text[pos.StartPos:pos.EndPos]
+		// Extract text from chars array based on position indices
+		chunkChars := chars[pos.StartPos:pos.EndPos]
+		chunkText := strings.Join(chunkChars, "")
 
 		// Skip empty chunks
 		if strings.TrimSpace(chunkText) == "" {
@@ -212,18 +218,42 @@ func (chunk *Chunk) Split(positions []Position) []*Chunk {
 			continue
 		}
 
-		// Calculate text position relative to original chunk
+		// Calculate byte positions in original text for TextPosition
+		// We need to find where these characters start and end in the original text
 		var textPos *TextPosition
 		if chunk.TextPos != nil {
+			// Calculate byte positions by counting bytes up to the character positions
+			byteStartPos := 0
+			byteEndPos := 0
+
+			// Count bytes up to StartPos
+			for charIdx := 0; charIdx < pos.StartPos && charIdx < len(chars); charIdx++ {
+				byteStartPos += len(chars[charIdx])
+			}
+
+			// Count bytes up to EndPos
+			for charIdx := 0; charIdx < pos.EndPos && charIdx < len(chars); charIdx++ {
+				byteEndPos += len(chars[charIdx])
+			}
+
 			// Calculate line numbers for the extracted text
-			textBeforeStart := chunk.Text[:pos.StartPos]
-			textBeforeEnd := chunk.Text[:pos.EndPos]
+			textBeforeStart := ""
+			if byteStartPos < len(chunk.Text) {
+				textBeforeStart = chunk.Text[:byteStartPos]
+			}
+			textBeforeEnd := ""
+			if byteEndPos <= len(chunk.Text) {
+				textBeforeEnd = chunk.Text[:byteEndPos]
+			} else {
+				textBeforeEnd = chunk.Text
+			}
+
 			startLine := chunk.TextPos.StartLine + strings.Count(textBeforeStart, "\n")
 			endLine := chunk.TextPos.StartLine + strings.Count(textBeforeEnd, "\n")
 
 			textPos = &TextPosition{
-				StartIndex: chunk.TextPos.StartIndex + pos.StartPos,
-				EndIndex:   chunk.TextPos.StartIndex + pos.EndPos,
+				StartIndex: chunk.TextPos.StartIndex + byteStartPos,
+				EndIndex:   chunk.TextPos.StartIndex + byteEndPos,
 				StartLine:  startLine,
 				EndLine:    endLine,
 			}
