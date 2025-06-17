@@ -243,12 +243,9 @@ func (sc *SemanticChunker) processSemanticChunks(ctx context.Context, structured
 
 // updateSemanticChunkIndices updates the indices of semantic chunks based on original structured chunk order
 func (sc *SemanticChunker) updateSemanticChunkIndices(semanticChunks []*types.Chunk, originalIndex int) []*types.Chunk {
-	// Update indices of semantic chunks based on original structured chunk order
-	// and position within the semantic split
+	// Set temporary indices within this chunk group, will be overridden in mergeSemanticChunksInOrder
 	for j, semanticChunk := range semanticChunks {
-		// Calculate global index: originalIndex * large_number + within_chunk_index
-		// This ensures proper ordering across all chunks
-		semanticChunk.Index = originalIndex*10000 + j
+		semanticChunk.Index = j // Temporary index within this group: 0, 1, 2, ...
 	}
 	return semanticChunks
 }
@@ -263,9 +260,9 @@ func (sc *SemanticChunker) mergeSemanticChunksInOrder(semanticChunksByIndex map[
 		}
 	}
 
-	// Final pass to update global indices sequentially
+	// Final pass to update global indices sequentially (each level slice indices are 0-N)
 	for globalIndex, chunk := range allSemanticChunks {
-		chunk.Index = globalIndex
+		chunk.Index = globalIndex // Global index: 0, 1, 2, 3, ...
 	}
 
 	return allSemanticChunks
@@ -302,8 +299,17 @@ func (sc *SemanticChunker) processChunkSemanticSegmentation(ctx context.Context,
 		positions = []types.Position{{StartPos: 0, EndPos: len(chunk.Text)}}
 	}
 
-	// Convert positions to chunks
+	// Convert positions to chunks using generic Split method
 	semanticChunks := chunk.Split(chars, positions)
+
+	// Override depth and other properties for semantic chunks (LLM produces MaxDepth level chunks)
+	for i, semanticChunk := range semanticChunks {
+		semanticChunk.Depth = options.MaxDepth // LLM segmentation produces minimum granularity (MaxDepth)
+		semanticChunk.Index = i                // Index within this semantic split: 0, 1, 2, ...
+		semanticChunk.Root = false             // Semantic chunks are not root
+		semanticChunk.Leaf = true              // At MaxDepth, these are leaf nodes
+	}
+
 	return semanticChunks, nil
 }
 
@@ -426,7 +432,15 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, chunk *ty
 
 // buildHierarchyAndOutput builds hierarchy and outputs chunks
 func (sc *SemanticChunker) buildHierarchyAndOutput(ctx context.Context, semanticChunks []*types.Chunk, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
-	// Step 1: Output semantic chunks (level 1)
+	// Step 1: Set correct Root status for semantic chunks
+	// If MaxDepth == 1, semantic chunks are root chunks
+	// If MaxDepth > 1, semantic chunks are leaf chunks
+	for _, chunk := range semanticChunks {
+		chunk.Root = (options.MaxDepth == 1) // If MaxDepth==1, semantic chunks are root nodes
+		chunk.Leaf = true                    // Semantic chunks are always leaf nodes
+	}
+
+	// Step 2: Output semantic chunks (MaxDepth level)
 	for _, chunk := range semanticChunks {
 		if err := callback(chunk); err != nil {
 			return fmt.Errorf("callback failed for semantic chunk %s: %w", chunk.ID, err)
@@ -435,7 +449,7 @@ func (sc *SemanticChunker) buildHierarchyAndOutput(ctx context.Context, semantic
 		sc.reportProgress(chunk.ID, "output", "semantic_chunk", nil)
 	}
 
-	// Step 2: Build hierarchy if MaxDepth > 1
+	// Step 3: Build hierarchy if MaxDepth > 1
 	if options.MaxDepth > 1 {
 		return sc.buildHierarchy(ctx, semanticChunks, options, callback)
 	}
@@ -446,9 +460,9 @@ func (sc *SemanticChunker) buildHierarchyAndOutput(ctx context.Context, semantic
 // buildHierarchy builds hierarchical chunks
 func (sc *SemanticChunker) buildHierarchy(ctx context.Context, baseChunks []*types.Chunk, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
 	currentLevelChunks := baseChunks
-	currentDepth := 2
+	currentDepth := options.MaxDepth - 1 // Start merging from MaxDepth-1 upwards
 
-	for currentDepth <= options.MaxDepth {
+	for currentDepth >= 1 { // Merge up to depth=1
 		// Check context cancellation
 		select {
 		case <-ctx.Done():
@@ -466,6 +480,11 @@ func (sc *SemanticChunker) buildHierarchy(ctx context.Context, baseChunks []*typ
 			break // No more chunks to create
 		}
 
+		// Set correct indices for this level (each level uses 0-N indexing)
+		for i, chunk := range nextLevelChunks {
+			chunk.Index = i // Each level starts from 0: 0, 1, 2, ...
+		}
+
 		// Output next level chunks
 		for _, chunk := range nextLevelChunks {
 			if err := callback(chunk); err != nil {
@@ -479,7 +498,7 @@ func (sc *SemanticChunker) buildHierarchy(ctx context.Context, baseChunks []*typ
 		sc.updateChildrenParents(currentLevelChunks, nextLevelChunks)
 
 		currentLevelChunks = nextLevelChunks
-		currentDepth++
+		currentDepth-- // Move up the hierarchy, depth decreases
 	}
 
 	return nil
@@ -494,36 +513,70 @@ func (sc *SemanticChunker) createNextLevelChunks(childrenChunks []*types.Chunk, 
 	// Calculate target size for this level
 	targetSize := sc.calculateLevelSize(options.Size, depth, options.MaxDepth)
 
+	// Calculate how many children should be grouped together
+	// Higher levels should group more children together
+	remainingLevels := options.MaxDepth - depth + 1
+	groupSize := max(2, remainingLevels) // At least 2 children per parent, more for higher levels
+
 	var parentChunks []*types.Chunk
-	var currentGroup []*types.Chunk
-	var currentSize int
 
-	for _, child := range childrenChunks {
-		childSize := len(child.Text)
+	// Create groups of children, ensuring we actually combine content
+	for i := 0; i < len(childrenChunks); i += groupSize {
+		endIdx := min(i+groupSize, len(childrenChunks))
+		currentGroup := childrenChunks[i:endIdx]
 
-		// Check if adding this child would exceed target size
-		if len(currentGroup) > 0 && currentSize+childSize > targetSize {
-			// Create parent chunk for current group
+		// Only create parent if we're actually combining multiple children
+		if len(currentGroup) >= 2 {
 			parentChunk := sc.createParentChunk(currentGroup, depth, options)
-			parentChunks = append(parentChunks, parentChunk)
-
-			// Start new group
-			currentGroup = []*types.Chunk{child}
-			currentSize = childSize
-		} else {
-			// Add to current group
-			currentGroup = append(currentGroup, child)
-			currentSize += childSize
+			if parentChunk != nil {
+				parentChunks = append(parentChunks, parentChunk)
+			}
+		} else if len(currentGroup) == 1 {
+			// If only one child left, try to merge it with the last parent
+			if len(parentChunks) > 0 {
+				lastParent := parentChunks[len(parentChunks)-1]
+				// Check if adding this child would not exceed target size too much
+				if len(lastParent.Text)+len(currentGroup[0].Text) <= targetSize*2 {
+					// Merge with last parent
+					lastParent.Text += "\n" + currentGroup[0].Text
+					// Update text position
+					if lastParent.TextPos != nil && currentGroup[0].TextPos != nil {
+						lastParent.TextPos.EndIndex = currentGroup[0].TextPos.EndIndex
+						lastParent.TextPos.EndLine = currentGroup[0].TextPos.EndLine
+					}
+				} else {
+					// Create separate parent for this single child (unusual case)
+					parentChunk := sc.createParentChunk(currentGroup, depth, options)
+					if parentChunk != nil {
+						parentChunks = append(parentChunks, parentChunk)
+					}
+				}
+			} else {
+				// Create parent for single child (unusual case)
+				parentChunk := sc.createParentChunk(currentGroup, depth, options)
+				if parentChunk != nil {
+					parentChunks = append(parentChunks, parentChunk)
+				}
+			}
 		}
 	}
 
-	// Create parent for remaining group
-	if len(currentGroup) > 0 {
-		parentChunk := sc.createParentChunk(currentGroup, depth, options)
-		parentChunks = append(parentChunks, parentChunk)
-	}
-
 	return parentChunks, nil
+}
+
+// Helper functions for min/max
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // createParentChunk creates a parent chunk from children
@@ -565,8 +618,9 @@ func (sc *SemanticChunker) createParentChunk(children []*types.Chunk, depth int,
 		}
 	}
 
-	// Determine if this is a leaf node
-	isLeaf := depth >= options.MaxDepth
+	// Determine if this is a leaf node (depth == 1 is top level, not leaf)
+	isLeaf := false      // Parent chunks are never leaf nodes
+	isRoot := depth == 1 // depth == 1 is root node
 
 	return &types.Chunk{
 		ID:       uuid.NewString(),
@@ -575,8 +629,8 @@ func (sc *SemanticChunker) createParentChunk(children []*types.Chunk, depth int,
 		ParentID: "", // Will be set if there are higher levels
 		Depth:    depth,
 		Leaf:     isLeaf,
-		Root:     false, // Parent chunks are not root
-		Index:    0,     // Will be set when adding to parent
+		Root:     isRoot, // depth == 1 is root node
+		Index:    0,      // Will be set when adding to parent
 		Status:   types.ChunkingStatusCompleted,
 		TextPos:  textPos,
 		Parents:  []types.Chunk{}, // Will be populated later
@@ -585,49 +639,99 @@ func (sc *SemanticChunker) createParentChunk(children []*types.Chunk, depth int,
 
 // updateChildrenParents updates children's parent information
 func (sc *SemanticChunker) updateChildrenParents(children, parents []*types.Chunk) {
-	if len(parents) == 0 {
+	if len(parents) == 0 || len(children) == 0 {
 		return
 	}
 
-	// Create mapping from child to parent
-	childToParent := make(map[string]*types.Chunk)
+	// Build parent-child mapping based on text containment
 	childIndex := 0
-
 	for _, parent := range parents {
-		// Calculate how many children belong to this parent based on text content
-		parentText := parent.Text
-		childrenText := ""
-		startChildIndex := childIndex
+		var parentChildren []*types.Chunk
 
+		// Find children that belong to this parent
 		for childIndex < len(children) {
-			if childIndex > startChildIndex {
-				childrenText += "\n"
-			}
-			childrenText += children[childIndex].Text
+			child := children[childIndex]
 
-			// Check if we've matched the parent's text content
-			if strings.Contains(parentText, children[childIndex].Text) {
-				childToParent[children[childIndex].ID] = parent
-				children[childIndex].ParentID = parent.ID
-				children[childIndex].Root = false
-				children[childIndex].Index = childIndex - startChildIndex
+			// Check if child's text is contained in parent's text
+			if strings.Contains(parent.Text, child.Text) {
+				parentChildren = append(parentChildren, child)
 				childIndex++
-
-				// If parent text is fully covered, move to next parent
-				if len(childrenText) >= len(parentText)-10 { // Allow some tolerance
-					break
-				}
 			} else {
+				// This child doesn't belong to current parent
 				break
 			}
+		}
+
+		// Update parent information for all children of this parent
+		for _, child := range parentChildren {
+			// Set basic parent info (but keep existing global Index)
+			child.ParentID = parent.ID
+			child.Root = false
+			// Don't modify child.Index - keep global indexing 0-N
+
+			// Update Parents chain
+			if len(child.Parents) == 0 {
+				// Initialize Parents array with current parent
+				child.Parents = []types.Chunk{*parent}
+			} else {
+				// Append current parent to existing Parents chain
+				// Check if parent already exists to avoid duplicates
+				found := false
+				for j, existingParent := range child.Parents {
+					if existingParent.ID == parent.ID {
+						// Update existing parent entry
+						child.Parents[j] = *parent
+						found = true
+						break
+					}
+				}
+				if !found {
+					child.Parents = append(child.Parents, *parent)
+				}
+			}
+		}
+
+		// If no children found by text containment, fall back to sequential assignment
+		if len(parentChildren) == 0 && childIndex < len(children) {
+			// Assign remaining children proportionally
+			remainingChildren := len(children) - childIndex
+			remainingParents := 0
+			for j := range parents {
+				if j >= childIndex/len(children)*len(parents) {
+					remainingParents++
+				}
+			}
+			if remainingParents == 0 {
+				remainingParents = 1
+			}
+
+			childrenPerParent := max(1, remainingChildren/remainingParents)
+			endIdx := min(childIndex+childrenPerParent, len(children))
+
+			for i := childIndex; i < endIdx; i++ {
+				child := children[i]
+				child.ParentID = parent.ID
+				child.Root = false
+				// Don't modify child.Index - keep global indexing 0-N
+
+				// Update Parents chain
+				if len(child.Parents) == 0 {
+					child.Parents = []types.Chunk{*parent}
+				} else {
+					child.Parents = append(child.Parents, *parent)
+				}
+			}
+			childIndex = endIdx
 		}
 	}
 }
 
 // calculateLevelSize calculates target size for hierarchy level
 func (sc *SemanticChunker) calculateLevelSize(baseSize, depth, maxDepth int) int {
-	// For semantic chunking, we use a different scaling than structured chunking
-	// Higher levels should accommodate more content
+	// Use original logic to maintain compatibility with existing tests
+	// Higher levels (lower depth numbers) should accommodate more content
+	// Formula: (maxDepth - depth + 2) * baseSize
+	// This ensures L1 gets most space, L2 less, L3 (MaxDepth) least
 	multiplier := maxDepth - depth + 2
 	return baseSize * multiplier
 }
