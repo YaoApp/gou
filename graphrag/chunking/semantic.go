@@ -74,8 +74,8 @@ func (sc *SemanticChunker) ChunkStream(ctx context.Context, stream io.ReadSeeker
 		return fmt.Errorf("no structured chunks generated")
 	}
 
-	// Step 3: Process semantic chunking with concurrency
-	semanticChunks, err := sc.processSemanticChunking(ctx, structuredChunks, options)
+	// Step 3: Process semantic chunking
+	semanticChunks, err := sc.processSemanticChunks(ctx, structuredChunks, options)
 	if err != nil {
 		return fmt.Errorf("failed to process semantic chunking: %w", err)
 	}
@@ -164,15 +164,17 @@ func (sc *SemanticChunker) getStructuredChunks(ctx context.Context, stream io.Re
 	return chunks, nil
 }
 
-// processSemanticChunking processes semantic chunking with LLM concurrency
-func (sc *SemanticChunker) processSemanticChunking(ctx context.Context, structuredChunks []*types.Chunk, options *types.ChunkingOptions) ([]*types.Chunk, error) {
+// processSemanticChunks processes structured chunks and merges results in correct order
+func (sc *SemanticChunker) processSemanticChunks(ctx context.Context, structuredChunks []*types.Chunk, options *types.ChunkingOptions) ([]*types.Chunk, error) {
 	semanticOpts := options.SemanticOptions
 
 	// Channel for controlling concurrency
 	semaphore := make(chan struct{}, semanticOpts.MaxConcurrent)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	var allSemanticChunks []*types.Chunk
+
+	// Use a map to store results with original index to preserve order
+	semanticChunksByIndex := make(map[int][]*types.Chunk)
 	var firstError error
 
 	for i, structuredChunk := range structuredChunks {
@@ -186,7 +188,7 @@ func (sc *SemanticChunker) processSemanticChunking(ctx context.Context, structur
 		wg.Add(1)
 		semaphore <- struct{}{} // Acquire semaphore
 
-		go func(chunk *types.Chunk, index int) {
+		go func(chunk *types.Chunk, originalIndex int) {
 			defer func() {
 				<-semaphore // Release semaphore
 				wg.Done()
@@ -194,7 +196,7 @@ func (sc *SemanticChunker) processSemanticChunking(ctx context.Context, structur
 
 			// Report progress
 			sc.reportProgress(chunk.ID, "processing", "semantic_analysis", map[string]interface{}{
-				"chunk_index":  index,
+				"chunk_index":  originalIndex,
 				"total_chunks": len(structuredChunks),
 			})
 
@@ -214,14 +216,17 @@ func (sc *SemanticChunker) processSemanticChunking(ctx context.Context, structur
 				return
 			}
 
-			// Add to results
+			// Update indices and store results in order
+			processedChunks := sc.updateSemanticChunkIndices(semanticChunks, originalIndex)
+
+			// Store results with original index to preserve order
 			mu.Lock()
-			allSemanticChunks = append(allSemanticChunks, semanticChunks...)
+			semanticChunksByIndex[originalIndex] = processedChunks
 			mu.Unlock()
 
 			// Report completion progress
 			sc.reportProgress(chunk.ID, "completed", "semantic_analysis", map[string]interface{}{
-				"chunks_generated": len(semanticChunks),
+				"chunks_generated": len(processedChunks),
 			})
 		}(structuredChunk, i)
 	}
@@ -232,7 +237,38 @@ func (sc *SemanticChunker) processSemanticChunking(ctx context.Context, structur
 		return nil, firstError
 	}
 
-	return allSemanticChunks, nil
+	// Merge and finalize results
+	return sc.mergeSemanticChunksInOrder(semanticChunksByIndex, len(structuredChunks)), nil
+}
+
+// updateSemanticChunkIndices updates the indices of semantic chunks based on original structured chunk order
+func (sc *SemanticChunker) updateSemanticChunkIndices(semanticChunks []*types.Chunk, originalIndex int) []*types.Chunk {
+	// Update indices of semantic chunks based on original structured chunk order
+	// and position within the semantic split
+	for j, semanticChunk := range semanticChunks {
+		// Calculate global index: originalIndex * large_number + within_chunk_index
+		// This ensures proper ordering across all chunks
+		semanticChunk.Index = originalIndex*10000 + j
+	}
+	return semanticChunks
+}
+
+// mergeSemanticChunksInOrder merges semantic chunks in the correct order based on original structured chunk order
+func (sc *SemanticChunker) mergeSemanticChunksInOrder(semanticChunksByIndex map[int][]*types.Chunk, totalStructuredChunks int) []*types.Chunk {
+	// Merge results in the correct order based on original structured chunk order
+	var allSemanticChunks []*types.Chunk
+	for i := 0; i < totalStructuredChunks; i++ {
+		if chunks, exists := semanticChunksByIndex[i]; exists {
+			allSemanticChunks = append(allSemanticChunks, chunks...)
+		}
+	}
+
+	// Final pass to update global indices sequentially
+	for globalIndex, chunk := range allSemanticChunks {
+		chunk.Index = globalIndex
+	}
+
+	return allSemanticChunks
 }
 
 // processChunkSemanticSegmentation processes semantic segmentation for a single chunk

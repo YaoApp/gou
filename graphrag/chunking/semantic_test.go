@@ -1764,3 +1764,213 @@ func TestStructuredChunkingIntegration(t *testing.T) {
 		}
 	})
 }
+
+// TestSemanticChunksConcurrentOrderAndIndex tests the concurrent processing order and index correctness
+func TestSemanticChunksConcurrentOrderAndIndex(t *testing.T) {
+	// Prepare test connectors
+	prepareConnector(t)
+
+	chunker := NewSemanticChunker(nil)
+	ctx := context.Background()
+
+	// Create test structured chunks with predictable order
+	structuredChunks := []*types.Chunk{
+		{
+			ID:   "struct-chunk-0",
+			Text: "First structured chunk with some content that will be semantically segmented.",
+			Type: types.ChunkingTypeText,
+			TextPos: &types.TextPosition{
+				StartIndex: 0,
+				EndIndex:   79,
+				StartLine:  1,
+				EndLine:    1,
+			},
+			Index: 0,
+		},
+		{
+			ID:   "struct-chunk-1",
+			Text: "Second structured chunk with different content for semantic processing test.",
+			Type: types.ChunkingTypeText,
+			TextPos: &types.TextPosition{
+				StartIndex: 80,
+				EndIndex:   155,
+				StartLine:  2,
+				EndLine:    2,
+			},
+			Index: 1,
+		},
+		{
+			ID:   "struct-chunk-2",
+			Text: "Third structured chunk containing more text to verify ordering consistency.",
+			Type: types.ChunkingTypeText,
+			TextPos: &types.TextPosition{
+				StartIndex: 156,
+				EndIndex:   230,
+				StartLine:  3,
+				EndLine:    3,
+			},
+			Index: 2,
+		},
+	}
+
+	options := &types.ChunkingOptions{
+		Type:     types.ChunkingTypeText,
+		Size:     25,
+		Overlap:  5,
+		MaxDepth: 2,
+		SemanticOptions: &types.SemanticOptions{
+			Connector:     "test-openai",
+			MaxRetry:      3,
+			MaxConcurrent: 10, // High concurrency to test ordering
+			ContextSize:   200,
+			Toolcall:      true,
+		},
+	}
+
+	// Process chunks
+	semanticChunks, err := chunker.processSemanticChunks(ctx, structuredChunks, options)
+	if err != nil {
+		t.Fatalf("processSemanticChunks failed: %v", err)
+	}
+
+	if len(semanticChunks) == 0 {
+		t.Fatal("No semantic chunks returned")
+	}
+
+	t.Logf("Generated %d semantic chunks from %d structured chunks", len(semanticChunks), len(structuredChunks))
+
+	// Verify Index sequence is correct (should be 0, 1, 2, 3, ...)
+	for i, chunk := range semanticChunks {
+		if chunk.Index != i {
+			t.Errorf("Chunk %d has Index %d, expected %d", i, chunk.Index, i)
+		}
+	}
+
+	// Verify chunks are in the correct order based on TextPos
+	for i := 1; i < len(semanticChunks); i++ {
+		prevChunk := semanticChunks[i-1]
+		currChunk := semanticChunks[i]
+
+		if prevChunk.TextPos != nil && currChunk.TextPos != nil {
+			if prevChunk.TextPos.StartIndex >= currChunk.TextPos.StartIndex {
+				t.Errorf("Chunk %d StartIndex %d >= Chunk %d StartIndex %d - order is wrong",
+					i-1, prevChunk.TextPos.StartIndex, i, currChunk.TextPos.StartIndex)
+			}
+		}
+	}
+
+	// Verify that chunks from the same structured chunk maintain their relative order
+	chunkGroups := make(map[string][]*types.Chunk)
+	for _, chunk := range semanticChunks {
+		parentID := chunk.ParentID
+		chunkGroups[parentID] = append(chunkGroups[parentID], chunk)
+	}
+
+	// For each structured chunk, verify its semantic sub-chunks are in order
+	for parentID, subChunks := range chunkGroups {
+		for i := 1; i < len(subChunks); i++ {
+			prevChunk := subChunks[i-1]
+			currChunk := subChunks[i]
+
+			if prevChunk.TextPos != nil && currChunk.TextPos != nil {
+				if prevChunk.TextPos.StartIndex >= currChunk.TextPos.StartIndex {
+					t.Errorf("Sub-chunks of parent %s are not in order: chunk %d StartIndex %d >= chunk %d StartIndex %d",
+						parentID, i-1, prevChunk.TextPos.StartIndex, i, currChunk.TextPos.StartIndex)
+				}
+			}
+		}
+	}
+
+	// Verify all chunks have valid TextPos
+	for i, chunk := range semanticChunks {
+		if chunk.TextPos == nil {
+			t.Errorf("Chunk %d has nil TextPos", i)
+		} else {
+			if chunk.TextPos.StartIndex < 0 || chunk.TextPos.EndIndex <= chunk.TextPos.StartIndex {
+				t.Errorf("Chunk %d has invalid TextPos: StartIndex=%d, EndIndex=%d",
+					i, chunk.TextPos.StartIndex, chunk.TextPos.EndIndex)
+			}
+		}
+	}
+}
+
+// TestSemanticChunksConcurrentStressTest stress tests concurrent processing with many chunks
+func TestSemanticChunksConcurrentStressTest(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping stress test in short mode")
+	}
+
+	// Prepare test connectors
+	prepareConnector(t)
+
+	chunker := NewSemanticChunker(nil)
+	ctx := context.Background()
+
+	// Create many structured chunks
+	numChunks := 50
+	structuredChunks := make([]*types.Chunk, numChunks)
+	for i := 0; i < numChunks; i++ {
+		structuredChunks[i] = &types.Chunk{
+			ID:   fmt.Sprintf("stress-chunk-%d", i),
+			Text: fmt.Sprintf("Stress test chunk %d with content for concurrent processing verification. This chunk has index %d.", i, i),
+			Type: types.ChunkingTypeText,
+			TextPos: &types.TextPosition{
+				StartIndex: i * 100,
+				EndIndex:   (i + 1) * 100,
+				StartLine:  i + 1,
+				EndLine:    i + 1,
+			},
+			Index: i,
+		}
+	}
+
+	options := &types.ChunkingOptions{
+		Type:     types.ChunkingTypeText,
+		Size:     30,
+		Overlap:  5,
+		MaxDepth: 2,
+		SemanticOptions: &types.SemanticOptions{
+			Connector:     "test-openai",
+			MaxRetry:      2,
+			MaxConcurrent: 20, // High concurrency for stress testing
+			ContextSize:   150,
+			Toolcall:      true,
+		},
+	}
+
+	// Run multiple times to catch race conditions
+	for run := 0; run < 5; run++ {
+		t.Run(fmt.Sprintf("Run_%d", run), func(t *testing.T) {
+			semanticChunks, err := chunker.processSemanticChunks(ctx, structuredChunks, options)
+			if err != nil {
+				t.Fatalf("Run %d: processSemanticChunks failed: %v", run, err)
+			}
+
+			if len(semanticChunks) == 0 {
+				t.Fatalf("Run %d: No semantic chunks returned", run)
+			}
+
+			// Verify Index sequence
+			for i, chunk := range semanticChunks {
+				if chunk.Index != i {
+					t.Errorf("Run %d: Chunk %d has Index %d, expected %d", run, i, chunk.Index, i)
+				}
+			}
+
+			// Verify order by TextPos
+			for i := 1; i < len(semanticChunks); i++ {
+				prevChunk := semanticChunks[i-1]
+				currChunk := semanticChunks[i]
+
+				if prevChunk.TextPos != nil && currChunk.TextPos != nil {
+					if prevChunk.TextPos.StartIndex >= currChunk.TextPos.StartIndex {
+						t.Errorf("Run %d: Order violation at chunk %d-%d: %d >= %d",
+							run, i-1, i, prevChunk.TextPos.StartIndex, currChunk.TextPos.StartIndex)
+					}
+				}
+			}
+
+			t.Logf("Run %d: Successfully processed %d chunks in correct order", run, len(semanticChunks))
+		})
+	}
+}
