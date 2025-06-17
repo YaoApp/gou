@@ -265,7 +265,7 @@ func (chunk *Chunk) Split(chars []string, positions []Position) []*Chunk {
 			Text:     chunkText,
 			Type:     chunk.Type,
 			ParentID: chunk.ID,                // Set parent relationship
-			Depth:    chunk.Depth + 1,         // Increase depth
+			Depth:    chunk.Depth + 1,         // Increase depth (restored for generic Split method)
 			Leaf:     true,                    // Sub-chunks are leaf nodes by default
 			Root:     false,                   // Sub-chunks are not root
 			Index:    i,                       // Index within this split operation

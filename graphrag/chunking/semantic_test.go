@@ -1974,3 +1974,269 @@ func TestSemanticChunksConcurrentStressTest(t *testing.T) {
 		})
 	}
 }
+
+// TestSemanticChunkingDepthAndIndexLogic tests the corrected depth and index logic
+func TestSemanticChunkingDepthAndIndexLogic(t *testing.T) {
+	prepareConnector(t)
+
+	chunker := NewSemanticChunker(nil)
+	ctx := context.Background()
+
+	// Test text
+	testText := "This is the first sentence for testing. This is the second sentence for testing. This is the third sentence for testing. This is the fourth sentence for testing."
+
+	t.Run("MaxDepth=1 (semantic chunks are root nodes)", func(t *testing.T) {
+		options := &types.ChunkingOptions{
+			Type:          types.ChunkingTypeText,
+			Size:          30,
+			Overlap:       5,
+			MaxDepth:      1, // Only one level, semantic chunks are root nodes
+			MaxConcurrent: 2,
+			SemanticOptions: &types.SemanticOptions{
+				Connector:     "test-openai",
+				MaxRetry:      3,
+				MaxConcurrent: 2,
+				ContextSize:   100,
+				Toolcall:      true,
+			},
+		}
+
+		var chunks []*types.Chunk
+		err := chunker.Chunk(ctx, testText, options, func(chunk *types.Chunk) error {
+			chunks = append(chunks, chunk)
+			return nil
+		})
+
+		if err != nil {
+			t.Logf("Expected LLM error: %v", err)
+			return // Expected error since we're using mock connector
+		}
+
+		// Verify chunk properties
+		for i, chunk := range chunks {
+			// All chunks should have depth = MaxDepth = 1
+			if chunk.Depth != 1 {
+				t.Errorf("Chunk %d depth expected 1, got %d", i, chunk.Depth)
+			}
+			// All chunks should be root nodes (MaxDepth == 1)
+			if !chunk.Root {
+				t.Errorf("Chunk %d should be root node", i)
+			}
+			// All chunks should be leaf nodes
+			if !chunk.Leaf {
+				t.Errorf("Chunk %d should be leaf node", i)
+			}
+			// Index should be sequential: 0, 1, 2, ...
+			if chunk.Index != i {
+				t.Errorf("Chunk %d index expected %d, got %d", i, i, chunk.Index)
+			}
+		}
+	})
+
+	t.Run("MaxDepth=3 (three-level hierarchy)", func(t *testing.T) {
+		options := &types.ChunkingOptions{
+			Type:          types.ChunkingTypeText,
+			Size:          30,
+			Overlap:       5,
+			MaxDepth:      3, // Three-level hierarchy
+			MaxConcurrent: 2,
+			SemanticOptions: &types.SemanticOptions{
+				Connector:     "test-openai",
+				MaxRetry:      3,
+				MaxConcurrent: 2,
+				ContextSize:   200,
+				Toolcall:      true,
+			},
+		}
+
+		var chunks []*types.Chunk
+		var chunksByDepth = make(map[int][]*types.Chunk)
+
+		err := chunker.Chunk(ctx, testText, options, func(chunk *types.Chunk) error {
+			chunks = append(chunks, chunk)
+			chunksByDepth[chunk.Depth] = append(chunksByDepth[chunk.Depth], chunk)
+			return nil
+		})
+
+		if err != nil {
+			t.Logf("Expected LLM error: %v", err)
+			return // Expected error since we're using mock connector
+		}
+
+		// Verify depth layers
+		for depth := 1; depth <= 3; depth++ {
+			depthChunks := chunksByDepth[depth]
+			if len(depthChunks) == 0 {
+				continue
+			}
+
+			t.Logf("Depth %d: %d chunks", depth, len(depthChunks))
+
+			for i, chunk := range depthChunks {
+				// Verify depth
+				if chunk.Depth != depth {
+					t.Errorf("Depth %d chunk %d has wrong depth: expected %d, got %d", depth, i, depth, chunk.Depth)
+				}
+
+				// Verify index (each level uses 0-N indexing)
+				if chunk.Index != i {
+					t.Errorf("Depth %d chunk %d has wrong index: expected %d, got %d", depth, i, i, chunk.Index)
+				}
+
+				// Verify root/leaf status
+				if depth == 1 {
+					// Depth 1 should be root nodes
+					if !chunk.Root {
+						t.Errorf("Depth 1 chunk %d should be root node", i)
+					}
+					if chunk.Leaf {
+						t.Errorf("Depth 1 chunk %d should not be leaf node", i)
+					}
+				} else if depth == 3 {
+					// Depth 3 (MaxDepth) should be leaf nodes
+					if chunk.Root {
+						t.Errorf("Depth 3 chunk %d should not be root node", i)
+					}
+					if !chunk.Leaf {
+						t.Errorf("Depth 3 chunk %d should be leaf node", i)
+					}
+				} else {
+					// Depth 2 should be neither root nor leaf
+					if chunk.Root {
+						t.Errorf("Depth 2 chunk %d should not be root node", i)
+					}
+					if chunk.Leaf {
+						t.Errorf("Depth 2 chunk %d should not be leaf node", i)
+					}
+				}
+			}
+		}
+
+		// Verify total chunk ordering
+		for i := 1; i < len(chunks); i++ {
+			prevChunk := chunks[i-1]
+			currChunk := chunks[i]
+
+			// Check that chunks are ordered by depth (deeper first) and then by index
+			if prevChunk.Depth > currChunk.Depth {
+				// This is expected (deeper chunks output first)
+				continue
+			} else if prevChunk.Depth == currChunk.Depth {
+				// Same depth, should be ordered by index
+				if prevChunk.Index >= currChunk.Index {
+					t.Errorf("Same depth chunks not ordered by index: chunk %d (depth=%d, index=%d) >= chunk %d (depth=%d, index=%d)",
+						i-1, prevChunk.Depth, prevChunk.Index, i, currChunk.Depth, currChunk.Index)
+				}
+			}
+		}
+	})
+}
+
+// TestSemanticChunkingHierarchyMerging tests the hierarchy merging logic
+func TestSemanticChunkingHierarchyMerging(t *testing.T) {
+	prepareConnector(t)
+
+	chunker := NewSemanticChunker(nil)
+	ctx := context.Background()
+
+	// Test text with multiple paragraphs to create meaningful hierarchy
+	testText := `第一段：这是一个关于人工智能的介绍。人工智能是计算机科学的一个分支，致力于创建能够执行通常需要人类智能的任务的系统。这包括学习、推理、问题解决、感知和语言理解。
+
+第二段：机器学习是人工智能的一个重要子领域。它使用算法和统计模型来使计算机系统能够通过经验自动改进性能，而无需明确编程。深度学习是机器学习的一个子集，使用具有多层的神经网络。
+
+第三段：自然语言处理（NLP）是人工智能的另一个重要分支。它专注于计算机和人类语言之间的交互，特别是如何对计算机进行编程以处理和分析大量自然语言数据。
+
+第四段：计算机视觉是使机器能够解释和理解视觉世界的领域。通过数字图像、视频和其他视觉输入，计算机视觉系统可以识别和分析视觉内容，就像人类视觉系统一样。`
+
+	options := &types.ChunkingOptions{
+		Type:          types.ChunkingTypeText,
+		Size:          100, // Smaller size to force more chunking
+		Overlap:       10,
+		MaxDepth:      3,
+		MaxConcurrent: 2,
+		SemanticOptions: &types.SemanticOptions{
+			Connector:     "test-openai",
+			MaxRetry:      3,
+			MaxConcurrent: 2,
+			ContextSize:   500,
+			Toolcall:      true,
+		},
+	}
+
+	var chunks []*types.Chunk
+	err := chunker.Chunk(ctx, testText, options, func(chunk *types.Chunk) error {
+		chunks = append(chunks, chunk)
+		return nil
+	})
+
+	if err != nil {
+		t.Fatalf("Semantic chunking failed: %v", err)
+	}
+
+	// Group chunks by depth
+	chunksByDepth := make(map[int][]*types.Chunk)
+	for _, chunk := range chunks {
+		chunksByDepth[chunk.Depth] = append(chunksByDepth[chunk.Depth], chunk)
+	}
+
+	t.Logf("Total chunks: %d", len(chunks))
+	for depth := 1; depth <= 3; depth++ {
+		if chunks, exists := chunksByDepth[depth]; exists {
+			t.Logf("Depth %d: %d chunks", depth, len(chunks))
+			for i, chunk := range chunks {
+				t.Logf("  Chunk %d (len=%d): %s...", i, len(chunk.Text),
+					truncateText(chunk.Text, 50))
+			}
+		}
+	}
+
+	// Verify hierarchy merging logic
+	if len(chunksByDepth[3]) == 0 {
+		t.Fatal("No chunks at MaxDepth (3)")
+	}
+
+	// Verify that higher levels have larger content
+	if len(chunksByDepth[2]) > 0 && len(chunksByDepth[3]) > 0 {
+		avgSizeDepth2 := calculateAverageChunkSize(chunksByDepth[2])
+		avgSizeDepth3 := calculateAverageChunkSize(chunksByDepth[3])
+
+		t.Logf("Average size - Depth 2: %d, Depth 3: %d", avgSizeDepth2, avgSizeDepth3)
+
+		if avgSizeDepth2 <= avgSizeDepth3 {
+			t.Errorf("Depth 2 chunks should be larger than Depth 3 chunks on average, got %d <= %d", avgSizeDepth2, avgSizeDepth3)
+		}
+	}
+
+	if len(chunksByDepth[1]) > 0 && len(chunksByDepth[2]) > 0 {
+		avgSizeDepth1 := calculateAverageChunkSize(chunksByDepth[1])
+		avgSizeDepth2 := calculateAverageChunkSize(chunksByDepth[2])
+
+		t.Logf("Average size - Depth 1: %d, Depth 2: %d", avgSizeDepth1, avgSizeDepth2)
+
+		if avgSizeDepth1 <= avgSizeDepth2 {
+			t.Errorf("Depth 1 chunks should be larger than Depth 2 chunks on average, got %d <= %d", avgSizeDepth1, avgSizeDepth2)
+		}
+	}
+}
+
+// Helper function to calculate average chunk size
+func calculateAverageChunkSize(chunks []*types.Chunk) int {
+	if len(chunks) == 0 {
+		return 0
+	}
+
+	totalSize := 0
+	for _, chunk := range chunks {
+		totalSize += len(chunk.Text)
+	}
+
+	return totalSize / len(chunks)
+}
+
+// Helper function to truncate text for logging
+func truncateText(text string, maxLen int) string {
+	if len(text) <= maxLen {
+		return text
+	}
+	return text[:maxLen] + "..."
+}

@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/graphrag/chunking"
 	"github.com/yaoapp/gou/graphrag/types"
@@ -471,8 +472,7 @@ func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir
 			return fmt.Errorf("failed to write chunk file %s: %w", filepath, err)
 		}
 
-		fmt.Printf("  Semantic chunk %d: %s (depth: %d, size: %d)\n", chunk.Index, filename, chunk.Depth, len(chunk.Text))
-
+		color.Green("  Semantic chunk %d: %s (depth: %d, size: %d)\n", chunk.Index, filename, chunk.Depth, len(chunk.Text))
 		return nil
 	}
 
