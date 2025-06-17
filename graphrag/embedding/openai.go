@@ -2,9 +2,7 @@ package embedding
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/yaoapp/gou/connector"
@@ -223,7 +221,7 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 	return embeddings, nil
 }
 
-// EmbedQuery embed query using streaming approach with optional progress callback
+// EmbedQuery embed query using direct POST request with optional progress callback
 func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...ProgressCallback) ([]float64, error) {
 	if text == "" {
 		return []float64{}, nil
@@ -248,90 +246,27 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 		"model": e.Model,
 	}
 
-	var result interface{}
-	var responseData []byte
-	retryCount := 0
-
-	// Use streaming with a callback to collect response
-	err := utils.StreamLLM(ctx, e.Connector, "embeddings", payload, func(data []byte) error {
-		// For embeddings, we typically get the full response at once
-		// But we still use streaming for consistency
-		responseData = append(responseData, data...)
-		if cb != nil {
-			cb(StatusProcessing, Payload{
-				Current: 0,
-				Total:   1,
-				Message: "Receiving embedding data...",
-			})
-		}
-		return nil
-	})
-
-	if err != nil {
-		// Fallback to direct response handling if streaming fails
-		retryCount++
-		if cb != nil {
-			cb(StatusProcessing, Payload{
-				Current: 0,
-				Total:   1,
-				Message: "Streaming failed, trying direct request...",
-			})
-		}
-		response, postErr := e.postDirect(ctx, "embeddings", payload)
-		if postErr != nil {
-			if cb != nil {
-				cb(StatusError, Payload{
-					Current: 1,
-					Total:   1,
-					Message: "Both streaming and direct request failed",
-					Error:   postErr,
-				})
-			}
-			return nil, fmt.Errorf("both streaming and direct request failed: streaming error: %w, direct error: %v", err, postErr)
-		}
-		result = response
-	} else {
-		// Parse the collected streaming response
-		if len(responseData) > 0 {
-			// Handle Server-Sent Events format
-			responseStr := string(responseData)
-			if strings.Contains(responseStr, "data: ") {
-				// Extract JSON from SSE format
-				lines := strings.Split(responseStr, "\n")
-				for _, line := range lines {
-					if strings.HasPrefix(line, "data: ") && !strings.Contains(line, "[DONE]") {
-						jsonStr := strings.TrimPrefix(line, "data: ")
-						if err := json.Unmarshal([]byte(jsonStr), &result); err == nil {
-							break
-						}
-					}
-				}
-			} else {
-				// Direct JSON response
-				if err := json.Unmarshal(responseData, &result); err != nil {
-					if cb != nil {
-						cb(StatusError, Payload{
-							Current: 1,
-							Total:   1,
-							Message: "Failed to parse response",
-							Error:   err,
-						})
-					}
-					return nil, fmt.Errorf("failed to parse response: %w", err)
-				}
-			}
-		}
+	// Report processing
+	if cb != nil {
+		cb(StatusProcessing, Payload{
+			Current: 0,
+			Total:   1,
+			Message: "Sending request to OpenAI...",
+		})
 	}
 
-	if result == nil {
+	// Use direct POST request
+	result, err := utils.PostLLM(ctx, e.Connector, "embeddings", payload)
+	if err != nil {
 		if cb != nil {
 			cb(StatusError, Payload{
 				Current: 1,
 				Total:   1,
-				Message: "No valid response received",
+				Message: "Request failed",
+				Error:   err,
 			})
 		}
-		return nil, fmt.Errorf("no valid response received")
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 
 	// Parse response
@@ -432,12 +367,6 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 	}
 
 	return embeddingFloat, nil
-}
-
-// postDirect is a fallback method when streaming fails
-func (e *Openai) postDirect(ctx context.Context, endpoint string, payload map[string]interface{}) (interface{}, error) {
-	// This is a simplified version for fallback, using the same logic as utils.PostLLM
-	return utils.PostLLM(ctx, e.Connector, endpoint, payload)
 }
 
 // GetModel returns the current model being used

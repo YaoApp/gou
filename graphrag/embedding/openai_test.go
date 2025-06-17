@@ -682,32 +682,11 @@ func TestEmbedQueryErrorHandling(t *testing.T) {
 	assert.Contains(t, err.Error(), "not a OpenAI connector")
 }
 
-// Test postDirect fallback method
-func TestPostDirectFallback(t *testing.T) {
-	openai, err := NewOpenaiWithDefaults("test-openai")
-	require.NoError(t, err)
-
-	ctx := context.Background()
-	payload := map[string]interface{}{
-		"input": "test text",
-		"model": "text-embedding-3-small",
-	}
-
-	// Test postDirect method directly
-	result, err := openai.postDirect(ctx, "embeddings", payload)
-	if err != nil {
-		// This is expected to fail with mock connector
-		t.Logf("postDirect failed as expected: %v", err)
-	} else {
-		t.Logf("postDirect succeeded: %v", result)
-	}
-}
-
-// Test streaming response parsing
-func TestStreamingResponseParsing(t *testing.T) {
+// Test direct POST response parsing
+func TestDirectPostResponseParsing(t *testing.T) {
 	apiKey := os.Getenv("OPENAI_TEST_KEY")
 	if apiKey == "" {
-		t.Skip("OPENAI_TEST_KEY not set, skipping streaming response test")
+		t.Skip("OPENAI_TEST_KEY not set, skipping direct POST response test")
 	}
 
 	openai, err := NewOpenai(OpenaiOptions{
@@ -717,14 +696,14 @@ func TestStreamingResponseParsing(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	text := "Test streaming response parsing"
+	text := "Test direct POST response parsing"
 	embedding, err := openai.EmbedQuery(ctx, text)
 
 	if err != nil {
-		t.Logf("Streaming test failed: %v", err)
+		t.Logf("Direct POST test failed: %v", err)
 	} else {
 		assert.Len(t, embedding, 1536)
-		t.Logf("Streaming test succeeded, got embedding of length %d", len(embedding))
+		t.Logf("Direct POST test succeeded, got embedding of length %d", len(embedding))
 	}
 }
 
@@ -1249,55 +1228,46 @@ func TestVeryShortTimeout(t *testing.T) {
 	t.Logf("Captured %d timeout-related errors", len(timeoutErrors))
 }
 
-// Test retryCount variable usage (even though not in payload anymore)
-func TestRetryCountInFunction(t *testing.T) {
+// Test error handling in direct requests
+func TestErrorHandlingInDirectRequests(t *testing.T) {
 	openai, err := NewOpenaiWithDefaults("test-openai")
 	require.NoError(t, err)
 
-	var retryMessages []string
+	var errorMessages []string
 	callback := func(status Status, payload Payload) {
-		if strings.Contains(payload.Message, "trying direct request") {
-			retryMessages = append(retryMessages, payload.Message)
+		if status == StatusError {
+			errorMessages = append(errorMessages, payload.Message)
 		}
 	}
 
 	ctx := context.Background()
 
-	// This might trigger the retry logic
-	_, _ = openai.EmbedQuery(ctx, "test retry logic", callback)
+	// This might trigger error handling
+	_, _ = openai.EmbedQuery(ctx, "test error handling", callback)
 
-	t.Logf("Retry-related messages: %d", len(retryMessages))
+	t.Logf("Error-related messages: %d", len(errorMessages))
 }
 
-// Test postDirect with different payloads
-func TestPostDirectWithDifferentPayloads(t *testing.T) {
+// Test direct POST with different payloads
+func TestDirectPostWithDifferentPayloads(t *testing.T) {
 	openai, err := NewOpenaiWithDefaults("test-openai")
 	require.NoError(t, err)
 
 	ctx := context.Background()
 
-	payloads := []map[string]interface{}{
-		{
-			"input": "simple text",
-			"model": "text-embedding-3-small",
-		},
-		{
-			"input": []string{"multiple", "texts"},
-			"model": "text-embedding-3-small",
-		},
-		{
-			"input": "",
-			"model": "text-embedding-3-small",
-		},
+	testTexts := []string{
+		"simple text",
+		"another test text",
+		"third test text",
 	}
 
-	for i, payload := range payloads {
-		t.Run(fmt.Sprintf("payload_%d", i), func(t *testing.T) {
-			result, err := openai.postDirect(ctx, "embeddings", payload)
+	for i, text := range testTexts {
+		t.Run(fmt.Sprintf("text_%d", i), func(t *testing.T) {
+			_, err := openai.EmbedQuery(ctx, text)
 			if err != nil {
-				t.Logf("Expected error for payload %d: %v", i, err)
+				t.Logf("Expected error for text %d: %v", i, err)
 			} else {
-				t.Logf("Unexpected success for payload %d: %v", i, result != nil)
+				t.Logf("Success for text %d", i)
 			}
 		})
 	}
@@ -1434,11 +1404,11 @@ func TestDimensionValidationEdgeCases(t *testing.T) {
 	t.Logf("Dimension validation errors: %d", len(dimensionErrors))
 }
 
-// Test to exercise the streaming response parsing paths
-func TestStreamingResponseParsingPaths(t *testing.T) {
+// Test direct POST request processing
+func TestDirectPostRequestProcessing(t *testing.T) {
 	apiKey := os.Getenv("OPENAI_TEST_KEY")
 	if apiKey == "" {
-		t.Skip("OPENAI_TEST_KEY not set, skipping streaming paths test")
+		t.Skip("OPENAI_TEST_KEY not set, skipping direct POST test")
 	}
 
 	openai, err := NewOpenaiWithDefaults("test-openai")
@@ -1453,11 +1423,11 @@ func TestStreamingResponseParsingPaths(t *testing.T) {
 		}
 	}
 
-	// Test different text lengths to potentially trigger different parsing paths
+	// Test different text lengths with direct POST
 	texts := []string{
 		"short",
-		"medium length text for testing parsing",
-		strings.Repeat("longer text to test different parsing conditions ", 20),
+		"medium length text for testing direct POST",
+		"longer text to test direct POST processing",
 	}
 
 	for _, text := range texts {
@@ -1527,29 +1497,29 @@ func TestJSONUnmarshalingScenarios(t *testing.T) {
 	t.Logf("Parse/format errors captured: %d", len(parseErrors))
 }
 
-// Test fallback to direct request scenarios
-func TestFallbackToDirectRequest(t *testing.T) {
+// Test direct request scenarios
+func TestDirectRequestScenarios(t *testing.T) {
 	openai, err := NewOpenaiWithDefaults("test-openai")
 	require.NoError(t, err)
 
 	ctx := context.Background()
 
-	var fallbackMessages []string
+	var requestMessages []string
 	callback := func(status Status, payload Payload) {
-		if strings.Contains(payload.Message, "direct") ||
-			strings.Contains(payload.Message, "fallback") ||
+		if strings.Contains(payload.Message, "request") ||
+			strings.Contains(payload.Message, "OpenAI") ||
 			strings.Contains(payload.Message, "failed") {
-			fallbackMessages = append(fallbackMessages, payload.Message)
+			requestMessages = append(requestMessages, payload.Message)
 		}
 	}
 
-	// Multiple calls to potentially trigger fallback scenarios
+	// Multiple calls to test direct request scenarios
 	for i := 0; i < 3; i++ {
-		text := fmt.Sprintf("fallback test %d", i)
+		text := fmt.Sprintf("direct request test %d", i)
 		_, _ = openai.EmbedQuery(ctx, text, callback)
 	}
 
-	t.Logf("Fallback-related messages: %d", len(fallbackMessages))
+	t.Logf("Request-related messages: %d", len(requestMessages))
 }
 
 // Test validation of embedding values
