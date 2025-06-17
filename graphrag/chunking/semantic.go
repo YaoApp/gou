@@ -241,11 +241,12 @@ func (sc *SemanticChunker) processChunkSemanticSegmentation(ctx context.Context,
 
 	// Try with retries
 	var positions []types.Position
+	var chars []string
 	var err error
 
 	for retry := 0; retry <= semanticOpts.MaxRetry; retry++ {
 		// Use options.Size as the target size for semantic segmentation
-		positions, err = sc.callLLMForSegmentation(ctx, chunk, semanticOpts, options.Size)
+		chars, positions, err = sc.callLLMForSegmentation(ctx, chunk, semanticOpts, options.Size)
 		if err == nil && len(positions) > 0 {
 			break
 		}
@@ -266,16 +267,16 @@ func (sc *SemanticChunker) processChunkSemanticSegmentation(ctx context.Context,
 	}
 
 	// Convert positions to chunks
-	semanticChunks := chunk.Split(positions)
+	semanticChunks := chunk.Split(chars, positions)
 	return semanticChunks, nil
 }
 
 // callLLMForSegmentation calls LLM to get semantic segmentation positions using streaming
-func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, chunk *types.Chunk, semanticOpts *types.SemanticOptions, maxSize int) ([]types.Position, error) {
+func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, chunk *types.Chunk, semanticOpts *types.SemanticOptions, maxSize int) ([]string, []types.Position, error) {
 	// Get the connector
 	conn, err := connector.Select(semanticOpts.Connector)
 	if err != nil {
-		return nil, fmt.Errorf("failed to select connector '%s': %w", semanticOpts.Connector, err)
+		return nil, nil, fmt.Errorf("failed to select connector '%s': %w", semanticOpts.Connector, err)
 	}
 
 	// Build prompt using utils function with size information
@@ -366,17 +367,25 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, chunk *ty
 	// Make streaming request using utils.StreamLLM
 	err = utils.StreamLLM(ctx, conn, "chat/completions", requestData, streamCallback)
 	if err != nil {
-		return nil, fmt.Errorf("LLM streaming request failed: %w", err)
+		return nil, nil, fmt.Errorf("LLM streaming request failed: %w", err)
 	}
 
 	// Extract final results from parser
 	if semanticOpts.Toolcall {
 		finalArguments = parser.Arguments
-		return parser.ParseSemanticToolcall(finalArguments)
+		positions, err := parser.ParseSemanticToolcall(finalArguments)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to parse toolcall: %w", err)
+		}
+		return chars, positions, nil
 	}
 
 	finalContent = parser.Content
-	return parser.ParseSemanticRegular(finalContent)
+	positions, err := parser.ParseSemanticRegular(finalContent)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse regular: %w", err)
+	}
+	return chars, positions, nil
 }
 
 // buildHierarchyAndOutput builds hierarchy and outputs chunks

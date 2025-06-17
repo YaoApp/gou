@@ -979,7 +979,8 @@ func TestSemanticChunkSplitting(t *testing.T) {
 			Type: types.ChunkingTypeText,
 		}
 
-		splitChunks := chunk.Split(positions)
+		chars := chunk.TextWChars()
+		splitChunks := chunk.Split(chars, positions)
 
 		if len(splitChunks) != 3 {
 			t.Errorf("Expected 3 split chunks, got %d", len(splitChunks))
@@ -1537,7 +1538,7 @@ func TestLLMRequestDataStructure(t *testing.T) {
 		chunker := NewSemanticChunker(nil)
 
 		// This will fail at the actual LLM call, but we can test the preparation logic
-		_, err := chunker.callLLMForSegmentation(context.Background(), chunk, semanticOpts, 300)
+		_, _, err := chunker.callLLMForSegmentation(context.Background(), chunk, semanticOpts, 300)
 
 		// We expect a connection error since test-mock doesn't exist
 		if err == nil {
@@ -1582,7 +1583,7 @@ func TestLLMRequestDataStructure(t *testing.T) {
 		chunker := NewSemanticChunker(nil)
 
 		// This will fail at the actual LLM call but tests toolcall setup
-		_, err := chunker.callLLMForSegmentation(context.Background(), chunk, semanticOpts, 200)
+		_, _, err := chunker.callLLMForSegmentation(context.Background(), chunk, semanticOpts, 200)
 
 		if err == nil {
 			t.Error("Expected error for mock connector with toolcall")
