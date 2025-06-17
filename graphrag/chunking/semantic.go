@@ -147,18 +147,39 @@ func (sc *SemanticChunker) getStructuredChunks(ctx context.Context, stream io.Re
 		MaxConcurrent: options.MaxConcurrent,
 	}
 
-	var chunks []*types.Chunk
+	// Use a map to preserve order based on chunk index
+	chunksMap := make(map[int]*types.Chunk)
 	var mu sync.Mutex
+	var maxIndex int
 
 	err := sc.structuredChunker.ChunkStream(ctx, stream, structuredOpts, func(chunk *types.Chunk) error {
 		mu.Lock()
 		defer mu.Unlock()
-		chunks = append(chunks, chunk)
+		chunksMap[chunk.Index] = chunk
+		if chunk.Index > maxIndex {
+			maxIndex = chunk.Index
+		}
+
+		// Report progress for each structured chunk
+		sc.reportProgress(chunk.ID, "completed", "structured_chunk", map[string]interface{}{
+			"chunk_index": chunk.Index,
+			"chunk_size":  len(chunk.Text),
+			"chunk_text":  chunk.Text,
+		})
+
 		return nil
 	})
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Rebuild ordered slice from map
+	chunks := make([]*types.Chunk, 0, len(chunksMap))
+	for i := 0; i <= maxIndex; i++ {
+		if chunk, exists := chunksMap[i]; exists {
+			chunks = append(chunks, chunk)
+		}
 	}
 
 	return chunks, nil
@@ -175,7 +196,6 @@ func (sc *SemanticChunker) processSemanticChunks(ctx context.Context, structured
 
 	// Use a map to store results with original index to preserve order
 	semanticChunksByIndex := make(map[int][]*types.Chunk)
-	var firstError error
 
 	for i, structuredChunk := range structuredChunks {
 		// Check context cancellation
@@ -202,22 +222,38 @@ func (sc *SemanticChunker) processSemanticChunks(ctx context.Context, structured
 
 			// Process semantic segmentation for this chunk
 			semanticChunks, err := sc.processChunkSemanticSegmentation(ctx, chunk, options)
+			var processedChunks []*types.Chunk
+
 			if err != nil {
-				mu.Lock()
-				if firstError == nil {
-					firstError = fmt.Errorf("failed to process chunk %s: %w", chunk.ID, err)
+				// Log the error but don't fail the entire process
+				log.Warn("Failed to process semantic segmentation for chunk %s after retries: %v", chunk.ID, err)
+
+				// Create a fallback semantic chunk from the original structured chunk
+				// This ensures we don't lose any content
+				fallbackChunk := &types.Chunk{
+					ID:       chunk.ID + "_fallback", // Unique ID for fallback
+					Text:     chunk.Text,
+					Type:     chunk.Type,
+					ParentID: chunk.ParentID,
+					Depth:    options.MaxDepth, // Set to MaxDepth like other semantic chunks
+					Leaf:     true,
+					Root:     options.MaxDepth == 1,
+					Index:    0, // Will be updated later
+					Status:   types.ChunkingStatusCompleted,
+					TextPos:  chunk.TextPos,
+					Parents:  chunk.Parents,
 				}
-				mu.Unlock()
+				processedChunks = []*types.Chunk{fallbackChunk}
 
-				// Report error progress
-				sc.reportProgress(chunk.ID, "failed", "semantic_analysis", map[string]interface{}{
-					"error": err.Error(),
+				// Report warning progress instead of failure
+				sc.reportProgress(chunk.ID, "warning", "semantic_analysis", map[string]interface{}{
+					"error":  err.Error(),
+					"action": "using_fallback_chunk",
 				})
-				return
+			} else {
+				// Update indices and store results in order
+				processedChunks = sc.updateSemanticChunkIndices(semanticChunks, originalIndex)
 			}
-
-			// Update indices and store results in order
-			processedChunks := sc.updateSemanticChunkIndices(semanticChunks, originalIndex)
 
 			// Store results with original index to preserve order
 			mu.Lock()
@@ -233,8 +269,11 @@ func (sc *SemanticChunker) processSemanticChunks(ctx context.Context, structured
 
 	wg.Wait()
 
-	if firstError != nil {
-		return nil, firstError
+	// We no longer fail the entire process if some chunks failed
+	// Instead, we use fallback chunks and continue processing
+	// Only fail if no chunks were processed at all
+	if len(semanticChunksByIndex) == 0 {
+		return nil, fmt.Errorf("no chunks were processed")
 	}
 
 	// Merge and finalize results
@@ -260,9 +299,10 @@ func (sc *SemanticChunker) mergeSemanticChunksInOrder(semanticChunksByIndex map[
 		}
 	}
 
-	// Final pass to update global indices sequentially (each level slice indices are 0-N)
-	for globalIndex, chunk := range allSemanticChunks {
-		chunk.Index = globalIndex // Global index: 0, 1, 2, 3, ...
+	// Update indices within MaxDepth level to be sequential 0-N
+	// The hierarchy building will set appropriate indices for each level independently
+	for i, chunk := range allSemanticChunks {
+		chunk.Index = i // Sequential index within MaxDepth level: 0, 1, 2, 3, ...
 	}
 
 	return allSemanticChunks
@@ -333,8 +373,8 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, chunk *ty
 
 	// Prepare request payload
 	requestData := map[string]interface{}{
-		"temperature": 0,         // Slightly higher temperature for more semantic awareness
-		"model":       "gpt-4.1", // Use more capable model for better semantic understanding
+		"temperature": 0,             // Slightly higher temperature for more semantic awareness
+		"model":       "gpt-4o-mini", // Use more capable model for better semantic understanding
 		"messages": []map[string]interface{}{
 			{"role": "system", "content": prompt},
 			{"role": "user", "content": charsJSON},
@@ -664,10 +704,10 @@ func (sc *SemanticChunker) updateChildrenParents(children, parents []*types.Chun
 
 		// Update parent information for all children of this parent
 		for _, child := range parentChildren {
-			// Set basic parent info (but keep existing global Index)
+			// Set basic parent info
 			child.ParentID = parent.ID
 			child.Root = false
-			// Don't modify child.Index - keep global indexing 0-N
+			// Keep the child's existing Index (it's already set correctly within its depth level)
 
 			// Update Parents chain
 			if len(child.Parents) == 0 {
