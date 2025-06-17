@@ -268,7 +268,7 @@ func createOpenaiConnector() (connector.Connector, error) {
 	dsl := map[string]interface{}{
 		"name":    "openai-chunking",
 		"type":    "openai",
-		"options": map[string]interface{}{"key": apiKey, "model": "gpt-4.1"},
+		"options": map[string]interface{}{"key": apiKey, "model": "gpt-4o-mini"},
 	}
 
 	dslBytes, err := json.Marshal(dsl)
