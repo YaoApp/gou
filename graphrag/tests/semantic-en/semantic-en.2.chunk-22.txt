@@ -1,0 +1,3 @@
+
+**Visual Studio Code** is the recommended IDE for developing Yao applications. set the `.yao` file type to `jsonc` in the
+tions. set the `.yao` file type to `jsonc` in the settings, you can get the syntax highlighting and auto-completion.

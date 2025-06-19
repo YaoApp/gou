@@ -1,0 +1,7 @@
+录结构如下：
+
+```bash
+app
+├── aigcs # AIGC 组件：使用提示作为进程
+├── apis  # API 组件：定义 REST API
+├── app.

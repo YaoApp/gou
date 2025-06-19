@@ -1,0 +1,53 @@
+pp.Ping   # This will return the version of Yao.
+
+
+# Execute a custom process defined using TypeScript
+yao run scripts.test.Hello 'Yao!'   # Returns 'Hello, Yao!'
+
+yao run scripts.test.Pets cat  # Returns a list of pets in the cat category.
+
+```
+
+**scripts/test.ts**
+
+```typescript
+import { Process } from "@yao/runtime";
+
+function Hello(name: string): string {
+  return `Hello, ${name}!`;
+}
+
+function Pets(category?: string): Record<string, any> {
+  category = category || "dog";
+  const pets = Process("models.tests.pet.Get", {
+    select: ["id", "name"],
+    wheres: [{ column: "category", value: category }],
+  });
+
+  return pets;
+}
+```
+
+### Yao Runtime
+
+Yao Runtime is a server-side execution environment for running processes.
+
+- **Internal Processes** written in Go, executed directly.
+- **Custom Processes** written in TypeScript or JavaScript, executed using the V8 engine. Yao provides APIs like `Process`, `File System`, and `HTTP Request` to write these processes.
+
+**Note**: **Yao Runtime is not Node.js**. It's specifically for running processes and does not support Node.js APIs.
+
+**Execution Methods**:
+
+1. **CLI**: Use the `yao run` command.
+2. **HTTP Server**: Use the built-in HTTP server to run processes via REST API.
+
+### Yao Widget
+
+A Widget in Yao is not just a traditional frontend component; it is a combination of UI, interaction, logic, and data. There are no frontend and backend concepts in a Widget; it is a self-contained unit.
+
+A widget could be a Table, Form, List, or Chart. It could also be a Data Model, API, Store, Flow, etc.
+
+Each Widget has a set of Processes, and some Widgets have a set of REST APIs. It can be used in other widgets, custom processes, or integrated into other applications.
+
+A Widget is described using DSL, which is in JSON format. It can b

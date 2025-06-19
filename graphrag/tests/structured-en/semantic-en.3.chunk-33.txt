@@ -1,0 +1,7 @@
+ending the Model DSL to the AI and asking it to generate the data.
+
+👉 [Import Process Example](https://github.com/YaoApp/website/blob/main/scripts/test.ts)
+
+**3. AI Generation First, Then Manual Modification**
+
+The fastest way to create a widget is by using AI to generate the DSL, which you can t

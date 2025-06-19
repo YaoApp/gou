@@ -1,0 +1,15 @@
+pts.test.Pets cat  # 返回 cat 类别中的宠物列表。
+
+```
+
+**scripts/test.ts**
+
+```typescript
+import { Process } from "@yao/runtime";
+
+function Hello(name: string): string {
+  return `Hello, ${name}!`;
+}
+
+function Pets(category?: string): Record<string, any> {
+  category = category || "dog";

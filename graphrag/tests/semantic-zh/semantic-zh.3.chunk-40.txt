@@ -1,0 +1,5 @@
+入演示数据。
+
+您可以通过将模型 DSL 发送给 AI 并要求其生成数据来使用 AI 生成测试数据。
+
+👉 [导入进程示例](https://github.com/YaoApp/website/blob/main/scripts/test.ts)

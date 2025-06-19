@@ -1,0 +1,1 @@
+The yao application directory structure is as follows:

@@ -1,0 +1,12 @@
+ase, this directory is not necessary.
+├── flows   # Flow Widgets: define the process flow
+├── forms   # Form Widgets: form-type pages in the admin panel
+├── icons   # The application icons used in the admin panel
+├── langs   # I18n language files used in the admin panel
+├── logins  # Login Widgets: login-type pages in the admin panel
+├── logs    # The application log directory, the default option of log. Custom log directory can be set in environment variables.
+├── models  # Model Widgets: define the data structure
+├── neo     # The AI Chatbot configuration directory
+├── plugins # The Default GRPC plugins directory, Custom plugins directory can be set in environment variables.
+├── public  # The static files directory, can be accessed via the HTTP server. SUI template engine generates the web pages here too.
+├── scripts # C

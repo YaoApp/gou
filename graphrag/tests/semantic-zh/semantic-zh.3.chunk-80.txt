@@ -1,0 +1,3 @@
+```bash
+# 使用进程搜索数据
+yao run yao.tables.Search articl

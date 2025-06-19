@@ -1,0 +1,4 @@
+```bash
+# 使用进程查找数据
+yao run models.article.Find 1 '::{}'
+```

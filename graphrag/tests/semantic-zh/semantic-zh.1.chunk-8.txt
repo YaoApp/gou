@@ -1,0 +1,23 @@
+
+按照文档构建一个简单的应用程序，学会使用这些组件来构建管理面板。
+
+👉 [构建您的应用程序](../
+理面板。
+
+👉 [构建您的应用程序](../building-your-application)
+
+👉 [添加您的进程](../using-source-code/adding-your-process)
+
+
+## Yao 的限制
+
+虽然我们提到 Yao 可以处理 Web 开发的所有内容，但仍有一些东西可能不太适合 Yao。
+
+- **高度定制的 UI**：如果您需要为管理面板或企业应用程序提供高度定制的 UI，您可能需要编写自定义代码。但是，您可以将 Yao 用作后端服务。👉 [构建您的组件库](../using-source-code/building-your-component-library)
+
+
+- **移动应用客户端**：对于移动应用客户端，您可能需要开发原生应用或使用移动应用开发框架，同时将 Yao 用作后端服务。👉 [REST API](../building-your-application/rest-api)
+
+
+Yao 0.10.4 中引入的 SUI 模板引擎为构建网页提供了一种全新的方式。它仍处于实验阶段，尚未完全开发，但为开发人员提供了新的选择。对于更高级的前端需求，考虑使用 React 或 Vue 等框架，
+求，考虑使用 React 或 Vue 等框架，并通过 REST API 将它们连接到 Yao。👉 [网页](../building-your-application/web-page)

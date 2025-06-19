@@ -1,0 +1,11 @@
+ication/json' \
+  --header 'Authorization: Bearer your_token_here'
+```
+
+## License Overview
+
+Yao is available under two distinct licenses to accommodate various user needs: the Apache 2.0 License and the Yao Commercial License.
+
+**Apache 2.0 License**
+
+Under the Apache 2.0 License, you are free to u

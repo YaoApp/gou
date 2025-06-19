@@ -1,0 +1,38 @@
+: "Article" },
+  "columns": [
+    { "name": "id", "comment": "ID", "type": "ID", "label": "ID" },
+    { "label": "Title", "name": "title", "type": "string" },
+    { "label": "Summary", "name": "summary", "type": "string" }
+  ]
+}
+```
+
+```bash
+# Use the process to find the data
+yao run models.article.Find 1 '::{}'
+```
+
+**Table Widget**
+
+Table Widget is used to display the data in a admin panel. bind to the Model Widget, automatically generate the basic CRUD operations.
+
+The Table DSL contains a set of processes and REST APIs to operate on the data, such as Find, Search etc. You can use it directly.
+
+```json
+// Table DSL
+{
+  "name": "Articles",
+  "action": {
+    "bind": { "model": "article", "option": { "form": "article" } }
+  }
+}
+```
+
+```bash
+# Use the process to search the data
+yao run yao.tables.Search article '::{}' 1 10
+```
+
+```bash
+# Use the REST API to search the data
+curl --request 

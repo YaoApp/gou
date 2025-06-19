@@ -1,0 +1,2 @@
+├── flows   # Flow Widgets: define the process flow
+├── forms   # Form Widgets: form-type pages in the admin panel

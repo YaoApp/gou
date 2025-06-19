@@ -1,0 +1,23 @@
+表或图表。它也可以是数据模型、API、存储、流程等。
+
+每个组件都有一组进程，一些组件还有一组 REST API。它可以在其他组件、自定义进程中使用，或集成到其他应用程序中。
+
+组件使用 DSL 描述，DSL 是 JSON 格式。它可以由 AI 生成，通过 GUI 创建，或手动编写。
+
+更多信息，请参见：👉 **[DSL 参考](../references/yao-dsl)**
+
+**模型组件**
+
+模型组件用于描述数据结构，它与数据库表模式相同。
+
+模型 DSL 包含一组操作数据的进程，如 CRUD、查询等。您可以直接使用它。
+
+```json
+// 模型 DSL
+{
+  "name": "Article",
+  "table": { "name": "article", "comment": "Article" },
+  "columns": [
+    { "name": "id", "comment": "ID", "type": "ID", "label": "ID" },
+    { "label": "Title", "name": "title", "type": "string" },
+    { "label": "Summary", "name": "summar

@@ -1,0 +1,2 @@
+2. **Write Process**: Write the custom process in TypeScript or JavaScript, or use write GRPC plugins.
+3. **Debug and Run**: Use the Yao runtime to debug and run the application.

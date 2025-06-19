@@ -1,0 +1,9 @@
+lly, with seamless switching between approaches.
+
+Use the Yao runtime to execute the code, and its built-in HTTP server to serve the application.
+
+## Yao Application
+
+A Yao application is a collection of widget DSLs and custom processes written in TypeScript or JavaScript.
+
+For websites, the SUI tem

@@ -1,0 +1,6 @@
+├── neo     # The AI Chatbot configuration directory
+├── plugins # The Default GRPC plugins directory, Custom plugins directory can be set in environment variables.
+├── public  # The static files directory, can be accessed via the HTTP server. SUI template engine generates the web pages here too.
+├── scripts # Custom Process: write the custom process in Ty
+ # Custom Process: write the custom process in TypeScript or JavaScript
+├── tables  # Table Widgets: table-type pages in the admin panel

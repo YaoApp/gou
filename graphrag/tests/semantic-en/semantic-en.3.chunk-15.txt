@@ -1,0 +1,1 @@
+Each widget type has its own directory in the project root, such as `models`, `tables`, `forms`, `apis`, `etc`.

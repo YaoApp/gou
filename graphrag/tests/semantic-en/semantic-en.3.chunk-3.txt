@@ -1,0 +1,4 @@
+
+## Generative Programming
+
+Before the AGI era, we believe the best way to work with AI is as a collaborator, not a master.

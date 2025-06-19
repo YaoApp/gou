@@ -1,0 +1,6 @@
+ase, this directory is not necessary.
+├── flows   # Flow Widgets: define the process flow
+├── forms   # Form Widgets: form-type pages in the admin panel
+├── icons   # The application icons used in the admin panel
+├── langs   # I18n language files used in the admin panel
+├

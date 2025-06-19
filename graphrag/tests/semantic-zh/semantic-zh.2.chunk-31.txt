@@ -1,0 +1,10 @@
+```
+
+**scripts/test.ts**
+
+```typescript
+import { Process } from "@yao/runtime";
+
+function Hello(name: string): string {
+  return `Hello, ${name}!`;
+}

@@ -1,0 +1,2 @@
+public  # The static files directory, can be accessed via the HTTP server. SUI template engine generates the web pages here too.
+├── scripts # C

@@ -1,0 +1,5 @@
+
+我们感谢您的理解和支持，因为我们致力于为整个社区改进 Yao。通过尊重这些许可条款，您帮助我们分配更多资源来开发和维护 Yao，确保它对每个人来说都是一个强大的工具
+
+
+👉 **[Yao 商业许可证](https://github.com/YaoApp/yao/blob/main/COMMERCIAL_LICENSE.md)**

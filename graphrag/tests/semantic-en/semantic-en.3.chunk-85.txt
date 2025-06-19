@@ -1,0 +1,5 @@
+
+
+To run a process, use the `yao run` command.
+
+For more information, see: 👉 **[Process References](../references/yao-process)**

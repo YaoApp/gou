@@ -1,0 +1,3 @@
+级的前端需求，考虑使用 React 或 Vue 等框架，并通过 REST API 将它们连接到 Yao。👉 [网页](../building-your-application/web-page)
+
+TypeScript 是编写自定义进程的推荐语言，它将在 V8 引擎中运行。如果需要高性能，可以在 Go 中添加进程，它

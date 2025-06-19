@@ -1,0 +1,6 @@
+
+Follow the documentation to build a simple application. Learn how to create Models, write custom processes, and develop REST APIs.
+
+👉 [Building Your Application](../building-your-application)
+
+👉 [Adding your component](../using-source-code/adding-your-component)

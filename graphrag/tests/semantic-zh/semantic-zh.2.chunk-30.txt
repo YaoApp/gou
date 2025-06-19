@@ -1,0 +1,11 @@
+示例：
+
+```bash
+# 执行内部进程
+yao run utils.app.Ping   # 这将返回 Yao 的版本。
+
+
+# 执行使用 TypeScript 定义的自定义进程
+yao run scripts.test.Hello 'Yao!'   # 返回 'Hello, Yao!'
+
+yao run scripts.test.Pets cat  # 返回 cat 类别中的宠物列表。

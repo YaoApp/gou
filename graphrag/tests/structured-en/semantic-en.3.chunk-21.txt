@@ -1,0 +1,9 @@
+s: table-type pages in the admin panel
+└── ....    # Other widget types, or your self-defined widget types
+```
+
+### How to develop a Yao application?
+
+There are three things you need to do to develop a Yao application:
+
+1. **Write DSL**: Describe the widget in DSL, such as Model, API, Table, F

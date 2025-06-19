@@ -1,0 +1,2 @@
+
+`yao start` is the command to start the application server. In **development mode**, Yao watches changes to the DSL and Process files and automatically reloads the application server.

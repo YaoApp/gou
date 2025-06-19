@@ -1,0 +1,15 @@
+t of processes and REST APIs to operate on the data, such as Find, Search etc. You can use it directly.
+
+```json
+// Table DSL
+{
+  "name": "Articles",
+  "action": {
+    "bind": { "model": "article", "option": { "form": "article" } }
+  }
+}
+```
+
+```bash
+# Use the process to search the data
+yao run yao.

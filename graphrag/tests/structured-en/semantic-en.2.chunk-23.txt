@@ -1,0 +1,5 @@
+or Chart. It could also be a Data Model, API, Store, Flow, etc.
+
+Each Widget has a set of Processes, and some Widgets have a set of REST APIs. It can be used in other widgets, custom processes, or integrated into other applications.
+
+A Widget is described using DSL, which is in JSON format. It can b

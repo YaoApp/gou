@@ -1,0 +1,14 @@
+
+Creating an admin panel in Yao is straightforward, no frontend coding required. Use Table, Form, and API widgets to build it. It's like crafting an HTML page, but more powerful, using DSL to describe the page and processes to handle data.
+
+Follow the documentation to build a simple application and learn to use these widgets for an admin panel.
+
+👉 [Building Your Application](../building-your-application)
+
+👉 [Adding Your Process](../using-source-code/adding-your-process)
+
+## Limitations of Yao
+
+Although we have mentioned that Yao can handle everything for web development, there are still some things that may not be the best fit for Yao.
+
+- **Highly Customized UI**: If you need a highly customized UI for an admin panel or enterprise app, you might have to write custom code. However, you can utilize Yao as a backend service

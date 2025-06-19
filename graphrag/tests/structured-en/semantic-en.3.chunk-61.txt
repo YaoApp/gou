@@ -1,0 +1,10 @@
+e is not Node.js**. It's specifically for running processes and does not support Node.js APIs.
+
+**Execution Methods**:
+
+1. **CLI**: Use the `yao run` command.
+2. **HTTP Server**: Use the built-in HTTP server to run processes via REST API.
+
+### Yao Widget
+
+A Widget in Yao is not just a traditional fr

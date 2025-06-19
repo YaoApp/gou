@@ -1,0 +1,6 @@
+s by using AI to generate the DSL, which you can then manually tweak to fit your needs.
+
+For example:
+
+- Provide a Model DSL to the AI, specify your requirements, and let the AI generate a similar one. You can then adjust it as needed.
+- You can also provide both a Model DSL and a Table DSL to the A

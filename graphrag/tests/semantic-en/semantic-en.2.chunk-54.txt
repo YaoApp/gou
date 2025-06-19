@@ -1,0 +1,7 @@
+
+👉 **[Apache 2.0 License](https://github.com/YaoApp/yao/blob/main/LICENSE)**
+
+**Yao Commercial License**
+
+To ensure we can sustain and enhance Yao's development, we are introducing the Yao Commercial License. This license supports our future offerings such as application hosting and AI web application generation services. It is essential for specific commercial uses that go beyond the scope of the A
+commercial uses that go beyond the scope of the Apache 2.0 License.

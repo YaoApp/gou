@@ -1,0 +1,11 @@
+
+function Pets(category?: string): Record<string, any> {
+  category = category || "dog";
+  const pets = Process("models.tests.pet.Get", {
+    select: ["id", "name"],
+    wheres: [{ column: "category", value: category }],
+  });
+
+  return pets;
+}
+```

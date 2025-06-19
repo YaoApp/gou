@@ -1,0 +1,1 @@
+qlite database directory, the default option of database. If use another database, this directory is not necessary.

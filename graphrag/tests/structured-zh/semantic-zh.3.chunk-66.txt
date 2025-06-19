@@ -1,0 +1,21 @@
+。
+
+```json
+// 表格 DSL
+{
+  "name": "Articles",
+  "action": {
+    "bind": { "model": "article", "option": { "form": "article" } }
+  }
+}
+```
+
+```bash
+# 使用进程搜索数据
+yao run yao.tables.Search article '::{}' 1 10
+```
+
+```bash
+# 使用 REST API 搜索数据
+curl --request GET \
+  --url ht

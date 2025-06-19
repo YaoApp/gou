@@ -1,0 +1,8 @@
+```json
+// 表格 DSL
+{
+  "name": "Articles",
+  "action": {
+    "bind": { "model": "article", "option": { "form": "article" } }
+  }
+}

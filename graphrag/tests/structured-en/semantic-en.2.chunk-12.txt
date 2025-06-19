@@ -1,0 +1,18 @@
+ased on this model.
+
+Preparing test data and creating an import process is a good practice, as it enhances development efficiency. When deploying the application, you can use this process to import demo data.
+
+You can generate test data using AI by sending the Model DSL to the AI and asking it to generate the data.
+
+👉 [Import Process Example](https://github.com/YaoApp/website/blob/main/scripts/test.ts)
+
+**3. AI Generation First, Then Manual Modification**
+
+The fastest way to create a widget is by using AI to generate the DSL, which you can then manually tweak to fit your needs.
+
+For example:
+
+- Provide a Model DSL to the AI, specify your requirements, and let the AI generate a similar one. You can then adjust it as needed.
+- You can also provide both a Model DSL and a Table DSL to the AI, allowing it to generate a Table widget DSL that binds to the Model. Adjust it as necessary.
+
+The 

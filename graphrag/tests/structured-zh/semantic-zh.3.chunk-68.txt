@@ -1,0 +1,10 @@
+T API 搜索数据
+curl --request GET \
+  --url https://127.0.0.1:5099/api/__yao/table/article/search \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer your_token_here'
+```
+
+## 许可证概述
+
+Yao 在两种不同的许可证下可用，以满足各种用户需求：A

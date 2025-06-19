@@ -1,0 +1,3 @@
+ntioned that Yao can handle everything for web development, there are still some things that may not be the best fit for Yao.
+
+- **Highly Customized UI**: If you need a highly customized UI for an admin panel or enterprise app, you might have to write custom code. However, you can utilize Yao as a b

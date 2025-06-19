@@ -1,0 +1,6 @@
+se structures and relationships.
+- Grasp the basics of REST APIs and their functionality.
+- Know TypeScript or JavaScript for writing server-side custom processes.
+
+Follow the documentation to build a simple application. Learn how to create Models, write custom processes, and develop REST APIs.
+

@@ -1,0 +1,5 @@
+*
+
+Under the Apache 2.0 License, you are free to use, modify, and distribute Yao. This open approach encourages integration and innovation, with the simple requirement that the original copyright notice and license terms be included in any distribution.
+
+👉 **[Apache 2.0 License](https://github.co

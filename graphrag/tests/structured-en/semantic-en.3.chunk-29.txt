@@ -1,0 +1,11 @@
+es are written.
+
+Here ase some repositories you can refer to:
+
+👉 [Yao Website Repo](https://github.com/YaoApp/website)
+
+👉 [Yao app for Xgen developing](https://github.com/YaoApp/xgen-dev-app)
+
+**2. Planning Before Starting Development**
+
+In Yao, the data model is crucial. When beginning develo

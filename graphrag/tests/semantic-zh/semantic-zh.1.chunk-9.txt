@@ -1,0 +1,22 @@
+
+TypeScript 是编写自定义进程的推荐语言，它将在 V8 引擎中运行。如果需要高性能，可以在 Go 中添加进程，它比 TypeScript 更快。👉 [添加您的进程](../using-source-code/adding-your-process)
+
+## 概念解释
+
+### Yao 进程
+
+Yao 中的进程是在 Yao 运行时中运行的原子功能。
+
+Yao 提供了数百个具有不同功能的内部进程。您还可以用 TypeScript 或 JavaScript 创建自定义进程。
+
+- **内部进程**：在 Yao 的源代码中定义，您可以在 Yao 代码库中找到它们。
+- **自定义进程**：用 TypeScript 或 JavaScript 编写，位于项目的 `scripts` 目录中。
+- **GRPC 插件**：用任何语言编写，位于项目的 `plugins` 目录中。
+
+要运行进程，使用 `yao run` 命令。
+
+更多信息，请参见：👉 **[进程参考](../references/yao-process)**
+
+示例：
+
+参考](../references/yao-process)**

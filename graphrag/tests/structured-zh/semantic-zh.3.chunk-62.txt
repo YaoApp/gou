@@ -1,0 +1,12 @@
+相同。
+
+模型 DSL 包含一组操作数据的进程，如 CRUD、查询等。您可以直接使用它。
+
+```json
+// 模型 DSL
+{
+  "name": "Article",
+  "table": { "name": "article", "comment": "Article" },
+  "columns": [
+    { "name": "id", "comment": "ID", "type": "ID", "label": "ID" },
+    

@@ -1,0 +1,8 @@
+
+- **内部进程**：在 Yao 的源代码中定义，您可以在 Yao 代码库中找到它们。
+- **自定义进程**：用 TypeScript 或 JavaScript 编写，位于项目的 `scripts` 目录中。
+- **GRPC 插件**：用任何语言编写，位于项目的 `plugins` 目录中。
+
+要运行进程，使用 `yao run` 命令。
+
+更多信息，请参见：👉 **[进程参考](../references/yao-process)**

@@ -1,0 +1,4 @@
+
+The DSL source files are named in lowercase with the `.[TYPE].yao` extension, for example, `article.mod.yao`.
+
+Custom process files are lowercase in the `scripts` directory, e.g., `article.ts`. The process name is `scripts.article.[FUNCTION_NAME]`.

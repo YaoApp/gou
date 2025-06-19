@@ -1,0 +1,37 @@
+示例：
+
+```bash
+# 执行内部进程
+yao run utils.app.Ping   # 这将返回 Yao 的版本。
+
+
+# 执行使用 TypeScript 定义的自定义进程
+yao run scripts.test.Hello 'Yao!'   # 返回 'Hello, Yao!'
+
+yao run scripts.test.Pets cat  # 返回 cat 类别中的宠物列表。
+
+```
+
+**scripts/test.ts**
+
+```typescript
+import { Process } from "@yao/runtime";
+
+function Hello(name: string): string {
+  return `Hello, ${name}!`;
+}
+
+function Pets(category?: string): Record<string, any> {
+  category = category || "dog";
+  const pets = Process("models.tests.pet.Get", {
+    select: ["id", "name"],
+    wheres: [{ column: "category", value: category }],
+  });
+
+  return pets;
+}
+```
+
+### Yao 运行时
+
+Yao 运行时是用于运行进程的服务器端执行环境。

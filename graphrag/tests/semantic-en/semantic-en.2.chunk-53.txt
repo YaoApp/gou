@@ -1,0 +1,13 @@
+url --request GET \
+  --url https://127.0.0.1:5099/api/__yao/table/article/search \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer your_token_here'
+```
+
+## License Overview
+
+Yao is available under two distinct licenses to accommodate various user needs: the Apache 2.0 License and the Yao Commercial License.
+
+**Apache 2.0 License**
+
+Under the Apache 2.0 License, you are free to use, modify, and distribute Yao. This open approach encourages integration and innovation, with the simple requirement that the original copyright notice and license terms be included in any distribution.

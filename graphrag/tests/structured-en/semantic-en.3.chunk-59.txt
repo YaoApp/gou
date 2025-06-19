@@ -1,0 +1,2 @@
+cesses** written in Go, executed directly.
+- **Custom Processes** written in TypeScript or JavaScript, executed using the V8 engine. Yao provides APIs

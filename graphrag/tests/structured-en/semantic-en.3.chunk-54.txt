@@ -1,0 +1,12 @@
+, located in the `plugins` directory of your project.
+
+To run a process, use the `yao run` command.
+
+For more information, see: 👉 **[Process References](../references/yao-process)**
+
+Examples:
+
+```bash
+# Execute an internal process
+yao run utils.app.Ping   # This will return the version of Yao.
+

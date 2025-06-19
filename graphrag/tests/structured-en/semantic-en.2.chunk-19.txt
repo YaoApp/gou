@@ -1,0 +1,25 @@
+## Concepts Explained
+
+### Yao Process
+
+A Process in Yao is an atomic function that runs in the Yao Runtime.
+
+Yao provides hundreds of internal processes with diverse functionalities. You can also create custom processes in TypeScript or JavaScript.
+
+- **Internal Process**: Defined in Yao's source code, you can find them in the Yao respository.
+- **Custom Process**: Written in TypeScript or JavaScript, located in the `scripts` directory of your project.
+- **GRPC Plugin**: Written in any language, located in the `plugins` directory of your project.
+
+To run a process, use the `yao run` command.
+
+For more information, see: 👉 **[Process References](../references/yao-process)**
+
+Examples:
+
+```bash
+# Execute an internal process
+yao run utils.app.Ping   # This will return the version of Yao.
+
+
+# Execute a custom process defined using TypeScript
+yao run scripts.test.Hello 'Yao!'   # Returns '

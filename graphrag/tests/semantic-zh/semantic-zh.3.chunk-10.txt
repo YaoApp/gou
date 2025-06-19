@@ -1,0 +1,2 @@
+
+自定义进程文件位于 `scripts` 目录中，使用小写命名，例如 `article.ts`。进程名称为 `scripts.article.[FUNCTION_NAME]`。

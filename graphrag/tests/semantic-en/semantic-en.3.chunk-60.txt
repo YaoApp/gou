@@ -1,0 +1,4 @@
+
+**3. AI Generation First, Then Manual Modification**
+
+The fastest way to create a widget is by using AI to generate the DSL, which you can then manually tweak to fit your needs.

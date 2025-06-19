@@ -1,0 +1,2 @@
+ # Custom Process: write the custom process in TypeScript or JavaScript
+├── tables  # Table Widgets: table-type pages in the admin panel

@@ -1,0 +1,6 @@
+
+Before starting development, it's helpful to have some backend knowledge:
+
+- Understand database structures and relationships.
+- Grasp the basics of REST APIs and their functionality.
+- Know TypeScript or JavaScript for writing server-side custom processes.

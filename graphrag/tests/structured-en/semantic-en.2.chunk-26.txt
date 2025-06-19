@@ -1,0 +1,11 @@
+
+# Use the process to search the data
+yao run yao.tables.Search article '::{}' 1 10
+```
+
+```bash
+# Use the REST API to search the data
+curl --request GET \
+  --url https://127.0.0.1:5099/api/__yao/table/article/search \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer 

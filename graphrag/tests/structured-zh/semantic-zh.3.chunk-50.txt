@@ -1,0 +1,11 @@
+cript 或 JavaScript 编写，位于项目的 `scripts` 目录中。
+- **GRPC 插件**：用任何语言编写，位于项目的 `plugins` 目录中。
+
+要运行进程，使用 `yao run` 命令。
+
+更多信息，请参见：👉 **[进程参考](../references/yao-process)**
+
+示例：
+
+```bash
+# 

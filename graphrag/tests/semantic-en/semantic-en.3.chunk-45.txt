@@ -1,0 +1,1 @@
+tions. set the `.yao` file type to `jsonc` in the settings, you can get the syntax highlighting and auto-completion.

@@ -1,0 +1,1 @@
+- Basic understanding of HTML, CSS, and JavaScript is essential for building websites.

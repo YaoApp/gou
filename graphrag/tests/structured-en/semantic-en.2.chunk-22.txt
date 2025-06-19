@@ -1,0 +1,17 @@
+cesses** written in Go, executed directly.
+- **Custom Processes** written in TypeScript or JavaScript, executed using the V8 engine. Yao provides APIs like `Process`, `File System`, and `HTTP Request` to write these processes.
+
+**Note**: **Yao Runtime is not Node.js**. It's specifically for running processes and does not support Node.js APIs.
+
+**Execution Methods**:
+
+1. **CLI**: Use the `yao run` command.
+2. **HTTP Server**: Use the built-in HTTP server to run processes via REST API.
+
+### Yao Widget
+
+A Widget in Yao is not just a traditional frontend component; it is a combination of UI, interaction, logic, and data. There are no frontend and backend concepts in a Widget; it is a self-contained unit.
+
+A widget could be a Table, Form, List, or Chart. It could also be a Data Model, API, Store, Flow, etc.
+
+Each Widget has a set of Processes, and some Widgets have a set of REST APIs. It can 

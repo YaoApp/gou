@@ -1,0 +1,1 @@
+generate a Table widget DSL that binds to the Model. Adjust it as necessary.

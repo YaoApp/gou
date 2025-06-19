@@ -1,0 +1,8 @@
+
+```bash
+app
+├── aigcs # AIGC 组件：使用提示作为进程
+├── apis  # API 组件：定义 REST API
+├── app.yao # 应用程序配置
+├── charts # 图表组件：管理面板中的图表类型页面
+├── connectors  # AI 连接器、数据库连接器、Redis 连接器等

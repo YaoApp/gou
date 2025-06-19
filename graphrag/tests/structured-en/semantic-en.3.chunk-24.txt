@@ -1,0 +1,5 @@
+` is the command to start the application server. In **development mode**, Yao watches changes to the DSL and Process files and automatically reloads the application server.
+
+`yao run` is the command to run a process. You can use it to test the process before integrating it into the application.
+
+**

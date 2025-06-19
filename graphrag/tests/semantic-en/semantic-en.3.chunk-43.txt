@@ -1,0 +1,2 @@
+
+`yao run` is the command to run a process. You can use it to test the process before integrating it into the application.

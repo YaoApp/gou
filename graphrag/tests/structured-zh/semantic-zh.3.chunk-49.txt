@@ -1,0 +1,4 @@
+供了数百个具有不同功能的内部进程。您还可以用 TypeScript 或 JavaScript 创建自定义进程。
+
+- **内部进程**：在 Yao 的源代码中定义，您可以在 Yao 代码库中找到它们。
+- **自定义进程**：用 TypeScript 或 JavaScript 编写，位于项目的 `scr
