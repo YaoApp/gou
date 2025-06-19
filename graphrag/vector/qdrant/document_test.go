@@ -2309,7 +2309,7 @@ func TestConvertFilterToQdrant(t *testing.T) {
 					t.Errorf("convertFilterToQdrant() returned nil result")
 				} else {
 					// Verify the filter structure
-					if result.Must == nil || len(result.Must) == 0 {
+					if len(result.Must) == 0 {
 						t.Errorf("convertFilterToQdrant() returned filter with no conditions")
 					}
 
