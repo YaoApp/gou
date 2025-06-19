@@ -1,0 +1,4 @@
+─ charts # Chart Widgets: chart-type pages in the admin panel
+├── connectors  # AI Connectors, Database Connectors, Redis Connectors, etc.
+├── dashboards  # Dashboard Widgets: dashboard-type pages in the admin panel
+├── data    # The default application data directory, use the Fi

@@ -1,0 +1,2 @@
+
+Custom process files are lowercase in the `scripts` directory, e.g., `article.ts`. The process name is `scripts.article.[FUNCTION_NAME]`.

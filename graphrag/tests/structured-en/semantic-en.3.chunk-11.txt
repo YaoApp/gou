@@ -1,0 +1,8 @@
+rectory Structure
+
+The yao application directory structure is as follows:
+
+```bash
+app
+├── aigcs # AIGC Widgets: use the prompt as a process
+├

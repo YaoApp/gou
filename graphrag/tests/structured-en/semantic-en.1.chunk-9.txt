@@ -1,0 +1,35 @@
+
+# Use the process to search the data
+yao run yao.tables.Search article '::{}' 1 10
+```
+
+```bash
+# Use the REST API to search the data
+curl --request GET \
+  --url https://127.0.0.1:5099/api/__yao/table/article/search \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer your_token_here'
+```
+
+## License Overview
+
+Yao is available under two distinct licenses to accommodate various user needs: the Apache 2.0 License and the Yao Commercial License.
+
+**Apache 2.0 License**
+
+Under the Apache 2.0 License, you are free to use, modify, and distribute Yao. This open approach encourages integration and innovation, with the simple requirement that the original copyright notice and license terms be included in any distribution.
+
+👉 **[Apache 2.0 License](https://github.com/YaoApp/yao/blob/main/LICENSE)**
+
+**Yao Commercial License**
+
+To ensure we can sustain and enhance Yao's development, we are introducing the Yao Commercial License. This license supports our future offerings such as application hosting and AI web application generation services. It is essential for specific commercial uses that go beyond the scope of the Apache 2.0 License.
+
+While the Apache 2.0 License covers most commercial applications, a commercial license is necessary for:
+
+- Application Hosting Services
+- AI Web Application Generation Services
+
+We value your understanding and support as we work to improve Yao for the entire community. By respecting these licensing terms, you help us allocate more resources to develop and maintain Yao, ensuring it remains a robust tool for everyone.
+
+👉 **[Yao Commercial License](https://github.com/YaoApp/yao/blob/main/COMMERCIAL_LICENSE.md)**

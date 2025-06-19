@@ -1,0 +1,4 @@
+
+- **Internal Process**: Defined in Yao's source code, you can find them in the Yao respository.
+- **Custom Process**: Written in TypeScript or JavaScript, located in the `scripts` directory of your project.
+- **GRPC Plugin**: Written in any language, located in the `plugins` directory of your proje

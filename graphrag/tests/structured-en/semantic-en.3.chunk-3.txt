@@ -1,0 +1,3 @@
+h AI is as a collaborator, not a master.
+
+We aim to make generated code match hand-written code, easy to read and modify, so developers and machines c

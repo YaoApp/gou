@@ -1,0 +1,2 @@
+
+In Yao, we use a DSL (Domain-Specific Language) to describe widgets, assemble them into applications, and use processes for atomic functions

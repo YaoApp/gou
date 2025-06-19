@@ -1,0 +1,19 @@
+Source Code**
+
+The best way to learn is through hands-on practice. Follow the documentation to build a simple application and explore the basics.
+
+You can also read the application source code, to see how the widgets are described and how the processes are written.
+
+Here ase some repositories you can refer to:
+
+👉 [Yao Website Repo](https://github.com/YaoApp/website)
+
+👉 [Yao app for Xgen developing](https://github.com/YaoApp/xgen-dev-app)
+
+**2. Planning Before Starting Development**
+
+In Yao, the data model is crucial. When beginning development, it's essential to plan the data structure and relationships.
+
+When starting a new project, define the data model in the `models` directory first. Then, create the Table, Form, and API widgets based on this model.
+
+Preparing test data and creating an import process is a good practice, as it enhances development efficiency. When deploying the 

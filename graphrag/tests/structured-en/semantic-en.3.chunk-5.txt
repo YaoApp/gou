@@ -1,0 +1,6 @@
+nd intuitive.
+- **For Machine**: We aim to make the code AI-friendly, easy to generate, and simple to extend.
+
+In Yao, we use a DSL (Domain-Specific Language) to describe widgets, assemble them into applications, and use processes for atomic functions.
+
+Yao widget could be a Table, Form, List, or Ch

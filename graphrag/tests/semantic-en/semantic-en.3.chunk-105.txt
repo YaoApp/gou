@@ -1,0 +1,6 @@
+
+
+```bash
+# Use the REST API to search the data
+curl --request GET \
+  --url https://127.0.0.1:509

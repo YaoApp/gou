@@ -1,0 +1,10 @@
+```
+
+### Yao Runtime
+
+Yao Runtime is a server-side execution environment for running processes.
+
+- **Internal Processes** written in Go, executed directly.
+- **Custom Processes** written in TypeScript or JavaScript, executed using the V8 engine. Yao provides APIs like `Process`, `File System`, and `HTTP Request` to write these processes.
+
+**Note**: **Yao Runtime is not Node.js**. It's specifically for running processes and does not support Node.js APIs.

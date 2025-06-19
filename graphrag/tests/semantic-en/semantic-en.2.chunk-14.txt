@@ -1,0 +1,2 @@
+├── logs    # The application log directory, the default option of log. Custom log directory can be set in environment variables.
+├── models  # Model Widgets: define the data structure

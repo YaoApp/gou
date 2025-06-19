@@ -1,0 +1,5 @@
+pp.Ping   # This will return the version of Yao.
+
+
+# Execute a custom process defined using TypeScript
+yao run scripts.test.Hello 'Yao!'   # Returns '

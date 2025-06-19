@@ -1,0 +1,4 @@
+cesses** written in Go, executed directly.
+- **Custom Processes** written in TypeScript or JavaScript, executed using the V8 engine. Yao provides APIs like `Process`, `File System`, and `HTTP Request` to write these processes.
+
+**Note**: **Yao Runtime is not Node.js**. It's specifically for running 

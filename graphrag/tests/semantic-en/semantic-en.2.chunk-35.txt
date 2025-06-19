@@ -1,0 +1,4 @@
+
+
+- TypeScript or JavaScript is crucial for writing custom processes. TypeScript is recommended.
+- Basic understanding of HTML, CSS, and JavaScript is essential for building websites.

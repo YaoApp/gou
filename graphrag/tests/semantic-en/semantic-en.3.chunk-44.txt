@@ -1,0 +1,2 @@
+
+**Visual Studio Code** is the recommended IDE for developing Yao applications. set the `.yao` file type to `jsonc` in the

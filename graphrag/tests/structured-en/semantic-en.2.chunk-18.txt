@@ -1,0 +1,13 @@
+use a mobile app development framework, while using the Yao as a backend service. 👉 [REST API](../building-your-application/rest-api)
+
+The SUI template engine, introduced in Yao 0.10.4, offers a fresh way to build web pages. It's still experimental and not fully developed, but it provides a new option for developers. For more advanced frontend needs, consider using frameworks like React or Vue and connect them to Yao via REST API. 👉 [Web Page](../building-your-application/web-page)
+
+TypeScript is the recommended language for writing custom processes, it will be run in the V8 engine. If high-performance is nessary, add the process in Go, it's faster than TypeScript. 👉 [Adding your process](../using-source-code/adding-your-process)
+
+## Concepts Explained
+
+### Yao Process
+
+A Process in Yao is an atomic function that runs in the Yao Runtime.
+
+Yao provides hundreds of internal proces

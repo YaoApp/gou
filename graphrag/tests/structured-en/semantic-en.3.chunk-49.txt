@@ -1,0 +1,3 @@
+l and not fully developed, but it provides a new option for developers. For more advanced frontend needs, consider using frameworks like React or Vue and connect them to Yao via REST API. 👉 [Web Page](../building-your-application/web-page)
+
+TypeScript is the recommended language for writing custo

@@ -1,0 +1,2 @@
+Model Widget is used to describe the data structure, it same as the database table schema.
+The Model DSL contains a set of processes to operate on the data, such as CRUD, Query, etc. You can use it directly.

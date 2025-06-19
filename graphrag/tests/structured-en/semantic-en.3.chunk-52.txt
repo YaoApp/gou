@@ -1,0 +1,9 @@
+## Concepts Explained
+
+### Yao Process
+
+A Process in Yao is an atomic function that runs in the Yao Runtime.
+
+Yao provides hundreds of internal processes with diverse functionalities. You can also create custom processes in TypeScript or JavaScript.
+
+- **Internal Process**: Defined in Yao's source c

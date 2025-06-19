@@ -1,0 +1,16 @@
+```json
+// 模型 DSL
+{
+  "name": "Article",
+  "table": { "name": "article", "comment": "Article" },
+  "columns": [
+    { "name": "id", "comment": "ID", "type": "ID", "label": "ID" },
+    { "label": "Title", "name": "title", "type": "string" },
+    { "label": "Summary", "name": "summary", "type": "string" }
+  ]
+}
+
+```bash
+# 使用进程查找数据
+yao run models.article.Find 1 '::{}'
+```

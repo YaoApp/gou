@@ -1,0 +1,11 @@
+ormation, see:
+
+👉 [Building Your Application](../building-your-application)
+
+## Tips for switching to Yao
+
+Yao is a new way of building web applications. Here are some tips to help you switch to Yao.
+
+**1. The Best Way to Learn: Practice and Read Source Code**
+
+The best way to learn is through ha

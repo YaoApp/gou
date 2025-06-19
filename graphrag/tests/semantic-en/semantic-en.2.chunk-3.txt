@@ -1,0 +1,2 @@
+o read and write, clear, and intuitive.
+- **For Machine**: We aim to make the code AI-friendly, easy to generate, and simple to extend

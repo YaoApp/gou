@@ -1,0 +1,29 @@
+ase, this directory is not necessary.
+├── flows   # Flow Widgets: define the process flow
+├── forms   # Form Widgets: form-type pages in the admin panel
+├── icons   # The application icons used in the admin panel
+├── langs   # I18n language files used in the admin panel
+├── logins  # Login Widgets: login-type pages in the admin panel
+├── logs    # The application log directory, the default option of log. Custom log directory can be set in environment variables.
+├── models  # Model Widgets: define the data structure
+├── neo     # The AI Chatbot configuration directory
+├── plugins # The Default GRPC plugins directory, Custom plugins directory can be set in environment variables.
+├── public  # The static files directory, can be accessed via the HTTP server. SUI template engine generates the web pages here too.
+├── scripts # Custom Process: write the custom process in TypeScript or JavaScript
+├── tables  # Table Widgets: table-type pages in the admin panel
+└── ....    # Other widget types, or your self-defined widget types
+```
+
+### How to develop a Yao application?
+
+There are three things you need to do to develop a Yao application:
+
+1. **Write DSL**: Describe the widget in DSL, such as Model, API, Table, Form, etc.
+2. **Write Process**: Write the custom process in TypeScript or JavaScript, or use write GRPC plugins.
+3. **Debug and Run**: Use the Yao runtime to debug and run the application.
+
+`yao start` is the command to start the application server. In **development mode**, Yao watches changes to the DSL and Process files and automatically reloads the application server.
+
+`yao run` is the command to run a process. You can use it to test the process before integrating it into the application.
+
+**

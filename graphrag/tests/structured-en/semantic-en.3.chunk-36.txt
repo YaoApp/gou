@@ -1,0 +1,3 @@
+ provide both a Model DSL and a Table DSL to the AI, allowing it to generate a Table widget DSL that binds to the Model. Adjust it as necessary.
+
+The Yao Playground repository offers a simple tool for generating DSLs, which you can use. Alternatively, you can develop your own tool for this purpose.

@@ -1,0 +1,1 @@
+yao run scripts.test.Pets cat  # 返回 cat 类别中的宠物列表。

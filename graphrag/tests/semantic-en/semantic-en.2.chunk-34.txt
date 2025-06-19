@@ -1,0 +1,6 @@
+
+**5. Suggestions for Backend Developers**
+
+Before starting development, some frontend knowledge is helpful:
+
+- TypeScript or JavaScript is crucial for writi

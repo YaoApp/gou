@@ -1,0 +1,5 @@
+ased on this model.
+
+Preparing test data and creating an import process is a good practice, as it enhances development efficiency. When deploying the application, you can use this process to import demo data.
+
+You can generate test data using AI by sending the Model DSL to the AI and asking it to ge

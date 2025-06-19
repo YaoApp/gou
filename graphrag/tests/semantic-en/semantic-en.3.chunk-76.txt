@@ -1,0 +1,4 @@
+
+## Limitations of Yao
+
+Although we have mentioned that Yao can handle everything for web development, there are still some things that may not be the best fit for Yao.

@@ -1,0 +1,7 @@
+## Concepts Explained
+
+### Yao Process
+
+A Process in Yao is an atomic function that runs in the Yao Runtime.
+
+Yao provides hundreds of internal proces

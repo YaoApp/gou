@@ -1,0 +1,4 @@
+
+In Yao, we use a DSL (Domain-Specific Language) to describe widgets, assemble them into applications, and use processes for atomic functions
+
+Yao widget could be a Table, Form, List, or Chart. It could also be a Data Model, API, Store, Flow, etc.

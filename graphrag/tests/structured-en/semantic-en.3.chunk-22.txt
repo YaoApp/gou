@@ -1,0 +1,5 @@
+be the widget in DSL, such as Model, API, Table, Form, etc.
+2. **Write Process**: Write the custom process in TypeScript or JavaScript, or use write GRPC plugins.
+3. **Debug and Run**: Use the Yao runtime to debug and run the application.
+
+`yao start` is the command to start the application server. 

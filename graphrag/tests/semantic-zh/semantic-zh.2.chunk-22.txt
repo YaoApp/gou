@@ -1,0 +1,9 @@
+系。
+- 掌握 REST API 的基础知识及其功能。
+- 了解 TypeScript 或 JavaScript，用于编写服务器端自定义进程。
+
+按照文档构建一个简单的应用程序。学习如何创建模型、编写自定义进程和开发 REST API。
+
+👉 [构建您的应用程序](../building-your-application)
+
+👉 [添加您的组件](../using-source-code/adding-your-component)

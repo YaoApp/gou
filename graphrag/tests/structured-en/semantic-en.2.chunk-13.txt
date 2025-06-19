@@ -1,0 +1,19 @@
+ provide both a Model DSL and a Table DSL to the AI, allowing it to generate a Table widget DSL that binds to the Model. Adjust it as necessary.
+
+The Yao Playground repository offers a simple tool for generating DSLs, which you can use. Alternatively, you can develop your own tool for this purpose.
+
+👉 [Yao Playground](https://github.com/YaoApp/Playground)
+
+**4. Suggestions for Frontend Developers**
+
+Before starting development, it's helpful to have some backend knowledge:
+
+- Understand database structures and relationships.
+- Grasp the basics of REST APIs and their functionality.
+- Know TypeScript or JavaScript for writing server-side custom processes.
+
+Follow the documentation to build a simple application. Learn how to create Models, write custom processes, and develop REST APIs.
+
+👉 [Building Your Application](../building-your-application)
+
+👉 [Adding your component](../using-s

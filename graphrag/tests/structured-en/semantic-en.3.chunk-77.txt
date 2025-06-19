@@ -1,0 +1,5 @@
+fferings such as application hosting and AI web application generation services. It is essential for specific commercial uses that go beyond the scope of the Apache 2.0 License.
+
+While the Apache 2.0 License covers most commercial applications, a commercial license is necessary for:
+
+- Application H

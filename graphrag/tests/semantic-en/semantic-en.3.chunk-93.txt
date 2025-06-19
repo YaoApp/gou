@@ -1,0 +1,1 @@
+A widget could be a Table, Form, List, or Chart. It could also be a Data Model, API, Store, Flow, etc.

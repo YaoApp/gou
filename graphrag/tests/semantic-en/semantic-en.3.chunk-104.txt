@@ -1,0 +1,7 @@
+
+```
+
+```bash
+# Use the process to search the data
+yao run yao.tables.Search article '::{}' 1 10
+```

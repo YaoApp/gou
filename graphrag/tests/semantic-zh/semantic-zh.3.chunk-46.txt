@@ -1,0 +1,7 @@
+
+**5. 给后端开发人员的建议**
+
+在开始开发之前，一些前端知识会很有帮助：
+
+- TypeScript 或 JavaScript 对于编写自定义进程至关重要。推荐使用 TypeScript。
+- 对 HTML、CSS 和 JavaScript 的基本理解对构建网站至关重要

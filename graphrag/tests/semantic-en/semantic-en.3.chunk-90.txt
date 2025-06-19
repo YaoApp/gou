@@ -1,0 +1,5 @@
+
+**Execution Methods**:
+
+1. **CLI**: Use the `yao run` command.
+2. **HTTP Server**: Use the built-in HTTP server to run processes via REST API

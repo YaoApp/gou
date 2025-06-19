@@ -1,0 +1,2 @@
+├── langs   # I18n language files used in the admin panel
+├── logins  # Login Widgets: login-type pages in the admin panel

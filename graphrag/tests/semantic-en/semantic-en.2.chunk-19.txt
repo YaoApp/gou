@@ -1,0 +1,3 @@
+There are three things you need to do to develop a Yao application:
+
+1. **Write DSL**: Describe the widget in DSL, such as Model, API, Table, Form, etc.

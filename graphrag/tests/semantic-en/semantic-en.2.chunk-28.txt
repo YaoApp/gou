@@ -1,0 +1,3 @@
+ture and relationships.
+
+When starting a new project, define the data model in the `models` directory first. Then, create the Table, Form, and API widgets based on this model.

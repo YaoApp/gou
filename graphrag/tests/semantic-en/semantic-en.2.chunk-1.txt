@@ -1,0 +1,6 @@
+
+The following sections will help you understand the core concepts of Yao and how to use them to build applications.
+
+## Generative Programming
+
+Before the AGI era, we believe the best way to work with AI is as a collaborator, not a master.

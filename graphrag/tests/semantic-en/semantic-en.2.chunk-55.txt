@@ -1,0 +1,7 @@
+
+
+While the Apache 2.0 License covers most commercial applications, a commercial license is necessary for:
+
+
+- Application Hosting Services
+- AI Web Application Generation Services

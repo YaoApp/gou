@@ -1,0 +1,2 @@
+程搜索数据
+yao run yao.tables.Search article '::{}' 1 10

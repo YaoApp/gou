@@ -1,0 +1,11 @@
+rite custom processes, and develop REST APIs.
+
+👉 [Building Your Application](../building-your-application)
+
+👉 [Adding your component](../using-source-code/adding-your-component)
+
+**5. Suggestions for Backend Developers**
+
+Before starting development, some frontend knowledge is helpful:
+
+- Type

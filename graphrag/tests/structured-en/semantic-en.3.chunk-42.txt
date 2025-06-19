@@ -1,0 +1,3 @@
+ in Yao is straightforward, no frontend coding required. Use Table, Form, and API widgets to build it. It's like crafting an HTML page, but more powerful, using DSL to describe the page and processes to handle data.
+
+Follow the documentation to build a simple application and learn to use these widge

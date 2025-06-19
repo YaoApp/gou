@@ -1,0 +1,19 @@
+` is the command to start the application server. In **development mode**, Yao watches changes to the DSL and Process files and automatically reloads the application server.
+
+`yao run` is the command to run a process. You can use it to test the process before integrating it into the application.
+
+**Visual Studio Code** is the recommended IDE for developing Yao applications. set the `.yao` file type to `jsonc` in the settings, you can get the syntax highlighting and auto-completion.
+
+For more information, see:
+
+👉 [Building Your Application](../building-your-application)
+
+## Tips for switching to Yao
+
+Yao is a new way of building web applications. Here are some tips to help you switch to Yao.
+
+**1. The Best Way to Learn: Practice and Read Source Code**
+
+The best way to learn is through hands-on practice. Follow the documentation to build a simple application and explore the basics.
+
+You

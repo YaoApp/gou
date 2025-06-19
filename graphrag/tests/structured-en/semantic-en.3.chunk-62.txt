@@ -1,0 +1,5 @@
+dget
+
+A Widget in Yao is not just a traditional frontend component; it is a combination of UI, interaction, logic, and data. There are no frontend and backend concepts in a Widget; it is a self-contained unit.
+
+A widget could be a Table, Form, List, or Chart. It could also be a Data Model, API, Stor

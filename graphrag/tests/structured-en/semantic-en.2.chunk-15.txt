@@ -1,0 +1,20 @@
+rite custom processes, and develop REST APIs.
+
+👉 [Building Your Application](../building-your-application)
+
+👉 [Adding your component](../using-source-code/adding-your-component)
+
+**5. Suggestions for Backend Developers**
+
+Before starting development, some frontend knowledge is helpful:
+
+- TypeScript or JavaScript is crucial for writing custom processes. TypeScript is recommended.
+- Basic understanding of HTML, CSS, and JavaScript is essential for building websites.
+
+Creating an admin panel in Yao is straightforward, no frontend coding required. Use Table, Form, and API widgets to build it. It's like crafting an HTML page, but more powerful, using DSL to describe the page and processes to handle data.
+
+Follow the documentation to build a simple application and learn to use these widgets for an admin panel.
+
+👉 [Building Your Application](../building-your-application)
+
+👉 [Adding

@@ -1,0 +1,39 @@
+/github.com/YaoApp/website/blob/main/scripts/test.ts)
+
+**3. AI 生成优先，然后手动修改**
+
+创建组件的最快方法是使用 AI 生成 DSL，然后您可以手动调整以满足您的需求。
+
+例如：
+
+- 向 AI 提供模型 DSL，指定您的要求，让 AI 生成类似的模型。然后您可以根据需要进行调整。
+- 您还可以向 AI 提供模型 DSL 和表格 DSL，让其生成绑定到模型的表格组件 DSL。根据需要进行调整。
+
+Yao Playground 代码库提供了一个用于生成 DSL 的简单工具，您可以使用它。或者，您可以为此目的开发自己的工具。
+
+👉 [Yao Playground](https://github.com/YaoApp/Playground)
+
+**4. 给前端开发人员的建议**
+
+在开始开发之前，掌握一些后端知识会很有帮助：
+
+- 理解数据库结构和关系。
+- 掌握 REST API 的基础知识及其功能。
+- 了解 TypeScript 或 JavaScript，用于编写服务器端自定义进程。
+
+按照文档构建一个简单的应用程序。学习如何创建模型、编写自定义进程和开发 REST API。
+
+👉 [构建您的应用程序](../building-your-application)
+
+👉 [添加您的组件](../using-source-code/adding-your-component)
+
+**5. 给后端开发人员的建议**
+
+在开始开发之前，一些前端知识会很有帮助：
+
+- TypeScript 或 JavaScript 对于编写自定义进程至关重要。推荐使用 TypeScript。
+- 对 HTML、CSS 和 JavaScript 的基本理解对构建网站至关重要。
+
+在 Yao 中创建管理面板非常简单，无需前端编码。使用表格、表单和 API 组件来构建它。这就像制作 HTML 页面，但更强大，使用 DSL 来描述页面，使用进程来处理数据。
+
+按照文档构建一个简单的应用程序，学会使用这些组件来构建管理面

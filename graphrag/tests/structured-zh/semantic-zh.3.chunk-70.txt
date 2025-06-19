@@ -1,0 +1,7 @@
+在任何分发中包含原始版权声明和许可证条款即可。
+
+👉 **[Apache 2.0 许可证](https://github.com/YaoApp/yao/blob/main/LICENSE)**
+
+**Yao 商业许可证**
+
+为了确保我们能够维持和增强 Yao 的开发，我们正在引入 Yao 商业许可证。此许可证支持我们

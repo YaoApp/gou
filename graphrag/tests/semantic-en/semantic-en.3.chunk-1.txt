@@ -1,0 +1,3 @@
+---
+
+Switching to Yao is easy. Yao focuses on generative programming. It may take time to learn a few key concepts, but once you understand them, you’ll see that Yao is a powerful tool. It helps you build applications faster and offers a great development experience.

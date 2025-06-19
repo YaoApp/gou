@@ -1,0 +1,7 @@
+peScript or JavaScript.
+
+For websites, the SUI template engine (new in version 0.10.4) can help you build the web pages you need.
+
+Each widget type has its own directory in the project root, such as `models`, `tables`, `forms`, `apis`, `etc`.
+
+The DSL source files are named in lowercase with the `.[

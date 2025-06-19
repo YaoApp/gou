@@ -1,0 +1,3 @@
+owever, you can utilize Yao as a backend service. 👉 [Building your component library](../using-source-code/building-your-component-library)
+
+- **Mobile App Client**: For a mobile app client, you may need to develop a native app or use a mobile app development framework, while using the Yao as a backend service. 👉 [REST API](../building-your-application/rest-api)

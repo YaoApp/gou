@@ -1,0 +1,12 @@
+: "Article" },
+  "columns": [
+    { "name": "id", "comment": "ID", "type": "ID", "label": "ID" },
+    { "label": "Title", "name": "title", "type": "string" },
+    { "label": "Summary", "name": "summary", "type": "string" }
+  ]
+}
+```
+
+```bash
+# Use the process to find the data
+yao run models.article.

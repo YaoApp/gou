@@ -1,0 +1,2 @@
+组件使用 DSL 描述，DSL 是 JSON 格式。它可以由 AI 生成，通过 GUI 创建，或手动编写
+更多信息，请参见：👉 **[DSL 参考](../references/yao-dsl)**

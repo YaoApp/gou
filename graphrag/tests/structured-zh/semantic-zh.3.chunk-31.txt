@@ -1,0 +1,5 @@
+ithub.com/YaoApp/website/blob/main/scripts/test.ts)
+
+**3. AI 生成优先，然后手动修改**
+
+创建组件的最快方法是使用 AI 生成 DSL

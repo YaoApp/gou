@@ -1,0 +1,35 @@
+` is the command to start the application server. In **development mode**, Yao watches changes to the DSL and Process files and automatically reloads the application server.
+
+`yao run` is the command to run a process. You can use it to test the process before integrating it into the application.
+
+**Visual Studio Code** is the recommended IDE for developing Yao applications. set the `.yao` file type to `jsonc` in the settings, you can get the syntax highlighting and auto-completion.
+
+For more information, see:
+
+👉 [Building Your Application](../building-your-application)
+
+## Tips for switching to Yao
+
+Yao is a new way of building web applications. Here are some tips to help you switch to Yao.
+
+**1. The Best Way to Learn: Practice and Read Source Code**
+
+The best way to learn is through hands-on practice. Follow the documentation to build a simple application and explore the basics.
+
+You can also read the application source code, to see how the widgets are described and how the processes are written.
+
+Here ase some repositories you can refer to:
+
+👉 [Yao Website Repo](https://github.com/YaoApp/website)
+
+👉 [Yao app for Xgen developing](https://github.com/YaoApp/xgen-dev-app)
+
+**2. Planning Before Starting Development**
+
+In Yao, the data model is crucial. When beginning development, it's essential to plan the data structure and relationships.
+
+When starting a new project, define the data model in the `models` directory first. Then, create the Table, Form, and API widgets based on this model.
+
+Preparing test data and creating an import process is a good practice, as it enhances development efficiency. When deploying the application, you can use this process to import demo data.
+
+You can generate test data using AI by sending the Model DSL to the AI and asking it to ge

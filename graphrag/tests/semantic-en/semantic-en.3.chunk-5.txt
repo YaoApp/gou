@@ -1,0 +1,2 @@
+
+- **For Human**: We want the code to be easy to read and write, clear, and intuitive.

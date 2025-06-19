@@ -1,0 +1,5 @@
+, the data model is crucial. When beginning development, it's essential to plan the data structure and relationships.
+
+When starting a new project, define the data model in the `models` directory first. Then, create the Table, Form, and API widgets based on this model.
+
+Preparing test data and creat

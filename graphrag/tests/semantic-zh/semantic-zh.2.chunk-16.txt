@@ -1,0 +1,6 @@
+
+**Visual Studio Code** 是开发 Yao 应用程序的推荐 IDE。在设置中将 `.yao` 文件类型设置为 `jsonc`，您可以获得语法高亮和自动完成功能。
+
+更多信息，请参见：
+
+👉 [构建您的应用程序](../building-your-application)

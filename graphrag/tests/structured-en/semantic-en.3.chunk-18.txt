@@ -1,0 +1,5 @@
+.
+├── models  # Model Widgets: define the data structure
+├── neo     # The AI Chatbot configuration directory
+├── plugins # The Default GRPC plugins directory, Custom plugins directory can be set in environment variables.
+├── public  # The static files directory, can be acces

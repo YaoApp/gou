@@ -1,0 +1,9 @@
+些您可以参考的代码库：
+
+👉 [Yao 网站代码库](https://github.com/YaoApp/website)
+
+👉 [Xgen 开发应用](https://github.com/YaoApp/xgen-dev-app)
+
+**2. 开始开发前的规划**
+
+在 Yao 中，数据模型至关重要。开始开发时，规划数据结构和关系是必不可少

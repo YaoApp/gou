@@ -1,0 +1,60 @@
+需要高性能，可以在 Go 中添加进程，它比 TypeScript 更快。👉 [添加您的进程](../using-source-code/adding-your-process)
+
+## 概念解释
+
+### Yao 进程
+
+Yao 中的进程是在 Yao 运行时中运行的原子功能。
+
+Yao 提供了数百个具有不同功能的内部进程。您还可以用 TypeScript 或 JavaScript 创建自定义进程。
+
+- **内部进程**：在 Yao 的源代码中定义，您可以在 Yao 代码库中找到它们。
+- **自定义进程**：用 TypeScript 或 JavaScript 编写，位于项目的 `scripts` 目录中。
+- **GRPC 插件**：用任何语言编写，位于项目的 `plugins` 目录中。
+
+要运行进程，使用 `yao run` 命令。
+
+更多信息，请参见：👉 **[进程参考](../references/yao-process)**
+
+示例：
+
+```bash
+# 执行内部进程
+yao run utils.app.Ping   # 这将返回 Yao 的版本。
+
+
+# 执行使用 TypeScript 定义的自定义进程
+yao run scripts.test.Hello 'Yao!'   # 返回 'Hello, Yao!'
+
+yao run scripts.test.Pets cat  # 返回 cat 类别中的宠物列表。
+
+```
+
+**scripts/test.ts**
+
+```typescript
+import { Process } from "@yao/runtime";
+
+function Hello(name: string): string {
+  return `Hello, ${name}!`;
+}
+
+function Pets(category?: string): Record<string, any> {
+  category = category || "dog";
+  const pets = Process("models.tests.pet.Get", {
+    select: ["id", "name"],
+    wheres: [{ column: "category", value: category }],
+  });
+
+  return pets;
+}
+```
+
+### Yao 运行时
+
+Yao 运行时是用于运行进程的服务器端执行环境。
+
+- **内部进程**用 Go 编写，直接执行。
+- **自定义进程**用 TypeScript 或 JavaScript 编写，使用 V8 引擎执行。Yao 提供了 `Process`、`文件系统` 和 `HTTP 请求` 等 API 来编写这些进程。
+
+**注意**：**Yao 运行

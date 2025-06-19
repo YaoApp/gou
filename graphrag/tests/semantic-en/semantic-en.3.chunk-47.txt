@@ -1,0 +1,4 @@
+
+## Tips for switching to Yao
+
+Yao is a new way of building web applications. Here are some tips to help you switch to Yao.

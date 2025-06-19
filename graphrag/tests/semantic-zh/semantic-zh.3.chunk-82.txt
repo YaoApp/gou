@@ -1,0 +1,8 @@
+```
+
+```bash
+# 使用 REST API 搜索数据
+curl --request GET \
+  --url https://127.0.0.1:5099/api/__yao/table/article/search \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer your_token_here'

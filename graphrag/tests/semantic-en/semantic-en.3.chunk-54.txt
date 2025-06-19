@@ -1,0 +1,2 @@
+
+In Yao, the data model is crucial. When beginning development, it's essential to plan the data structure and relationships.

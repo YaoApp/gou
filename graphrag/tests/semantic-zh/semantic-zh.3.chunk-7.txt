@@ -1,0 +1,5 @@
+
+
+## Yao 应用程序
+
+Yao 应用程序是组件 DSL 的集合以及用 TypeScript 或 JavaScript 编写的自定义进程。

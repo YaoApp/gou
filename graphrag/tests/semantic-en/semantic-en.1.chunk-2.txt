@@ -1,0 +1,6 @@
+## Yao Application
+A Yao application is a collection of widget DSLs and custom processes written in TypeScript or JavaScript.
+For websites, the SUI template engine (new in version 0.10.4) can help you build the web pages you need.
+Each widget type has its own directory in the project root, such as `models`, `tables`, `forms`, `apis`, `etc`.
+The
+ `models`, `tables`, `forms`, `apis`, `etc`.

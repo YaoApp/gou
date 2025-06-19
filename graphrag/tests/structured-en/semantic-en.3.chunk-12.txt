@@ -1,0 +1,10 @@
+rectory Structure
+
+The yao application directory structure is as follows:
+
+```bash
+app
+├── aigcs # AIGC Widgets: use the prompt as a process
+├── apis  # API Widgets: define the REST API
+├── app.yao # Application Configuration
+├── charts # Chart Widgets: chart-type pages in th

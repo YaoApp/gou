@@ -1,0 +1,9 @@
+需要高性能，可以在 Go 中添加进程，它比 TypeScript 更快。👉 [添加您的进程](../using-source-code/adding-your-process)
+
+## 概念解释
+
+### Yao 进程
+
+Yao 中的进程是在 Yao 运行时中运行的原子功能。
+
+Yao 提供了数百个具有不同功能的内部进程

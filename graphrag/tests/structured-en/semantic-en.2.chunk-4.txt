@@ -1,0 +1,16 @@
+rectory Structure
+
+The yao application directory structure is as follows:
+
+```bash
+app
+├── aigcs # AIGC Widgets: use the prompt as a process
+├── apis  # API Widgets: define the REST API
+├── app.yao # Application Configuration
+├── charts # Chart Widgets: chart-type pages in the admin panel
+├── connectors  # AI Connectors, Database Connectors, Redis Connectors, etc.
+├── dashboards  # Dashboard Widgets: dashboard-type pages in the admin panel
+├── data    # The default application data directory, use the File System Process or JSAPI to access. Custom data directory can be set in environment variables.
+├── db      # The sqlite database directory, the default option of database. If use another database, this directory is not necessary.
+├── flows   # Flow Widgets: define the process flow
+├── forms   # Form Widgets: form-type pages in t

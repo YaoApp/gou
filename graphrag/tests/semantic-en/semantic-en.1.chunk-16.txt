@@ -1,0 +1,22 @@
+For more information, see: 👉 **[DSL References](../references/yao-dsl)**
+**Model Widget**
+Model Widget is used to describe the data structure, it same as the database table schema.
+The Model DSL contains a set of processes to operate on the data, such as CRUD, Query, etc. You can use it directly.
+```json
+// Model DSL
+{
+  "name": "Article",
+  
+.
+
+```json
+// Model DSL
+{
+  "name": "Article",
+  "table": { "name": "article", "comment": "Article" },
+  "columns": [
+    { "name": "id", "comment": "ID", "type": "ID", "label": "ID" },
+    { "label": "Title", "name": "title", "type": "string" },
+    { "label": "Summary", "name": "summary", "type": "string" }
+  ]
+}

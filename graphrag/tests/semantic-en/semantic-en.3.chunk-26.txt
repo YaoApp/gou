@@ -1,0 +1,1 @@
+├── langs   # I18n language files used in the admin panel

@@ -1,0 +1,3 @@
+The default application data directory, use the File System Process or JSAPI to access. Custom data directory can be set in environment variables.
+├── db      # The sqlite database directory, the default option of database. If use another database, this directory is not necessary.
+├── fl

@@ -1,0 +1,2 @@
+
+TypeScript is the recommended language for writing custom processes, it will be run in the V8 engine. If high-performance is nessary, add the process in Go, it's faster than TypeScript. 👉 [Adding your process](../using-source-code/adding-your-process)

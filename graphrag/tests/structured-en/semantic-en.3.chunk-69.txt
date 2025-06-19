@@ -1,0 +1,9 @@
+e process to find the data
+yao run models.article.Find 1 '::{}'
+```
+
+**Table Widget**
+
+Table Widget is used to display the data in a admin panel. bind to the Model Widget, automatically generate the basic CRUD operations.
+
+The Table DSL contains a set of processes and REST APIs to operate on the dat

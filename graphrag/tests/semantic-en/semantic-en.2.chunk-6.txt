@@ -1,0 +1,2 @@
+## Yao Application
+A Yao application is a collection of widget DSLs and custom processes written in TypeScript or JavaScript.

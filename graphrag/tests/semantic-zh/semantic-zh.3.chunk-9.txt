@@ -1,0 +1,3 @@
+orms`、`apis` 等。
+
+DSL 源文件使用小写命名，扩展名为 `.[TYPE].yao`，例如 `article.mod.yao`。
