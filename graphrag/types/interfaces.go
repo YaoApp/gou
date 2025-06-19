@@ -32,20 +32,11 @@ type VectorStore interface {
 	ScrollDocuments(ctx context.Context, opts *ScrollOptions) (*ScrollResult, error)
 
 	// Vector Search Operations (core functionality)
-	SearchSimilar(ctx context.Context, opts *SearchOptions) ([]*SearchResult, error)
-	SearchMMR(ctx context.Context, opts *MMRSearchOptions) ([]*SearchResult, error)
-	SearchWithScoreThreshold(ctx context.Context, opts *ScoreThresholdOptions) ([]*SearchResult, error)
-
-	// Paginated Search Operations (for Search Engine scenarios)
-	PaginatedSearchSimilar(ctx context.Context, opts *PaginatedSearchOptions) (*PaginatedSearchResult, error)
-	PaginatedSearchMMR(ctx context.Context, opts *PaginatedMMRSearchOptions) (*PaginatedSearchResult, error)
-	PaginatedSearchWithScoreThreshold(ctx context.Context, opts *PaginatedScoreThresholdSearchOptions) (*PaginatedSearchResult, error)
-	HybridSearch(ctx context.Context, opts *HybridSearchOptions) (*PaginatedSearchResult, error)
-
-	// Batch Operations
-	BatchSearchSimilar(ctx context.Context, opts *BatchSearchOptions) ([][]*SearchResult, error)
-	BatchSearchMMR(ctx context.Context, opts *BatchMMRSearchOptions) ([][]*SearchResult, error)
-	BatchSearchWithScoreThreshold(ctx context.Context, opts *BatchScoreThresholdOptions) ([][]*SearchResult, error)
+	SearchSimilar(ctx context.Context, opts *SearchOptions) (*SearchResult, error)
+	SearchMMR(ctx context.Context, opts *MMRSearchOptions) (*SearchResult, error)
+	SearchWithScoreThreshold(ctx context.Context, opts *ScoreThresholdOptions) (*SearchResult, error)
+	SearchHybrid(ctx context.Context, opts *HybridSearchOptions) (*SearchResult, error)
+	SearchBatch(ctx context.Context, opts []SearchOptionsInterface) ([]*SearchResult, error)
 
 	// Maintenance and Stats
 	GetStats(ctx context.Context, collectionName string) (*VectorStoreStats, error)
@@ -106,13 +97,10 @@ type VectorStoreFactory interface {
 // This is the application layer that handles text-to-vector conversion + vector search
 type VectorStoreRetriever interface {
 	// Text-based search operations (internally converts text to vectors)
-	SearchSimilarByText(ctx context.Context, collectionName, query string, k int, filter map[string]interface{}) ([]*SearchResult, error)
-	SearchMMRByText(ctx context.Context, collectionName, query string, opts *MMRSearchOptions) ([]*SearchResult, error)
-
-	// Text-based paginated search operations (for Search Engine scenarios)
-	PaginatedSearchSimilarByText(ctx context.Context, collectionName, query string, page, pageSize int, filter map[string]interface{}) (*PaginatedSearchResult, error)
-	PaginatedSearchMMRByText(ctx context.Context, collectionName, query string, opts *PaginatedMMRSearchOptions) (*PaginatedSearchResult, error)
-	HybridSearchByText(ctx context.Context, collectionName, queryText string, opts *HybridSearchOptions) (*PaginatedSearchResult, error)
+	SearchSimilarByText(ctx context.Context, collectionName, query string, opts *SearchOptions) (*SearchResult, error)
+	SearchMMRByText(ctx context.Context, collectionName, query string, opts *MMRSearchOptions) (*SearchResult, error)
+	SearchWithScoreThresholdByText(ctx context.Context, collectionName, query string, opts *ScoreThresholdOptions) (*SearchResult, error)
+	SearchHybridByText(ctx context.Context, collectionName, queryText string, opts *HybridSearchOptions) (*SearchResult, error)
 
 	// Document operations with automatic embedding
 	AddTexts(ctx context.Context, collectionName string, texts []string, metadatas []map[string]interface{}) ([]string, error)

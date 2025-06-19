@@ -338,6 +338,105 @@ func GetChunkingTypeFromFilename(filename string) ChunkingType {
 	}
 }
 
+// ===== Pagination Types =====
+
+// PaginationStrategy represents different pagination strategies supported by vector databases
+type PaginationStrategy string
+
+const (
+	// PaginationStrategyOffset represents traditional offset/limit pagination (page/pagesize)
+	// Pros: Simple, supports random access to pages, familiar API
+	// Cons: Performance degrades with large offsets, inconsistent results during data changes
+	// Best for: Small to medium datasets, UI pagination with page numbers
+	PaginationStrategyOffset PaginationStrategy = "offset"
+
+	// PaginationStrategyCursor represents cursor-based pagination using tokens
+	// Pros: Consistent performance, stable results during data changes
+	// Cons: No random access, more complex implementation
+	// Best for: Large datasets, real-time feeds, high-performance requirements
+	PaginationStrategyCursor PaginationStrategy = "cursor"
+
+	// PaginationStrategyClientSlice represents client-side slicing after fetching larger result sets
+	// Pros: Simple implementation, works with any vector database
+	// Cons: Higher memory usage, network overhead, limited to smaller datasets
+	// Best for: Simple use cases, databases without native pagination support (like Qdrant)
+	PaginationStrategyClientSlice PaginationStrategy = "client_slice"
+
+	// PaginationStrategyScroll represents scroll-based pagination (like Elasticsearch scroll API)
+	// Pros: Efficient for large datasets, maintains search context
+	// Cons: Stateful, requires cleanup, limited concurrent access
+	// Best for: Bulk data processing, export operations
+	PaginationStrategyScroll PaginationStrategy = "scroll"
+)
+
+// Pagination represents unified pagination options supporting both offset and cursor-based pagination
+type Pagination struct {
+	// Offset-based pagination (traditional page/pagesize)
+	Page     int `json:"page,omitempty"`      // Page number (1-based), 0 means no pagination
+	PageSize int `json:"page_size,omitempty"` // Number of results per page (default: 10)
+
+	// Cursor-based pagination (for better performance with large datasets)
+	Cursor string `json:"cursor,omitempty"` // Cursor token for cursor-based pagination
+
+	// Control options
+	IncludeTotal bool `json:"include_total,omitempty"` // Whether to calculate total count (expensive for large datasets)
+}
+
+// PaginationResult represents unified pagination response metadata
+type PaginationResult struct {
+	// Offset-based pagination info
+	Page         int   `json:"page,omitempty"`          // Current page number (1-based)
+	PageSize     int   `json:"page_size,omitempty"`     // Number of results per page
+	Total        int64 `json:"total,omitempty"`         // Total number of matching documents (if IncludeTotal=true)
+	TotalPages   int   `json:"total_pages,omitempty"`   // Total number of pages (if IncludeTotal=true)
+	HasNext      bool  `json:"has_next,omitempty"`      // Whether there are more pages
+	HasPrevious  bool  `json:"has_previous,omitempty"`  // Whether there are previous pages
+	NextPage     int   `json:"next_page,omitempty"`     // Next page number (if HasNext=true)
+	PreviousPage int   `json:"previous_page,omitempty"` // Previous page number (if HasPrevious=true)
+
+	// Cursor-based pagination info
+	Cursor     string `json:"cursor,omitempty"`      // Current cursor position
+	NextCursor string `json:"next_cursor,omitempty"` // Cursor for next page (if HasNext=true)
+	PrevCursor string `json:"prev_cursor,omitempty"` // Cursor for previous page (if HasPrevious=true)
+}
+
+// IsOffsetBased returns true if using offset-based pagination (page/pagesize)
+func (p *Pagination) IsOffsetBased() bool {
+	return p.Page > 0 && p.PageSize > 0 && p.Cursor == ""
+}
+
+// IsCursorBased returns true if using cursor-based pagination
+func (p *Pagination) IsCursorBased() bool {
+	return p.Cursor != ""
+}
+
+// GetOffset calculates the offset for offset-based pagination
+func (p *Pagination) GetOffset() int {
+	if !p.IsOffsetBased() {
+		return 0
+	}
+	return (p.Page - 1) * p.PageSize
+}
+
+// GetLimit returns the limit/pagesize for pagination
+func (p *Pagination) GetLimit() int {
+	if p.PageSize <= 0 {
+		return 10 // default page size
+	}
+	return p.PageSize
+}
+
+// GetStrategy returns the pagination strategy being used
+func (p *Pagination) GetStrategy() PaginationStrategy {
+	if p.IsCursorBased() {
+		return PaginationStrategyCursor
+	}
+	if p.IsOffsetBased() {
+		return PaginationStrategyOffset
+	}
+	return PaginationStrategyClientSlice // default for non-paginated requests
+}
+
 // ===== Vector Store Types =====
 
 // Document represents a document with content and metadata
@@ -348,10 +447,26 @@ type Document struct {
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }
 
-// SearchResult represents a search result with document and score
-type SearchResult struct {
+// SearchResultItem represents a single search result with document and score
+type SearchResultItem struct {
 	Document Document `json:"document"`
 	Score    float64  `json:"score"`
+}
+
+// SearchResult represents unified search results (both paginated and non-paginated)
+type SearchResult struct {
+	// Results
+	Documents []*SearchResultItem `json:"documents"` // Search results
+
+	// Pagination metadata (embedded for backward compatibility)
+	PaginationResult `json:",inline"`
+
+	// Search engine features
+	QueryTime   int64                   `json:"query_time_ms"`         // Query execution time in milliseconds
+	Facets      map[string]*SearchFacet `json:"facets,omitempty"`      // Faceted search results
+	Suggestions []string                `json:"suggestions,omitempty"` // Query suggestions for typos/alternatives
+	MaxScore    float64                 `json:"max_score,omitempty"`   // Highest score in results
+	MinScore    float64                 `json:"min_score,omitempty"`   // Lowest score in results
 }
 
 // VectorStoreConfig represents configuration for vector store
@@ -411,8 +526,20 @@ type AddDocumentOptions struct {
 type SearchOptions struct {
 	CollectionName string                 `json:"collection_name"`
 	QueryVector    []float64              `json:"query_vector"`     // Query vector for similarity search
-	K              int                    `json:"k,omitempty"`      // Number of documents to return
+	K              int                    `json:"k,omitempty"`      // Number of documents to return (ignored if using pagination)
 	Filter         map[string]interface{} `json:"filter,omitempty"` // Metadata filter
+
+	// Pagination (optional - if not specified, returns top K results)
+	Page     int    `json:"page,omitempty"`      // Page number (1-based), 0 means no pagination
+	PageSize int    `json:"page_size,omitempty"` // Number of results per page (default: 10)
+	Cursor   string `json:"cursor,omitempty"`    // Cursor for cursor-based pagination (alternative to page/pagesize)
+
+	// Return control options
+	IncludeVector   bool     `json:"include_vector"`   // Whether to include vector data in results
+	IncludeMetadata bool     `json:"include_metadata"` // Whether to include document metadata
+	IncludeContent  bool     `json:"include_content"`  // Whether to include document content
+	Fields          []string `json:"fields,omitempty"` // Specific fields to retrieve
+	IncludeTotal    bool     `json:"include_total"`    // Whether to calculate total count (expensive for pagination)
 
 	// Search-specific parameters
 	EfSearch    int  `json:"ef_search,omitempty"`   // Dynamic search parameter (HNSW)
@@ -420,21 +547,46 @@ type SearchOptions struct {
 	Rescore     bool `json:"rescore,omitempty"`     // Whether to rescore results
 	Approximate bool `json:"approximate,omitempty"` // Whether to use approximate search
 	Timeout     int  `json:"timeout,omitempty"`     // Search timeout in milliseconds
+
+	// Search engine specific options
+	MinScore        float64  `json:"min_score,omitempty"`        // Minimum similarity score to include
+	MaxResults      int      `json:"max_results,omitempty"`      // Maximum total results to consider (default: 1000)
+	SortBy          []string `json:"sort_by,omitempty"`          // Secondary sorting criteria
+	FacetFields     []string `json:"facet_fields,omitempty"`     // Fields for faceted search
+	HighlightFields []string `json:"highlight_fields,omitempty"` // Fields to highlight in results
 }
 
 // MMRSearchOptions represents options for maximal marginal relevance search
 type MMRSearchOptions struct {
 	CollectionName string                 `json:"collection_name"`
 	QueryVector    []float64              `json:"query_vector"`          // Query vector for similarity search
-	K              int                    `json:"k,omitempty"`           // Number of documents to return
+	K              int                    `json:"k,omitempty"`           // Number of documents to return (ignored if using pagination)
 	FetchK         int                    `json:"fetch_k,omitempty"`     // Number of documents to fetch for MMR algorithm
 	LambdaMult     float64                `json:"lambda_mult,omitempty"` // Diversity parameter (0-1, 0=max diversity, 1=max similarity)
 	Filter         map[string]interface{} `json:"filter,omitempty"`      // Metadata filter
+
+	// Pagination (optional - if not specified, returns top K results)
+	Page     int    `json:"page,omitempty"`      // Page number (1-based), 0 means no pagination
+	PageSize int    `json:"page_size,omitempty"` // Number of results per page (default: 10)
+	Cursor   string `json:"cursor,omitempty"`    // Cursor for cursor-based pagination (alternative to page/pagesize)
+
+	// Return control options
+	IncludeVector   bool     `json:"include_vector"`   // Whether to include vector data in results
+	IncludeMetadata bool     `json:"include_metadata"` // Whether to include document metadata
+	IncludeContent  bool     `json:"include_content"`  // Whether to include document content
+	Fields          []string `json:"fields,omitempty"` // Specific fields to retrieve
+	IncludeTotal    bool     `json:"include_total"`    // Whether to calculate total count (expensive for pagination)
 
 	// Search parameters
 	EfSearch    int  `json:"ef_search,omitempty"`   // Dynamic search parameter
 	NumProbes   int  `json:"num_probes,omitempty"`  // Number of probes
 	Approximate bool `json:"approximate,omitempty"` // Whether to use approximate search
+	Timeout     int  `json:"timeout,omitempty"`     // Search timeout in milliseconds
+
+	// Search engine specific options
+	MinScore    float64  `json:"min_score,omitempty"`    // Minimum similarity score to include
+	MaxResults  int      `json:"max_results,omitempty"`  // Maximum total results to consider
+	FacetFields []string `json:"facet_fields,omitempty"` // Fields for faceted search
 }
 
 // ScoreThresholdOptions represents options for similarity search with score threshold
@@ -442,59 +594,140 @@ type ScoreThresholdOptions struct {
 	CollectionName string                 `json:"collection_name"`
 	QueryVector    []float64              `json:"query_vector"`     // Query vector for similarity search
 	ScoreThreshold float64                `json:"score_threshold"`  // Minimum relevance score threshold
-	K              int                    `json:"k,omitempty"`      // Number of documents to return
+	K              int                    `json:"k,omitempty"`      // Number of documents to return (ignored if using pagination)
 	Filter         map[string]interface{} `json:"filter,omitempty"` // Metadata filter
+
+	// Pagination (optional - if not specified, returns top K results)
+	Page     int    `json:"page,omitempty"`      // Page number (1-based), 0 means no pagination
+	PageSize int    `json:"page_size,omitempty"` // Number of results per page (default: 10)
+	Cursor   string `json:"cursor,omitempty"`    // Cursor for cursor-based pagination (alternative to page/pagesize)
+
+	// Return control options
+	IncludeVector   bool     `json:"include_vector"`   // Whether to include vector data in results
+	IncludeMetadata bool     `json:"include_metadata"` // Whether to include document metadata
+	IncludeContent  bool     `json:"include_content"`  // Whether to include document content
+	Fields          []string `json:"fields,omitempty"` // Specific fields to retrieve
+	IncludeTotal    bool     `json:"include_total"`    // Whether to calculate total count (expensive for pagination)
 
 	// Search parameters
 	EfSearch    int  `json:"ef_search,omitempty"`   // Dynamic search parameter
 	NumProbes   int  `json:"num_probes,omitempty"`  // Number of probes
 	Approximate bool `json:"approximate,omitempty"` // Whether to use approximate search
+	Timeout     int  `json:"timeout,omitempty"`     // Search timeout in milliseconds
+
+	// Search engine specific options
+	MaxResults      int      `json:"max_results,omitempty"`      // Maximum total results to consider
+	SortBy          []string `json:"sort_by,omitempty"`          // Secondary sorting criteria
+	FacetFields     []string `json:"facet_fields,omitempty"`     // Fields for faceted search
+	HighlightFields []string `json:"highlight_fields,omitempty"` // Fields to highlight in results
 }
 
-// ===== Batch Search Options =====
-
-// BatchSearchOptions represents options for batch similarity search
-type BatchSearchOptions struct {
+// HybridSearchOptions represents options for hybrid (vector + keyword) search
+type HybridSearchOptions struct {
 	CollectionName string                 `json:"collection_name"`
-	QueryVectors   [][]float64            `json:"query_vectors"`    // Multiple query vectors for batch search
-	K              int                    `json:"k,omitempty"`      // Number of documents to return per query
-	Filter         map[string]interface{} `json:"filter,omitempty"` // Metadata filter
+	QueryVector    []float64              `json:"query_vector,omitempty"` // Vector query (optional if only using text search)
+	QueryText      string                 `json:"query_text,omitempty"`   // Text query for keyword search (optional if only using vector search)
+	K              int                    `json:"k,omitempty"`            // Number of documents to return (ignored if using pagination)
+	Filter         map[string]interface{} `json:"filter,omitempty"`       // Metadata filter
 
-	// Search-specific parameters
+	// Pagination (optional - if not specified, returns top K results)
+	Page     int    `json:"page,omitempty"`      // Page number (1-based), 0 means no pagination
+	PageSize int    `json:"page_size,omitempty"` // Number of results per page (default: 10)
+	Cursor   string `json:"cursor,omitempty"`    // Cursor for cursor-based pagination (alternative to page/pagesize)
+
+	// Return control options
+	IncludeVector   bool     `json:"include_vector"`   // Whether to include vector data in results
+	IncludeMetadata bool     `json:"include_metadata"` // Whether to include document metadata
+	IncludeContent  bool     `json:"include_content"`  // Whether to include document content
+	Fields          []string `json:"fields,omitempty"` // Specific fields to retrieve
+	IncludeTotal    bool     `json:"include_total"`    // Whether to calculate total count (expensive for pagination)
+
+	// Hybrid search weights
+	VectorWeight  float64 `json:"vector_weight"`  // Weight for vector similarity (0-1)
+	KeywordWeight float64 `json:"keyword_weight"` // Weight for keyword relevance (0-1)
+
+	// Vector search parameters
 	EfSearch    int  `json:"ef_search,omitempty"`   // Dynamic search parameter (HNSW)
 	NumProbes   int  `json:"num_probes,omitempty"`  // Number of probes (IVF)
 	Rescore     bool `json:"rescore,omitempty"`     // Whether to rescore results
 	Approximate bool `json:"approximate,omitempty"` // Whether to use approximate search
 	Timeout     int  `json:"timeout,omitempty"`     // Search timeout in milliseconds
+
+	// Keyword search parameters
+	KeywordFields []string           `json:"keyword_fields,omitempty"` // Fields to search for keywords
+	FuzzyMatch    bool               `json:"fuzzy_match,omitempty"`    // Enable fuzzy keyword matching
+	BoostFields   map[string]float64 `json:"boost_fields,omitempty"`   // Field -> boost factor mapping
+
+	// Search engine specific options
+	MinScore        float64  `json:"min_score,omitempty"`        // Minimum combined score
+	MaxResults      int      `json:"max_results,omitempty"`      // Maximum total results to consider (default: 1000)
+	SortBy          []string `json:"sort_by,omitempty"`          // Secondary sorting criteria
+	FacetFields     []string `json:"facet_fields,omitempty"`     // Fields for faceted search
+	HighlightFields []string `json:"highlight_fields,omitempty"` // Fields to highlight in results
 }
 
-// BatchMMRSearchOptions represents options for batch maximal marginal relevance search
-type BatchMMRSearchOptions struct {
-	CollectionName string                 `json:"collection_name"`
-	QueryVectors   [][]float64            `json:"query_vectors"`         // Multiple query vectors for batch search
-	K              int                    `json:"k,omitempty"`           // Number of documents to return per query
-	FetchK         int                    `json:"fetch_k,omitempty"`     // Number of documents to fetch for MMR algorithm
-	LambdaMult     float64                `json:"lambda_mult,omitempty"` // Diversity parameter (0-1, 0=max diversity, 1=max similarity)
-	Filter         map[string]interface{} `json:"filter,omitempty"`      // Metadata filter
-
-	// Search parameters
-	EfSearch    int  `json:"ef_search,omitempty"`   // Dynamic search parameter
-	NumProbes   int  `json:"num_probes,omitempty"`  // Number of probes
-	Approximate bool `json:"approximate,omitempty"` // Whether to use approximate search
+// GetType returns the type of the search options
+func (h *HybridSearchOptions) GetType() SearchType {
+	return SearchTypeHybrid
 }
 
-// BatchScoreThresholdOptions represents options for batch similarity search with score threshold
-type BatchScoreThresholdOptions struct {
-	CollectionName string                 `json:"collection_name"`
-	QueryVectors   [][]float64            `json:"query_vectors"`    // Multiple query vectors for batch search
-	ScoreThreshold float64                `json:"score_threshold"`  // Minimum relevance score threshold
-	K              int                    `json:"k,omitempty"`      // Number of documents to return per query
-	Filter         map[string]interface{} `json:"filter,omitempty"` // Metadata filter
+// GetType returns the type of the search options
+func (m *MMRSearchOptions) GetType() SearchType {
+	return SearchTypeMMR
+}
 
-	// Search parameters
-	EfSearch    int  `json:"ef_search,omitempty"`   // Dynamic search parameter
-	NumProbes   int  `json:"num_probes,omitempty"`  // Number of probes
-	Approximate bool `json:"approximate,omitempty"` // Whether to use approximate search
+// GetType returns the type of the search options
+func (s *ScoreThresholdOptions) GetType() SearchType {
+	return SearchTypeScoreThreshold
+}
+
+// GetType returns the type of the search options
+func (s *SearchOptions) GetType() SearchType {
+	return SearchTypeSimilarity
+}
+
+// SearchType represents the type of search operation
+type SearchType string
+
+const (
+	// SearchTypeSimilarity represents similarity-based vector search
+	SearchTypeSimilarity SearchType = "similarity"
+	// SearchTypeMMR represents maximal marginal relevance search for diversity
+	SearchTypeMMR SearchType = "mmr"
+	// SearchTypeScoreThreshold represents similarity search with minimum score filtering
+	SearchTypeScoreThreshold SearchType = "score_threshold"
+	// SearchTypeHybrid represents hybrid search combining vector and keyword search
+	SearchTypeHybrid SearchType = "hybrid"
+)
+
+// String returns the string representation of the search type
+func (st SearchType) String() string {
+	return string(st)
+}
+
+// IsValid checks if the search type is valid
+func (st SearchType) IsValid() bool {
+	switch st {
+	case SearchTypeSimilarity, SearchTypeMMR, SearchTypeScoreThreshold, SearchTypeHybrid:
+		return true
+	default:
+		return false
+	}
+}
+
+// GetSupportedSearchTypes returns all supported search types
+func GetSupportedSearchTypes() []SearchType {
+	return []SearchType{
+		SearchTypeSimilarity,
+		SearchTypeMMR,
+		SearchTypeScoreThreshold,
+		SearchTypeHybrid,
+	}
+}
+
+// SearchOptionsInterface represents options for batch search
+type SearchOptionsInterface interface {
+	GetType() SearchType
 }
 
 // RetrieverOptions represents options for creating a retriever
@@ -776,130 +1009,10 @@ type ScrollResult struct {
 	HasMore   bool        `json:"has_more"`            // Whether there are more results
 }
 
-// ===== Paginated Search Types (for Search Engine scenarios) =====
-
-// PaginatedSearchOptions represents options for paginated similarity search
-type PaginatedSearchOptions struct {
-	CollectionName string                 `json:"collection_name"`
-	QueryVector    []float64              `json:"query_vector"`     // Query vector for similarity search
-	Page           int                    `json:"page"`             // Page number (1-based)
-	PageSize       int                    `json:"page_size"`        // Number of results per page (default: 10)
-	Filter         map[string]interface{} `json:"filter,omitempty"` // Metadata filter
-
-	// Search-specific parameters
-	EfSearch    int  `json:"ef_search,omitempty"`   // Dynamic search parameter (HNSW)
-	NumProbes   int  `json:"num_probes,omitempty"`  // Number of probes (IVF)
-	Rescore     bool `json:"rescore,omitempty"`     // Whether to rescore results
-	Approximate bool `json:"approximate,omitempty"` // Whether to use approximate search
-	Timeout     int  `json:"timeout,omitempty"`     // Search timeout in milliseconds
-
-	// Search engine specific options
-	MinScore        float64  `json:"min_score,omitempty"`        // Minimum similarity score to include
-	MaxResults      int      `json:"max_results,omitempty"`      // Maximum total results to consider (default: 1000)
-	SortBy          []string `json:"sort_by,omitempty"`          // Secondary sorting criteria
-	IncludeTotal    bool     `json:"include_total"`              // Whether to calculate total count (expensive)
-	FacetFields     []string `json:"facet_fields,omitempty"`     // Fields for faceted search
-	HighlightFields []string `json:"highlight_fields,omitempty"` // Fields to highlight in results
-}
-
-// PaginatedMMRSearchOptions represents options for paginated MMR search
-type PaginatedMMRSearchOptions struct {
-	CollectionName string                 `json:"collection_name"`
-	QueryVector    []float64              `json:"query_vector"`          // Query vector for similarity search
-	Page           int                    `json:"page"`                  // Page number (1-based)
-	PageSize       int                    `json:"page_size"`             // Number of results per page (default: 10)
-	FetchK         int                    `json:"fetch_k,omitempty"`     // Number of documents to fetch for MMR algorithm
-	LambdaMult     float64                `json:"lambda_mult,omitempty"` // Diversity parameter (0-1)
-	Filter         map[string]interface{} `json:"filter,omitempty"`      // Metadata filter
-
-	// Search parameters
-	EfSearch    int  `json:"ef_search,omitempty"`   // Dynamic search parameter
-	NumProbes   int  `json:"num_probes,omitempty"`  // Number of probes
-	Approximate bool `json:"approximate,omitempty"` // Whether to use approximate search
-
-	// Search engine specific options
-	MinScore     float64  `json:"min_score,omitempty"`    // Minimum similarity score to include
-	MaxResults   int      `json:"max_results,omitempty"`  // Maximum total results to consider
-	IncludeTotal bool     `json:"include_total"`          // Whether to calculate total count
-	FacetFields  []string `json:"facet_fields,omitempty"` // Fields for faceted search
-}
-
-// PaginatedScoreThresholdSearchOptions represents options for paginated score threshold search
-type PaginatedScoreThresholdSearchOptions struct {
-	CollectionName string                 `json:"collection_name"`
-	QueryVector    []float64              `json:"query_vector"`     // Query vector for similarity search
-	ScoreThreshold float64                `json:"score_threshold"`  // Minimum relevance score threshold
-	Page           int                    `json:"page"`             // Page number (1-based)
-	PageSize       int                    `json:"page_size"`        // Number of results per page (default: 10)
-	Filter         map[string]interface{} `json:"filter,omitempty"` // Metadata filter
-
-	// Search parameters
-	EfSearch    int  `json:"ef_search,omitempty"`   // Dynamic search parameter
-	NumProbes   int  `json:"num_probes,omitempty"`  // Number of probes
-	Approximate bool `json:"approximate,omitempty"` // Whether to use approximate search
-
-	// Search engine specific options
-	MaxResults   int      `json:"max_results,omitempty"`  // Maximum total results to consider
-	SortBy       []string `json:"sort_by,omitempty"`      // Secondary sorting criteria
-	IncludeTotal bool     `json:"include_total"`          // Whether to calculate total count
-	FacetFields  []string `json:"facet_fields,omitempty"` // Fields for faceted search
-}
-
 // SearchFacet represents a facet for faceted search
 type SearchFacet struct {
 	Field  string           `json:"field"`  // Metadata field name
 	Values map[string]int64 `json:"values"` // Value -> count mapping
-}
-
-// PaginatedSearchResult represents paginated search results
-type PaginatedSearchResult struct {
-	Documents    []*SearchResult `json:"documents"`               // Search results for current page
-	Page         int             `json:"page"`                    // Current page number
-	PageSize     int             `json:"page_size"`               // Number of results per page
-	Total        int64           `json:"total,omitempty"`         // Total number of matching documents (if IncludeTotal=true)
-	TotalPages   int             `json:"total_pages,omitempty"`   // Total number of pages (if IncludeTotal=true)
-	HasNext      bool            `json:"has_next"`                // Whether there are more pages
-	HasPrevious  bool            `json:"has_previous"`            // Whether there are previous pages
-	NextPage     int             `json:"next_page,omitempty"`     // Next page number (if HasNext=true)
-	PreviousPage int             `json:"previous_page,omitempty"` // Previous page number (if HasPrevious=true)
-
-	// Search engine features
-	QueryTime   int64                   `json:"query_time_ms"`         // Query execution time in milliseconds
-	Facets      map[string]*SearchFacet `json:"facets,omitempty"`      // Faceted search results
-	Suggestions []string                `json:"suggestions,omitempty"` // Query suggestions for typos/alternatives
-	MaxScore    float64                 `json:"max_score,omitempty"`   // Highest score in results
-	MinScore    float64                 `json:"min_score,omitempty"`   // Lowest score in results
-}
-
-// HybridSearchOptions represents options for hybrid (vector + keyword) search with pagination
-type HybridSearchOptions struct {
-	CollectionName string                 `json:"collection_name"`
-	QueryVector    []float64              `json:"query_vector"`     // Vector query
-	QueryText      string                 `json:"query_text"`       // Text query for keyword search
-	Page           int                    `json:"page"`             // Page number (1-based)
-	PageSize       int                    `json:"page_size"`        // Number of results per page
-	Filter         map[string]interface{} `json:"filter,omitempty"` // Metadata filter
-
-	// Hybrid search weights
-	VectorWeight  float64 `json:"vector_weight"`  // Weight for vector similarity (0-1)
-	KeywordWeight float64 `json:"keyword_weight"` // Weight for keyword relevance (0-1)
-
-	// Search parameters
-	EfSearch    int  `json:"ef_search,omitempty"`   // Dynamic search parameter
-	NumProbes   int  `json:"num_probes,omitempty"`  // Number of probes
-	Approximate bool `json:"approximate,omitempty"` // Whether to use approximate search
-
-	// Keyword search parameters
-	KeywordFields []string           `json:"keyword_fields,omitempty"` // Fields to search for keywords
-	FuzzyMatch    bool               `json:"fuzzy_match,omitempty"`    // Enable fuzzy keyword matching
-	BoostFields   map[string]float64 `json:"boost_fields,omitempty"`   // Field -> boost factor mapping
-
-	// Search engine specific options
-	MinScore        float64  `json:"min_score,omitempty"`        // Minimum combined score
-	MaxResults      int      `json:"max_results,omitempty"`      // Maximum total results to consider
-	IncludeTotal    bool     `json:"include_total"`              // Whether to calculate total count
-	FacetFields     []string `json:"facet_fields,omitempty"`     // Fields for faceted search
-	HighlightFields []string `json:"highlight_fields,omitempty"` // Fields to highlight in results
 }
 
 // SearchEngineStats represents search engine performance statistics
