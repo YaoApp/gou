@@ -14,21 +14,25 @@ import (
 	"github.com/fatih/color"
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/graphrag/chunking"
+	"github.com/yaoapp/gou/graphrag/embedding"
 	"github.com/yaoapp/gou/graphrag/types"
 )
 
 func main() {
 	var (
-		filePath      = flag.String("file", "", "Path to the file to chunk (required)")
-		size          = flag.Int("size", 300, "Chunk size")
-		overlap       = flag.Int("overlap", 50, "Chunk overlap")
-		maxDepth      = flag.Int("depth", 3, "Maximum chunk depth")
-		maxConcurrent = flag.Int("concurrent", 6, "Maximum concurrent operations")
-		method        = flag.String("method", "structured", "Chunking method: structured, semantic, or both")
-		toolcall      = flag.Bool("toolcall", false, "Use toolcall for semantic chunking")
-		connector     = flag.String("connector", "openai", "Connector type: openai, custom")
-		contextSize   = flag.Int("context", 1000, "Context size")
-		help          = flag.Bool("help", false, "Show help message")
+		filePath       = flag.String("file", "", "Path to the file to chunk (required for chunking)")
+		dirPath        = flag.String("dir", "", "Path to the directory to embed (required for embedding)")
+		size           = flag.Int("size", 300, "Chunk size")
+		overlap        = flag.Int("overlap", 50, "Chunk overlap")
+		maxDepth       = flag.Int("depth", 3, "Maximum chunk depth")
+		maxConcurrent  = flag.Int("concurrent", 6, "Maximum concurrent operations for chunking (default 6), or for embedding (default 10)")
+		method         = flag.String("method", "structured", "Processing method: structured, semantic, both, or embedding")
+		toolcall       = flag.Bool("toolcall", false, "Use toolcall for semantic chunking")
+		connector      = flag.String("connector", "openai", "Connector type: openai, custom")
+		contextSize    = flag.Int("context", 1000, "Context size")
+		embeddingModel = flag.String("embedding-model", "text-embedding-3-small", "Embedding model for embedding method")
+		dimension      = flag.Int("dimension", 1536, "Embedding dimension for embedding method")
+		help           = flag.Bool("help", false, "Show help message")
 	)
 
 	flag.Parse()
@@ -38,20 +42,56 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *filePath == "" {
-		fmt.Fprintf(os.Stderr, "Error: -file flag is required\n")
-		printHelp()
-		os.Exit(1)
-	}
-
 	// Validate method parameter
 	validMethods := map[string]bool{
 		"structured": true,
 		"semantic":   true,
 		"both":       true,
+		"embedding":  true,
 	}
 	if !validMethods[*method] {
-		fmt.Fprintf(os.Stderr, "Error: Invalid method '%s'. Valid methods are: structured, semantic, both\n", *method)
+		fmt.Fprintf(os.Stderr, "Error: Invalid method '%s'. Valid methods are: structured, semantic, both, embedding\n", *method)
+		printHelp()
+		os.Exit(1)
+	}
+
+	// Handle embedding method
+	if *method == "embedding" {
+		if *dirPath == "" {
+			fmt.Fprintf(os.Stderr, "Error: -dir flag is required for embedding method\n")
+			printHelp()
+			os.Exit(1)
+		}
+
+		// Check if directory exists
+		if _, err := os.Stat(*dirPath); os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "Error: Directory %s does not exist\n", *dirPath)
+			os.Exit(1)
+		}
+
+		// Set default concurrent for embedding if not specified
+		if *maxConcurrent == 6 {
+			*maxConcurrent = 10 // Default for embedding
+		}
+
+		fmt.Printf("Processing directory: %s\n", *dirPath)
+		fmt.Printf("Embedding model: %s\n", *embeddingModel)
+		fmt.Printf("Dimension: %d\n", *dimension)
+		fmt.Printf("Concurrent: %d\n", *maxConcurrent)
+
+		ctx := context.Background()
+		if err := runEmbedding(ctx, *dirPath, *connector, *embeddingModel, *dimension, *maxConcurrent); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Embedding failed: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("\n=== Embedding completed successfully ===")
+		return
+	}
+
+	// For chunking methods, require file parameter
+	if *filePath == "" {
+		fmt.Fprintf(os.Stderr, "Error: -file flag is required for chunking methods\n")
 		printHelp()
 		os.Exit(1)
 	}
@@ -152,29 +192,44 @@ func main() {
 }
 
 func printHelp() {
-	fmt.Println("GraphRAG Chunking Tool")
-	fmt.Println("Usage: go run tools.go -file <path> [options]")
+	fmt.Println("GraphRAG Chunking & Embedding Tool")
+	fmt.Println("Usage: go run tools.go [options]")
+	fmt.Println()
+	fmt.Println("For chunking methods:")
+	fmt.Println("  go run tools.go -file <path> [options]")
+	fmt.Println()
+	fmt.Println("For embedding method:")
+	fmt.Println("  go run tools.go -method embedding -dir <path> [options]")
 	fmt.Println()
 	fmt.Println("Required flags:")
-	fmt.Println("  -file string    Path to the file to chunk")
+	fmt.Println("  -file string    Path to the file to chunk (required for chunking methods)")
+	fmt.Println("  -dir string     Path to the directory to embed (required for embedding method)")
 	fmt.Println()
 	fmt.Println("Optional flags:")
-	fmt.Println("  -size int       Chunk size (default 300)")
-	fmt.Println("  -overlap int    Chunk overlap (default 50)")
-	fmt.Println("  -depth int      Maximum chunk depth (default 3)")
-	fmt.Println("  -concurrent int Maximum concurrent operations (default 6)")
-	fmt.Println("  -method string  Chunking method: structured, semantic, or both (default structured)")
-	fmt.Println("  -toolcall       Use toolcall for semantic chunking (default false)")
-	fmt.Println("  -help          Show this help message")
+	fmt.Println("  -method string        Processing method: structured, semantic, both, or embedding (default structured)")
+	fmt.Println("  -size int             Chunk size (default 300)")
+	fmt.Println("  -overlap int          Chunk overlap (default 50)")
+	fmt.Println("  -depth int            Maximum chunk depth (default 3)")
+	fmt.Println("  -concurrent int       Maximum concurrent operations - chunking (default 6), embedding (default 10)")
+	fmt.Println("  -toolcall             Use toolcall for semantic chunking (default false)")
+	fmt.Println("  -connector string     Connector type: openai, custom (default openai)")
+	fmt.Println("  -context int          Context size (default 1000)")
+	fmt.Println("  -embedding-model string Embedding model for embedding method (default text-embedding-3-small)")
+	fmt.Println("  -dimension int        Embedding dimension for embedding method (default 1536)")
+	fmt.Println("  -help                 Show this help message")
 	fmt.Println()
 	fmt.Println("Environment variables:")
-	fmt.Println("  OPENAI_TEST_KEY  OpenAI API key for semantic chunking")
+	fmt.Println("  OPENAI_TEST_KEY       OpenAI API key for semantic chunking and embedding")
+	fmt.Println("  RAG_LLM_TEST_KEY      Custom LLM API key")
+	fmt.Println("  RAG_LLM_TEST_URL      Custom LLM API URL")
+	fmt.Println("  RAG_LLM_TEST_SMODEL   Custom LLM model name")
 	fmt.Println()
 	fmt.Println("Output:")
-	fmt.Println("  Files will be saved as: basename.chunk-index.ext")
+	fmt.Println("  Chunking files: basename.chunk-index.ext")
 	fmt.Println("  Structured chunks: <dir>/structured/")
 	fmt.Println("  Semantic chunks: <dir>/semantic/")
 	fmt.Println("  Position mapping: basename.mapping.json")
+	fmt.Println("  Embedding files: original-filename.json")
 }
 
 func setupOutputDirectories(semanticDir, structuredDir, method string) error {
@@ -498,4 +553,197 @@ func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir
 	fmt.Printf("Context Size: %d\n", options.SemanticOptions.ContextSize)
 	fmt.Printf("--------------------------------\n")
 	return nil
+}
+
+// runEmbedding processes all files in a directory and generates embeddings using batch processing
+func runEmbedding(ctx context.Context, dirPath, connectorType, model string, dimension, concurrent int) error {
+	start := time.Now()
+
+	// Create connector
+	_, err := createAICConnector(connectorType)
+	if err != nil {
+		return fmt.Errorf("failed to create connector: %w", err)
+	}
+
+	// Create embedding instance
+	embedder, err := embedding.NewOpenai(embedding.OpenaiOptions{
+		ConnectorName: getConnectorName(connectorType),
+		Concurrent:    concurrent,
+		Dimension:     dimension,
+		Model:         model,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create embedder: %w", err)
+	}
+
+	// Find all files in directory
+	files, err := findFilesInDirectory(dirPath)
+	if err != nil {
+		return fmt.Errorf("failed to find files: %w", err)
+	}
+
+	if len(files) == 0 {
+		fmt.Println("No files found in directory")
+		return nil
+	}
+
+	fmt.Printf("Found %d files to process\n", len(files))
+
+	// Read all file contents
+	fmt.Println("Reading file contents...")
+	fileContents := make([]string, 0, len(files))
+	validFiles := make([]string, 0, len(files))
+	errorCount := 0
+
+	for _, filePath := range files {
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			color.Red("  Error reading %s: %v\n", filepath.Base(filePath), err)
+			errorCount++
+			continue
+		}
+
+		text := string(content)
+		if text == "" {
+			color.Yellow("  Skipping empty file: %s\n", filepath.Base(filePath))
+			continue
+		}
+
+		fileContents = append(fileContents, text)
+		validFiles = append(validFiles, filePath)
+		fmt.Printf("  Read %s (%d chars)\n", filepath.Base(filePath), len(text))
+	}
+
+	if len(fileContents) == 0 {
+		fmt.Println("No valid files to process")
+		return nil
+	}
+
+	fmt.Printf("Processing %d valid files...\n", len(fileContents))
+
+	// Create progress callback for batch processing
+	progressCallback := func(status embedding.Status, payload embedding.Payload) {
+		switch status {
+		case embedding.StatusStarting:
+			color.Cyan("Starting batch embedding: %s\n", payload.Message)
+		case embedding.StatusProcessing:
+			if payload.DocumentIndex != nil {
+				color.Yellow("Processing document %d/%d: %s\n",
+					payload.Current, payload.Total, filepath.Base(validFiles[*payload.DocumentIndex]))
+			} else {
+				color.Yellow("Processing: %s (%d/%d)\n", payload.Message, payload.Current, payload.Total)
+			}
+		case embedding.StatusCompleted:
+			color.Green("Batch embedding completed: %s\n", payload.Message)
+		case embedding.StatusError:
+			if payload.DocumentIndex != nil {
+				color.Red("Error processing document %d: %s\n", *payload.DocumentIndex, payload.Message)
+			} else {
+				color.Red("Error: %s\n", payload.Message)
+			}
+		}
+	}
+
+	// Batch embed all documents
+	embeddings, err := embedder.EmbedDocuments(ctx, fileContents, progressCallback)
+	if err != nil {
+		return fmt.Errorf("failed to generate embeddings: %w", err)
+	}
+
+	if len(embeddings) != len(validFiles) {
+		return fmt.Errorf("embedding count mismatch: got %d embeddings for %d files", len(embeddings), len(validFiles))
+	}
+
+	// Save embeddings to files
+	fmt.Println("Saving embedding files...")
+	for i, filePath := range validFiles {
+		if err := saveEmbeddingFile(filePath, fileContents[i], embeddings[i], embedder); err != nil {
+			color.Red("  Error saving %s: %v\n", filepath.Base(filePath), err)
+			errorCount++
+		} else {
+			color.Green("  Saved %s -> %s.json\n", filepath.Base(filePath), filepath.Base(filePath))
+		}
+	}
+
+	cost := time.Since(start)
+	fmt.Printf("\n--------------------------------\n")
+	fmt.Printf("Embedding completed: %d files processed, %d errors in %s\n", len(validFiles), errorCount, cost.Round(time.Millisecond))
+	fmt.Printf("--------------------------------\n")
+	fmt.Printf("Directory: %s\n", dirPath)
+	fmt.Printf("Model: %s\n", model)
+	fmt.Printf("Dimension: %d\n", dimension)
+	fmt.Printf("Concurrent: %d (used by EmbedDocuments internally)\n", concurrent)
+	fmt.Printf("Time Cost: %s\n", cost)
+	fmt.Printf("--------------------------------\n")
+
+	return nil
+}
+
+// findFilesInDirectory recursively finds all files in a directory
+func findFilesInDirectory(dirPath string) ([]string, error) {
+	var files []string
+
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip directories and hidden files
+		if info.IsDir() || strings.HasPrefix(info.Name(), ".") {
+			return nil
+		}
+
+		// Skip JSON files (to avoid processing already generated embedding files)
+		if strings.HasSuffix(info.Name(), ".json") {
+			return nil
+		}
+
+		files = append(files, path)
+		return nil
+	})
+
+	return files, err
+}
+
+// saveEmbeddingFile saves embedding data to a JSON file
+func saveEmbeddingFile(filePath, text string, embedding []float64, embedder *embedding.Openai) error {
+	// Prepare embedding data
+	embeddingData := map[string]interface{}{
+		"file":         filepath.Base(filePath),
+		"full_path":    filePath,
+		"model":        embedder.GetModel(),
+		"dimension":    embedder.GetDimension(),
+		"text_length":  len(text),
+		"embedding":    embedding,
+		"generated_at": time.Now().Format(time.RFC3339),
+	}
+
+	// Generate output filename
+	dir := filepath.Dir(filePath)
+	filename := filepath.Base(filePath)
+	outputFile := filepath.Join(dir, filename+".json")
+
+	// Write embedding to JSON file
+	jsonData, err := json.MarshalIndent(embeddingData, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal embedding data: %w", err)
+	}
+
+	if err := os.WriteFile(outputFile, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write embedding file: %w", err)
+	}
+
+	return nil
+}
+
+// getConnectorName returns the appropriate connector name based on type
+func getConnectorName(connectorType string) string {
+	switch connectorType {
+	case "openai":
+		return "openai-chunking"
+	case "custom":
+		return "openai-chunking"
+	default:
+		return "openai-chunking"
+	}
 }
