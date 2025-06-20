@@ -485,6 +485,11 @@ type VectorStoreConfig struct {
 	NumLists  int `json:"num_lists,omitempty"`  // Number of clusters (IVF)
 	NumProbes int `json:"num_probes,omitempty"` // Number of clusters to search (IVF)
 
+	// Sparse Vector Configuration (for hybrid search)
+	EnableSparseVectors bool   `json:"enable_sparse_vectors,omitempty"` // Enable sparse vector support for hybrid retrieval
+	DenseVectorName     string `json:"dense_vector_name,omitempty"`     // Named vector for dense vectors (default: "dense")
+	SparseVectorName    string `json:"sparse_vector_name,omitempty"`    // Named vector for sparse vectors (default: "sparse")
+
 	// Storage Configuration
 	CollectionName string `json:"collection_name"`        // Collection/Table name
 	PersistPath    string `json:"persist_path,omitempty"` // Path for persistent storage
@@ -510,6 +515,25 @@ func (c *VectorStoreConfig) Validate() error {
 	if c.CollectionName == "" {
 		return fmt.Errorf("collection name cannot be empty")
 	}
+
+	// Validate sparse vector configuration
+	if c.EnableSparseVectors {
+		// Check for naming conflicts
+		denseVectorName := c.DenseVectorName
+		if denseVectorName == "" {
+			denseVectorName = "dense"
+		}
+
+		sparseVectorName := c.SparseVectorName
+		if sparseVectorName == "" {
+			sparseVectorName = "sparse"
+		}
+
+		if denseVectorName == sparseVectorName {
+			return fmt.Errorf("dense and sparse vector names cannot be the same: %s", denseVectorName)
+		}
+	}
+
 	return nil
 }
 
@@ -520,6 +544,9 @@ type AddDocumentOptions struct {
 	BatchSize      int         `json:"batch_size,omitempty"` // Batch size for bulk insert
 	Timeout        int         `json:"timeout,omitempty"`    // Operation timeout in seconds
 	Upsert         bool        `json:"upsert,omitempty"`     // If true, update existing documents with same ID
+
+	// Named vector support (for collections with multiple vectors)
+	VectorUsing string `json:"vector_using,omitempty"` // Named vector to use for document vectors (e.g., "dense", "sparse")
 }
 
 // SearchOptions represents options for similarity search
@@ -554,6 +581,9 @@ type SearchOptions struct {
 	SortBy          []string `json:"sort_by,omitempty"`          // Secondary sorting criteria
 	FacetFields     []string `json:"facet_fields,omitempty"`     // Fields for faceted search
 	HighlightFields []string `json:"highlight_fields,omitempty"` // Fields to highlight in results
+
+	// Named vector support (for collections with multiple vectors)
+	VectorUsing string `json:"vector_using,omitempty"` // Named vector to use for search (e.g., "dense", "sparse")
 }
 
 // MMRSearchOptions represents options for maximal marginal relevance search
@@ -587,6 +617,9 @@ type MMRSearchOptions struct {
 	MinScore    float64  `json:"min_score,omitempty"`    // Minimum similarity score to include
 	MaxResults  int      `json:"max_results,omitempty"`  // Maximum total results to consider
 	FacetFields []string `json:"facet_fields,omitempty"` // Fields for faceted search
+
+	// Named vector support (for collections with multiple vectors)
+	VectorUsing string `json:"vector_using,omitempty"` // Named vector to use for search (e.g., "dense", "sparse")
 }
 
 // ScoreThresholdOptions represents options for similarity search with score threshold
@@ -620,13 +653,16 @@ type ScoreThresholdOptions struct {
 	SortBy          []string `json:"sort_by,omitempty"`          // Secondary sorting criteria
 	FacetFields     []string `json:"facet_fields,omitempty"`     // Fields for faceted search
 	HighlightFields []string `json:"highlight_fields,omitempty"` // Fields to highlight in results
+
+	// Named vector support (for collections with multiple vectors)
+	VectorUsing string `json:"vector_using,omitempty"` // Named vector to use for search (e.g., "dense", "sparse")
 }
 
-// HybridSearchOptions represents options for hybrid (vector + keyword) search
+// HybridSearchOptions represents options for hybrid (vector + keyword) search using Qdrant's native Query API
 type HybridSearchOptions struct {
 	CollectionName string                 `json:"collection_name"`
-	QueryVector    []float64              `json:"query_vector,omitempty"` // Vector query (optional if only using text search)
-	QueryText      string                 `json:"query_text,omitempty"`   // Text query for keyword search (optional if only using vector search)
+	QueryVector    []float64              `json:"query_vector,omitempty"` // Dense vector query (optional if only using sparse vector search)
+	QuerySparse    *SparseVector          `json:"query_sparse,omitempty"` // Sparse vector query (e.g., from BM25, TF-IDF)
 	K              int                    `json:"k,omitempty"`            // Number of documents to return (ignored if using pagination)
 	Filter         map[string]interface{} `json:"filter,omitempty"`       // Metadata filter
 
@@ -642,9 +678,14 @@ type HybridSearchOptions struct {
 	Fields          []string `json:"fields,omitempty"` // Specific fields to retrieve
 	IncludeTotal    bool     `json:"include_total"`    // Whether to calculate total count (expensive for pagination)
 
-	// Hybrid search weights
-	VectorWeight  float64 `json:"vector_weight"`  // Weight for vector similarity (0-1)
-	KeywordWeight float64 `json:"keyword_weight"` // Weight for keyword relevance (0-1)
+	// Hybrid search fusion configuration
+	FusionType  FusionType `json:"fusion_type,omitempty"`  // Fusion algorithm: "rrf" (Reciprocal Rank Fusion) or "dbsf" (Distribution-Based Score Fusion)
+	VectorUsing string     `json:"vector_using,omitempty"` // Named vector for dense vectors (e.g., "dense")
+	SparseUsing string     `json:"sparse_using,omitempty"` // Named vector for sparse vectors (e.g., "sparse")
+
+	// Legacy weight support (will be converted to appropriate fusion)
+	VectorWeight  float64 `json:"vector_weight,omitempty"`  // Weight for vector similarity (0-1) - for backward compatibility
+	KeywordWeight float64 `json:"keyword_weight,omitempty"` // Weight for keyword relevance (0-1) - for backward compatibility
 
 	// Vector search parameters
 	EfSearch    int  `json:"ef_search,omitempty"`   // Dynamic search parameter (HNSW)
@@ -653,17 +694,43 @@ type HybridSearchOptions struct {
 	Approximate bool `json:"approximate,omitempty"` // Whether to use approximate search
 	Timeout     int  `json:"timeout,omitempty"`     // Search timeout in milliseconds
 
-	// Keyword search parameters
-	KeywordFields []string           `json:"keyword_fields,omitempty"` // Fields to search for keywords
-	FuzzyMatch    bool               `json:"fuzzy_match,omitempty"`    // Enable fuzzy keyword matching
-	BoostFields   map[string]float64 `json:"boost_fields,omitempty"`   // Field -> boost factor mapping
-
 	// Search engine specific options
 	MinScore        float64  `json:"min_score,omitempty"`        // Minimum combined score
 	MaxResults      int      `json:"max_results,omitempty"`      // Maximum total results to consider (default: 1000)
 	SortBy          []string `json:"sort_by,omitempty"`          // Secondary sorting criteria
 	FacetFields     []string `json:"facet_fields,omitempty"`     // Fields for faceted search
 	HighlightFields []string `json:"highlight_fields,omitempty"` // Fields to highlight in results
+}
+
+// SparseVector represents a sparse vector with indices and values
+type SparseVector struct {
+	Indices []uint32  `json:"indices"` // Non-zero indices
+	Values  []float32 `json:"values"`  // Non-zero values
+}
+
+// FusionType represents the type of fusion algorithm to use
+type FusionType string
+
+const (
+	// FusionRRF represents Reciprocal Rank Fusion
+	FusionRRF FusionType = "rrf"
+	// FusionDBSF represents Distribution-Based Score Fusion
+	FusionDBSF FusionType = "dbsf"
+)
+
+// String returns the string representation of the fusion type
+func (ft FusionType) String() string {
+	return string(ft)
+}
+
+// IsValid checks if the fusion type is valid
+func (ft FusionType) IsValid() bool {
+	switch ft {
+	case FusionRRF, FusionDBSF:
+		return true
+	default:
+		return false
+	}
 }
 
 // GetType returns the type of the search options

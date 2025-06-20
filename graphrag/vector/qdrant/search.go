@@ -84,6 +84,15 @@ func (s *Store) SearchSimilar(ctx context.Context, opts *types.SearchOptions) (*
 		WithVectors:    qdrant.NewWithVectors(opts.IncludeVector),
 	}
 
+	// Check if this collection uses named vectors and specify the vector name
+	if s.isNamedVectorCollection(opts.CollectionName) {
+		vectorName := opts.VectorUsing
+		if vectorName == "" {
+			vectorName = "dense" // Default to dense vector
+		}
+		queryReq.Using = qdrant.PtrOf(vectorName)
+	}
+
 	// Apply minimum score filter
 	if opts.MinScore > 0 {
 		scoreThreshold := float32(opts.MinScore)
@@ -151,7 +160,7 @@ func (s *Store) SearchSimilar(ctx context.Context, opts *types.SearchOptions) (*
 	// Convert points to documents
 	for i := startIdx; i < endIdx; i++ {
 		point := points[i]
-		doc := convertScoredPointToSearchDocument(point, opts.IncludeVector, opts.IncludeMetadata, opts.IncludeContent, opts.Fields)
+		doc := convertScoredPointToSearchDocument(point, opts.IncludeVector, opts.IncludeMetadata, opts.IncludeContent, opts.Fields, opts.VectorUsing)
 
 		documents = append(documents, &types.SearchResultItem{
 			Document: *doc,
@@ -209,7 +218,7 @@ func (s *Store) SearchSimilar(ctx context.Context, opts *types.SearchOptions) (*
 }
 
 // convertScoredPointToSearchDocument converts a Qdrant ScoredPoint to a Document for search results
-func convertScoredPointToSearchDocument(point *qdrant.ScoredPoint, includeVector, includeMetadata, includeContent bool, fields []string) *types.Document {
+func convertScoredPointToSearchDocument(point *qdrant.ScoredPoint, includeVector, includeMetadata, includeContent bool, fields []string, vectorUsing string) *types.Document {
 	doc := &types.Document{}
 
 	// Extract ID from point.Id first, then try payload as fallback
@@ -275,10 +284,62 @@ func convertScoredPointToSearchDocument(point *qdrant.ScoredPoint, includeVector
 
 	// Extract vector if requested
 	if includeVector && point.Vectors != nil {
-		if vectorData := point.Vectors.GetVector(); vectorData != nil {
-			doc.Vector = make([]float64, len(vectorData.Data))
-			for i, v := range vectorData.Data {
-				doc.Vector[i] = float64(v)
+		// Handle named vectors (for collections with multiple vectors)
+		if namedVectors := point.Vectors.GetVectors(); namedVectors != nil {
+			// For named vectors, try to get the specified vector name
+			// or use the first available vector as fallback
+			var vectorOutput *qdrant.VectorOutput
+
+			// Try to get the specified vector name first
+			if vectorUsing != "" {
+				if specifiedVector, exists := namedVectors.GetVectors()[vectorUsing]; exists {
+					vectorOutput = specifiedVector
+				}
+			}
+
+			// If no specified vector or not found, try "dense" as default
+			if vectorOutput == nil {
+				if denseVector, exists := namedVectors.GetVectors()["dense"]; exists {
+					vectorOutput = denseVector
+				}
+			}
+
+			// If still no vector, get the first available vector
+			if vectorOutput == nil {
+				for _, vector := range namedVectors.GetVectors() {
+					vectorOutput = vector
+					break
+				}
+			}
+
+			if vectorOutput != nil {
+				// Handle different vector types
+				if denseVector := vectorOutput.GetDense(); denseVector != nil {
+					doc.Vector = make([]float64, len(denseVector.Data))
+					for i, v := range denseVector.Data {
+						doc.Vector[i] = float64(v)
+					}
+				} else if len(vectorOutput.GetData()) > 0 {
+					// Fallback to deprecated Data field
+					doc.Vector = make([]float64, len(vectorOutput.GetData()))
+					for i, v := range vectorOutput.GetData() {
+						doc.Vector[i] = float64(v)
+					}
+				}
+			}
+		} else if vectorOutput := point.Vectors.GetVector(); vectorOutput != nil {
+			// Handle traditional single vector
+			if denseVector := vectorOutput.GetDense(); denseVector != nil {
+				doc.Vector = make([]float64, len(denseVector.Data))
+				for i, v := range denseVector.Data {
+					doc.Vector[i] = float64(v)
+				}
+			} else if len(vectorOutput.GetData()) > 0 {
+				// Fallback to deprecated Data field
+				doc.Vector = make([]float64, len(vectorOutput.GetData()))
+				for i, v := range vectorOutput.GetData() {
+					doc.Vector[i] = float64(v)
+				}
 			}
 		}
 	}
@@ -344,6 +405,15 @@ func (s *Store) SearchMMR(ctx context.Context, opts *types.MMRSearchOptions) (*t
 		WithVectors:    qdrant.NewWithVectors(true), // Need vectors for MMR calculation
 	}
 
+	// Check if this collection uses named vectors and specify the vector name
+	if s.isNamedVectorCollection(opts.CollectionName) {
+		vectorName := opts.VectorUsing
+		if vectorName == "" {
+			vectorName = "dense" // Default to dense vector
+		}
+		queryReq.Using = qdrant.PtrOf(vectorName)
+	}
+
 	// Apply metadata filter
 	if opts.Filter != nil {
 		filter, err := convertFilterToQdrant(opts.Filter)
@@ -406,9 +476,19 @@ func (s *Store) SearchMMR(ctx context.Context, opts *types.MMRSearchOptions) (*t
 	var documents []*types.SearchResultItem
 	var maxScore, minScore float64
 
+	// Calculate maxScore and minScore from selectedPoints (MMR may reorder)
 	if len(selectedPoints) > 0 {
 		maxScore = float64(selectedPoints[0].Score)
-		minScore = float64(selectedPoints[len(selectedPoints)-1].Score)
+		minScore = float64(selectedPoints[0].Score)
+		for _, point := range selectedPoints {
+			score := float64(point.Score)
+			if score > maxScore {
+				maxScore = score
+			}
+			if score < minScore {
+				minScore = score
+			}
+		}
 	}
 
 	// Handle pagination for selected results
@@ -431,7 +511,7 @@ func (s *Store) SearchMMR(ctx context.Context, opts *types.MMRSearchOptions) (*t
 	// Convert points to documents
 	for i := startIdx; i < endIdx; i++ {
 		point := selectedPoints[i]
-		doc := convertScoredPointToSearchDocument(point, opts.IncludeVector, opts.IncludeMetadata, opts.IncludeContent, opts.Fields)
+		doc := convertScoredPointToSearchDocument(point, opts.IncludeVector, opts.IncludeMetadata, opts.IncludeContent, opts.Fields, opts.VectorUsing)
 
 		documents = append(documents, &types.SearchResultItem{
 			Document: *doc,
@@ -557,6 +637,92 @@ func cosineSimilarity(a, b []float32) float64 {
 	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
+// getAvailableVectorNames returns the available vector names for a collection
+func (s *Store) getAvailableVectorNames(ctx context.Context, collectionName string) ([]string, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if !s.connected {
+		return nil, fmt.Errorf("not connected to Qdrant server")
+	}
+
+	info, err := s.client.GetCollectionInfo(ctx, collectionName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get collection info: %w", err)
+	}
+
+	var vectorNames []string
+
+	// Check if the collection has named vectors
+	if info.Config != nil && info.Config.Params != nil {
+		if vectorsConfig := info.Config.Params.VectorsConfig; vectorsConfig != nil {
+			switch vectorsConfig.Config.(type) {
+			case *qdrant.VectorsConfig_ParamsMap:
+				// Named vectors configuration
+				if paramsMap := vectorsConfig.GetParamsMap(); paramsMap != nil {
+					for name := range paramsMap.Map {
+						vectorNames = append(vectorNames, name)
+					}
+				}
+			case *qdrant.VectorsConfig_Params:
+				// Single vector configuration - no named vectors
+				return []string{}, nil
+			}
+		}
+	}
+
+	return vectorNames, nil
+}
+
+// validateAndGetVectorName validates the vector name and returns a valid one for the collection
+func (s *Store) validateAndGetVectorName(ctx context.Context, collectionName, requestedVectorName string) (string, error) {
+	// Check if this collection uses named vectors
+	if !s.isNamedVectorCollection(collectionName) {
+		// For non-named vector collections, ignore the vector name
+		return "", nil
+	}
+
+	// Get available vector names
+	availableNames, err := s.getAvailableVectorNames(ctx, collectionName)
+	if err != nil {
+		return "", err
+	}
+
+	if len(availableNames) == 0 {
+		// No named vectors in this collection
+		return "", nil
+	}
+
+	// If no specific vector requested, use default "dense"
+	if requestedVectorName == "" {
+		// Check if "dense" exists
+		for _, name := range availableNames {
+			if name == "dense" {
+				return "dense", nil
+			}
+		}
+		// If "dense" doesn't exist, use the first available vector
+		return availableNames[0], nil
+	}
+
+	// Check if the requested vector name exists
+	for _, name := range availableNames {
+		if name == requestedVectorName {
+			return requestedVectorName, nil
+		}
+	}
+
+	// Requested vector doesn't exist, fallback to "dense" or first available
+	for _, name := range availableNames {
+		if name == "dense" {
+			return "dense", nil
+		}
+	}
+
+	// If "dense" doesn't exist, use the first available vector
+	return availableNames[0], nil
+}
+
 // SearchWithScoreThreshold performs similarity search with score threshold
 func (s *Store) SearchWithScoreThreshold(ctx context.Context, opts *types.ScoreThresholdOptions) (*types.SearchResult, error) {
 	if opts == nil {
@@ -628,6 +794,17 @@ func (s *Store) SearchWithScoreThreshold(ctx context.Context, opts *types.ScoreT
 		WithVectors:    qdrant.NewWithVectors(opts.IncludeVector),
 	}
 
+	// Check if this collection uses named vectors and specify the vector name
+	if s.isNamedVectorCollection(opts.CollectionName) {
+		vectorName, err := s.validateAndGetVectorName(searchCtx, opts.CollectionName, opts.VectorUsing)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate vector name: %w", err)
+		}
+		if vectorName != "" {
+			queryReq.Using = qdrant.PtrOf(vectorName)
+		}
+	}
+
 	// Apply score threshold - this is the key difference from regular similarity search
 	scoreThreshold := float32(opts.ScoreThreshold)
 	queryReq.ScoreThreshold = &scoreThreshold
@@ -692,7 +869,7 @@ func (s *Store) SearchWithScoreThreshold(ctx context.Context, opts *types.ScoreT
 	// Convert points to documents
 	for i := startIdx; i < endIdx; i++ {
 		point := points[i]
-		doc := convertScoredPointToSearchDocument(point, opts.IncludeVector, opts.IncludeMetadata, opts.IncludeContent, opts.Fields)
+		doc := convertScoredPointToSearchDocument(point, opts.IncludeVector, opts.IncludeMetadata, opts.IncludeContent, opts.Fields, opts.VectorUsing)
 
 		documents = append(documents, &types.SearchResultItem{
 			Document: *doc,
@@ -746,13 +923,8 @@ func (s *Store) SearchWithScoreThreshold(ctx context.Context, opts *types.ScoreT
 	return result, nil
 }
 
-// SearchHybrid performs hybrid search (vector + keyword)
+// SearchHybrid performs hybrid search using Qdrant's native Query API
 func (s *Store) SearchHybrid(ctx context.Context, opts *types.HybridSearchOptions) (*types.SearchResult, error) {
-	// Note: Qdrant doesn't natively support hybrid search combining vector and keyword search
-	// This is a simplified implementation that performs vector search only
-	// For true hybrid search, you would need to implement keyword search separately
-	// and combine results using the specified weights
-
 	if opts == nil {
 		return nil, fmt.Errorf("hybrid search options cannot be nil")
 	}
@@ -761,49 +933,244 @@ func (s *Store) SearchHybrid(ctx context.Context, opts *types.HybridSearchOption
 		return nil, fmt.Errorf("collection name is required")
 	}
 
-	// For now, if no vector query is provided, return an error
-	// In a full implementation, you could perform keyword-only search
-	if len(opts.QueryVector) == 0 {
-		return nil, fmt.Errorf("query vector is required for Qdrant hybrid search")
+	// Validate that at least one search method is provided
+	hasVectorQuery := len(opts.QueryVector) > 0
+	hasSparseQuery := opts.QuerySparse != nil && len(opts.QuerySparse.Indices) > 0
+
+	if !hasVectorQuery && !hasSparseQuery {
+		return nil, fmt.Errorf("at least one of QueryVector or QuerySparse must be provided")
 	}
 
-	// Convert to similarity search options (simplified approach)
-	searchOpts := &types.SearchOptions{
-		CollectionName:  opts.CollectionName,
-		QueryVector:     opts.QueryVector,
-		K:               opts.K,
-		Filter:          opts.Filter,
-		Page:            opts.Page,
-		PageSize:        opts.PageSize,
-		Cursor:          opts.Cursor,
-		IncludeVector:   opts.IncludeVector,
-		IncludeMetadata: opts.IncludeMetadata,
-		IncludeContent:  opts.IncludeContent,
-		Fields:          opts.Fields,
-		IncludeTotal:    opts.IncludeTotal,
-		EfSearch:        opts.EfSearch,
-		NumProbes:       opts.NumProbes,
-		Rescore:         opts.Rescore,
-		Approximate:     opts.Approximate,
-		Timeout:         opts.Timeout,
-		MinScore:        opts.MinScore,
-		MaxResults:      opts.MaxResults,
-		SortBy:          opts.SortBy,
-		FacetFields:     opts.FacetFields,
-		HighlightFields: opts.HighlightFields,
+	// Only hold the lock briefly to check connection status and get client
+	s.mu.RLock()
+	if !s.connected {
+		s.mu.RUnlock()
+		return nil, fmt.Errorf("not connected to Qdrant server")
+	}
+	client := s.client
+	s.mu.RUnlock()
+
+	// Start measuring query time
+	startTime := time.Now()
+
+	// Handle timeout
+	searchCtx := ctx
+	if opts.Timeout > 0 {
+		var cancel context.CancelFunc
+		searchCtx, cancel = context.WithTimeout(ctx, time.Duration(opts.Timeout)*time.Millisecond)
+		defer cancel()
 	}
 
-	// Perform vector similarity search
-	result, err := s.SearchSimilar(ctx, searchOpts)
+	// Determine the limit for the search
+	limit := opts.K
+	if opts.PageSize > 0 {
+		if opts.Page > 0 {
+			limit = opts.PageSize + (opts.Page-1)*opts.PageSize
+		} else {
+			limit = opts.PageSize
+		}
+	}
+	if limit <= 0 {
+		limit = 10 // Default limit
+	}
+
+	// Apply max results limit
+	maxResults := opts.MaxResults
+	if maxResults <= 0 {
+		maxResults = 1000 // Default max results
+	}
+	if limit > maxResults {
+		limit = maxResults
+	}
+
+	// Build prefetch queries
+	var prefetches []*qdrant.PrefetchQuery
+	prefetchLimit := uint64(limit * 2) // Fetch more for better fusion
+
+	// Add vector prefetch if vector query is provided
+	if hasVectorQuery {
+		queryVector := make([]float32, len(opts.QueryVector))
+		for i, v := range opts.QueryVector {
+			queryVector[i] = float32(v)
+		}
+
+		vectorPrefetch := &qdrant.PrefetchQuery{
+			Query: qdrant.NewQueryDense(queryVector),
+			Limit: qdrant.PtrOf(prefetchLimit),
+		}
+
+		// Set vector using if specified
+		if opts.VectorUsing != "" {
+			vectorPrefetch.Using = qdrant.PtrOf(opts.VectorUsing)
+		}
+
+		prefetches = append(prefetches, vectorPrefetch)
+	}
+
+	// Add sparse prefetch if sparse query is provided
+	if hasSparseQuery {
+		sparsePrefetch := &qdrant.PrefetchQuery{
+			Query: qdrant.NewQuerySparse(opts.QuerySparse.Indices, opts.QuerySparse.Values),
+			Limit: qdrant.PtrOf(prefetchLimit),
+		}
+
+		// Set sparse using if specified
+		if opts.SparseUsing != "" {
+			sparsePrefetch.Using = qdrant.PtrOf(opts.SparseUsing)
+		}
+
+		prefetches = append(prefetches, sparsePrefetch)
+	}
+
+	// Determine fusion type
+	fusionType := opts.FusionType
+	if fusionType == "" {
+		// Default fusion based on legacy weights or default to RRF
+		if opts.VectorWeight > 0 || opts.KeywordWeight > 0 {
+			// Legacy weight-based approach, use RRF for now
+			fusionType = types.FusionRRF
+		} else {
+			fusionType = types.FusionRRF // Default
+		}
+	}
+
+	// Convert fusion type to Qdrant fusion
+	var qdrantFusion qdrant.Fusion
+	switch fusionType {
+	case types.FusionRRF:
+		qdrantFusion = qdrant.Fusion_RRF
+	case types.FusionDBSF:
+		qdrantFusion = qdrant.Fusion_DBSF
+	default:
+		qdrantFusion = qdrant.Fusion_RRF // Default fallback
+	}
+
+	// Build main query request
+	queryReq := &qdrant.QueryPoints{
+		CollectionName: opts.CollectionName,
+		Prefetch:       prefetches,
+		Query:          qdrant.NewQueryFusion(qdrantFusion),
+		Limit:          qdrant.PtrOf(uint64(limit)),
+		WithPayload:    qdrant.NewWithPayload(opts.IncludeMetadata || opts.IncludeContent),
+		WithVectors:    qdrant.NewWithVectors(opts.IncludeVector),
+	}
+
+	// Apply metadata filter
+	if opts.Filter != nil {
+		filter, err := convertFilterToQdrant(opts.Filter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert filter: %w", err)
+		}
+		queryReq.Filter = filter
+	}
+
+	// Apply search parameters
+	if opts.EfSearch > 0 || opts.NumProbes > 0 || opts.Approximate {
+		queryReq.Params = &qdrant.SearchParams{}
+
+		if opts.EfSearch > 0 {
+			queryReq.Params.HnswEf = qdrant.PtrOf(uint64(opts.EfSearch))
+		}
+
+		if opts.Approximate {
+			queryReq.Params.Exact = qdrant.PtrOf(false)
+		}
+	}
+
+	// Apply minimum score filter
+	if opts.MinScore > 0 {
+		scoreThreshold := float32(opts.MinScore)
+		queryReq.ScoreThreshold = &scoreThreshold
+	}
+
+	// Perform the hybrid search
+	points, err := client.Query(searchCtx, queryReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform hybrid search: %w", err)
 	}
 
-	// TODO: Implement actual hybrid functionality:
-	// 1. Perform keyword search if QueryText is provided
-	// 2. Combine vector and keyword results using VectorWeight and KeywordWeight
-	// 3. Apply boost fields for keyword search
-	// 4. Handle fuzzy matching for keywords
+	// Calculate query time
+	queryTime := time.Since(startTime).Milliseconds()
+
+	// Convert results to SearchResultItems
+	var documents []*types.SearchResultItem
+	var maxScore, minScore float64
+
+	if len(points) > 0 {
+		maxScore = float64(points[0].Score)
+		minScore = float64(points[len(points)-1].Score)
+	}
+
+	// Handle pagination
+	startIdx := 0
+	endIdx := len(points)
+
+	if opts.Page > 0 && opts.PageSize > 0 {
+		offset := (opts.Page - 1) * opts.PageSize
+		startIdx = offset
+		endIdx = offset + opts.PageSize
+
+		if startIdx >= len(points) {
+			startIdx = len(points)
+			endIdx = len(points)
+		} else if endIdx > len(points) {
+			endIdx = len(points)
+		}
+	}
+
+	// Convert points to documents
+	for i := startIdx; i < endIdx; i++ {
+		point := points[i]
+		doc := convertScoredPointToSearchDocument(point, opts.IncludeVector, opts.IncludeMetadata, opts.IncludeContent, opts.Fields, opts.VectorUsing)
+
+		documents = append(documents, &types.SearchResultItem{
+			Document: *doc,
+			Score:    float64(point.Score),
+		})
+	}
+
+	// Build search result
+	result := &types.SearchResult{
+		Documents: documents,
+		QueryTime: queryTime,
+		MaxScore:  maxScore,
+		MinScore:  minScore,
+	}
+
+	// Add pagination metadata if requested
+	if opts.Page > 0 && opts.PageSize > 0 {
+		result.Page = opts.Page
+		result.PageSize = opts.PageSize
+		result.HasNext = (opts.Page * opts.PageSize) < len(points)
+		result.HasPrevious = opts.Page > 1
+
+		if result.HasNext {
+			result.NextPage = opts.Page + 1
+		}
+		if result.HasPrevious {
+			result.PreviousPage = opts.Page - 1
+		}
+
+		if opts.IncludeTotal {
+			result.Total = int64(len(points))
+			if len(points) >= maxResults {
+				// If we hit the max results limit, we need to do a separate count query
+				countReq := &qdrant.CountPoints{
+					CollectionName: opts.CollectionName,
+					Filter:         queryReq.Filter,
+					Exact:          qdrant.PtrOf(false), // Use approximate count for performance
+				}
+
+				if count, err := client.Count(searchCtx, countReq); err == nil {
+					result.Total = int64(count)
+				}
+			}
+
+			if result.Total > 0 {
+				result.TotalPages = int((result.Total + int64(opts.PageSize) - 1) / int64(opts.PageSize))
+			}
+		}
+	}
 
 	return result, nil
 }

@@ -32,10 +32,47 @@ func (s *Store) CreateCollection(ctx context.Context, config *types.VectorStoreC
 		distance = qdrant.Distance_Cosine
 	}
 
-	// Create vectors config
-	vectorsConfig := &qdrant.VectorParams{
-		Size:     uint64(config.Dimension),
-		Distance: distance,
+	var vectorsConfig *qdrant.VectorsConfig
+	var sparseVectorsConfig *qdrant.SparseVectorConfig
+
+	if config.EnableSparseVectors {
+		// Create named vectors for hybrid search
+		denseVectorName := config.DenseVectorName
+		if denseVectorName == "" {
+			denseVectorName = "dense"
+		}
+
+		sparseVectorName := config.SparseVectorName
+		if sparseVectorName == "" {
+			sparseVectorName = "sparse"
+		}
+
+		// Create dense vector configuration with named vectors
+		denseVectorParams := &qdrant.VectorParams{
+			Size:     uint64(config.Dimension),
+			Distance: distance,
+		}
+
+		namedVectors := map[string]*qdrant.VectorParams{
+			denseVectorName: denseVectorParams,
+		}
+
+		vectorsConfig = qdrant.NewVectorsConfigMap(namedVectors)
+
+		// Create sparse vector configuration
+		sparseVectorParams := &qdrant.SparseVectorParams{}
+		namedSparseVectors := map[string]*qdrant.SparseVectorParams{
+			sparseVectorName: sparseVectorParams,
+		}
+
+		sparseVectorsConfig = qdrant.NewSparseVectorsConfig(namedSparseVectors)
+	} else {
+		// Create standard single vector configuration
+		vectorParams := &qdrant.VectorParams{
+			Size:     uint64(config.Dimension),
+			Distance: distance,
+		}
+		vectorsConfig = qdrant.NewVectorsConfig(vectorParams)
 	}
 
 	// Create HNSW config if specified
@@ -52,9 +89,10 @@ func (s *Store) CreateCollection(ctx context.Context, config *types.VectorStoreC
 
 	// Create collection request
 	req := &qdrant.CreateCollection{
-		CollectionName: config.CollectionName,
-		VectorsConfig:  qdrant.NewVectorsConfig(vectorsConfig),
-		HnswConfig:     hnswConfig,
+		CollectionName:      config.CollectionName,
+		VectorsConfig:       vectorsConfig,
+		SparseVectorsConfig: sparseVectorsConfig,
+		HnswConfig:          hnswConfig,
 	}
 
 	// Execute create collection
