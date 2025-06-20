@@ -64,7 +64,7 @@ jobs:
           - 6334:6334 # gRPC
 
       fastembed:
-        image: yaoapp/fastembed:latest-arm64
+        image: yaoapp/fastembed:latest-amd64
         env:
           FASTEMBED_PASSWORD: Yao@2026
         ports:
