@@ -43,21 +43,32 @@ env:
   RAG_LLM_TEST_URL: ${{ secrets.RAG_LLM_TEST_URL }}
   RAG_LLM_TEST_KEY: ${{ secrets.RAG_LLM_TEST_KEY }}
   RAG_LLM_TEST_SMODEL: ${{ secrets.RAG_LLM_TEST_SMODEL }}
-  
+
   QDRANT_TEST_HOST: "127.0.0.1"
   QDRANT_TEST_PORT: "6334"
   QDRANT_TEST_HTTP_PORT: "6333"
 
+  FASTEMBED_TEST_HOST: "127.0.0.1:6001"
+  FASTEMBED_TEST_KEY: "Yao@2026"
+  FASTEMBED_TEST_MODEL: "BAAI/bge-small-en-v1.5"
+
 jobs:
   unit-test:
     runs-on: ubuntu-latest
-    
+
     services:
       qdrant:
         image: qdrant/qdrant:latest
         ports:
-          - 6333:6333  # HTTP API
-          - 6334:6334  # gRPC
+          - 6333:6333 # HTTP API
+          - 6334:6334 # gRPC
+
+      fastembed:
+        image: yaoapp/fastembed:latest-amd64
+        env:
+          FASTEMBED_PASSWORD: Yao@2026
+        ports:
+          - 6001:8000
 
     strategy:
       matrix:

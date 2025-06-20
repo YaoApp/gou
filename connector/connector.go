@@ -6,6 +6,7 @@ import (
 
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector/database"
+	"github.com/yaoapp/gou/connector/fastembed"
 	"github.com/yaoapp/gou/connector/moapi"
 	mongo "github.com/yaoapp/gou/connector/mongo"
 	"github.com/yaoapp/gou/connector/openai"
@@ -43,7 +44,7 @@ func Load(file string, id string) (Connector, error) {
 	}
 
 	// The AI connectors
-	if dsl.Type == "openai" {
+	if dsl.Type == "openai" || dsl.Type == "fastembed" {
 		label := dsl.Label
 		if label == "" {
 			label = dsl.Name
@@ -122,6 +123,10 @@ func make(typ string) (Connector, error) {
 
 	case MOAPI:
 		c := &moapi.Connector{}
+		return c, nil
+
+	case FASTEMBED:
+		c := &fastembed.Connector{}
 		return c, nil
 	}
 
