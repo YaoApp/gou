@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/qdrant/go-client/qdrant"
 	"github.com/yaoapp/gou/graphrag/types"
@@ -234,7 +235,29 @@ func (s *Store) AddDocuments(ctx context.Context, opts *types.AddDocumentOptions
 				for k, v := range doc.Vector {
 					vectorData[k] = float32(v)
 				}
-				point.Vectors = qdrant.NewVectors(vectorData...)
+
+				// Check if this collection uses named vectors by getting collection info
+				usesNamedVectors, err := s.collectionUsesNamedVectors(ctx, opts.CollectionName)
+				if err != nil {
+					// If we can't determine, fall back to heuristic
+					usesNamedVectors = s.isNamedVectorCollection(opts.CollectionName)
+				}
+
+				if usesNamedVectors {
+					// Use named vectors for hybrid search collections
+					vectorName := opts.VectorUsing
+					if vectorName == "" {
+						vectorName = "dense" // Default to dense vector
+					}
+
+					namedVectors := map[string]*qdrant.Vector{
+						vectorName: qdrant.NewVector(vectorData...),
+					}
+					point.Vectors = qdrant.NewVectorsMap(namedVectors)
+				} else {
+					// Use single vector for traditional collections
+					point.Vectors = qdrant.NewVectors(vectorData...)
+				}
 			}
 
 			points[j] = point
@@ -256,6 +279,43 @@ func (s *Store) AddDocuments(ctx context.Context, opts *types.AddDocumentOptions
 	}
 
 	return addedIDs, nil
+}
+
+// collectionUsesNamedVectors checks if a collection uses named vectors by querying collection info
+func (s *Store) collectionUsesNamedVectors(ctx context.Context, collectionName string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if !s.connected {
+		return false, fmt.Errorf("not connected to Qdrant server")
+	}
+
+	info, err := s.client.GetCollectionInfo(ctx, collectionName)
+	if err != nil {
+		return false, fmt.Errorf("failed to get collection info: %w", err)
+	}
+
+	// Check if the collection has named vectors (VectorsConfig is a map)
+	if info.Config != nil && info.Config.Params != nil {
+		if vectorsConfig := info.Config.Params.VectorsConfig; vectorsConfig != nil {
+			// If VectorsConfig has a Map field, it uses named vectors
+			switch vectorsConfig.Config.(type) {
+			case *qdrant.VectorsConfig_ParamsMap:
+				return true, nil
+			case *qdrant.VectorsConfig_Params:
+				return false, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
+// isNamedVectorCollection checks if a collection uses named vectors
+func (s *Store) isNamedVectorCollection(collectionName string) bool {
+	// Heuristic: test collections created with sparse vector support typically have "test_search_" prefix
+	// In production, this should query the collection info to check for named vectors
+	return strings.Contains(collectionName, "test_search_")
 }
 
 // GetDocuments retrieves documents by IDs

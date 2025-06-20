@@ -329,6 +329,111 @@ func TestAddDocuments(t *testing.T) {
 			t.Errorf("AddDocuments() error = %v, want to contain 'not connected'", err)
 		}
 	})
+
+	t.Run("named vectors with default dense", func(t *testing.T) {
+		// Create a collection with sparse vector support
+		store, baseConfig := setupConnectedStoreForDocument(t)
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = store.Disconnect(ctx)
+		}()
+
+		collectionName := fmt.Sprintf("test_named_vectors_%d", time.Now().UnixNano())
+		config := baseConfig
+		config.CollectionName = collectionName
+		config.EnableSparseVectors = true
+		config.DenseVectorName = "dense"
+		config.SparseVectorName = "sparse"
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		err := store.CreateCollection(ctx, &config)
+		if err != nil {
+			t.Fatalf("Failed to create test collection: %v", err)
+		}
+		defer cleanupCollection(t, store, collectionName)
+
+		opts := types.AddDocumentOptions{
+			CollectionName: collectionName,
+			Documents:      createTestDocuments(3),
+			BatchSize:      10,
+			// VectorUsing not specified, should default to "dense"
+		}
+
+		ids, err := store.AddDocuments(ctx, &opts)
+		if err != nil {
+			t.Errorf("AddDocuments() with named vectors error = %v, want nil", err)
+		}
+		if len(ids) != 3 {
+			t.Errorf("AddDocuments() returned %d IDs, want 3", len(ids))
+		}
+	})
+
+	t.Run("named vectors with custom vector name", func(t *testing.T) {
+		// Create a collection with sparse vector support
+		store, baseConfig := setupConnectedStoreForDocument(t)
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = store.Disconnect(ctx)
+		}()
+
+		collectionName := fmt.Sprintf("test_custom_vector_%d", time.Now().UnixNano())
+		config := baseConfig
+		config.CollectionName = collectionName
+		config.EnableSparseVectors = true
+		config.DenseVectorName = "custom_dense"
+		config.SparseVectorName = "custom_sparse"
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		err := store.CreateCollection(ctx, &config)
+		if err != nil {
+			t.Fatalf("Failed to create test collection: %v", err)
+		}
+		defer cleanupCollection(t, store, collectionName)
+
+		opts := types.AddDocumentOptions{
+			CollectionName: collectionName,
+			Documents:      createTestDocuments(2),
+			BatchSize:      10,
+			VectorUsing:    "custom_dense", // Specify custom vector name
+		}
+
+		ids, err := store.AddDocuments(ctx, &opts)
+		if err != nil {
+			t.Errorf("AddDocuments() with custom vector name error = %v, want nil", err)
+		}
+		if len(ids) != 2 {
+			t.Errorf("AddDocuments() returned %d IDs, want 2", len(ids))
+		}
+	})
+
+	t.Run("traditional collection without named vectors", func(t *testing.T) {
+		// Test with traditional collection (no sparse vectors)
+		withDocumentTestEnvironment(t, func(env *DocumentTestEnvironment) {
+			opts := types.AddDocumentOptions{
+				CollectionName: env.CollectionName,
+				Documents:      createTestDocuments(2),
+				BatchSize:      10,
+				VectorUsing:    "dense", // Should be ignored for traditional collections
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			ids, err := env.Store.AddDocuments(ctx, &opts)
+			if err != nil {
+				t.Errorf("AddDocuments() with traditional collection error = %v, want nil", err)
+			}
+			if len(ids) != 2 {
+				t.Errorf("AddDocuments() returned %d IDs, want 2", len(ids))
+			}
+		})
+	})
 }
 
 // =============================================================================
@@ -2743,6 +2848,89 @@ func TestListDocumentsScrollError(t *testing.T) {
 			t.Error("ListDocuments() expected error for nonexistent collection, got nil")
 		} else if !contains(err.Error(), "failed to list documents") {
 			t.Errorf("ListDocuments() error = %v, want to contain 'failed to list documents'", err)
+		}
+	})
+}
+
+// =============================================================================
+// Tests for collectionUsesNamedVectors method
+// =============================================================================
+
+func TestCollectionUsesNamedVectors(t *testing.T) {
+	store, baseConfig := setupConnectedStoreForDocument(t)
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = store.Disconnect(ctx)
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	t.Run("traditional collection returns false", func(t *testing.T) {
+		// Create traditional collection (no sparse vectors)
+		collectionName := fmt.Sprintf("test_traditional_%d", time.Now().UnixNano())
+		config := baseConfig
+		config.CollectionName = collectionName
+		config.EnableSparseVectors = false
+
+		err := store.CreateCollection(ctx, &config)
+		if err != nil {
+			t.Fatalf("Failed to create traditional collection: %v", err)
+		}
+		defer cleanupCollection(t, store, collectionName)
+
+		usesNamed, err := store.collectionUsesNamedVectors(ctx, collectionName)
+		if err != nil {
+			t.Errorf("collectionUsesNamedVectors() error = %v, want nil", err)
+		}
+		if usesNamed {
+			t.Errorf("collectionUsesNamedVectors() = true, want false for traditional collection")
+		}
+	})
+
+	t.Run("named vector collection returns true", func(t *testing.T) {
+		// Create collection with sparse vectors (named vectors)
+		collectionName := fmt.Sprintf("test_named_%d", time.Now().UnixNano())
+		config := baseConfig
+		config.CollectionName = collectionName
+		config.EnableSparseVectors = true
+		config.DenseVectorName = "dense"
+		config.SparseVectorName = "sparse"
+
+		err := store.CreateCollection(ctx, &config)
+		if err != nil {
+			t.Fatalf("Failed to create named vector collection: %v", err)
+		}
+		defer cleanupCollection(t, store, collectionName)
+
+		usesNamed, err := store.collectionUsesNamedVectors(ctx, collectionName)
+		if err != nil {
+			t.Errorf("collectionUsesNamedVectors() error = %v, want nil", err)
+		}
+		if !usesNamed {
+			t.Errorf("collectionUsesNamedVectors() = false, want true for named vector collection")
+		}
+	})
+
+	t.Run("nonexistent collection returns error", func(t *testing.T) {
+		_, err := store.collectionUsesNamedVectors(ctx, "nonexistent_collection")
+		if err == nil {
+			t.Error("collectionUsesNamedVectors() expected error for nonexistent collection, got nil")
+		} else if !contains(err.Error(), "failed to get collection info") {
+			t.Errorf("collectionUsesNamedVectors() error = %v, want to contain 'failed to get collection info'", err)
+		}
+	})
+
+	t.Run("not connected store returns error", func(t *testing.T) {
+		unconnectedStore := NewStore()
+		defer func() {
+			_ = unconnectedStore.Disconnect(context.Background())
+		}()
+
+		_, err := unconnectedStore.collectionUsesNamedVectors(ctx, "test_collection")
+		if err == nil {
+			t.Error("collectionUsesNamedVectors() expected error for not connected store, got nil")
 		}
 	})
 }

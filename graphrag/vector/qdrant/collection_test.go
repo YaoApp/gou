@@ -158,6 +158,54 @@ func TestCreateCollection(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "successful creation with sparse vectors enabled",
+			setup: func() (*Store, types.VectorStoreConfig) {
+				return store, baseConfig
+			},
+			config: types.VectorStoreConfig{
+				Dimension:           128,
+				Distance:            types.DistanceCosine,
+				IndexType:           types.IndexTypeHNSW,
+				EnableSparseVectors: true,
+				CollectionName:      fmt.Sprintf("test_sparse_enabled_%d", time.Now().UnixNano()),
+			},
+			wantErr: false,
+		},
+		{
+			name: "successful creation with sparse vectors and custom names",
+			setup: func() (*Store, types.VectorStoreConfig) {
+				return store, baseConfig
+			},
+			config: types.VectorStoreConfig{
+				Dimension:           256,
+				Distance:            types.DistanceDot,
+				IndexType:           types.IndexTypeHNSW,
+				EnableSparseVectors: true,
+				DenseVectorName:     "text_dense",
+				SparseVectorName:    "text_sparse",
+				CollectionName:      fmt.Sprintf("test_sparse_custom_names_%d", time.Now().UnixNano()),
+			},
+			wantErr: false,
+		},
+		{
+			name: "successful creation with sparse vectors and HNSW parameters",
+			setup: func() (*Store, types.VectorStoreConfig) {
+				return store, baseConfig
+			},
+			config: types.VectorStoreConfig{
+				Dimension:           512,
+				Distance:            types.DistanceEuclidean,
+				IndexType:           types.IndexTypeHNSW,
+				M:                   32,
+				EfConstruction:      400,
+				EnableSparseVectors: true,
+				DenseVectorName:     "content_dense",
+				SparseVectorName:    "content_sparse",
+				CollectionName:      fmt.Sprintf("test_sparse_hnsw_%d", time.Now().UnixNano()),
+			},
+			wantErr: false,
+		},
+		{
 			name: "not connected store",
 			setup: func() (*Store, types.VectorStoreConfig) {
 				return NewStore(), baseConfig
@@ -913,7 +961,7 @@ func TestCollectionConcurrency(t *testing.T) {
 				defer wg.Done()
 
 				for j := 0; j < numOperations; j++ {
-					collectionName := fmt.Sprintf("test_concurrent_%d_%d", index, j)
+					collectionName := fmt.Sprintf("test_concurrent_%d_%d_%d", index, j, time.Now().UnixNano())
 					config := baseConfig
 					config.CollectionName = collectionName
 
@@ -1496,7 +1544,7 @@ func TestConcurrentCollectionMemoryLeak(t *testing.T) {
 
 					// Create unique collection
 					config := storeConfig
-					config.CollectionName = fmt.Sprintf("test_concurrent_memory_%d_%d", goroutineID, j)
+					config.CollectionName = fmt.Sprintf("test_concurrent_memory_%d_%d_%d", goroutineID, j, time.Now().UnixNano())
 
 					// Test all collection operations
 					_ = store.CreateCollection(ctx, &config)
@@ -2110,4 +2158,257 @@ func TestGetLoadStateComplete(t *testing.T) {
 			t.Errorf("Expected LoadStateNotExist, got %v", state)
 		}
 	})
+}
+
+// TestCreateCollectionSparseVectors tests sparse vector collection creation functionality
+func TestCreateCollectionSparseVectors(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	store, _ := setupConnectedStoreForCollection(t)
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = store.Disconnect(ctx)
+	}()
+
+	tests := []struct {
+		name          string
+		config        types.VectorStoreConfig
+		wantErr       bool
+		errContains   string
+		validateAfter func(t *testing.T, store *Store, collectionName string)
+	}{
+		{
+			name: "sparse vectors with default names",
+			config: types.VectorStoreConfig{
+				Dimension:           384,
+				Distance:            types.DistanceCosine,
+				IndexType:           types.IndexTypeHNSW,
+				EnableSparseVectors: true,
+				CollectionName:      fmt.Sprintf("test_sparse_default_%d", time.Now().UnixNano()),
+			},
+			wantErr: false,
+			validateAfter: func(t *testing.T, store *Store, collectionName string) {
+				// Verify collection exists
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				exists, err := store.CollectionExists(ctx, collectionName)
+				if err != nil {
+					t.Errorf("Failed to check collection existence: %v", err)
+					return
+				}
+				if !exists {
+					t.Error("Collection should exist after creation")
+					return
+				}
+
+				// Verify collection stats
+				stats, err := store.DescribeCollection(ctx, collectionName)
+				if err != nil {
+					t.Logf("Note: DescribeCollection may not fully support sparse vectors yet: %v", err)
+					return
+				}
+
+				if stats.Dimension != 384 {
+					t.Errorf("Expected dimension 384, got %d", stats.Dimension)
+				}
+				if stats.DistanceMetric != types.DistanceCosine {
+					t.Errorf("Expected cosine distance, got %v", stats.DistanceMetric)
+				}
+			},
+		},
+		{
+			name: "sparse vectors with custom names",
+			config: types.VectorStoreConfig{
+				Dimension:           768,
+				Distance:            types.DistanceDot,
+				IndexType:           types.IndexTypeHNSW,
+				EnableSparseVectors: true,
+				DenseVectorName:     "embeddings",
+				SparseVectorName:    "keywords",
+				M:                   16,
+				EfConstruction:      200,
+				CollectionName:      fmt.Sprintf("test_sparse_custom_%d", time.Now().UnixNano()),
+			},
+			wantErr: false,
+			validateAfter: func(t *testing.T, store *Store, collectionName string) {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				exists, err := store.CollectionExists(ctx, collectionName)
+				if err != nil {
+					t.Errorf("Failed to check collection existence: %v", err)
+					return
+				}
+				if !exists {
+					t.Error("Collection should exist after creation")
+				}
+			},
+		},
+		{
+			name: "sparse vectors with euclidean distance",
+			config: types.VectorStoreConfig{
+				Dimension:           1536,
+				Distance:            types.DistanceEuclidean,
+				IndexType:           types.IndexTypeHNSW,
+				EnableSparseVectors: true,
+				DenseVectorName:     "doc_dense",
+				SparseVectorName:    "doc_sparse",
+				CollectionName:      fmt.Sprintf("test_sparse_euclidean_%d", time.Now().UnixNano()),
+			},
+			wantErr: false,
+			validateAfter: func(t *testing.T, store *Store, collectionName string) {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				exists, err := store.CollectionExists(ctx, collectionName)
+				if err != nil {
+					t.Errorf("Failed to check collection existence: %v", err)
+					return
+				}
+				if !exists {
+					t.Error("Collection should exist after creation")
+				}
+			},
+		},
+		{
+			name: "sparse vectors with manhattan distance",
+			config: types.VectorStoreConfig{
+				Dimension:           512,
+				Distance:            types.DistanceManhattan,
+				IndexType:           types.IndexTypeHNSW,
+				EnableSparseVectors: true,
+				DenseVectorName:     "content",
+				SparseVectorName:    "terms",
+				CollectionName:      fmt.Sprintf("test_sparse_manhattan_%d", time.Now().UnixNano()),
+			},
+			wantErr: false,
+			validateAfter: func(t *testing.T, store *Store, collectionName string) {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				exists, err := store.CollectionExists(ctx, collectionName)
+				if err != nil {
+					t.Errorf("Failed to check collection existence: %v", err)
+					return
+				}
+				if !exists {
+					t.Error("Collection should exist after creation")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			defer cleanupCollection(t, store, tt.config.CollectionName)
+
+			err := store.CreateCollection(ctx, &tt.config)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("CreateCollection() expected error, got nil")
+				} else if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+					t.Errorf("CreateCollection() error = %v, want to contain %v", err, tt.errContains)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("CreateCollection() error = %v, want nil", err)
+				} else if tt.validateAfter != nil {
+					tt.validateAfter(t, store, tt.config.CollectionName)
+				}
+			}
+		})
+	}
+}
+
+// TestCreateCollectionSparseVectorEdgeCases tests edge cases for sparse vector configuration
+func TestCreateCollectionSparseVectorEdgeCases(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	store, _ := setupConnectedStoreForCollection(t)
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = store.Disconnect(ctx)
+	}()
+
+	tests := []struct {
+		name        string
+		config      types.VectorStoreConfig
+		description string
+	}{
+		{
+			name: "empty dense vector name uses default",
+			config: types.VectorStoreConfig{
+				Dimension:           128,
+				Distance:            types.DistanceCosine,
+				IndexType:           types.IndexTypeHNSW,
+				EnableSparseVectors: true,
+				DenseVectorName:     "", // Should default to "dense"
+				SparseVectorName:    "custom_sparse",
+				CollectionName:      fmt.Sprintf("test_default_dense_%d", time.Now().UnixNano()),
+			},
+			description: "When DenseVectorName is empty, it should default to 'dense'",
+		},
+		{
+			name: "empty sparse vector name uses default",
+			config: types.VectorStoreConfig{
+				Dimension:           128,
+				Distance:            types.DistanceCosine,
+				IndexType:           types.IndexTypeHNSW,
+				EnableSparseVectors: true,
+				DenseVectorName:     "custom_dense",
+				SparseVectorName:    "", // Should default to "sparse"
+				CollectionName:      fmt.Sprintf("test_default_sparse_%d", time.Now().UnixNano()),
+			},
+			description: "When SparseVectorName is empty, it should default to 'sparse'",
+		},
+		{
+			name: "both names empty use defaults",
+			config: types.VectorStoreConfig{
+				Dimension:           128,
+				Distance:            types.DistanceCosine,
+				IndexType:           types.IndexTypeHNSW,
+				EnableSparseVectors: true,
+				DenseVectorName:     "", // Should default to "dense"
+				SparseVectorName:    "", // Should default to "sparse"
+				CollectionName:      fmt.Sprintf("test_both_default_%d", time.Now().UnixNano()),
+			},
+			description: "When both names are empty, they should use default values",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Log(tt.description)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			defer cleanupCollection(t, store, tt.config.CollectionName)
+
+			err := store.CreateCollection(ctx, &tt.config)
+			if err != nil {
+				t.Errorf("CreateCollection() failed: %v", err)
+				return
+			}
+
+			// Verify collection was created successfully
+			exists, err := store.CollectionExists(ctx, tt.config.CollectionName)
+			if err != nil {
+				t.Errorf("Failed to check collection existence: %v", err)
+				return
+			}
+			if !exists {
+				t.Error("Collection should exist after creation")
+			}
+		})
+	}
 }
