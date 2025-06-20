@@ -30,6 +30,9 @@ const (
 	// MOAPI the moapi connector
 	MOAPI
 
+	// FASTEMBED the fastembed connector
+	FASTEMBED
+
 	// SCRIPT ? the script connector ( difference with widget ?)
 	SCRIPT
 )
@@ -49,6 +52,7 @@ var types = map[string]int{
 	"weaviate":      WEAVIATE,
 	"script":        SCRIPT, // ?
 	"moapi":         MOAPI,
+	"fastembed":     FASTEMBED,
 }
 
 // Connector the connector interface

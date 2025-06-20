@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector/database"
+	"github.com/yaoapp/gou/connector/fastembed"
 	mongo "github.com/yaoapp/gou/connector/mongo"
 	"github.com/yaoapp/gou/connector/openai"
 	"github.com/yaoapp/gou/connector/redis"
@@ -125,6 +126,32 @@ func TestLoadOpenAI(t *testing.T) {
 	setting := Connectors["openai"].Setting()
 	assert.Equal(t, "openai", Connectors["openai"].ID())
 	assert.Contains(t, setting["key"], "sk-")
+}
+
+func TestLoadFastembed(t *testing.T) {
+	file := prepare(t, "fastembed")
+	_, err := Load(file, "fastembed")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, has := Connectors["fastembed"]
+	if !has {
+		t.Fatal("the fastembed connector does not exist")
+	}
+
+	if !Connectors["fastembed"].Is(FASTEMBED) {
+		t.Fatal("the connector is not a FASTEMBED")
+	}
+
+	if _, ok := Connectors["fastembed"].(*fastembed.Connector); !ok {
+		t.Fatal("the fastembed connector is not a *fastembed.Connector")
+	}
+
+	setting := Connectors["fastembed"].Setting()
+	assert.Equal(t, "fastembed", Connectors["fastembed"].ID())
+	assert.NotEmpty(t, setting["host"])
+	assert.NotEmpty(t, setting["model"])
 }
 
 func prepare(t *testing.T, name string) string {
