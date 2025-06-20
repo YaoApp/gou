@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/qdrant/go-client/qdrant"
@@ -1189,32 +1190,54 @@ func (s *Store) SearchBatch(ctx context.Context, opts []types.SearchOptionsInter
 	}
 	s.mu.RUnlock()
 
+	// Pre-validate all options to fail fast
+	for i, opt := range opts {
+		if opt == nil {
+			return nil, fmt.Errorf("search option at index %d is nil", i)
+		}
+	}
+
 	results := make([]*types.SearchResult, len(opts))
 	errors := make([]error, len(opts))
 
-	// TODO: Implement parallel execution for better performance
-	// For now, execute searches sequentially but this could be optimized
-	// to run multiple searches in parallel using goroutines
+	// Use sync.WaitGroup for concurrent execution
+	var wg sync.WaitGroup
 
-	for i, opt := range opts {
-		if opt == nil {
-			errors[i] = fmt.Errorf("search option at index %d is nil", i)
-			continue
-		}
-
-		switch searchOpt := opt.(type) {
-		case *types.SearchOptions:
-			results[i], errors[i] = s.SearchSimilar(ctx, searchOpt)
-		case *types.MMRSearchOptions:
-			results[i], errors[i] = s.SearchMMR(ctx, searchOpt)
-		case *types.ScoreThresholdOptions:
-			results[i], errors[i] = s.SearchWithScoreThreshold(ctx, searchOpt)
-		case *types.HybridSearchOptions:
-			results[i], errors[i] = s.SearchHybrid(ctx, searchOpt)
-		default:
-			errors[i] = fmt.Errorf("unsupported search option type at index %d: %T", i, searchOpt)
-		}
+	// Create a semaphore to limit concurrent goroutines and prevent resource exhaustion
+	maxConcurrency := 50 // Reasonable limit for concurrent searches
+	if len(opts) < maxConcurrency {
+		maxConcurrency = len(opts)
 	}
+	semaphore := make(chan struct{}, maxConcurrency)
+
+	// Launch concurrent searches
+	for i, opt := range opts {
+		wg.Add(1)
+		go func(index int, searchOpt types.SearchOptionsInterface) {
+			defer wg.Done()
+
+			// Acquire semaphore
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			// Execute the appropriate search based on option type
+			switch typedOpt := searchOpt.(type) {
+			case *types.SearchOptions:
+				results[index], errors[index] = s.SearchSimilar(ctx, typedOpt)
+			case *types.MMRSearchOptions:
+				results[index], errors[index] = s.SearchMMR(ctx, typedOpt)
+			case *types.ScoreThresholdOptions:
+				results[index], errors[index] = s.SearchWithScoreThreshold(ctx, typedOpt)
+			case *types.HybridSearchOptions:
+				results[index], errors[index] = s.SearchHybrid(ctx, typedOpt)
+			default:
+				errors[index] = fmt.Errorf("unsupported search option type at index %d: %T", index, searchOpt)
+			}
+		}(i, opt)
+	}
+
+	// Wait for all searches to complete
+	wg.Wait()
 
 	// Check if any errors occurred
 	var hasErrors bool
