@@ -44,8 +44,8 @@ type VectorStore interface {
 	Optimize(ctx context.Context, collectionName string) error
 
 	// Backup and Restore
-	Backup(ctx context.Context, opts *BackupOptions) error
-	Restore(ctx context.Context, opts *RestoreOptions) error
+	Backup(ctx context.Context, writer io.Writer, opts *BackupOptions) error
+	Restore(ctx context.Context, reader io.Reader, opts *RestoreOptions) error
 
 	// Connection Management
 	Connect(ctx context.Context, config VectorStoreConfig) error
