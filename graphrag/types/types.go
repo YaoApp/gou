@@ -1064,7 +1064,6 @@ type VoteOption struct {
 
 // RestoreOptions represents options for restoring data
 type RestoreOptions struct {
-	BackupPath     string                 `json:"backup_path"`
 	CollectionName string                 `json:"collection_name"`
 	Force          bool                   `json:"force"`
 	ExtraParams    map[string]interface{} `json:"extra_params,omitempty"`
@@ -1128,7 +1127,6 @@ func (ls LoadState) String() string {
 // BackupOptions represents options for creating backups
 type BackupOptions struct {
 	CollectionName string                 `json:"collection_name"`
-	BackupPath     string                 `json:"backup_path"`
 	Compress       bool                   `json:"compress"`
 	ExtraParams    map[string]interface{} `json:"extra_params,omitempty"`
 }
