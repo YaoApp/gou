@@ -1138,9 +1138,9 @@ func TestSearchHybrid_MultiLanguageSupport(t *testing.T) {
 		}
 
 		queryVector := getQueryVectorFromDataSet(testDataSet)
-	if len(queryVector) == 0 {
-		t.Skip("No dense query vector available from test data")
-	}
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from test data")
+		}
 
 		opts := &types.HybridSearchOptions{
 			CollectionName: testDataSet.CollectionName,
@@ -1182,9 +1182,9 @@ func TestSearchHybrid_MultiLanguageSupport(t *testing.T) {
 		}
 
 		queryVector := getQueryVectorFromDataSet(testDataSet)
-	if len(queryVector) == 0 {
-		t.Skip("No dense query vector available from test data")
-	}
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from test data")
+		}
 
 		opts := &types.HybridSearchOptions{
 			CollectionName: testDataSet.CollectionName,
@@ -1228,9 +1228,9 @@ func TestSearchHybrid_MultiLanguageSupport(t *testing.T) {
 
 		// Test same query on different language datasets
 		sameQueryVector := getQueryVectorFromDataSet(enDataSet)
-	if len(sameQueryVector) == 0 {
-		t.Skip("No dense query vector available from English test data")
-	}
+		if len(sameQueryVector) == 0 {
+			t.Skip("No dense query vector available from English test data")
+		}
 		sameSparseVector := &types.SparseVector{
 			Indices: []uint32{1, 42, 100},
 			Values:  []float32{0.5, 0.8, 0.3},
