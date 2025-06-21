@@ -1,0 +1,44 @@
+{
+  "dimension": 384,
+  "file": "semantic-en.3.chunk-63.txt",
+  "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.3.chunk-63.txt",
+  "generated_at": "2025-06-21T13:48:38+08:00",
+  "model": "Qdrant/bm42-all-minilm-l6-v2-attentions",
+  "sparse_embedding": {
+    "indices": [
+      1656472675,
+      1801501234,
+      1309490094,
+      1401524087,
+      2046658185,
+      1116117978,
+      243731433,
+      1744906281,
+      640124220,
+      1290543747,
+      659326392,
+      933802348
+    ],
+    "values": [
+      0.38588274,
+      0.15057875,
+      0.06551027,
+      0.07985227,
+      0.08775284,
+      0.0780163,
+      0.18399128,
+      0.4873096,
+      0.088432014,
+      0.060481105,
+      0.06928623,
+      0.075621404
+    ]
+  },
+  "text_length": 154,
+  "type": "sparse",
+  "usage": {
+    "total_tokens": 7281,
+    "prompt_tokens": 7281,
+    "total_texts": 191
+  }
+}

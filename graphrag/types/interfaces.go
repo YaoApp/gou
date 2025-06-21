@@ -58,10 +58,10 @@ type VectorStore interface {
 // This handles text-to-vector conversion, separate from vector storage
 type Embedding interface {
 	// EmbedDocuments embeds a list of documents
-	EmbedDocuments(ctx context.Context, texts []string, callback ...EmbeddingProgress) ([][]float64, error)
+	EmbedDocuments(ctx context.Context, texts []string, callback ...EmbeddingProgress) (*EmbeddingResults, error)
 
 	// EmbedQuery embeds a single query
-	EmbedQuery(ctx context.Context, text string, callback ...EmbeddingProgress) ([]float64, error)
+	EmbedQuery(ctx context.Context, text string, callback ...EmbeddingProgress) (*EmbeddingResult, error)
 
 	// GetDimension returns the dimension of the embedding vectors
 	GetDimension() int

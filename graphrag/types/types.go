@@ -1121,3 +1121,131 @@ type SearchEngineStats struct {
 	IndexSize        int64    `json:"index_size_bytes"`  // Total index size in bytes
 	DocumentCount    int64    `json:"document_count"`    // Total number of documents
 }
+
+// ===== Embedding Result Types =====
+
+// EmbeddingUsage represents usage statistics for embedding operations
+type EmbeddingUsage struct {
+	TotalTokens  int `json:"total_tokens"`  // Total number of tokens processed
+	PromptTokens int `json:"prompt_tokens"` // Number of tokens in the input
+	TotalTexts   int `json:"total_texts"`   // Total number of texts processed
+}
+
+// EmbeddingType represents the type of embedding
+type EmbeddingType string
+
+const (
+	// EmbeddingTypeDense represents dense vector embeddings
+	EmbeddingTypeDense EmbeddingType = "dense"
+
+	// EmbeddingTypeSparse represents sparse vector embeddings
+	EmbeddingTypeSparse EmbeddingType = "sparse"
+)
+
+// String returns the string representation of EmbeddingType
+func (et EmbeddingType) String() string {
+	return string(et)
+}
+
+// IsValid validates if the embedding type is supported
+func (et EmbeddingType) IsValid() bool {
+	switch et {
+	case EmbeddingTypeDense, EmbeddingTypeSparse:
+		return true
+	default:
+		return false
+	}
+}
+
+// GetSupportedEmbeddingTypes returns all supported embedding types
+func GetSupportedEmbeddingTypes() []EmbeddingType {
+	return []EmbeddingType{
+		EmbeddingTypeDense,
+		EmbeddingTypeSparse,
+	}
+}
+
+// EmbeddingResult represents the result of a single embedding operation
+type EmbeddingResult struct {
+	Usage     EmbeddingUsage `json:"usage"`               // Usage statistics
+	Model     string         `json:"model"`               // Model used for embedding
+	Type      EmbeddingType  `json:"type"`                // Type of embedding (dense/sparse)
+	Embedding []float64      `json:"embedding,omitempty"` // Dense vector (for dense embeddings)
+	Indices   []uint32       `json:"indices,omitempty"`   // Sparse vector indices (for sparse embeddings)
+	Values    []float32      `json:"values,omitempty"`    // Sparse vector values (for sparse embeddings)
+}
+
+// IsDense returns true if this is a dense embedding
+func (er *EmbeddingResult) IsDense() bool {
+	return er.Type == EmbeddingTypeDense
+}
+
+// IsSparse returns true if this is a sparse embedding
+func (er *EmbeddingResult) IsSparse() bool {
+	return er.Type == EmbeddingTypeSparse
+}
+
+// GetDenseEmbedding returns the dense embedding vector
+func (er *EmbeddingResult) GetDenseEmbedding() []float64 {
+	if er.IsDense() {
+		return er.Embedding
+	}
+	return nil
+}
+
+// GetSparseEmbedding returns the sparse embedding indices and values
+func (er *EmbeddingResult) GetSparseEmbedding() ([]uint32, []float32) {
+	if er.IsSparse() {
+		return er.Indices, er.Values
+	}
+	return nil, nil
+}
+
+// EmbeddingResults represents the result of multiple embedding operations
+type EmbeddingResults struct {
+	Usage            EmbeddingUsage    `json:"usage"`                       // Combined usage statistics
+	Model            string            `json:"model"`                       // Model used for embedding
+	Type             EmbeddingType     `json:"type"`                        // Type of embedding (dense/sparse)
+	Embeddings       [][]float64       `json:"embeddings,omitempty"`        // Dense vectors (for dense embeddings)
+	SparseEmbeddings []SparseEmbedding `json:"sparse_embeddings,omitempty"` // Sparse vectors (for sparse embeddings)
+}
+
+// SparseEmbedding represents a single sparse embedding
+type SparseEmbedding struct {
+	Indices []uint32  `json:"indices"` // Non-zero indices
+	Values  []float32 `json:"values"`  // Non-zero values
+}
+
+// IsDense returns true if this contains dense embeddings
+func (ers *EmbeddingResults) IsDense() bool {
+	return ers.Type == EmbeddingTypeDense
+}
+
+// IsSparse returns true if this contains sparse embeddings
+func (ers *EmbeddingResults) IsSparse() bool {
+	return ers.Type == EmbeddingTypeSparse
+}
+
+// GetDenseEmbeddings returns all dense embedding vectors
+func (ers *EmbeddingResults) GetDenseEmbeddings() [][]float64 {
+	if ers.IsDense() {
+		return ers.Embeddings
+	}
+	return nil
+}
+
+// GetSparseEmbeddings returns all sparse embeddings
+func (ers *EmbeddingResults) GetSparseEmbeddings() []SparseEmbedding {
+	if ers.IsSparse() {
+		return ers.SparseEmbeddings
+	}
+	return nil
+}
+
+// Count returns the number of embeddings
+func (ers *EmbeddingResults) Count() int {
+	if ers.IsDense() {
+		return len(ers.Embeddings)
+	}
+	return len(ers.SparseEmbeddings)
+}
