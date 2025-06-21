@@ -6,37 +6,9 @@ import (
 	"sync"
 
 	"github.com/yaoapp/gou/connector"
+	"github.com/yaoapp/gou/graphrag/types"
 	"github.com/yaoapp/gou/graphrag/utils"
 )
-
-// Status defines the status of embedding process
-type Status string
-
-// Status constants for embedding process
-const (
-	StatusStarting   Status = "starting"   // Starting the embedding process
-	StatusProcessing Status = "processing" // Processing embeddings
-	StatusCompleted  Status = "completed"  // Successfully completed
-	StatusError      Status = "error"      // Error occurred
-)
-
-// Payload contains context-specific data for different embedding scenarios
-type Payload struct {
-	// Common fields
-	Current int    `json:"current"` // Current progress count
-	Total   int    `json:"total"`   // Total items to process
-	Message string `json:"message"` // Status message
-
-	// Document embedding specific
-	DocumentIndex *int    `json:"document_index,omitempty"` // Index of current document being processed
-	DocumentText  *string `json:"document_text,omitempty"`  // Text being processed (truncated if too long)
-
-	// Error specific
-	Error error `json:"error,omitempty"` // Error details when Status is StatusError
-}
-
-// ProgressCallback defines the callback function for progress reporting with flexible payload
-type ProgressCallback func(status Status, payload Payload)
 
 // OpenaiOptions defines the options for OpenAI embedding
 type OpenaiOptions struct {
@@ -102,19 +74,19 @@ func NewOpenaiWithDefaults(connectorName string) (*Openai, error) {
 }
 
 // EmbedDocuments embed documents with optional progress callback
-func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ...ProgressCallback) ([][]float64, error) {
+func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ...types.EmbeddingProgress) ([][]float64, error) {
 	if len(texts) == 0 {
 		return [][]float64{}, nil
 	}
 
-	var cb ProgressCallback
+	var cb types.EmbeddingProgress
 	if len(callback) > 0 && callback[0] != nil {
 		cb = callback[0]
 	}
 
 	// Report initial progress
 	if cb != nil {
-		cb(StatusStarting, Payload{
+		cb(types.EmbeddingStatusStarting, types.EmbeddingPayload{
 			Current: 0,
 			Total:   len(texts),
 			Message: "Starting document embedding...",
@@ -145,9 +117,9 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 			defer func() { <-semaphore }() // Release semaphore
 
 			// Create a callback for individual document processing
-			var docCallback ProgressCallback
+			var docCallback types.EmbeddingProgress
 			if cb != nil {
-				docCallback = func(status Status, payload Payload) {
+				docCallback = func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 					// Enhance payload with document-specific info
 					payload.DocumentIndex = &index
 					truncatedText := inputText
@@ -164,7 +136,7 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 				errors[index] = err
 				// Report error for this item
 				if cb != nil {
-					cb(StatusError, Payload{
+					cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 						Current:       completedCount + 1,
 						Total:         len(texts),
 						Message:       fmt.Sprintf("Error embedding document %d", index+1),
@@ -181,7 +153,7 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 			completed[index] = true
 			completedCount++
 			if cb != nil {
-				cb(StatusProcessing, Payload{
+				cb(types.EmbeddingStatusProcessing, types.EmbeddingPayload{
 					Current:       completedCount,
 					Total:         len(texts),
 					Message:       fmt.Sprintf("Completed %d/%d documents", completedCount, len(texts)),
@@ -198,7 +170,7 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 	for i, err := range errors {
 		if err != nil {
 			if cb != nil {
-				cb(StatusError, Payload{
+				cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 					Current: len(texts),
 					Total:   len(texts),
 					Message: fmt.Sprintf("Failed to embed all documents, error at index %d", i),
@@ -211,7 +183,7 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 
 	// Report completion
 	if cb != nil {
-		cb(StatusCompleted, Payload{
+		cb(types.EmbeddingStatusCompleted, types.EmbeddingPayload{
 			Current: len(texts),
 			Total:   len(texts),
 			Message: "Document embedding completed successfully",
@@ -222,19 +194,19 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 }
 
 // EmbedQuery embed query using direct POST request with optional progress callback
-func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...ProgressCallback) ([]float64, error) {
+func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...types.EmbeddingProgress) ([]float64, error) {
 	if text == "" {
 		return []float64{}, nil
 	}
 
-	var cb ProgressCallback
+	var cb types.EmbeddingProgress
 	if len(callback) > 0 && callback[0] != nil {
 		cb = callback[0]
 	}
 
 	// Report starting
 	if cb != nil {
-		cb(StatusStarting, Payload{
+		cb(types.EmbeddingStatusStarting, types.EmbeddingPayload{
 			Current: 0,
 			Total:   1,
 			Message: "Starting text embedding...",
@@ -248,7 +220,7 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 
 	// Report processing
 	if cb != nil {
-		cb(StatusProcessing, Payload{
+		cb(types.EmbeddingStatusProcessing, types.EmbeddingPayload{
 			Current: 0,
 			Total:   1,
 			Message: "Sending request to OpenAI...",
@@ -259,7 +231,7 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 	result, err := utils.PostLLM(ctx, e.Connector, "embeddings", payload)
 	if err != nil {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: "Request failed",
@@ -273,7 +245,7 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 	respMap, ok := result.(map[string]interface{})
 	if !ok {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: "Unexpected response format",
@@ -285,7 +257,7 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 	data, ok := respMap["data"].([]interface{})
 	if !ok {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: "No data field in response",
@@ -296,7 +268,7 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 
 	if len(data) == 0 {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: "No embedding data returned",
@@ -308,7 +280,7 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 	firstItem, ok := data[0].(map[string]interface{})
 	if !ok {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: "Unexpected first item format",
@@ -320,7 +292,7 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 	embedding, ok := firstItem["embedding"].([]interface{})
 	if !ok {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: "No embedding field in response",
@@ -335,7 +307,7 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 			embeddingFloat[i] = floatVal
 		} else {
 			if cb != nil {
-				cb(StatusError, Payload{
+				cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 					Current: 1,
 					Total:   1,
 					Message: fmt.Sprintf("Invalid embedding value at position %d", i),
@@ -348,7 +320,7 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 	// Validate dimension matches expected
 	if len(embeddingFloat) != e.Dimension {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: fmt.Sprintf("Dimension mismatch: got %d, expected %d", len(embeddingFloat), e.Dimension),
@@ -359,7 +331,7 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...Progre
 
 	// Report completion
 	if cb != nil {
-		cb(StatusCompleted, Payload{
+		cb(types.EmbeddingStatusCompleted, types.EmbeddingPayload{
 			Current: 1,
 			Total:   1,
 			Message: "Text embedding completed successfully",
