@@ -3,6 +3,7 @@ package embedding
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/yaoapp/gou/connector"
@@ -74,9 +75,9 @@ func NewOpenaiWithDefaults(connectorName string) (*Openai, error) {
 }
 
 // EmbedDocuments embed documents with optional progress callback
-func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ...types.EmbeddingProgress) ([][]float64, error) {
+func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ...types.EmbeddingProgress) (*types.EmbeddingResults, error) {
 	if len(texts) == 0 {
-		return [][]float64{}, nil
+		return nil, nil
 	}
 
 	var cb types.EmbeddingProgress
@@ -100,6 +101,7 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	completedCount := 0
+	totalTokens := 0
 
 	// Limit concurrent requests to avoid rate limiting
 	maxConcurrent := e.Concurrent
@@ -131,7 +133,7 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 				}
 			}
 
-			embedding, err := e.EmbedQuery(ctx, inputText, docCallback)
+			embeddingResult, err := e.EmbedQuery(ctx, inputText, docCallback)
 			if err != nil {
 				errors[index] = err
 				// Report error for this item
@@ -145,7 +147,11 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 					})
 				}
 			} else {
-				embeddings[index] = embedding
+				embeddings[index] = embeddingResult.Embedding
+				// Add to total tokens count
+				mu.Lock()
+				totalTokens += embeddingResult.Usage.TotalTokens
+				mu.Unlock()
 			}
 
 			// Update progress
@@ -181,6 +187,12 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 		}
 	}
 
+	// Calculate total prompt tokens
+	promptTokens := 0
+	for _, text := range texts {
+		promptTokens += len(strings.Fields(text)) // Simple word count approximation
+	}
+
 	// Report completion
 	if cb != nil {
 		cb(types.EmbeddingStatusCompleted, types.EmbeddingPayload{
@@ -190,13 +202,22 @@ func (e *Openai) EmbedDocuments(ctx context.Context, texts []string, callback ..
 		})
 	}
 
-	return embeddings, nil
+	return &types.EmbeddingResults{
+		Usage: types.EmbeddingUsage{
+			TotalTokens:  totalTokens,
+			PromptTokens: promptTokens,
+			TotalTexts:   len(texts),
+		},
+		Model:      e.Model,
+		Type:       types.EmbeddingTypeDense,
+		Embeddings: embeddings,
+	}, nil
 }
 
 // EmbedQuery embed query using direct POST request with optional progress callback
-func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...types.EmbeddingProgress) ([]float64, error) {
+func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...types.EmbeddingProgress) (*types.EmbeddingResult, error) {
 	if text == "" {
-		return []float64{}, nil
+		return nil, nil
 	}
 
 	var cb types.EmbeddingProgress
@@ -329,6 +350,24 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...types.
 		return nil, fmt.Errorf("received embedding dimension %d does not match expected dimension %d", len(embeddingFloat), e.Dimension)
 	}
 
+	// Parse usage information from response if available
+	var usage types.EmbeddingUsage
+	if usageData, ok := respMap["usage"].(map[string]interface{}); ok {
+		if totalTokens, ok := usageData["total_tokens"].(float64); ok {
+			usage.TotalTokens = int(totalTokens)
+		}
+		if promptTokens, ok := usageData["prompt_tokens"].(float64); ok {
+			usage.PromptTokens = int(promptTokens)
+		}
+	}
+
+	// Fallback to simple word count if usage not provided
+	if usage.TotalTokens == 0 {
+		usage.PromptTokens = len(strings.Fields(text))
+		usage.TotalTokens = usage.PromptTokens
+	}
+	usage.TotalTexts = 1
+
 	// Report completion
 	if cb != nil {
 		cb(types.EmbeddingStatusCompleted, types.EmbeddingPayload{
@@ -338,7 +377,12 @@ func (e *Openai) EmbedQuery(ctx context.Context, text string, callback ...types.
 		})
 	}
 
-	return embeddingFloat, nil
+	return &types.EmbeddingResult{
+		Usage:     usage,
+		Model:     e.Model,
+		Type:      types.EmbeddingTypeDense,
+		Embedding: embeddingFloat,
+	}, nil
 }
 
 // GetModel returns the current model being used

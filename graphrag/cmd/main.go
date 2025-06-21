@@ -684,7 +684,7 @@ func runEmbedding(ctx context.Context, dirPath, connectorType, model string, dim
 	progressCallback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		switch status {
 		case types.EmbeddingStatusStarting:
-			color.Cyan("Starting batch embedding: %s\n", payload.Message)
+			color.Cyan("Starting batch embedding (%s): %s\n", connectorType, payload.Message)
 		case types.EmbeddingStatusProcessing:
 			if payload.DocumentIndex != nil {
 				color.Yellow("Processing document %d/%d: %s\n",
@@ -704,19 +704,19 @@ func runEmbedding(ctx context.Context, dirPath, connectorType, model string, dim
 	}
 
 	// Batch embed all documents
-	embeddings, err := embedder.EmbedDocuments(ctx, fileContents, progressCallback)
+	embeddingResults, err := embedder.EmbedDocuments(ctx, fileContents, progressCallback)
 	if err != nil {
 		return fmt.Errorf("failed to generate embeddings: %w", err)
 	}
 
-	if len(embeddings) != len(validFiles) {
-		return fmt.Errorf("embedding count mismatch: got %d embeddings for %d files", len(embeddings), len(validFiles))
+	if embeddingResults.Count() != len(validFiles) {
+		return fmt.Errorf("embedding count mismatch: got %d embeddings for %d files", embeddingResults.Count(), len(validFiles))
 	}
 
 	// Save embeddings to files
 	fmt.Println("Saving embedding files...")
 	for i, filePath := range validFiles {
-		if err := saveEmbeddingFile(filePath, fileContents[i], embeddings[i], embedder, suffix); err != nil {
+		if err := saveEmbeddingFile(filePath, fileContents[i], embeddingResults, i, embedder, suffix); err != nil {
 			color.Red("  Error saving %s: %v\n", filepath.Base(filePath), err)
 			errorCount++
 		} else {
@@ -729,9 +729,12 @@ func runEmbedding(ctx context.Context, dirPath, connectorType, model string, dim
 	fmt.Printf("Embedding completed: %d files processed, %d errors in %s\n", len(validFiles), errorCount, cost.Round(time.Millisecond))
 	fmt.Printf("--------------------------------\n")
 	fmt.Printf("Directory: %s\n", dirPath)
-	fmt.Printf("Model: %s\n", model)
+	fmt.Printf("Model: %s\n", embeddingResults.Model)
+	fmt.Printf("Embedding Type: %s\n", embeddingResults.Type)
 	fmt.Printf("Dimension: %d\n", dimension)
 	fmt.Printf("Concurrent: %d (used by EmbedDocuments internally)\n", concurrent)
+	fmt.Printf("Total Tokens: %d\n", embeddingResults.Usage.TotalTokens)
+	fmt.Printf("Total Texts: %d\n", embeddingResults.Usage.TotalTexts)
 	fmt.Printf("Time Cost: %s\n", cost)
 	fmt.Printf("--------------------------------\n")
 
@@ -764,17 +767,41 @@ func findFilesInDirectory(dirPath string) ([]string, error) {
 	return files, err
 }
 
-// saveEmbeddingFile saves embedding data to a JSON file
-func saveEmbeddingFile(filePath, text string, embedding []float64, embedder types.Embedding, suffix string) error {
-	// Prepare embedding data
+// saveEmbeddingFile saves embedding data to a JSON file (supports both dense and sparse embeddings)
+func saveEmbeddingFile(filePath, text string, embeddingResults *types.EmbeddingResults, index int, embedder types.Embedding, suffix string) error {
+	// Prepare base embedding data
 	embeddingData := map[string]interface{}{
 		"file":         filepath.Base(filePath),
 		"full_path":    filePath,
-		"model":        embedder.GetModel(),
+		"model":        embeddingResults.Model,
 		"dimension":    embedder.GetDimension(),
 		"text_length":  len(text),
-		"embedding":    embedding,
+		"type":         string(embeddingResults.Type),
 		"generated_at": time.Now().Format(time.RFC3339),
+		"usage":        embeddingResults.Usage,
+	}
+
+	// Add embedding data based on type
+	if embeddingResults.Type == types.EmbeddingTypeDense {
+		denseEmbeddings := embeddingResults.GetDenseEmbeddings()
+		if index < len(denseEmbeddings) {
+			embeddingData["embedding"] = denseEmbeddings[index]
+		} else {
+			return fmt.Errorf("dense embedding index %d out of range (have %d)", index, len(denseEmbeddings))
+		}
+	} else if embeddingResults.Type == types.EmbeddingTypeSparse {
+		sparseEmbeddings := embeddingResults.GetSparseEmbeddings()
+		if index < len(sparseEmbeddings) {
+			sparse := sparseEmbeddings[index]
+			embeddingData["sparse_embedding"] = map[string]interface{}{
+				"indices": sparse.Indices,
+				"values":  sparse.Values,
+			}
+		} else {
+			return fmt.Errorf("sparse embedding index %d out of range (have %d)", index, len(sparseEmbeddings))
+		}
+	} else {
+		return fmt.Errorf("unsupported embedding type: %s", embeddingResults.Type)
 	}
 
 	if suffix == "" {

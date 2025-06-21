@@ -278,19 +278,24 @@ func TestEmbedQuery(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			embedding, err := openai.EmbedQuery(ctx, tt.text, callback)
+			embeddingResult, err := openai.EmbedQuery(ctx, tt.text, callback)
 
 			if tt.expectError {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 				if tt.text == "" {
-					assert.Empty(t, embedding)
+					assert.Nil(t, embeddingResult)
 					assert.Empty(t, callbackMessages) // No callback for empty text
 				} else {
-					assert.Len(t, embedding, 1536)
+					assert.NotNil(t, embeddingResult)
+					assert.Len(t, embeddingResult.Embedding, 1536)
+					assert.Equal(t, 1, embeddingResult.Usage.TotalTexts)
+					assert.Greater(t, embeddingResult.Usage.TotalTokens, 0)
+					assert.Equal(t, types.EmbeddingTypeDense, embeddingResult.Type)
+					assert.Equal(t, "text-embedding-3-small", embeddingResult.Model)
 					// Check if embedding contains valid float values
-					for i, val := range embedding {
+					for i, val := range embeddingResult.Embedding {
 						assert.False(t, isNaN(val), "embedding value at index %d is NaN", i)
 					}
 					// Check callback was called
@@ -307,13 +312,17 @@ func TestEmbedQuery(t *testing.T) {
 			}
 
 			// Test without callback
-			embedding2, err2 := openai.EmbedQuery(ctx, tt.text)
+			embeddingResult2, err2 := openai.EmbedQuery(ctx, tt.text)
 			if tt.expectError {
 				assert.Error(t, err2)
 			} else {
 				assert.NoError(t, err2)
-				if tt.text != "" {
-					assert.Len(t, embedding2, 1536)
+				if tt.text == "" {
+					assert.Nil(t, embeddingResult2)
+				} else {
+					assert.NotNil(t, embeddingResult2)
+					assert.Len(t, embeddingResult2.Embedding, 1536)
+					assert.Equal(t, 1, embeddingResult2.Usage.TotalTexts)
 				}
 			}
 		})
@@ -375,15 +384,24 @@ func TestEmbedDocuments(t *testing.T) {
 			callbackPayloads = []types.EmbeddingPayload{}
 
 			ctx := context.Background()
-			embeddings, err := openai.EmbedDocuments(ctx, tt.texts, callback)
+			embeddingResults, err := openai.EmbedDocuments(ctx, tt.texts, callback)
 
 			if tt.expectError {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.Len(t, embeddings, len(tt.texts))
+				if len(tt.texts) == 0 {
+					assert.Nil(t, embeddingResults)
+				} else {
+					assert.NotNil(t, embeddingResults)
+					assert.Equal(t, len(tt.texts), embeddingResults.Count())
+					assert.Equal(t, len(tt.texts), embeddingResults.Usage.TotalTexts)
+					assert.Equal(t, types.EmbeddingTypeDense, embeddingResults.Type)
+				}
 
 				if len(tt.texts) > 0 {
+					assert.Greater(t, embeddingResults.Usage.TotalTokens, 0)
+
 					// Check callback was called
 					mu.Lock()
 					assert.NotEmpty(t, callbackMessages)
@@ -406,6 +424,8 @@ func TestEmbedDocuments(t *testing.T) {
 					mu.Unlock()
 
 					// Check embeddings
+					embeddings := embeddingResults.GetDenseEmbeddings()
+					assert.NotNil(t, embeddings)
 					for i, embedding := range embeddings {
 						assert.Len(t, embedding, 1536, "embedding %d has wrong dimension", i)
 					}
@@ -413,12 +433,17 @@ func TestEmbedDocuments(t *testing.T) {
 			}
 
 			// Test without callback
-			embeddings2, err2 := openai.EmbedDocuments(ctx, tt.texts)
+			embeddingResults2, err2 := openai.EmbedDocuments(ctx, tt.texts)
 			if tt.expectError {
 				assert.Error(t, err2)
 			} else {
 				assert.NoError(t, err2)
-				assert.Len(t, embeddings2, len(tt.texts))
+				if len(tt.texts) == 0 {
+					assert.Nil(t, embeddingResults2)
+				} else {
+					assert.NotNil(t, embeddingResults2)
+					assert.Equal(t, len(tt.texts), embeddingResults2.Count())
+				}
 			}
 		})
 	}
@@ -566,8 +591,8 @@ func TestStressEmbedding(t *testing.T) {
 		t.Logf("Stress test failed with error: %v", err)
 		// Don't fail the test as this might be due to rate limiting
 	} else {
-		assert.Len(t, embeddings, 100)
-		t.Logf("Successfully embedded %d documents", len(embeddings))
+		assert.Equal(t, 100, embeddings.Count())
+		t.Logf("Successfully embedded %d documents", embeddings.Count())
 	}
 }
 
@@ -698,13 +723,13 @@ func TestDirectPostResponseParsing(t *testing.T) {
 
 	ctx := context.Background()
 	text := "Test direct POST response parsing"
-	embedding, err := openai.EmbedQuery(ctx, text)
+	embeddingResult, err := openai.EmbedQuery(ctx, text)
 
 	if err != nil {
 		t.Logf("Direct POST test failed: %v", err)
 	} else {
-		assert.Len(t, embedding, 1536)
-		t.Logf("Direct POST test succeeded, got embedding of length %d", len(embedding))
+		assert.Len(t, embeddingResult.Embedding, 1536)
+		t.Logf("Direct POST test succeeded, got embedding of length %d", len(embeddingResult.Embedding))
 	}
 }
 
