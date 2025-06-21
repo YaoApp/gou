@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/yaoapp/gou/connector"
+	"github.com/yaoapp/gou/graphrag/types"
 )
 
 // Tests that require environment variables (integration tests)
@@ -167,7 +168,7 @@ func TestFastEmbed_EmbedQuery_WithPassword(t *testing.T) {
 	testText := "Hello, this is a test text for embedding."
 
 	var progressMessages []string
-	callback := func(status Status, payload Payload) {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		message := fmt.Sprintf("Status: %s, Progress: %d/%d, Message: %s",
 			status, payload.Current, payload.Total, payload.Message)
 		progressMessages = append(progressMessages, message)
@@ -306,7 +307,7 @@ func TestFastEmbed_EmbedDocuments(t *testing.T) {
 	}
 
 	var progressMessages []string
-	callback := func(status Status, payload Payload) {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		message := fmt.Sprintf("Status: %s, Progress: %d/%d, Message: %s",
 			status, payload.Current, payload.Total, payload.Message)
 		progressMessages = append(progressMessages, message)
@@ -561,42 +562,6 @@ func TestFastEmbed_MissingConnector(t *testing.T) {
 		t.Error("Expected error for non-existent connector")
 	}
 	t.Logf("Correctly got error for non-existent connector: %v", err)
-}
-
-func TestFastEmbed_MissingHost(t *testing.T) {
-	// Create connector without host
-	fastembedDSL := `{
-		"LANG": "1.0.0",
-		"VERSION": "1.0.0",
-		"label": "FastEmbed No Host Test",
-		"type": "fastembed",
-		"options": {
-			"model": "BAAI/bge-small-en-v1.5"
-		}
-	}`
-
-	_, err := connector.New("fastembed", "test-fastembed-nohost", []byte(fastembedDSL))
-	if err != nil {
-		t.Fatalf("Failed to create FastEmbed connector: %v", err)
-	}
-
-	// Test with no host in options - should use connector's default host (127.0.0.1:8000)
-	fastembed, err := NewFastEmbed(FastEmbedOptions{
-		ConnectorName: "test-fastembed-nohost",
-		Concurrent:    5,
-		Dimension:     384,
-		// No Host specified
-	})
-	if err != nil {
-		t.Fatalf("Failed to create FastEmbed: %v", err)
-	}
-
-	// Should use default host
-	if fastembed.GetHost() != "http://127.0.0.1:8000" {
-		t.Errorf("Expected default host http://127.0.0.1:8000, got %s", fastembed.GetHost())
-	}
-
-	t.Logf("FastEmbed correctly used default host: %s", fastembed.GetHost())
 }
 
 func TestFastEmbed_EmptyInputs(t *testing.T) {

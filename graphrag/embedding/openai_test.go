@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yaoapp/gou/connector"
+	"github.com/yaoapp/gou/graphrag/types"
 )
 
 func TestMain(m *testing.M) {
@@ -198,15 +199,15 @@ func TestOpenaiMethods(t *testing.T) {
 
 func TestStatusConstants(t *testing.T) {
 	// Test status constants
-	assert.Equal(t, Status("starting"), StatusStarting)
-	assert.Equal(t, Status("processing"), StatusProcessing)
-	assert.Equal(t, Status("completed"), StatusCompleted)
-	assert.Equal(t, Status("error"), StatusError)
+	assert.Equal(t, types.EmbeddingStatus("starting"), types.EmbeddingStatusStarting)
+	assert.Equal(t, types.EmbeddingStatus("processing"), types.EmbeddingStatusProcessing)
+	assert.Equal(t, types.EmbeddingStatus("completed"), types.EmbeddingStatusCompleted)
+	assert.Equal(t, types.EmbeddingStatus("error"), types.EmbeddingStatusError)
 }
 
 func TestPayloadStructure(t *testing.T) {
 	// Test Payload structure
-	payload := Payload{
+	payload := types.EmbeddingPayload{
 		Current: 1,
 		Total:   5,
 		Message: "Test message",
@@ -268,9 +269,9 @@ func TestEmbedQuery(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test with callback
 			var callbackMessages []string
-			var callbackStatuses []Status
-			var callbackPayloads []Payload
-			callback := func(status Status, payload Payload) {
+			var callbackStatuses []types.EmbeddingStatus
+			var callbackPayloads []types.EmbeddingPayload
+			callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 				callbackMessages = append(callbackMessages, payload.Message)
 				callbackStatuses = append(callbackStatuses, status)
 				callbackPayloads = append(callbackPayloads, payload)
@@ -294,8 +295,8 @@ func TestEmbedQuery(t *testing.T) {
 					}
 					// Check callback was called
 					assert.NotEmpty(t, callbackMessages)
-					assert.Contains(t, callbackStatuses, StatusStarting)
-					assert.Contains(t, callbackStatuses, StatusCompleted)
+					assert.Contains(t, callbackStatuses, types.EmbeddingStatusStarting)
+					assert.Contains(t, callbackStatuses, types.EmbeddingStatusCompleted)
 
 					// Verify payload structure
 					for _, payload := range callbackPayloads {
@@ -326,11 +327,11 @@ func TestEmbedDocuments(t *testing.T) {
 	}
 
 	var callbackMessages []string
-	var callbackStatuses []Status
-	var callbackPayloads []Payload
+	var callbackStatuses []types.EmbeddingStatus
+	var callbackPayloads []types.EmbeddingPayload
 	var mu sync.Mutex
 
-	callback := func(status Status, payload Payload) {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		mu.Lock()
 		callbackMessages = append(callbackMessages, payload.Message)
 		callbackStatuses = append(callbackStatuses, status)
@@ -370,8 +371,8 @@ func TestEmbedDocuments(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			callbackMessages = []string{} // Reset callback calls
-			callbackStatuses = []Status{}
-			callbackPayloads = []Payload{}
+			callbackStatuses = []types.EmbeddingStatus{}
+			callbackPayloads = []types.EmbeddingPayload{}
 
 			ctx := context.Background()
 			embeddings, err := openai.EmbedDocuments(ctx, tt.texts, callback)
@@ -386,8 +387,8 @@ func TestEmbedDocuments(t *testing.T) {
 					// Check callback was called
 					mu.Lock()
 					assert.NotEmpty(t, callbackMessages)
-					assert.Contains(t, callbackStatuses, StatusStarting)
-					assert.Contains(t, callbackStatuses, StatusCompleted)
+					assert.Contains(t, callbackStatuses, types.EmbeddingStatusStarting)
+					assert.Contains(t, callbackStatuses, types.EmbeddingStatusCompleted)
 
 					// Verify document-specific payload data
 					hasDocumentIndex := false
@@ -635,8 +636,8 @@ func TestEdgeCases(t *testing.T) {
 		// Text longer than 100 characters to test truncation
 		longText := strings.Repeat("This is a long text that will be truncated in the callback payload. ", 5)
 
-		var receivedPayloads []Payload
-		callback := func(status Status, payload Payload) {
+		var receivedPayloads []types.EmbeddingPayload
+		callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 			receivedPayloads = append(receivedPayloads, payload)
 		}
 
@@ -710,11 +711,11 @@ func TestDirectPostResponseParsing(t *testing.T) {
 // Test callback functionality thoroughly
 func TestCallbackFunctionality(t *testing.T) {
 	var callbackMessages []string
-	var callbackStatuses []Status
-	var callbackPayloads []Payload
+	var callbackStatuses []types.EmbeddingStatus
+	var callbackPayloads []types.EmbeddingPayload
 	var mu sync.Mutex
 
-	callback := func(status Status, payload Payload) {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		mu.Lock()
 		callbackMessages = append(callbackMessages, payload.Message)
 		callbackStatuses = append(callbackStatuses, status)
@@ -744,7 +745,7 @@ func TestCallbackFunctionality(t *testing.T) {
 	mu.Lock()
 	hasStartStatus := false
 	for _, status := range callbackStatuses {
-		if status == StatusStarting {
+		if status == types.EmbeddingStatusStarting {
 			hasStartStatus = true
 			break
 		}
@@ -768,8 +769,8 @@ func TestCallbackFunctionality(t *testing.T) {
 
 	// Test different callback for query
 	callbackMessages = []string{}
-	callbackStatuses = []Status{}
-	callbackPayloads = []Payload{}
+	callbackStatuses = []types.EmbeddingStatus{}
+	callbackPayloads = []types.EmbeddingPayload{}
 	_, _ = openai.EmbedQuery(ctx, "test", callback)
 	t.Logf("Query callback messages: %d", len(callbackMessages))
 }
@@ -842,9 +843,9 @@ func TestModelHandling(t *testing.T) {
 
 // Test error scenarios with callback
 func TestErrorScenariosWithCallback(t *testing.T) {
-	var errorPayloads []Payload
-	callback := func(status Status, payload Payload) {
-		if status == StatusError {
+	var errorPayloads []types.EmbeddingPayload
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
+		if status == types.EmbeddingStatusError {
 			errorPayloads = append(errorPayloads, payload)
 		}
 	}
@@ -1084,7 +1085,7 @@ func TestConnectorModelSetting(t *testing.T) {
 
 // Test payload with all optional fields
 func TestPayloadWithAllFields(t *testing.T) {
-	payload := Payload{
+	payload := types.EmbeddingPayload{
 		Current: 5,
 		Total:   10,
 		Message: "Processing...",
@@ -1128,7 +1129,7 @@ func TestCallbackNilChecks(t *testing.T) {
 	_, _ = openai.EmbedDocuments(ctx, []string{"test"}, nil)
 
 	// Test with callback array that has nil
-	var nilCallback ProgressCallback
+	var nilCallback types.EmbeddingProgress
 	_, _ = openai.EmbedQuery(ctx, "test", nilCallback)
 	_, _ = openai.EmbedDocuments(ctx, []string{"test"}, nilCallback)
 }
@@ -1139,7 +1140,7 @@ func TestDifferentErrorTypes(t *testing.T) {
 	require.NoError(t, err)
 
 	var receivedErrors []error
-	callback := func(status Status, payload Payload) {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		if payload.Error != nil {
 			receivedErrors = append(receivedErrors, payload.Error)
 		}
@@ -1165,9 +1166,9 @@ func TestConcurrentCallbackAccess(t *testing.T) {
 
 	var callbackCount int64
 	var mu sync.Mutex
-	var allStatuses []Status
+	var allStatuses []types.EmbeddingStatus
 
-	callback := func(status Status, payload Payload) {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		atomic.AddInt64(&callbackCount, 1)
 		mu.Lock()
 		allStatuses = append(allStatuses, status)
@@ -1194,7 +1195,7 @@ func TestConcurrentCallbackAccess(t *testing.T) {
 	t.Logf("Total callback invocations: %d", finalCount)
 
 	mu.Lock()
-	uniqueStatuses := make(map[Status]bool)
+	uniqueStatuses := make(map[types.EmbeddingStatus]bool)
 	for _, status := range allStatuses {
 		uniqueStatuses[status] = true
 	}
@@ -1213,7 +1214,7 @@ func TestVeryShortTimeout(t *testing.T) {
 	defer cancel()
 
 	var timeoutErrors []error
-	callback := func(status Status, payload Payload) {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		if payload.Error != nil {
 			timeoutErrors = append(timeoutErrors, payload.Error)
 		}
@@ -1234,8 +1235,8 @@ func TestErrorHandlingInDirectRequests(t *testing.T) {
 	require.NoError(t, err)
 
 	var errorMessages []string
-	callback := func(status Status, payload Payload) {
-		if status == StatusError {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
+		if status == types.EmbeddingStatusError {
 			errorMessages = append(errorMessages, payload.Message)
 		}
 	}
@@ -1302,8 +1303,8 @@ func TestDocumentTextTruncation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var receivedPayloads []Payload
-			callback := func(status Status, payload Payload) {
+			var receivedPayloads []types.EmbeddingPayload
+			callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 				receivedPayloads = append(receivedPayloads, payload)
 			}
 
@@ -1341,10 +1342,10 @@ func TestEmbedQuerySpecificErrorPaths(t *testing.T) {
 
 	ctx := context.Background()
 
-	var errorStatuses []Status
+	var errorStatuses []types.EmbeddingStatus
 	var errorMessages []string
-	callback := func(status Status, payload Payload) {
-		if status == StatusError {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
+		if status == types.EmbeddingStatusError {
 			errorStatuses = append(errorStatuses, status)
 			errorMessages = append(errorMessages, payload.Message)
 		}
@@ -1392,8 +1393,8 @@ func TestDimensionValidationEdgeCases(t *testing.T) {
 	ctx := context.Background()
 
 	var dimensionErrors []string
-	callback := func(status Status, payload Payload) {
-		if status == StatusError && strings.Contains(payload.Message, "dimension") {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
+		if status == types.EmbeddingStatusError && strings.Contains(payload.Message, "dimension") {
 			dimensionErrors = append(dimensionErrors, payload.Message)
 		}
 	}
@@ -1417,8 +1418,8 @@ func TestDirectPostRequestProcessing(t *testing.T) {
 	ctx := context.Background()
 
 	var processingMessages []string
-	callback := func(status Status, payload Payload) {
-		if status == StatusProcessing {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
+		if status == types.EmbeddingStatusProcessing {
 			processingMessages = append(processingMessages, payload.Message)
 		}
 	}
@@ -1445,8 +1446,8 @@ func TestEmptyResponseScenarios(t *testing.T) {
 	ctx := context.Background()
 
 	var noDataErrors []string
-	callback := func(status Status, payload Payload) {
-		if status == StatusError && (strings.Contains(payload.Message, "data") ||
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
+		if status == types.EmbeddingStatusError && (strings.Contains(payload.Message, "data") ||
 			strings.Contains(payload.Message, "response") ||
 			strings.Contains(payload.Message, "embedding")) {
 			noDataErrors = append(noDataErrors, payload.Message)
@@ -1475,8 +1476,8 @@ func TestJSONUnmarshalingScenarios(t *testing.T) {
 	ctx := context.Background()
 
 	var parseErrors []string
-	callback := func(status Status, payload Payload) {
-		if status == StatusError && (strings.Contains(payload.Message, "parse") ||
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
+		if status == types.EmbeddingStatusError && (strings.Contains(payload.Message, "parse") ||
 			strings.Contains(payload.Message, "format") ||
 			strings.Contains(payload.Message, "unexpected")) {
 			parseErrors = append(parseErrors, payload.Message)
@@ -1505,7 +1506,7 @@ func TestDirectRequestScenarios(t *testing.T) {
 	ctx := context.Background()
 
 	var requestMessages []string
-	callback := func(status Status, payload Payload) {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		if strings.Contains(payload.Message, "request") ||
 			strings.Contains(payload.Message, "OpenAI") ||
 			strings.Contains(payload.Message, "failed") {
@@ -1530,8 +1531,8 @@ func TestEmbeddingValueValidation(t *testing.T) {
 	ctx := context.Background()
 
 	var validationErrors []string
-	callback := func(status Status, payload Payload) {
-		if status == StatusError && strings.Contains(payload.Message, "value") {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
+		if status == types.EmbeddingStatusError && strings.Contains(payload.Message, "value") {
 			validationErrors = append(validationErrors, payload.Message)
 		}
 	}
@@ -1558,7 +1559,7 @@ func TestErrorPathsNonMock(t *testing.T) {
 	ctx := context.Background()
 
 	var allErrors []error
-	callback := func(status Status, payload Payload) {
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		if payload.Error != nil {
 			allErrors = append(allErrors, payload.Error)
 		}
@@ -1580,8 +1581,8 @@ func TestAllStatusTypes(t *testing.T) {
 
 	ctx := context.Background()
 
-	statusCount := make(map[Status]int)
-	callback := func(status Status, payload Payload) {
+	statusCount := make(map[types.EmbeddingStatus]int)
+	callback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		statusCount[status]++
 	}
 
@@ -1598,5 +1599,5 @@ func TestAllStatusTypes(t *testing.T) {
 	}
 
 	// Verify we've seen key statuses
-	assert.Greater(t, statusCount[StatusStarting], 0, "Should have starting statuses")
+	assert.Greater(t, statusCount[types.EmbeddingStatusStarting], 0, "Should have starting statuses")
 }

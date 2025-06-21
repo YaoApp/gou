@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/yaoapp/gou/connector"
+	"github.com/yaoapp/gou/graphrag/types"
 	"github.com/yaoapp/gou/http"
 )
 
@@ -131,19 +132,19 @@ func (e *FastEmbed) postFastEmbed(ctx context.Context, endpoint string, payload 
 }
 
 // EmbedDocuments embed documents with optional progress callback
-func (e *FastEmbed) EmbedDocuments(ctx context.Context, texts []string, callback ...ProgressCallback) ([][]float64, error) {
+func (e *FastEmbed) EmbedDocuments(ctx context.Context, texts []string, callback ...types.EmbeddingProgress) ([][]float64, error) {
 	if len(texts) == 0 {
 		return [][]float64{}, nil
 	}
 
-	var cb ProgressCallback
+	var cb types.EmbeddingProgress
 	if len(callback) > 0 && callback[0] != nil {
 		cb = callback[0]
 	}
 
 	// Report initial progress
 	if cb != nil {
-		cb(StatusStarting, Payload{
+		cb(types.EmbeddingStatusStarting, types.EmbeddingPayload{
 			Current: 0,
 			Total:   len(texts),
 			Message: "Starting document embedding with FastEmbed...",
@@ -174,9 +175,9 @@ func (e *FastEmbed) EmbedDocuments(ctx context.Context, texts []string, callback
 			defer func() { <-semaphore }() // Release semaphore
 
 			// Create a callback for individual document processing
-			var docCallback ProgressCallback
+			var docCallback types.EmbeddingProgress
 			if cb != nil {
-				docCallback = func(status Status, payload Payload) {
+				docCallback = func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 					// Enhance payload with document-specific info
 					payload.DocumentIndex = &index
 					truncatedText := inputText
@@ -193,7 +194,7 @@ func (e *FastEmbed) EmbedDocuments(ctx context.Context, texts []string, callback
 				errors[index] = err
 				// Report error for this item
 				if cb != nil {
-					cb(StatusError, Payload{
+					cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 						Current:       completedCount + 1,
 						Total:         len(texts),
 						Message:       fmt.Sprintf("Error embedding document %d", index+1),
@@ -210,7 +211,7 @@ func (e *FastEmbed) EmbedDocuments(ctx context.Context, texts []string, callback
 			completed[index] = true
 			completedCount++
 			if cb != nil {
-				cb(StatusProcessing, Payload{
+				cb(types.EmbeddingStatusProcessing, types.EmbeddingPayload{
 					Current:       completedCount,
 					Total:         len(texts),
 					Message:       fmt.Sprintf("Completed %d/%d documents", completedCount, len(texts)),
@@ -227,7 +228,7 @@ func (e *FastEmbed) EmbedDocuments(ctx context.Context, texts []string, callback
 	for i, err := range errors {
 		if err != nil {
 			if cb != nil {
-				cb(StatusError, Payload{
+				cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 					Current: len(texts),
 					Total:   len(texts),
 					Message: fmt.Sprintf("Failed to embed all documents, error at index %d", i),
@@ -240,7 +241,7 @@ func (e *FastEmbed) EmbedDocuments(ctx context.Context, texts []string, callback
 
 	// Report completion
 	if cb != nil {
-		cb(StatusCompleted, Payload{
+		cb(types.EmbeddingStatusCompleted, types.EmbeddingPayload{
 			Current: len(texts),
 			Total:   len(texts),
 			Message: "Document embedding completed successfully with FastEmbed",
@@ -251,19 +252,19 @@ func (e *FastEmbed) EmbedDocuments(ctx context.Context, texts []string, callback
 }
 
 // EmbedQuery embed query using FastEmbed API with optional progress callback
-func (e *FastEmbed) EmbedQuery(ctx context.Context, text string, callback ...ProgressCallback) ([]float64, error) {
+func (e *FastEmbed) EmbedQuery(ctx context.Context, text string, callback ...types.EmbeddingProgress) ([]float64, error) {
 	if text == "" {
 		return []float64{}, nil
 	}
 
-	var cb ProgressCallback
+	var cb types.EmbeddingProgress
 	if len(callback) > 0 && callback[0] != nil {
 		cb = callback[0]
 	}
 
 	// Report starting
 	if cb != nil {
-		cb(StatusStarting, Payload{
+		cb(types.EmbeddingStatusStarting, types.EmbeddingPayload{
 			Current: 0,
 			Total:   1,
 			Message: "Starting text embedding with FastEmbed...",
@@ -278,7 +279,7 @@ func (e *FastEmbed) EmbedQuery(ctx context.Context, text string, callback ...Pro
 
 	// Report processing
 	if cb != nil {
-		cb(StatusProcessing, Payload{
+		cb(types.EmbeddingStatusProcessing, types.EmbeddingPayload{
 			Current: 0,
 			Total:   1,
 			Message: "Sending request to FastEmbed...",
@@ -289,7 +290,7 @@ func (e *FastEmbed) EmbedQuery(ctx context.Context, text string, callback ...Pro
 	result, err := e.postFastEmbed(ctx, "embed", payload)
 	if err != nil {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: "FastEmbed request failed",
@@ -303,7 +304,7 @@ func (e *FastEmbed) EmbedQuery(ctx context.Context, text string, callback ...Pro
 	respMap, ok := result.(map[string]interface{})
 	if !ok {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: "Unexpected response format",
@@ -315,7 +316,7 @@ func (e *FastEmbed) EmbedQuery(ctx context.Context, text string, callback ...Pro
 	embeddings, ok := respMap["embeddings"].([]interface{})
 	if !ok {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: "No embeddings field in response",
@@ -326,7 +327,7 @@ func (e *FastEmbed) EmbedQuery(ctx context.Context, text string, callback ...Pro
 
 	if len(embeddings) == 0 {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: "No embedding data returned",
@@ -339,7 +340,7 @@ func (e *FastEmbed) EmbedQuery(ctx context.Context, text string, callback ...Pro
 	embedding, ok := embeddings[0].([]interface{})
 	if !ok {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: "Unexpected embedding format",
@@ -355,7 +356,7 @@ func (e *FastEmbed) EmbedQuery(ctx context.Context, text string, callback ...Pro
 			embeddingFloat[i] = floatVal
 		} else {
 			if cb != nil {
-				cb(StatusError, Payload{
+				cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 					Current: 1,
 					Total:   1,
 					Message: fmt.Sprintf("Invalid embedding value at position %d", i),
@@ -368,7 +369,7 @@ func (e *FastEmbed) EmbedQuery(ctx context.Context, text string, callback ...Pro
 	// Validate dimension matches expected
 	if len(embeddingFloat) != e.Dimension {
 		if cb != nil {
-			cb(StatusError, Payload{
+			cb(types.EmbeddingStatusError, types.EmbeddingPayload{
 				Current: 1,
 				Total:   1,
 				Message: fmt.Sprintf("Dimension mismatch: got %d, expected %d", len(embeddingFloat), e.Dimension),
@@ -379,7 +380,7 @@ func (e *FastEmbed) EmbedQuery(ctx context.Context, text string, callback ...Pro
 
 	// Report completion
 	if cb != nil {
-		cb(StatusCompleted, Payload{
+		cb(types.EmbeddingStatusCompleted, types.EmbeddingPayload{
 			Current: 1,
 			Total:   1,
 			Message: "Text embedding completed successfully with FastEmbed",

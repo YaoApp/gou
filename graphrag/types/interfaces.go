@@ -54,18 +54,24 @@ type VectorStore interface {
 	Close() error
 }
 
-// EmbeddingFunction represents an embedding function interface
+// Embedding represents an embedding function interface
 // This handles text-to-vector conversion, separate from vector storage
-type EmbeddingFunction interface {
+type Embedding interface {
 	// EmbedDocuments embeds a list of documents
-	EmbedDocuments(ctx context.Context, texts []string) ([][]float64, error)
+	EmbedDocuments(ctx context.Context, texts []string, callback ...EmbeddingProgress) ([][]float64, error)
 
 	// EmbedQuery embeds a single query
-	EmbedQuery(ctx context.Context, text string) ([]float64, error)
+	EmbedQuery(ctx context.Context, text string, callback ...EmbeddingProgress) ([]float64, error)
 
 	// GetDimension returns the dimension of the embedding vectors
 	GetDimension() int
+
+	// GetModel returns the model of the embedding function
+	GetModel() string
 }
+
+// EmbeddingProgress defines the callback function for progress reporting with flexible payload
+type EmbeddingProgress func(status EmbeddingStatus, payload EmbeddingPayload)
 
 // ChunkingFunction represents a chunking function interface
 // This handles text-to-chunk conversion, separate from chunk storage
@@ -108,7 +114,7 @@ type VectorStoreRetriever interface {
 
 	// Direct vector operations (bypass embedding)
 	GetVectorStore() VectorStore
-	GetEmbeddingFunction() EmbeddingFunction
+	GetEmbeddingFunction() Embedding
 }
 
 // ===== Graph Database Interfaces =====

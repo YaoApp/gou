@@ -814,6 +814,34 @@ type VectorStoreStats struct {
 	ExtraStats     map[string]interface{} `json:"extra_stats,omitempty"`
 }
 
+// ProgressCallback defines the callback function for progress reporting with flexible payload
+
+// EmbeddingStatus defines the status of embedding process
+type EmbeddingStatus string
+
+// Status constants for embedding process
+const (
+	EmbeddingStatusStarting   EmbeddingStatus = "starting"   // Starting the embedding process
+	EmbeddingStatusProcessing EmbeddingStatus = "processing" // Processing embeddings
+	EmbeddingStatusCompleted  EmbeddingStatus = "completed"  // Successfully completed
+	EmbeddingStatusError      EmbeddingStatus = "error"      // Error occurred
+)
+
+// EmbeddingPayload contains context-specific data for different embedding scenarios
+type EmbeddingPayload struct {
+	// Common fields
+	Current int    `json:"current"` // Current progress count
+	Total   int    `json:"total"`   // Total items to process
+	Message string `json:"message"` // Status message
+
+	// Document embedding specific
+	DocumentIndex *int    `json:"document_index,omitempty"` // Index of current document being processed
+	DocumentText  *string `json:"document_text,omitempty"`  // Text being processed (truncated if too long)
+
+	// Error specific
+	Error error `json:"error,omitempty"` // Error details when Status is StatusError
+}
+
 // ===== Graph Database Types =====
 
 // Node represents a graph node
@@ -941,9 +969,9 @@ type GraphOperation struct {
 
 // Config represents configuration for GraphRAG
 type Config struct {
-	GraphStore        GraphStore        `json:"graph_store"`
-	VectorStore       VectorStore       `json:"vector_store"`
-	EmbeddingFunction EmbeddingFunction `json:"embedding_function"`
+	GraphStore  GraphStore  `json:"graph_store"`
+	VectorStore VectorStore `json:"vector_store"`
+	Embedding   Embedding   `json:"embedding_function"`
 
 	// Community detection settings
 	CommunityDetection CommunityDetectionOptions `json:"community_detection"`

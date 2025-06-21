@@ -28,9 +28,10 @@ func main() {
 		maxConcurrent  = flag.Int("concurrent", 6, "Maximum concurrent operations for chunking (default 6), or for embedding (default 10)")
 		method         = flag.String("method", "structured", "Processing method: structured, semantic, both, or embedding")
 		toolcall       = flag.Bool("toolcall", false, "Use toolcall for semantic chunking")
-		connector      = flag.String("connector", "openai", "Connector type: openai, custom")
+		connector      = flag.String("connector", "openai", "Connector type: openai, fastembed, custom")
 		contextSize    = flag.Int("context", 1000, "Context size")
 		embeddingModel = flag.String("embedding-model", "text-embedding-3-small", "Embedding model for embedding method")
+		suffix         = flag.String("suffix", "", "Suffix for embedding files")
 		dimension      = flag.Int("dimension", 1536, "Embedding dimension for embedding method")
 		help           = flag.Bool("help", false, "Show help message")
 	)
@@ -80,7 +81,7 @@ func main() {
 		fmt.Printf("Concurrent: %d\n", *maxConcurrent)
 
 		ctx := context.Background()
-		if err := runEmbedding(ctx, *dirPath, *connector, *embeddingModel, *dimension, *maxConcurrent); err != nil {
+		if err := runEmbedding(ctx, *dirPath, *connector, *embeddingModel, *dimension, *maxConcurrent, *suffix); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Embedding failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -272,6 +273,8 @@ func createAICConnector(name string) (connector.Connector, error) {
 	switch name {
 	case "openai":
 		return createOpenaiConnector()
+	case "fastembed":
+		return createFastEmbedConnector()
 	case "custom":
 		return createCustomConnector()
 	}
@@ -335,6 +338,36 @@ func createOpenaiConnector() (connector.Connector, error) {
 	conn, err := connector.New("openai", "openai-chunking", dslBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OpenAI connector: %w", err)
+	}
+
+	return conn, nil
+}
+
+func createFastEmbedConnector() (connector.Connector, error) {
+	apiKey := os.Getenv("FASTEMBED_TEST_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("FASTEMBED_TEST_KEY environment variable is not set")
+	}
+
+	host := os.Getenv("FASTEMBED_TEST_HOST")
+	if host == "" {
+		return nil, fmt.Errorf("FASTEMBED_TEST_HOST environment variable is not set")
+	}
+
+	dsl := map[string]interface{}{
+		"name":    "fastembed",
+		"type":    "fastembed",
+		"options": map[string]interface{}{"key": apiKey, "host": host, "model": "BAAI/bge-small-en-v1.5"},
+	}
+
+	dslBytes, err := json.Marshal(dsl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal connector DSL: %w", err)
+	}
+
+	conn, err := connector.New("fastembed", "fastembed", dslBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create FastEmbed connector: %w", err)
 	}
 
 	return conn, nil
@@ -556,7 +589,7 @@ func runSemanticChunking(ctx context.Context, filePath, basename, ext, outputDir
 }
 
 // runEmbedding processes all files in a directory and generates embeddings using batch processing
-func runEmbedding(ctx context.Context, dirPath, connectorType, model string, dimension, concurrent int) error {
+func runEmbedding(ctx context.Context, dirPath, connectorType, model string, dimension, concurrent int, suffix string) error {
 	start := time.Now()
 
 	// Create connector
@@ -565,13 +598,39 @@ func runEmbedding(ctx context.Context, dirPath, connectorType, model string, dim
 		return fmt.Errorf("failed to create connector: %w", err)
 	}
 
+	var embedder types.Embedding
+
 	// Create embedding instance
-	embedder, err := embedding.NewOpenai(embedding.OpenaiOptions{
-		ConnectorName: getConnectorName(connectorType),
-		Concurrent:    concurrent,
-		Dimension:     dimension,
-		Model:         model,
-	})
+	switch connectorType {
+	case "openai":
+		embedder, err = embedding.NewOpenai(embedding.OpenaiOptions{
+			ConnectorName: getConnectorName(connectorType),
+			Concurrent:    concurrent,
+			Dimension:     dimension,
+			Model:         model,
+		})
+
+	case "fastembed":
+		c, err := createFastEmbedConnector()
+		if err != nil {
+			return fmt.Errorf("failed to create connector: %w", err)
+		}
+
+		setting := c.Setting()
+		if model == "" {
+			model = setting["model"].(string)
+		}
+
+		embedder, err = embedding.NewFastEmbed(embedding.FastEmbedOptions{
+			ConnectorName: getConnectorName(connectorType),
+			Concurrent:    concurrent,
+			Dimension:     dimension,
+			Model:         model,
+			Host:          setting["host"].(string),
+			Key:           setting["key"].(string),
+		})
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to create embedder: %w", err)
 	}
@@ -622,20 +681,20 @@ func runEmbedding(ctx context.Context, dirPath, connectorType, model string, dim
 	fmt.Printf("Processing %d valid files...\n", len(fileContents))
 
 	// Create progress callback for batch processing
-	progressCallback := func(status embedding.Status, payload embedding.Payload) {
+	progressCallback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
 		switch status {
-		case embedding.StatusStarting:
+		case types.EmbeddingStatusStarting:
 			color.Cyan("Starting batch embedding: %s\n", payload.Message)
-		case embedding.StatusProcessing:
+		case types.EmbeddingStatusProcessing:
 			if payload.DocumentIndex != nil {
 				color.Yellow("Processing document %d/%d: %s\n",
 					payload.Current, payload.Total, filepath.Base(validFiles[*payload.DocumentIndex]))
 			} else {
 				color.Yellow("Processing: %s (%d/%d)\n", payload.Message, payload.Current, payload.Total)
 			}
-		case embedding.StatusCompleted:
+		case types.EmbeddingStatusCompleted:
 			color.Green("Batch embedding completed: %s\n", payload.Message)
-		case embedding.StatusError:
+		case types.EmbeddingStatusError:
 			if payload.DocumentIndex != nil {
 				color.Red("Error processing document %d: %s\n", *payload.DocumentIndex, payload.Message)
 			} else {
@@ -657,7 +716,7 @@ func runEmbedding(ctx context.Context, dirPath, connectorType, model string, dim
 	// Save embeddings to files
 	fmt.Println("Saving embedding files...")
 	for i, filePath := range validFiles {
-		if err := saveEmbeddingFile(filePath, fileContents[i], embeddings[i], embedder); err != nil {
+		if err := saveEmbeddingFile(filePath, fileContents[i], embeddings[i], embedder, suffix); err != nil {
 			color.Red("  Error saving %s: %v\n", filepath.Base(filePath), err)
 			errorCount++
 		} else {
@@ -706,7 +765,7 @@ func findFilesInDirectory(dirPath string) ([]string, error) {
 }
 
 // saveEmbeddingFile saves embedding data to a JSON file
-func saveEmbeddingFile(filePath, text string, embedding []float64, embedder *embedding.Openai) error {
+func saveEmbeddingFile(filePath, text string, embedding []float64, embedder types.Embedding, suffix string) error {
 	// Prepare embedding data
 	embeddingData := map[string]interface{}{
 		"file":         filepath.Base(filePath),
@@ -718,10 +777,14 @@ func saveEmbeddingFile(filePath, text string, embedding []float64, embedder *emb
 		"generated_at": time.Now().Format(time.RFC3339),
 	}
 
+	if suffix == "" {
+		suffix = "json"
+	}
+
 	// Generate output filename
 	dir := filepath.Dir(filePath)
 	filename := filepath.Base(filePath)
-	outputFile := filepath.Join(dir, filename+".json")
+	outputFile := filepath.Join(dir, filename+"."+suffix)
 
 	// Write embedding to JSON file
 	jsonData, err := json.MarshalIndent(embeddingData, "", "  ")
@@ -741,6 +804,8 @@ func getConnectorName(connectorType string) string {
 	switch connectorType {
 	case "openai":
 		return "openai-chunking"
+	case "fastembed":
+		return "fastembed"
 	case "custom":
 		return "openai-chunking"
 	default:
