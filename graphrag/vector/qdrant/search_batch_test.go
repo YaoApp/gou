@@ -52,12 +52,17 @@ func TestSearchBatch_BasicFunctionality(t *testing.T) {
 	})
 
 	t.Run("SingleSearch", func(t *testing.T) {
-		queryVector := testDataSet.Documents[0].Vector
+		queryVector := getQueryVectorFromDataSet(testDataSet)
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from test data")
+		}
+
 		opts := []types.SearchOptionsInterface{
 			&types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 		}
 
@@ -80,15 +85,20 @@ func TestSearchBatch_BasicFunctionality(t *testing.T) {
 	})
 
 	t.Run("MultipleSimilaritySearches", func(t *testing.T) {
+		queryVector := getQueryVectorFromDataSet(testDataSet)
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from test data")
+		}
+
 		var opts []types.SearchOptionsInterface
 
 		// Create multiple similarity search options
 		for i := 0; i < 3; i++ {
-			queryVector := testDataSet.Documents[i].Vector
 			opts = append(opts, &types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			})
 		}
 
@@ -122,7 +132,10 @@ func TestSearchBatch_BasicFunctionality(t *testing.T) {
 	})
 
 	t.Run("MixedSearchTypes", func(t *testing.T) {
-		queryVector := testDataSet.Documents[0].Vector
+		queryVector := getQueryVectorFromDataSet(testDataSet)
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from test data")
+		}
 
 		opts := []types.SearchOptionsInterface{
 			// Similarity search
@@ -130,6 +143,7 @@ func TestSearchBatch_BasicFunctionality(t *testing.T) {
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			// Score threshold search
 			&types.ScoreThresholdOptions{
@@ -138,6 +152,7 @@ func TestSearchBatch_BasicFunctionality(t *testing.T) {
 				K:               5,
 				ScoreThreshold:  0.1,
 				IncludeMetadata: true,
+				VectorUsing:     "dense", // Specify vector name for named vector collections
 			},
 			// MMR search
 			&types.MMRSearchOptions{
@@ -146,6 +161,7 @@ func TestSearchBatch_BasicFunctionality(t *testing.T) {
 				K:              3,
 				FetchK:         10,
 				LambdaMult:     0.5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 		}
 
@@ -167,16 +183,21 @@ func TestSearchBatch_BasicFunctionality(t *testing.T) {
 	})
 
 	t.Run("LargeBatch", func(t *testing.T) {
+		queryVector := getQueryVectorFromDataSet(testDataSet)
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from test data")
+		}
+
 		var opts []types.SearchOptionsInterface
 
 		// Create a large batch of search options
 		batchSize := 20
 		for i := 0; i < batchSize; i++ {
-			queryVector := testDataSet.Documents[i%len(testDataSet.Documents)].Vector
 			opts = append(opts, &types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              3,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			})
 		}
 
@@ -221,12 +242,17 @@ func TestSearchBatch_ErrorScenarios(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("NilOptionInBatch", func(t *testing.T) {
-		queryVector := testDataSet.Documents[0].Vector
+		queryVector := getQueryVectorFromDataSet(testDataSet)
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from test data")
+		}
+
 		opts := []types.SearchOptionsInterface{
 			&types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			nil, // This should cause an error
 		}
@@ -272,25 +298,32 @@ func TestSearchBatch_ErrorScenarios(t *testing.T) {
 	})
 
 	t.Run("MixedSuccessAndFailure", func(t *testing.T) {
-		queryVector := testDataSet.Documents[0].Vector
+		queryVector := getQueryVectorFromDataSet(testDataSet)
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from test data")
+		}
+
 		opts := []types.SearchOptionsInterface{
 			// Valid search
 			&types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			// Invalid search (nonexistent collection)
 			&types.SearchOptions{
 				CollectionName: "nonexistent_collection_12345",
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			// Another valid search
 			&types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              3,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 		}
 
@@ -351,7 +384,10 @@ func TestSearchBatch_ErrorScenarios(t *testing.T) {
 	})
 
 	t.Run("ContextCancellation", func(t *testing.T) {
-		queryVector := testDataSet.Documents[0].Vector
+		queryVector := getQueryVectorFromDataSet(testDataSet)
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from test data")
+		}
 
 		// Create a context that will be cancelled
 		cancelCtx, cancel := context.WithCancel(context.Background())
@@ -361,6 +397,7 @@ func TestSearchBatch_ErrorScenarios(t *testing.T) {
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 		}
 
@@ -396,6 +433,10 @@ func TestSearchBatch_ConcurrentStress(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	// Test parameters
 	numGoroutines := 10
@@ -418,13 +459,11 @@ func TestSearchBatch_ConcurrentStress(t *testing.T) {
 				// Create batch of searches
 				var opts []types.SearchOptionsInterface
 				for k := 0; k < searchesPerBatch; k++ {
-					docIndex := (goroutineID*batchesPerGoroutine*searchesPerBatch + j*searchesPerBatch + k) % len(testDataSet.Documents)
-					queryVector := testDataSet.Documents[docIndex].Vector
-
 					opts = append(opts, &types.SearchOptions{
 						CollectionName: testDataSet.CollectionName,
 						QueryVector:    queryVector,
 						K:              5,
+						VectorUsing:    "dense", // Specify vector name for named vector collections
 					})
 				}
 
@@ -541,6 +580,10 @@ func TestSearchBatch_MemoryLeakDetection(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	// Get initial memory stats
 	var initialStats, finalStats runtime.MemStats
@@ -555,9 +598,6 @@ func TestSearchBatch_MemoryLeakDetection(t *testing.T) {
 		// Create batch of searches
 		var opts []types.SearchOptionsInterface
 		for j := 0; j < batchSize; j++ {
-			docIndex := (i*batchSize + j) % len(testDataSet.Documents)
-			queryVector := testDataSet.Documents[docIndex].Vector
-
 			// Vary search types and options
 			switch j % 3 {
 			case 0:
@@ -567,6 +607,7 @@ func TestSearchBatch_MemoryLeakDetection(t *testing.T) {
 					K:               5,
 					IncludeVector:   i%2 == 0,
 					IncludeMetadata: i%3 == 0,
+					VectorUsing:     "dense", // Specify vector name for named vector collections
 				})
 			case 1:
 				opts = append(opts, &types.ScoreThresholdOptions{
@@ -575,6 +616,7 @@ func TestSearchBatch_MemoryLeakDetection(t *testing.T) {
 					K:              3,
 					ScoreThreshold: 0.1,
 					IncludeContent: i%4 == 0,
+					VectorUsing:    "dense", // Specify vector name for named vector collections
 				})
 			case 2:
 				opts = append(opts, &types.MMRSearchOptions{
@@ -583,6 +625,7 @@ func TestSearchBatch_MemoryLeakDetection(t *testing.T) {
 					K:              3,
 					FetchK:         10,
 					LambdaMult:     0.5,
+					VectorUsing:    "dense", // Specify vector name for named vector collections
 				})
 			}
 		}
@@ -650,6 +693,10 @@ func TestSearchBatch_Performance(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	// Test different batch sizes to understand performance characteristics
 	batchSizes := []int{1, 5, 10, 20, 50}
@@ -660,13 +707,11 @@ func TestSearchBatch_Performance(t *testing.T) {
 
 			// Create batch of searches
 			for i := 0; i < batchSize; i++ {
-				docIndex := i % len(testDataSet.Documents)
-				queryVector := testDataSet.Documents[docIndex].Vector
-
 				opts = append(opts, &types.SearchOptions{
 					CollectionName: testDataSet.CollectionName,
 					QueryVector:    queryVector,
 					K:              10,
+					VectorUsing:    "dense", // Specify vector name for named vector collections
 				})
 			}
 
@@ -727,7 +772,10 @@ func TestSearchBatch_EdgeCases(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	t.Run("VeryLargeBatch", func(t *testing.T) {
 		// Test with a very large batch to ensure the semaphore works correctly
@@ -735,13 +783,11 @@ func TestSearchBatch_EdgeCases(t *testing.T) {
 		largeBatchSize := 100
 
 		for i := 0; i < largeBatchSize; i++ {
-			docIndex := i % len(testDataSet.Documents)
-			queryVector := testDataSet.Documents[docIndex].Vector
-
 			opts = append(opts, &types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              3,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			})
 		}
 
@@ -782,24 +828,28 @@ func TestSearchBatch_EdgeCases(t *testing.T) {
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			// Invalid search - empty query vector
 			&types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    []float64{},
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			// Valid search
 			&types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              3,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			// Invalid search - empty collection name
 			&types.SearchOptions{
 				CollectionName: "",
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 		}
 
@@ -833,11 +883,13 @@ func TestSearchBatch_EdgeCases(t *testing.T) {
 				CollectionName: "nonexistent",
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			&types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    []float64{},
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 		}
 
@@ -869,6 +921,7 @@ func TestSearchBatch_EdgeCases(t *testing.T) {
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              10,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			})
 		}
 
@@ -903,13 +956,18 @@ func BenchmarkSearchBatch(b *testing.B) {
 	}
 
 	ctx := context.Background()
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		b.Skip("No dense query vector available from test data")
+	}
 
 	b.Run("BatchSize_1", func(b *testing.B) {
 		opts := []types.SearchOptionsInterface{
 			&types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
-				QueryVector:    testDataSet.Documents[0].Vector,
+				QueryVector:    queryVector,
 				K:              10,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 		}
 
@@ -925,11 +983,11 @@ func BenchmarkSearchBatch(b *testing.B) {
 	b.Run("BatchSize_5", func(b *testing.B) {
 		var opts []types.SearchOptionsInterface
 		for i := 0; i < 5; i++ {
-			docIndex := i % len(testDataSet.Documents)
 			opts = append(opts, &types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
-				QueryVector:    testDataSet.Documents[docIndex].Vector,
+				QueryVector:    queryVector,
 				K:              10,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			})
 		}
 
@@ -945,11 +1003,11 @@ func BenchmarkSearchBatch(b *testing.B) {
 	b.Run("BatchSize_10", func(b *testing.B) {
 		var opts []types.SearchOptionsInterface
 		for i := 0; i < 10; i++ {
-			docIndex := i % len(testDataSet.Documents)
 			opts = append(opts, &types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
-				QueryVector:    testDataSet.Documents[docIndex].Vector,
+				QueryVector:    queryVector,
 				K:              10,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			})
 		}
 
@@ -965,11 +1023,11 @@ func BenchmarkSearchBatch(b *testing.B) {
 	b.Run("BatchSize_20", func(b *testing.B) {
 		var opts []types.SearchOptionsInterface
 		for i := 0; i < 20; i++ {
-			docIndex := i % len(testDataSet.Documents)
 			opts = append(opts, &types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
-				QueryVector:    testDataSet.Documents[docIndex].Vector,
+				QueryVector:    queryVector,
 				K:              10,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			})
 		}
 
@@ -983,18 +1041,19 @@ func BenchmarkSearchBatch(b *testing.B) {
 	})
 
 	b.Run("MixedSearchTypes", func(b *testing.B) {
-		queryVector := testDataSet.Documents[0].Vector
 		opts := []types.SearchOptionsInterface{
 			&types.SearchOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              10,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			&types.ScoreThresholdOptions{
 				CollectionName: testDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              10,
 				ScoreThreshold: 0.1,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			&types.MMRSearchOptions{
 				CollectionName: testDataSet.CollectionName,
@@ -1002,6 +1061,7 @@ func BenchmarkSearchBatch(b *testing.B) {
 				K:              5,
 				FetchK:         15,
 				LambdaMult:     0.5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 		}
 

@@ -29,13 +29,30 @@ func TestSearchSimilar_BasicFunctionality(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector // Use first document as query
+
+	// Find a document with dense vector for query
+	var queryVector []float64
+	for _, doc := range testDataSet.Documents {
+		if len(doc.Vector) > 0 {
+			queryVector = doc.Vector
+			break
+		} else if len(doc.DenseVector) > 0 {
+			queryVector = doc.DenseVector
+			break
+		}
+	}
+
+	// Skip if no dense query vector available
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	t.Run("BasicSimilaritySearch", func(t *testing.T) {
 		opts := &types.SearchOptions{
 			CollectionName: testDataSet.CollectionName,
 			QueryVector:    queryVector,
 			K:              5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchSimilar(ctx, opts)
@@ -80,6 +97,7 @@ func TestSearchSimilar_BasicFunctionality(t *testing.T) {
 					CollectionName: testDataSet.CollectionName,
 					QueryVector:    queryVector,
 					K:              k,
+					VectorUsing:    "dense", // Specify vector name for named vector collections
 				}
 
 				result, err := env.Store.SearchSimilar(ctx, opts)
@@ -110,6 +128,7 @@ func TestSearchSimilar_BasicFunctionality(t *testing.T) {
 				Page:           page,
 				PageSize:       pageSize,
 				IncludeTotal:   true,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			}
 
 			result, err := env.Store.SearchSimilar(ctx, opts)
@@ -166,6 +185,26 @@ func TestSearchSimilar_ErrorScenarios(t *testing.T) {
 
 	ctx := context.Background()
 
+	// Find a document with dense vector for query
+	var queryVector []float64
+	for _, doc := range testDataSet.Documents {
+		if len(doc.Vector) > 0 {
+			queryVector = doc.Vector
+			break
+		} else if len(doc.DenseVector) > 0 {
+			queryVector = doc.DenseVector
+			break
+		}
+	}
+
+	// Use a dummy vector if no test data vector available
+	if len(queryVector) == 0 {
+		queryVector = make([]float64, 1536) // Use actual dimension from test data
+		for i := range queryVector {
+			queryVector[i] = 0.1
+		}
+	}
+
 	tests := []struct {
 		name     string
 		opts     *types.SearchOptions
@@ -184,8 +223,9 @@ func TestSearchSimilar_ErrorScenarios(t *testing.T) {
 			name: "EmptyCollectionName",
 			opts: &types.SearchOptions{
 				CollectionName: "",
-				QueryVector:    testDataSet.Documents[0].Vector,
+				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			wantErr: true,
 			errCheck: func(err error) bool {
@@ -220,8 +260,9 @@ func TestSearchSimilar_ErrorScenarios(t *testing.T) {
 			name: "NonexistentCollection",
 			opts: &types.SearchOptions{
 				CollectionName: "nonexistent_collection_12345",
-				QueryVector:    testDataSet.Documents[0].Vector,
+				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			wantErr: true,
 			errCheck: func(err error) bool {
@@ -266,13 +307,30 @@ func TestSearchSimilar_EdgeCases(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+
+	// Find a document with dense vector for query
+	var queryVector []float64
+	for _, doc := range testDataSet.Documents {
+		if len(doc.Vector) > 0 {
+			queryVector = doc.Vector
+			break
+		} else if len(doc.DenseVector) > 0 {
+			queryVector = doc.DenseVector
+			break
+		}
+	}
+
+	// Skip if no dense query vector available
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	t.Run("ZeroK", func(t *testing.T) {
 		opts := &types.SearchOptions{
 			CollectionName: testDataSet.CollectionName,
 			QueryVector:    queryVector,
 			K:              0,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchSimilar(ctx, opts)
@@ -291,6 +349,7 @@ func TestSearchSimilar_EdgeCases(t *testing.T) {
 			CollectionName: testDataSet.CollectionName,
 			QueryVector:    queryVector,
 			K:              10000,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchSimilar(ctx, opts)
@@ -311,6 +370,7 @@ func TestSearchSimilar_EdgeCases(t *testing.T) {
 			QueryVector:    queryVector,
 			K:              10,
 			MinScore:       0.99999,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchSimilar(ctx, opts)
@@ -333,6 +393,7 @@ func TestSearchSimilar_EdgeCases(t *testing.T) {
 			CollectionName: testDataSet.CollectionName,
 			QueryVector:    zeroVector,
 			K:              5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchSimilar(ctx, opts)
@@ -353,6 +414,7 @@ func TestSearchSimilar_EdgeCases(t *testing.T) {
 			K:              10,
 			Page:           1000,
 			PageSize:       10,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchSimilar(ctx, opts)
@@ -371,7 +433,8 @@ func TestSearchSimilar_EdgeCases(t *testing.T) {
 			CollectionName: testDataSet.CollectionName,
 			QueryVector:    queryVector,
 			K:              5,
-			Timeout:        1, // 1 millisecond
+			Timeout:        1,       // 1 millisecond
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchSimilar(ctx, opts)
@@ -398,6 +461,7 @@ func TestSearchSimilar_EdgeCases(t *testing.T) {
 			Filter: map[string]interface{}{
 				"nonexistent_field": "nonexistent_value",
 			},
+			VectorUsing: "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchSimilar(ctx, opts)
@@ -455,13 +519,28 @@ func TestSearchSimilar_MultiLanguageData(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("SearchEnglishData", func(t *testing.T) {
-		queryVector := enDataSet.Documents[0].Vector
+		// Find a document with dense vector for query
+		var queryVector []float64
+		for _, doc := range enDataSet.Documents {
+			if len(doc.Vector) > 0 {
+				queryVector = doc.Vector
+				break
+			} else if len(doc.DenseVector) > 0 {
+				queryVector = doc.DenseVector
+				break
+			}
+		}
+
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from English test data")
+		}
 
 		opts := &types.SearchOptions{
 			CollectionName:  enDataSet.CollectionName,
 			QueryVector:     queryVector,
 			K:               5,
 			IncludeMetadata: true,
+			VectorUsing:     "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchSimilar(ctx, opts)
@@ -484,13 +563,28 @@ func TestSearchSimilar_MultiLanguageData(t *testing.T) {
 	})
 
 	t.Run("SearchChineseData", func(t *testing.T) {
-		queryVector := zhDataSet.Documents[0].Vector
+		// Find a document with dense vector for query
+		var queryVector []float64
+		for _, doc := range zhDataSet.Documents {
+			if len(doc.Vector) > 0 {
+				queryVector = doc.Vector
+				break
+			} else if len(doc.DenseVector) > 0 {
+				queryVector = doc.DenseVector
+				break
+			}
+		}
+
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from Chinese test data")
+		}
 
 		opts := &types.SearchOptions{
 			CollectionName:  zhDataSet.CollectionName,
 			QueryVector:     queryVector,
 			K:               5,
 			IncludeMetadata: true,
+			VectorUsing:     "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchSimilar(ctx, opts)
@@ -514,13 +608,28 @@ func TestSearchSimilar_MultiLanguageData(t *testing.T) {
 
 	t.Run("CrossLanguageQuery", func(t *testing.T) {
 		// Use English vector to search Chinese collection
-		enVector := enDataSet.Documents[0].Vector
+		// Find a document with dense vector for query
+		var enVector []float64
+		for _, doc := range enDataSet.Documents {
+			if len(doc.Vector) > 0 {
+				enVector = doc.Vector
+				break
+			} else if len(doc.DenseVector) > 0 {
+				enVector = doc.DenseVector
+				break
+			}
+		}
+
+		if len(enVector) == 0 {
+			t.Skip("No dense query vector available from English test data")
+		}
 
 		opts := &types.SearchOptions{
 			CollectionName:  zhDataSet.CollectionName,
 			QueryVector:     enVector,
 			K:               3,
 			IncludeMetadata: true,
+			VectorUsing:     "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchSimilar(ctx, opts)
@@ -554,13 +663,29 @@ func BenchmarkSearchSimilar(b *testing.B) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+
+	// Find a document with dense vector for query
+	var queryVector []float64
+	for _, doc := range testDataSet.Documents {
+		if len(doc.Vector) > 0 {
+			queryVector = doc.Vector
+			break
+		} else if len(doc.DenseVector) > 0 {
+			queryVector = doc.DenseVector
+			break
+		}
+	}
+
+	if len(queryVector) == 0 {
+		b.Skip("No dense query vector available from test data")
+	}
 
 	b.Run("BasicSearch", func(b *testing.B) {
 		opts := &types.SearchOptions{
 			CollectionName: testDataSet.CollectionName,
 			QueryVector:    queryVector,
 			K:              10,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		b.ResetTimer()
@@ -578,6 +703,7 @@ func BenchmarkSearchSimilar(b *testing.B) {
 			QueryVector:    queryVector,
 			K:              10,
 			IncludeVector:  true,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		b.ResetTimer()
@@ -661,7 +787,11 @@ func TestSearchSimilar_MemoryLeakDetection(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	// Get initial memory stats
 	var initialStats, finalStats runtime.MemStats
@@ -759,31 +889,33 @@ func TestSearchSimilar_ConcurrentStress(t *testing.T) {
 		{
 			name: "basic",
 			opts: func(i int) *types.SearchOptions {
-				queryVector := testDataSet.Documents[i%len(testDataSet.Documents)].Vector
+				queryVector := getQueryVectorFromDataSet(testDataSet)
 				return &types.SearchOptions{
 					CollectionName: testDataSet.CollectionName,
 					QueryVector:    queryVector,
 					K:              10,
+					VectorUsing:    "dense",
 				}
 			},
 		},
 		{
 			name: "paginated",
 			opts: func(i int) *types.SearchOptions {
-				queryVector := testDataSet.Documents[i%len(testDataSet.Documents)].Vector
+				queryVector := getQueryVectorFromDataSet(testDataSet)
 				return &types.SearchOptions{
 					CollectionName: testDataSet.CollectionName,
 					QueryVector:    queryVector,
 					K:              20,
 					Page:           (i % 3) + 1,
 					PageSize:       5,
+					VectorUsing:    "dense",
 				}
 			},
 		},
 		{
 			name: "filtered",
 			opts: func(i int) *types.SearchOptions {
-				queryVector := testDataSet.Documents[i%len(testDataSet.Documents)].Vector
+				queryVector := getQueryVectorFromDataSet(testDataSet)
 				return &types.SearchOptions{
 					CollectionName: testDataSet.CollectionName,
 					QueryVector:    queryVector,
@@ -791,17 +923,19 @@ func TestSearchSimilar_ConcurrentStress(t *testing.T) {
 					Filter: map[string]interface{}{
 						"language": "en",
 					},
+					VectorUsing: "dense",
 				}
 			},
 		},
 		{
 			name: "high_k",
 			opts: func(i int) *types.SearchOptions {
-				queryVector := testDataSet.Documents[i%len(testDataSet.Documents)].Vector
+				queryVector := getQueryVectorFromDataSet(testDataSet)
 				return &types.SearchOptions{
 					CollectionName: testDataSet.CollectionName,
 					QueryVector:    queryVector,
 					K:              50,
+					VectorUsing:    "dense",
 				}
 			},
 		},
@@ -934,11 +1068,12 @@ func TestSearchSimilar_ConcurrentWithDifferentCollections(t *testing.T) {
 		go func(idx int) {
 			defer wg.Done()
 
-			queryVector := enDataSet.Documents[idx%len(enDataSet.Documents)].Vector
+			queryVector := getQueryVectorFromDataSet(enDataSet)
 			opts := &types.SearchOptions{
 				CollectionName: enDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense",
 			}
 
 			result, err := env.Store.SearchSimilar(ctx, opts)
@@ -959,11 +1094,12 @@ func TestSearchSimilar_ConcurrentWithDifferentCollections(t *testing.T) {
 		go func(idx int) {
 			defer wg.Done()
 
-			queryVector := zhDataSet.Documents[idx%len(zhDataSet.Documents)].Vector
+			queryVector := getQueryVectorFromDataSet(zhDataSet)
 			opts := &types.SearchOptions{
 				CollectionName: zhDataSet.CollectionName,
 				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense",
 			}
 
 			result, err := env.Store.SearchSimilar(ctx, opts)

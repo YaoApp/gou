@@ -24,7 +24,10 @@ func TestSearchWithScoreThreshold_BasicFunctionality(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	collectionName := testDataSet.CollectionName
 
 	tests := []struct {
@@ -121,7 +124,7 @@ func TestSearchWithScoreThreshold_BasicFunctionality(t *testing.T) {
 					if doc.Document.Metadata == nil {
 						t.Error("Document metadata should not be nil")
 					}
-					if doc.Document.PageContent == "" {
+					if doc.Document.Content == "" {
 						t.Error("Document content should not be empty")
 					}
 				}
@@ -143,7 +146,10 @@ func TestSearchWithScoreThreshold_PaginationSupport(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	collectionName := testDataSet.CollectionName
 
 	// Use a low threshold to ensure we get multiple results
@@ -235,7 +241,10 @@ func TestSearchWithScoreThreshold_MetadataFiltering(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	collectionName := testDataSet.CollectionName
 
 	// Test with metadata filter
@@ -285,7 +294,10 @@ func TestSearchWithScoreThreshold_FieldSelection(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	collectionName := testDataSet.CollectionName
 
 	opts := &types.ScoreThresholdOptions{
@@ -333,7 +345,10 @@ func TestSearchWithScoreThreshold_SearchParameters(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	collectionName := testDataSet.CollectionName
 
 	tests := []struct {
@@ -411,7 +426,10 @@ func TestSearchWithScoreThreshold_TimeoutHandling(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	collectionName := testDataSet.CollectionName
 
 	tests := []struct {
@@ -480,7 +498,10 @@ func TestSearchWithScoreThreshold_ErrorScenarios(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	collectionName := testDataSet.CollectionName
 
 	tests := []struct {
@@ -529,7 +550,7 @@ func TestSearchWithScoreThreshold_ErrorScenarios(t *testing.T) {
 				K:              5,
 				VectorUsing:    "dense",
 			},
-			expectError: "failed to perform score threshold search",
+			expectError: "doesn't exist",
 		},
 	}
 
@@ -561,7 +582,10 @@ func TestSearchWithScoreThreshold_EdgeCases(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	collectionName := testDataSet.CollectionName
 
 	tests := []struct {
@@ -746,10 +770,14 @@ func TestSearchWithScoreThreshold_MultiLanguageData(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	enQueryVector := getQueryVectorFromDataSet(enDataSet)
+	if len(enQueryVector) == 0 {
+		t.Skip("No dense query vector available from English test data")
+	}
 
 	enResult, err := env.Store.SearchWithScoreThreshold(ctx, &types.ScoreThresholdOptions{
 		CollectionName:  enDataSet.CollectionName,
-		QueryVector:     enDataSet.Documents[0].Vector,
+		QueryVector:     enQueryVector,
 		ScoreThreshold:  0.1,
 		K:               5,
 		IncludeMetadata: true,
@@ -769,9 +797,14 @@ func TestSearchWithScoreThreshold_MultiLanguageData(t *testing.T) {
 		t.Skip("No Chinese test documents available")
 	}
 
+	zhQueryVector := getQueryVectorFromDataSet(zhDataSet)
+	if len(zhQueryVector) == 0 {
+		t.Skip("No dense query vector available from Chinese test data")
+	}
+
 	zhResult, err := env.Store.SearchWithScoreThreshold(ctx, &types.ScoreThresholdOptions{
 		CollectionName:  zhDataSet.CollectionName,
-		QueryVector:     zhDataSet.Documents[0].Vector,
+		QueryVector:     zhQueryVector,
 		ScoreThreshold:  0.1,
 		K:               5,
 		IncludeMetadata: true,
@@ -808,7 +841,10 @@ func BenchmarkSearchWithScoreThreshold(b *testing.B) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		b.Skip("No dense query vector available from test data")
+	}
 	collectionName := testDataSet.CollectionName
 
 	benchmarks := []struct {
@@ -892,7 +928,10 @@ func TestSearchWithScoreThreshold_MemoryLeakDetection(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	collectionName := testDataSet.CollectionName
 
 	// Force garbage collection before starting
@@ -998,8 +1037,15 @@ func TestSearchWithScoreThreshold_ConcurrentStressTest(t *testing.T) {
 		go func(workerID int) {
 			defer wg.Done()
 
-			// Use different query vectors for variety
-			queryVector := testDataSet.Documents[workerID%len(testDataSet.Documents)].Vector
+			// Use different query vectors for variety, but ensure we get dense vectors
+			queryVector := getQueryVectorFromDataSet(testDataSet)
+			if len(queryVector) == 0 {
+				// If no dense vector available, use a dummy vector
+				queryVector = make([]float64, 384) // Assuming 384-dimensional vectors
+				for i := range queryVector {
+					queryVector[i] = 0.1 * float64(i%10)
+				}
+			}
 			baseThreshold := 0.1 + 0.1*float64(workerID%5) // Vary threshold
 
 			for j := 0; j < operationsPerGoroutine; j++ {
@@ -1119,7 +1165,10 @@ func TestSearchWithScoreThreshold_NamedVectorSelection(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	collectionName := testDataSet.CollectionName
 
 	tests := []struct {
@@ -1188,7 +1237,7 @@ func TestSearchWithScoreThreshold_NamedVectorSelection(t *testing.T) {
 				if doc.Document.Metadata == nil {
 					t.Error("Document metadata should not be nil when IncludeMetadata is true")
 				}
-				if doc.Document.PageContent == "" {
+				if doc.Document.Content == "" {
 					t.Error("Document content should not be empty when IncludeContent is true")
 				}
 			}

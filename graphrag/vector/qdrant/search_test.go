@@ -21,14 +21,17 @@ import (
 
 // TestDocument represents a test document loaded from JSON files
 type TestDocument struct {
-	ID         string                 `json:"id"`
-	Content    string                 `json:"content"`
-	Vector     []float64              `json:"vector"`
-	Metadata   map[string]interface{} `json:"metadata"`
-	ChunkIndex int                    `json:"chunk_index"`
-	ChunkFile  string                 `json:"chunk_file"`
-	Language   string                 `json:"language"`
-	Category   string                 `json:"category"`
+	ID           string                 `json:"id"`
+	Content      string                 `json:"content"`
+	Vector       []float64              `json:"vector"`        // Dense vector (legacy field for backward compatibility)
+	DenseVector  []float64              `json:"dense_vector"`  // Dense embedding vector
+	SparseVector *types.SparseVector    `json:"sparse_vector"` // Sparse embedding vector
+	Metadata     map[string]interface{} `json:"metadata"`
+	ChunkIndex   int                    `json:"chunk_index"`
+	ChunkFile    string                 `json:"chunk_file"`
+	Language     string                 `json:"language"`
+	Category     string                 `json:"category"`
+	VectorType   string                 `json:"vector_type"` // "dense", "sparse", or "both"
 }
 
 // TestDataSet represents a collection of test documents
@@ -140,16 +143,24 @@ func loadTestDocumentsFromDir(dirPath, language string) ([]*TestDocument, error)
 	semaphore := make(chan struct{}, 10) // Limit concurrent goroutines
 
 	for _, file := range files {
-		if !file.IsDir() && filepath.Ext(file.Name()) == ".json" &&
-			!stringContains(file.Name(), "mapping") {
+		filename := file.Name()
+
+		// Process both dense vector files (.txt.json) and sparse vector files (.txt.bm42.json)
+		// Skip mapping files and other vector formats
+		isDenseVector := filepath.Ext(filename) == ".json" && !stringContains(filename, "mapping") &&
+			!stringContains(filename, ".bm42.") && !stringContains(filename, ".bm25.") &&
+			!stringContains(filename, ".1024.") && strings.HasSuffix(filename, ".txt.json")
+		isSparseVector := strings.HasSuffix(filename, ".txt.bm42.json") && !stringContains(filename, "mapping")
+
+		if !file.IsDir() && (isDenseVector || isSparseVector) {
 			wg.Add(1)
-			go func(filename string) {
+			go func(filename string, isSparse bool) {
 				defer wg.Done()
 				semaphore <- struct{}{}        // Acquire semaphore
 				defer func() { <-semaphore }() // Release semaphore
 
 				filePath := filepath.Join(dirPath, filename)
-				doc, err := loadTestDocumentFromFile(filePath, filename, language, mappingData)
+				doc, err := loadTestDocumentFromFile(filePath, filename, language, mappingData, isSparse)
 				if err != nil {
 					errors <- fmt.Errorf("failed to load %s: %w", filename, err)
 					return
@@ -160,7 +171,7 @@ func loadTestDocumentsFromDir(dirPath, language string) ([]*TestDocument, error)
 					documents = append(documents, doc)
 					mu.Unlock()
 				}
-			}(file.Name())
+			}(filename, isSparseVector)
 		}
 	}
 
@@ -176,7 +187,7 @@ func loadTestDocumentsFromDir(dirPath, language string) ([]*TestDocument, error)
 }
 
 // loadTestDocumentFromFile loads a single test document from JSON file
-func loadTestDocumentFromFile(filePath, filename, language string, mappingData map[string]*MappingEntry) (*TestDocument, error) {
+func loadTestDocumentFromFile(filePath, filename, language string, mappingData map[string]*MappingEntry, isSparse bool) (*TestDocument, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
@@ -188,31 +199,102 @@ func loadTestDocumentFromFile(filePath, filename, language string, mappingData m
 		return nil, err
 	}
 
-	// Extract vector data - try both "embedding" and "vector" fields
-	var vectorData interface{}
-	var ok bool
+	var denseVector []float64
+	var sparseVector *types.SparseVector
+	vectorType := "none"
 
-	if vectorData, ok = jsonData["embedding"]; !ok || vectorData == nil {
-		if vectorData, ok = jsonData["vector"]; !ok || vectorData == nil {
-			return nil, fmt.Errorf("no vector/embedding data found in %s", filename)
-		}
-	}
+	if isSparse {
+		// Handle sparse vector file (.txt.bm42.json)
+		vectorType = "sparse"
 
-	var vector []float64
-	switch v := vectorData.(type) {
-	case []interface{}:
-		vector = make([]float64, len(v))
-		for i, val := range v {
-			if fVal, ok := val.(float64); ok {
-				vector[i] = fVal
+		// Extract sparse vector data from sparse_embedding field
+		var indices []uint32
+		var values []float32
+
+		if sparseEmbedding, ok := jsonData["sparse_embedding"]; ok {
+			sparseData, ok := sparseEmbedding.(map[string]interface{})
+			if !ok {
+				return nil, fmt.Errorf("sparse_embedding is not an object in %s", filename)
+			}
+
+			// Extract indices
+			if indicesData, ok := sparseData["indices"]; ok {
+				switch v := indicesData.(type) {
+				case []interface{}:
+					indices = make([]uint32, len(v))
+					for i, val := range v {
+						if intVal, ok := val.(float64); ok {
+							indices[i] = uint32(intVal)
+						} else {
+							return nil, fmt.Errorf("invalid indices value in sparse vector %s", filename)
+						}
+					}
+				default:
+					return nil, fmt.Errorf("unsupported indices format in sparse vector %s", filename)
+				}
+			}
+
+			// Extract values
+			if valuesData, ok := sparseData["values"]; ok {
+				switch v := valuesData.(type) {
+				case []interface{}:
+					values = make([]float32, len(v))
+					for i, val := range v {
+						if floatVal, ok := val.(float64); ok {
+							values[i] = float32(floatVal)
+						} else {
+							return nil, fmt.Errorf("invalid values in sparse vector %s", filename)
+						}
+					}
+				default:
+					return nil, fmt.Errorf("unsupported values format in sparse vector %s", filename)
+				}
+			}
+
+			if len(indices) > 0 && len(values) > 0 {
+				if len(indices) != len(values) {
+					return nil, fmt.Errorf("indices and values length mismatch in sparse vector %s", filename)
+				}
+				sparseVector = &types.SparseVector{
+					Indices: indices,
+					Values:  values,
+				}
 			} else {
-				return nil, fmt.Errorf("invalid vector value in %s", filename)
+				// Skip documents with empty sparse vectors - return nil to indicate skip
+				return nil, nil
+			}
+		} else {
+			return nil, fmt.Errorf("no sparse_embedding field found in %s", filename)
+		}
+	} else {
+		// Handle dense vector file (.json)
+		vectorType = "dense"
+
+		// Extract vector data - try both "embedding" and "vector" fields
+		var vectorData interface{}
+		var ok bool
+
+		if vectorData, ok = jsonData["embedding"]; !ok || vectorData == nil {
+			if vectorData, ok = jsonData["vector"]; !ok || vectorData == nil {
+				return nil, fmt.Errorf("no vector/embedding data found in %s", filename)
 			}
 		}
-	case []float64:
-		vector = v
-	default:
-		return nil, fmt.Errorf("unsupported vector format in %s", filename)
+
+		switch v := vectorData.(type) {
+		case []interface{}:
+			denseVector = make([]float64, len(v))
+			for i, val := range v {
+				if fVal, ok := val.(float64); ok {
+					denseVector[i] = fVal
+				} else {
+					return nil, fmt.Errorf("invalid vector value in %s", filename)
+				}
+			}
+		case []float64:
+			denseVector = v
+		default:
+			return nil, fmt.Errorf("unsupported vector format in %s", filename)
+		}
 	}
 
 	// Extract content - first try direct fields, then try reading from corresponding txt file
@@ -243,8 +325,14 @@ func loadTestDocumentFromFile(filePath, filename, language string, mappingData m
 
 		// If no explicit file field, try to derive from JSON filename
 		if txtFilePath == "" {
-			// Convert "semantic-en.3.chunk-0.txt.json" to "semantic-en.3.chunk-0.txt"
-			txtFilename := strings.TrimSuffix(filename, ".json")
+			// For sparse vector files, remove .txt.bm42.json to get base name
+			// For dense vector files, remove .txt.json to get base name
+			var txtFilename string
+			if isSparse {
+				txtFilename = strings.TrimSuffix(filename, ".bm42.json")
+			} else {
+				txtFilename = strings.TrimSuffix(filename, ".json")
+			}
 			txtFilePath = filepath.Join(filepath.Dir(filePath), txtFilename)
 		}
 
@@ -263,9 +351,13 @@ func loadTestDocumentFromFile(filePath, filename, language string, mappingData m
 
 	// Generate document ID from filename - ensure uniqueness
 	baseFilename := filepath.Base(filename)
-	// Remove .json extension if present
-	baseFilename = strings.TrimSuffix(baseFilename, ".json")
-	docID := fmt.Sprintf("%s_%s", language, baseFilename)
+	// Remove appropriate extension
+	if isSparse {
+		baseFilename = strings.TrimSuffix(baseFilename, ".bm42.json")
+	} else {
+		baseFilename = strings.TrimSuffix(baseFilename, ".json")
+	}
+	docID := fmt.Sprintf("%s_%s_%s", language, vectorType, baseFilename)
 
 	// Add a unique suffix based on file path to avoid collisions
 	if strings.Contains(filePath, "/") {
@@ -278,8 +370,16 @@ func loadTestDocumentFromFile(filePath, filename, language string, mappingData m
 	metadata := make(map[string]interface{})
 	metadata["filename"] = filename
 	metadata["language"] = language
-	metadata["vector_dim"] = len(vector)
 	metadata["file_path"] = filePath
+	metadata["vector_type"] = vectorType
+
+	if denseVector != nil {
+		metadata["dense_vector_dim"] = len(denseVector)
+	}
+	if sparseVector != nil {
+		metadata["sparse_vector_dim"] = len(sparseVector.Indices)
+		metadata["sparse_vector_nnz"] = len(sparseVector.Values) // non-zero values
+	}
 
 	// Add dimension info if available
 	if dimData, ok := jsonData["dimension"]; ok {
@@ -310,13 +410,19 @@ func loadTestDocumentFromFile(filePath, filename, language string, mappingData m
 		if entry, ok := mappingData[filename]; ok {
 			mappingEntry = entry
 		} else {
-			// Try without .json extension
-			filenameWithoutJSON := strings.TrimSuffix(filename, ".json")
-			if entry, ok := mappingData[filenameWithoutJSON]; ok {
+			// Try without extensions
+			var filenameWithoutExt string
+			if isSparse {
+				filenameWithoutExt = strings.TrimSuffix(filename, ".bm42.json")
+			} else {
+				filenameWithoutExt = strings.TrimSuffix(filename, ".json")
+			}
+
+			if entry, ok := mappingData[filenameWithoutExt]; ok {
 				mappingEntry = entry
 			} else {
-				// Try without .txt.json extension
-				filenameWithoutTxtJSON := strings.TrimSuffix(filenameWithoutJSON, ".txt")
+				// Try without .txt extension as well
+				filenameWithoutTxtJSON := strings.TrimSuffix(filenameWithoutExt, ".txt")
 				if entry, ok := mappingData[filenameWithoutTxtJSON]; ok {
 					mappingEntry = entry
 				}
@@ -326,19 +432,19 @@ func loadTestDocumentFromFile(filePath, filename, language string, mappingData m
 		// If mapping entry found, add its data to metadata
 		if mappingEntry != nil {
 			metadata["mapping_id"] = mappingEntry.ID
-			metadata["index"] = mappingEntry.Index
-			metadata["depth"] = mappingEntry.Depth
-			metadata["parent_id"] = mappingEntry.ParentID
-			metadata["text_size"] = mappingEntry.TextSize
-			metadata["is_leaf"] = mappingEntry.IsLeaf
-			metadata["is_root"] = mappingEntry.IsRoot
+			metadata["mapping_index"] = mappingEntry.Index
+			metadata["mapping_depth"] = mappingEntry.Depth
+			metadata["mapping_parent_id"] = mappingEntry.ParentID
+			metadata["mapping_text_size"] = mappingEntry.TextSize
+			metadata["mapping_is_leaf"] = mappingEntry.IsLeaf
+			metadata["mapping_is_root"] = mappingEntry.IsRoot
 
 			if mappingEntry.TextPosition != nil {
-				metadata["text_position"] = mappingEntry.TextPosition
+				metadata["mapping_text_position"] = mappingEntry.TextPosition
 			}
 
 			if mappingEntry.Parents != nil {
-				metadata["parents"] = mappingEntry.Parents
+				metadata["mapping_parents"] = mappingEntry.Parents
 			}
 
 			// Use the mapping ID as the document ID if available
@@ -366,14 +472,17 @@ func loadTestDocumentFromFile(filePath, filename, language string, mappingData m
 	}
 
 	return &TestDocument{
-		ID:         docID,
-		Content:    content,
-		Vector:     vector,
-		Metadata:   metadata,
-		ChunkIndex: extractChunkIndex(filename),
-		ChunkFile:  filename,
-		Language:   language,
-		Category:   category,
+		ID:           docID,
+		Content:      content,
+		Vector:       denseVector,  // Legacy field for backward compatibility
+		DenseVector:  denseVector,  // New dense vector field
+		SparseVector: sparseVector, // New sparse vector field
+		Metadata:     metadata,
+		ChunkIndex:   extractChunkIndex(filename),
+		ChunkFile:    filename,
+		Language:     language,
+		Category:     category,
+		VectorType:   vectorType,
 	}, nil
 }
 
@@ -413,10 +522,21 @@ func prepareTestDataSet(language string) (*TestDataSet, error) {
 		return nil, fmt.Errorf("no test documents loaded from %s", dirPath)
 	}
 
-	// Determine vector dimension from first document
+	// Determine vector dimension from first document with dense vector
 	vectorDim := 0
-	if len(documents) > 0 {
-		vectorDim = len(documents[0].Vector)
+	for _, doc := range documents {
+		if len(doc.Vector) > 0 {
+			vectorDim = len(doc.Vector)
+			break
+		} else if len(doc.DenseVector) > 0 {
+			vectorDim = len(doc.DenseVector)
+			break
+		}
+	}
+
+	// If no dense vectors found, use default dimension for sparse-only collections
+	if vectorDim == 0 {
+		vectorDim = 384 // Default dimension for sparse vector collections
 	}
 
 	collectionName := fmt.Sprintf("test_search_%s_%d", language, time.Now().UnixNano())
@@ -517,10 +637,12 @@ func getOrCreateTestDataSet(t *testing.T, language string) *TestDataSet {
 	var documents []*types.Document
 	for _, testDoc := range dataSet.Documents {
 		doc := &types.Document{
-			ID:          testDoc.ID,
-			PageContent: testDoc.Content,
-			Vector:      testDoc.Vector,
-			Metadata:    testDoc.Metadata,
+			ID:           testDoc.ID,
+			Content:      testDoc.Content,
+			Vector:       testDoc.Vector,       // Legacy field for backward compatibility
+			DenseVector:  testDoc.DenseVector,  // Dense vector field
+			SparseVector: testDoc.SparseVector, // Sparse vector field
+			Metadata:     testDoc.Metadata,
 		}
 		documents = append(documents, doc)
 	}
@@ -535,9 +657,12 @@ func getOrCreateTestDataSet(t *testing.T, language string) *TestDataSet {
 
 		batch := documents[i:end]
 		addOpts := &types.AddDocumentOptions{
-			CollectionName: dataSet.CollectionName,
-			Documents:      batch,
-			BatchSize:      batchSize,
+			CollectionName:   dataSet.CollectionName,
+			Documents:        batch,
+			BatchSize:        batchSize,
+			VectorMode:       types.VectorModeAuto, // Automatically detect which vectors to use
+			DenseVectorName:  "dense",              // Named vector for dense embeddings
+			SparseVectorName: "sparse",             // Named vector for sparse vectors
 		}
 
 		if _, err := env.Store.AddDocuments(ctx, addOpts); err != nil {
@@ -573,6 +698,25 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// getQueryVectorFromDataSet finds and returns a dense vector from the test dataset
+// This helper function ensures we get a valid dense vector for search queries
+func getQueryVectorFromDataSet(testDataSet *TestDataSet) []float64 {
+	if testDataSet == nil || len(testDataSet.Documents) == 0 {
+		return nil
+	}
+
+	// Find a document with dense vector for query
+	for _, doc := range testDataSet.Documents {
+		if len(doc.Vector) > 0 {
+			return doc.Vector
+		} else if len(doc.DenseVector) > 0 {
+			return doc.DenseVector
+		}
+	}
+
+	return nil
 }
 
 // TestMain sets up and tears down the test environment

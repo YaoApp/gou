@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/qdrant/go-client/qdrant"
 	"github.com/yaoapp/gou/graphrag/types"
@@ -34,8 +33,8 @@ func convertRetrievedPointToDocument(point *qdrant.RetrievedPoint, includeVector
 		if idVal := point.Payload["id"]; idVal != nil {
 			doc.ID = idVal.GetStringValue()
 		}
-		if contentVal := point.Payload["page_content"]; contentVal != nil {
-			doc.PageContent = contentVal.GetStringValue()
+		if contentVal := point.Payload["content"]; contentVal != nil {
+			doc.Content = contentVal.GetStringValue()
 		}
 
 		// Extract metadata if requested
@@ -70,8 +69,8 @@ func convertScoredPointToDocument(point *qdrant.ScoredPoint, includeVector, incl
 		if idVal := point.Payload["id"]; idVal != nil {
 			doc.ID = idVal.GetStringValue()
 		}
-		if contentVal := point.Payload["page_content"]; contentVal != nil {
-			doc.PageContent = contentVal.GetStringValue()
+		if contentVal := point.Payload["content"]; contentVal != nil {
+			doc.Content = contentVal.GetStringValue()
 		}
 
 		// Extract metadata if requested
@@ -185,6 +184,11 @@ func (s *Store) AddDocuments(ctx context.Context, opts *types.AddDocumentOptions
 		return nil, fmt.Errorf("no documents provided")
 	}
 
+	// Validate vector mode
+	if opts.VectorMode != "" && !opts.VectorMode.IsValid() {
+		return nil, fmt.Errorf("invalid vector mode: %s", opts.VectorMode)
+	}
+
 	var addedIDs []string
 	batchSize := opts.BatchSize
 	if batchSize <= 0 {
@@ -206,14 +210,14 @@ func (s *Store) AddDocuments(ctx context.Context, opts *types.AddDocumentOptions
 			// Generate ID if not provided
 			docID := doc.ID
 			if docID == "" {
-				docID = fmt.Sprintf("doc_%d_%d", i+j, stringToUint64ID(doc.PageContent)%1000000)
+				docID = fmt.Sprintf("doc_%d_%d", i+j, stringToUint64ID(doc.Content)%1000000)
 			}
 			batchIDs[j] = docID
 
 			// Create point payload
 			payload := map[string]*qdrant.Value{
-				"id":           qdrant.NewValueString(docID),
-				"page_content": qdrant.NewValueString(doc.PageContent),
+				"id":      qdrant.NewValueString(docID),
+				"content": qdrant.NewValueString(doc.Content),
 			}
 
 			// Add metadata if provided
@@ -229,35 +233,15 @@ func (s *Store) AddDocuments(ctx context.Context, opts *types.AddDocumentOptions
 				Payload: payload,
 			}
 
-			// Add vector if provided
-			if len(doc.Vector) > 0 {
-				vectorData := make([]float32, len(doc.Vector))
-				for k, v := range doc.Vector {
-					vectorData[k] = float32(v)
-				}
+			// Determine vector mode
+			vectorMode := opts.VectorMode
+			if vectorMode == "" {
+				vectorMode = types.VectorModeAuto
+			}
 
-				// Check if this collection uses named vectors by getting collection info
-				usesNamedVectors, err := s.collectionUsesNamedVectors(ctx, opts.CollectionName)
-				if err != nil {
-					// If we can't determine, fall back to heuristic
-					usesNamedVectors = s.isNamedVectorCollection(opts.CollectionName)
-				}
-
-				if usesNamedVectors {
-					// Use named vectors for hybrid search collections
-					vectorName := opts.VectorUsing
-					if vectorName == "" {
-						vectorName = "dense" // Default to dense vector
-					}
-
-					namedVectors := map[string]*qdrant.Vector{
-						vectorName: qdrant.NewVector(vectorData...),
-					}
-					point.Vectors = qdrant.NewVectorsMap(namedVectors)
-				} else {
-					// Use single vector for traditional collections
-					point.Vectors = qdrant.NewVectors(vectorData...)
-				}
+			// Handle vector addition based on mode
+			if err := s.addVectorsToPoint(point, doc, vectorMode, opts); err != nil {
+				return addedIDs, fmt.Errorf("failed to add vectors to point: %w", err)
 			}
 
 			points[j] = point
@@ -279,6 +263,167 @@ func (s *Store) AddDocuments(ctx context.Context, opts *types.AddDocumentOptions
 	}
 
 	return addedIDs, nil
+}
+
+// addVectorsToPoint adds vectors to a point based on the vector mode
+func (s *Store) addVectorsToPoint(point *qdrant.PointStruct, doc *types.Document, vectorMode types.VectorMode, opts *types.AddDocumentOptions) error {
+	// First check if the collection actually supports named vectors
+	ctx := context.Background()
+	collectionSupportsNamedVectors, err := s.collectionUsesNamedVectors(ctx, opts.CollectionName)
+	if err != nil {
+		// If we can't determine collection info, fall back to content-based logic for backwards compatibility
+		collectionSupportsNamedVectors = true
+	}
+
+	// Determine if we should use named vectors
+	var usesNamedVectors bool
+	if !collectionSupportsNamedVectors {
+		// Collection doesn't support named vectors, must use single vector mode
+		usesNamedVectors = false
+	} else {
+		// Collection supports named vectors, check if we need them
+		usesNamedVectors = s.shouldUseNamedVectors(doc, opts)
+	}
+
+	// Get available vectors from document
+	hasDense := doc.HasDenseVector()
+	hasSparse := doc.HasSparseVector()
+
+	switch vectorMode {
+	case types.VectorModeAuto:
+		// Add whatever vectors are available
+		if hasDense && hasSparse {
+			return s.addBothVectors(point, doc, opts, usesNamedVectors)
+		} else if hasDense {
+			return s.addDenseVector(point, doc, opts, usesNamedVectors)
+		} else if hasSparse {
+			return s.addSparseVector(point, doc, opts, usesNamedVectors)
+		}
+		// No vectors available - continue without vectors
+		return nil
+
+	case types.VectorModeDenseOnly:
+		if hasDense {
+			return s.addDenseVector(point, doc, opts, usesNamedVectors)
+		}
+		// No dense vector available - continue without vectors
+		return nil
+
+	case types.VectorModeSparseOnly:
+		if hasSparse {
+			return s.addSparseVector(point, doc, opts, usesNamedVectors)
+		}
+		// No sparse vector available - continue without vectors
+		return nil
+
+	case types.VectorModeBoth:
+		if !hasDense || !hasSparse {
+			return fmt.Errorf("vector mode 'both' requires both dense and sparse vectors to be present")
+		}
+		return s.addBothVectors(point, doc, opts, usesNamedVectors)
+
+	default:
+		return fmt.Errorf("unsupported vector mode: %s", vectorMode)
+	}
+}
+
+// addDenseVector adds dense vector to a point
+func (s *Store) addDenseVector(point *qdrant.PointStruct, doc *types.Document, opts *types.AddDocumentOptions, usesNamedVectors bool) error {
+	denseVector := doc.GetDenseVector()
+	if len(denseVector) == 0 {
+		return nil
+	}
+
+	vectorData := make([]float32, len(denseVector))
+	for k, v := range denseVector {
+		vectorData[k] = float32(v)
+	}
+
+	if usesNamedVectors {
+		// Use named vectors for hybrid search collections
+		vectorName := opts.DenseVectorName
+		if vectorName == "" {
+			// Fall back to legacy VectorUsing field for backward compatibility
+			vectorName = opts.VectorUsing
+		}
+		if vectorName == "" {
+			vectorName = "dense" // Default dense vector name
+		}
+
+		namedVectors := map[string]*qdrant.Vector{
+			vectorName: qdrant.NewVector(vectorData...),
+		}
+		point.Vectors = qdrant.NewVectorsMap(namedVectors)
+	} else {
+		// Use single vector for traditional collections
+		point.Vectors = qdrant.NewVectors(vectorData...)
+	}
+
+	return nil
+}
+
+// addSparseVector adds sparse vector to a point
+func (s *Store) addSparseVector(point *qdrant.PointStruct, doc *types.Document, opts *types.AddDocumentOptions, usesNamedVectors bool) error {
+	if doc.SparseVector == nil {
+		return nil
+	}
+
+	if !usesNamedVectors {
+		// Sparse vectors can only be used with named vector collections
+		return fmt.Errorf("sparse vectors require named vector collections")
+	}
+
+	vectorName := opts.SparseVectorName
+	if vectorName == "" {
+		vectorName = "sparse" // Default sparse vector name
+	}
+
+	namedVectors := map[string]*qdrant.Vector{
+		vectorName: qdrant.NewVectorSparse(doc.SparseVector.Indices, doc.SparseVector.Values),
+	}
+	point.Vectors = qdrant.NewVectorsMap(namedVectors)
+
+	return nil
+}
+
+// addBothVectors adds both dense and sparse vectors to a point
+func (s *Store) addBothVectors(point *qdrant.PointStruct, doc *types.Document, opts *types.AddDocumentOptions, usesNamedVectors bool) error {
+	if !usesNamedVectors {
+		// Both vectors require named vector collections
+		return fmt.Errorf("both dense and sparse vectors require named vector collections")
+	}
+
+	namedVectors := make(map[string]*qdrant.Vector)
+
+	// Add dense vector
+	denseVector := doc.GetDenseVector()
+	if len(denseVector) > 0 {
+		vectorData := make([]float32, len(denseVector))
+		for k, v := range denseVector {
+			vectorData[k] = float32(v)
+		}
+
+		denseName := opts.DenseVectorName
+		if denseName == "" {
+			denseName = "dense"
+		}
+		namedVectors[denseName] = qdrant.NewVector(vectorData...)
+	}
+
+	// Add sparse vector
+	if doc.SparseVector != nil {
+		sparseName := opts.SparseVectorName
+		if sparseName == "" {
+			sparseName = "sparse"
+		}
+		namedVectors[sparseName] = qdrant.NewVectorSparse(doc.SparseVector.Indices, doc.SparseVector.Values)
+	}
+
+	if len(namedVectors) > 0 {
+		point.Vectors = qdrant.NewVectorsMap(namedVectors)
+	}
+
+	return nil
 }
 
 // collectionUsesNamedVectors checks if a collection uses named vectors by querying collection info
@@ -311,11 +456,32 @@ func (s *Store) collectionUsesNamedVectors(ctx context.Context, collectionName s
 	return false, nil
 }
 
-// isNamedVectorCollection checks if a collection uses named vectors
-func (s *Store) isNamedVectorCollection(collectionName string) bool {
-	// Heuristic: test collections created with sparse vector support typically have "test_search_" prefix
-	// In production, this should query the collection info to check for named vectors
-	return strings.Contains(collectionName, "test_search_")
+// shouldUseNamedVectors determines if named vectors should be used based on document content and options
+// This function assumes the collection supports named vectors
+func (s *Store) shouldUseNamedVectors(doc *types.Document, opts *types.AddDocumentOptions) bool {
+	// If we have both dense and sparse vectors, we must use named vectors
+	if doc.HasDenseVector() && doc.HasSparseVector() {
+		return true
+	}
+
+	// If user explicitly specified vector names, use named vectors
+	if opts.DenseVectorName != "" || opts.SparseVectorName != "" || opts.VectorUsing != "" {
+		return true
+	}
+
+	// If we only have sparse vectors, we must use named vectors (sparse vectors require naming)
+	if doc.HasSparseVector() {
+		return true
+	}
+
+	// For collections that support named vectors, default to using them even for dense-only vectors
+	// This provides consistency and allows for future expansion
+	if doc.HasDenseVector() {
+		return true
+	}
+
+	// No vectors at all
+	return false
 }
 
 // GetDocuments retrieves documents by IDs

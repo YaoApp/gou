@@ -25,7 +25,10 @@ func TestSearchHybrid_BasicFunctionality(t *testing.T) {
 		t.Skip("No test documents available")
 	}
 
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	ctx := context.Background()
 
 	tests := []struct {
@@ -172,7 +175,7 @@ func TestSearchHybrid_BasicFunctionality(t *testing.T) {
 					t.Errorf("Document %d has empty ID", i)
 				}
 
-				if tt.opts.IncludeContent && doc.Document.PageContent == "" {
+				if tt.opts.IncludeContent && doc.Document.Content == "" {
 					t.Logf("Warning: Document %d has empty content (ID: %s)", i, doc.Document.ID)
 				}
 
@@ -201,7 +204,10 @@ func TestSearchHybrid_Pagination(t *testing.T) {
 		t.Skip("No test documents available")
 	}
 
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	ctx := context.Background()
 
 	tests := []struct {
@@ -297,7 +303,10 @@ func TestSearchHybrid_WeightCombinations(t *testing.T) {
 		t.Skip("No test documents available")
 	}
 
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	ctx := context.Background()
 
 	// Create a test sparse vector
@@ -540,7 +549,10 @@ func TestSearchHybrid_Timeout(t *testing.T) {
 		t.Skip("No test documents available")
 	}
 
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	ctx := context.Background()
 
 	tests := []struct {
@@ -657,7 +669,10 @@ func TestSearchHybrid_MemoryLeak(t *testing.T) {
 		t.Skip("No test documents available")
 	}
 
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	ctx := context.Background()
 
 	// Force garbage collection and get initial memory stats
@@ -732,7 +747,10 @@ func TestSearchHybrid_ConcurrentStress(t *testing.T) {
 		t.Skip("No test documents available")
 	}
 
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	ctx := context.Background()
 
 	// Test parameters
@@ -844,7 +862,10 @@ func TestSearchHybrid_Benchmark(t *testing.T) {
 		t.Skip("No test documents available")
 	}
 
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	ctx := context.Background()
 
 	benchmarks := []struct {
@@ -956,7 +977,10 @@ func TestSearchHybrid_AdvancedFeatures(t *testing.T) {
 		t.Skip("No test documents available")
 	}
 
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 	ctx := context.Background()
 
 	testSparseVector := &types.SparseVector{
@@ -1078,7 +1102,7 @@ func TestSearchHybrid_AdvancedFeatures(t *testing.T) {
 					t.Logf("Warning: Document %d has nil metadata despite IncludeMetadata=true", i)
 				}
 
-				if tt.opts.IncludeContent && doc.Document.PageContent == "" {
+				if tt.opts.IncludeContent && doc.Document.Content == "" {
 					t.Logf("Warning: Document %d has empty content despite IncludeContent=true", i)
 				}
 			}
@@ -1113,7 +1137,10 @@ func TestSearchHybrid_MultiLanguageSupport(t *testing.T) {
 			t.Skip("No English test documents available")
 		}
 
-		queryVector := testDataSet.Documents[0].Vector
+		queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 		opts := &types.HybridSearchOptions{
 			CollectionName: testDataSet.CollectionName,
@@ -1154,7 +1181,10 @@ func TestSearchHybrid_MultiLanguageSupport(t *testing.T) {
 			t.Skip("No Chinese test documents available")
 		}
 
-		queryVector := testDataSet.Documents[0].Vector
+		queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 		opts := &types.HybridSearchOptions{
 			CollectionName: testDataSet.CollectionName,
@@ -1197,7 +1227,10 @@ func TestSearchHybrid_MultiLanguageSupport(t *testing.T) {
 		}
 
 		// Test same query on different language datasets
-		sameQueryVector := enDataSet.Documents[0].Vector
+		sameQueryVector := getQueryVectorFromDataSet(enDataSet)
+	if len(sameQueryVector) == 0 {
+		t.Skip("No dense query vector available from English test data")
+	}
 		sameSparseVector := &types.SparseVector{
 			Indices: []uint32{1, 42, 100},
 			Values:  []float32{0.5, 0.8, 0.3},
