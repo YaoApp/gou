@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,24 +17,26 @@ import (
 	"github.com/yaoapp/gou/graphrag/chunking"
 	"github.com/yaoapp/gou/graphrag/embedding"
 	"github.com/yaoapp/gou/graphrag/types"
+	"github.com/yaoapp/gou/graphrag/vector/qdrant"
 )
 
 func main() {
 	var (
-		filePath       = flag.String("file", "", "Path to the file to chunk (required for chunking)")
-		dirPath        = flag.String("dir", "", "Path to the directory to embed (required for embedding)")
-		size           = flag.Int("size", 300, "Chunk size")
-		overlap        = flag.Int("overlap", 50, "Chunk overlap")
-		maxDepth       = flag.Int("depth", 3, "Maximum chunk depth")
-		maxConcurrent  = flag.Int("concurrent", 6, "Maximum concurrent operations for chunking (default 6), or for embedding (default 10)")
-		method         = flag.String("method", "structured", "Processing method: structured, semantic, both, or embedding")
-		toolcall       = flag.Bool("toolcall", false, "Use toolcall for semantic chunking")
-		connector      = flag.String("connector", "openai", "Connector type: openai, fastembed, custom")
-		contextSize    = flag.Int("context", 1000, "Context size")
-		embeddingModel = flag.String("embedding-model", "text-embedding-3-small", "Embedding model for embedding method")
-		suffix         = flag.String("suffix", "", "Suffix for embedding files")
-		dimension      = flag.Int("dimension", 1536, "Embedding dimension for embedding method")
-		help           = flag.Bool("help", false, "Show help message")
+		filePath         = flag.String("file", "", "Path to the file to chunk (required for chunking)")
+		dirPath          = flag.String("dir", "", "Path to the directory to embed (required for embedding)")
+		size             = flag.Int("size", 300, "Chunk size")
+		overlap          = flag.Int("overlap", 50, "Chunk overlap")
+		maxDepth         = flag.Int("depth", 3, "Maximum chunk depth")
+		maxConcurrent    = flag.Int("concurrent", 6, "Maximum concurrent operations for chunking (default 6), or for embedding (default 10)")
+		method           = flag.String("method", "structured", "Processing method: structured, semantic, both, embedding, or clear-collections")
+		toolcall         = flag.Bool("toolcall", false, "Use toolcall for semantic chunking")
+		connector        = flag.String("connector", "openai", "Connector type: openai, fastembed, custom")
+		contextSize      = flag.Int("context", 1000, "Context size")
+		embeddingModel   = flag.String("embedding-model", "text-embedding-3-small", "Embedding model for embedding method")
+		suffix           = flag.String("suffix", "", "Suffix for embedding files")
+		dimension        = flag.Int("dimension", 1536, "Embedding dimension for embedding method")
+		clearCollections = flag.Bool("clear-collections", false, "Clear all collections from Qdrant")
+		help             = flag.Bool("help", false, "Show help message")
 	)
 
 	flag.Parse()
@@ -45,15 +48,27 @@ func main() {
 
 	// Validate method parameter
 	validMethods := map[string]bool{
-		"structured": true,
-		"semantic":   true,
-		"both":       true,
-		"embedding":  true,
+		"structured":        true,
+		"semantic":          true,
+		"both":              true,
+		"embedding":         true,
+		"clear-collections": true,
 	}
 	if !validMethods[*method] {
-		fmt.Fprintf(os.Stderr, "Error: Invalid method '%s'. Valid methods are: structured, semantic, both, embedding\n", *method)
+		fmt.Fprintf(os.Stderr, "Error: Invalid method '%s'. Valid methods are: structured, semantic, both, embedding, clear-collections\n", *method)
 		printHelp()
 		os.Exit(1)
+	}
+
+	// Handle clear-collections method or flag
+	if *method == "clear-collections" || *clearCollections {
+		ctx := context.Background()
+		if err := runClearCollections(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Failed to clear collections: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("\n=== Collections cleared successfully ===")
+		return
 	}
 
 	// Handle embedding method
@@ -202,12 +217,16 @@ func printHelp() {
 	fmt.Println("For embedding method:")
 	fmt.Println("  go run tools.go -method embedding -dir <path> [options]")
 	fmt.Println()
+	fmt.Println("For clearing collections:")
+	fmt.Println("  go run tools.go -method clear-collections")
+	fmt.Println("  go run tools.go -clear-collections")
+	fmt.Println()
 	fmt.Println("Required flags:")
 	fmt.Println("  -file string    Path to the file to chunk (required for chunking methods)")
 	fmt.Println("  -dir string     Path to the directory to embed (required for embedding method)")
 	fmt.Println()
 	fmt.Println("Optional flags:")
-	fmt.Println("  -method string        Processing method: structured, semantic, both, or embedding (default structured)")
+	fmt.Println("  -method string        Processing method: structured, semantic, both, embedding, or clear-collections (default structured)")
 	fmt.Println("  -size int             Chunk size (default 300)")
 	fmt.Println("  -overlap int          Chunk overlap (default 50)")
 	fmt.Println("  -depth int            Maximum chunk depth (default 3)")
@@ -217,6 +236,7 @@ func printHelp() {
 	fmt.Println("  -context int          Context size (default 1000)")
 	fmt.Println("  -embedding-model string Embedding model for embedding method (default text-embedding-3-small)")
 	fmt.Println("  -dimension int        Embedding dimension for embedding method (default 1536)")
+	fmt.Println("  -clear-collections    Clear all collections from Qdrant")
 	fmt.Println("  -help                 Show this help message")
 	fmt.Println()
 	fmt.Println("Environment variables:")
@@ -224,6 +244,8 @@ func printHelp() {
 	fmt.Println("  RAG_LLM_TEST_KEY      Custom LLM API key")
 	fmt.Println("  RAG_LLM_TEST_URL      Custom LLM API URL")
 	fmt.Println("  RAG_LLM_TEST_SMODEL   Custom LLM model name")
+	fmt.Println("  QDRANT_TEST_HOST      Qdrant server host (default 127.0.0.1)")
+	fmt.Println("  QDRANT_TEST_PORT      Qdrant server port (default 6334)")
 	fmt.Println()
 	fmt.Println("Output:")
 	fmt.Println("  Chunking files: basename.chunk-index.ext")
@@ -838,4 +860,98 @@ func getConnectorName(connectorType string) string {
 	default:
 		return "openai-chunking"
 	}
+}
+
+// runClearCollections connects to Qdrant and clears all collections
+func runClearCollections(ctx context.Context) error {
+	start := time.Now()
+
+	// Get Qdrant connection parameters from environment variables
+	host := os.Getenv("QDRANT_TEST_HOST")
+	if host == "" {
+		host = "127.0.0.1" // Default host
+	}
+
+	portStr := os.Getenv("QDRANT_TEST_PORT")
+	if portStr == "" {
+		portStr = "6334" // Default port
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return fmt.Errorf("invalid QDRANT_TEST_PORT value '%s': %w", portStr, err)
+	}
+
+	fmt.Printf("Connecting to Qdrant at %s:%d\n", host, port)
+
+	// Create Qdrant store
+	store := qdrant.NewStore()
+
+	// Create config with connection parameters in ExtraParams
+	config := types.VectorStoreConfig{
+		CollectionName: "dummy", // Required field, but not used for connection
+		Dimension:      1,       // Required field, but not used for connection
+		ExtraParams: map[string]interface{}{
+			"host": host,
+			"port": port,
+		},
+	}
+
+	// Connect to Qdrant
+	if err := store.Connect(ctx, config); err != nil {
+		return fmt.Errorf("failed to connect to Qdrant: %w", err)
+	}
+	defer store.Close()
+
+	// List all collections
+	fmt.Println("Listing all collections...")
+	collections, err := store.ListCollections(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list collections: %w", err)
+	}
+
+	if len(collections) == 0 {
+		color.Yellow("No collections found to clear.\n")
+		return nil
+	}
+
+	fmt.Printf("Found %d collections to clear:\n", len(collections))
+	for i, collection := range collections {
+		fmt.Printf("  %d. %s\n", i+1, collection)
+	}
+
+	// Drop all collections
+	fmt.Println("\nClearing collections...")
+	errorCount := 0
+	for i, collection := range collections {
+		fmt.Printf("  Dropping collection (%d/%d): %s", i+1, len(collections), collection)
+
+		if err := store.DropCollection(ctx, collection); err != nil {
+			color.Red(" - FAILED: %v\n", err)
+			errorCount++
+		} else {
+			color.Green(" - OK\n")
+		}
+	}
+
+	cost := time.Since(start)
+	fmt.Printf("\n--------------------------------\n")
+
+	if errorCount > 0 {
+		color.Red("Clear collections completed with %d errors in %s\n", errorCount, cost.Round(time.Millisecond))
+		fmt.Printf("Successfully cleared: %d/%d collections\n", len(collections)-errorCount, len(collections))
+	} else {
+		color.Green("All collections cleared successfully in %s\n", cost.Round(time.Millisecond))
+		fmt.Printf("Total collections cleared: %d\n", len(collections))
+	}
+
+	fmt.Printf("Qdrant Server: %s:%d\n", host, port)
+	fmt.Printf("Time Cost: %s\n", cost)
+	fmt.Printf("--------------------------------\n")
+
+	if errorCount > 0 {
+		return fmt.Errorf("failed to clear %d collections", errorCount)
+	}
+
+	return nil
 }
