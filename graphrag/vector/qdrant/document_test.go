@@ -112,9 +112,9 @@ func createTestDocuments(count int) []*types.Document {
 	docs := make([]*types.Document, count)
 	for i := 0; i < count; i++ {
 		docs[i] = &types.Document{
-			ID:          fmt.Sprintf("test_doc_%d", i),
-			PageContent: fmt.Sprintf("This is test document content number %d. It contains useful information for testing purposes.", i),
-			Vector:      generateTestVector(128), // 128-dimensional test vector
+			ID:      fmt.Sprintf("test_doc_%d", i),
+			Content: fmt.Sprintf("This is test document content number %d. It contains useful information for testing purposes.", i),
+			Vector:  generateTestVector(128), // 128-dimensional test vector
 			Metadata: map[string]interface{}{
 				"doc_index": i,
 				"category":  fmt.Sprintf("category_%d", i%3),
@@ -1929,9 +1929,9 @@ func TestDocumentOperationsEdgeCases(t *testing.T) {
 		}
 
 		largeDoc := &types.Document{
-			ID:          "large_doc",
-			PageContent: string(largeContent),
-			Vector:      generateTestVector(128),
+			ID:      "large_doc",
+			Content: string(largeContent),
+			Vector:  generateTestVector(128),
 			Metadata: map[string]interface{}{
 				"size": "large",
 				"type": "test",
@@ -1953,9 +1953,9 @@ func TestDocumentOperationsEdgeCases(t *testing.T) {
 
 	t.Run("document with complex metadata", func(t *testing.T) {
 		complexDoc := &types.Document{
-			ID:          "complex_doc",
-			PageContent: "Document with complex metadata",
-			Vector:      generateTestVector(128),
+			ID:      "complex_doc",
+			Content: "Document with complex metadata",
+			Vector:  generateTestVector(128),
 			Metadata: map[string]interface{}{
 				"string_field": "test string",
 				"int_field":    42,
@@ -2002,9 +2002,9 @@ func TestDocumentOperationsEdgeCases(t *testing.T) {
 
 	t.Run("document with very high dimensional vector", func(t *testing.T) {
 		highDimDoc := &types.Document{
-			ID:          "high_dim_doc",
-			PageContent: "Document with high-dimensional vector",
-			Vector:      generateTestVector(2048), // Very high dimension
+			ID:      "high_dim_doc",
+			Content: "Document with high-dimensional vector",
+			Vector:  generateTestVector(2048), // Very high dimension
 			Metadata: map[string]interface{}{
 				"dimensions": 2048,
 			},
@@ -2042,17 +2042,17 @@ func TestConvertScoredPointToDocument(t *testing.T) {
 			point: &qdrant.ScoredPoint{
 				Id: qdrant.NewIDNum(12345),
 				Payload: map[string]*qdrant.Value{
-					"id":           qdrant.NewValueString("test_doc_no_vec"),
-					"page_content": qdrant.NewValueString("No vector content"),
+					"id":      qdrant.NewValueString("test_doc_no_vec"),
+					"content": qdrant.NewValueString("No vector content"),
 				},
 				Score: 0.85,
 			},
 			includeVector:  false,
 			includePayload: true,
 			wantDoc: &types.Document{
-				ID:          "test_doc_no_vec",
-				PageContent: "No vector content",
-				Vector:      nil,
+				ID:      "test_doc_no_vec",
+				Content: "No vector content",
+				Vector:  nil,
 			},
 		},
 		{
@@ -2090,8 +2090,8 @@ func TestConvertScoredPointToDocument(t *testing.T) {
 			if got.ID != tt.wantDoc.ID {
 				t.Errorf("convertScoredPointToDocument() ID = %v, want %v", got.ID, tt.wantDoc.ID)
 			}
-			if got.PageContent != tt.wantDoc.PageContent {
-				t.Errorf("convertScoredPointToDocument() PageContent = %v, want %v", got.PageContent, tt.wantDoc.PageContent)
+			if got.Content != tt.wantDoc.Content {
+				t.Errorf("convertScoredPointToDocument() Content = %v, want %v", got.Content, tt.wantDoc.Content)
 			}
 
 			// Check vector
@@ -2674,8 +2674,8 @@ func TestConvertScoredPointToDocumentWithVectorAndMetadata(t *testing.T) {
 	point := &qdrant.ScoredPoint{
 		Id: qdrant.NewIDNum(12345),
 		Payload: map[string]*qdrant.Value{
-			"id":           qdrant.NewValueString("test_doc"),
-			"page_content": qdrant.NewValueString("Test content"),
+			"id":      qdrant.NewValueString("test_doc"),
+			"content": qdrant.NewValueString("Test content"),
 			"metadata": qdrant.NewValueStruct(&qdrant.Struct{
 				Fields: map[string]*qdrant.Value{
 					"category": qdrant.NewValueString("test"),
@@ -2691,8 +2691,8 @@ func TestConvertScoredPointToDocumentWithVectorAndMetadata(t *testing.T) {
 	if doc.ID != "test_doc" {
 		t.Errorf("convertScoredPointToDocument() ID = %v, want %v", doc.ID, "test_doc")
 	}
-	if doc.PageContent != "Test content" {
-		t.Errorf("convertScoredPointToDocument() PageContent = %v, want %v", doc.PageContent, "Test content")
+	if doc.Content != "Test content" {
+		t.Errorf("convertScoredPointToDocument() Content = %v, want %v", doc.Content, "Test content")
 	}
 	if doc.Metadata == nil {
 		t.Errorf("convertScoredPointToDocument() Metadata is nil")

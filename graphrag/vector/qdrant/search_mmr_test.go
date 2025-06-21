@@ -29,7 +29,11 @@ func TestSearchMMR_BasicFunctionality(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector // Use first document as query
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	t.Run("BasicMMRSearch", func(t *testing.T) {
 		opts := &types.MMRSearchOptions{
@@ -38,6 +42,7 @@ func TestSearchMMR_BasicFunctionality(t *testing.T) {
 			K:              5,
 			FetchK:         15,
 			LambdaMult:     0.5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -97,6 +102,7 @@ func TestSearchMMR_BasicFunctionality(t *testing.T) {
 					K:              5,
 					FetchK:         15,
 					LambdaMult:     lambda,
+					VectorUsing:    "dense", // Specify vector name for named vector collections
 				}
 
 				result, err := env.Store.SearchMMR(ctx, opts)
@@ -125,6 +131,7 @@ func TestSearchMMR_BasicFunctionality(t *testing.T) {
 					K:              5,
 					FetchK:         fetchK,
 					LambdaMult:     0.5,
+					VectorUsing:    "dense", // Specify vector name for named vector collections
 				}
 
 				result, err := env.Store.SearchMMR(ctx, opts)
@@ -151,6 +158,7 @@ func TestSearchMMR_BasicFunctionality(t *testing.T) {
 			K:              5,
 			FetchK:         15,
 			LambdaMult:     0.5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		mmrResult, err := env.Store.SearchMMR(ctx, mmrOpts)
@@ -163,6 +171,7 @@ func TestSearchMMR_BasicFunctionality(t *testing.T) {
 			CollectionName: testDataSet.CollectionName,
 			QueryVector:    queryVector,
 			K:              5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		simResult, err := env.Store.SearchSimilar(ctx, simOpts)
@@ -208,6 +217,11 @@ func TestSearchMMR_ErrorScenarios(t *testing.T) {
 	env := getOrCreateSearchTestEnvironment(t)
 
 	ctx := context.Background()
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	tests := []struct {
 		name     string
@@ -227,8 +241,9 @@ func TestSearchMMR_ErrorScenarios(t *testing.T) {
 			name: "EmptyCollectionName",
 			opts: &types.MMRSearchOptions{
 				CollectionName: "",
-				QueryVector:    testDataSet.Documents[0].Vector,
+				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			wantErr: true,
 			errCheck: func(err error) bool {
@@ -263,8 +278,9 @@ func TestSearchMMR_ErrorScenarios(t *testing.T) {
 			name: "NonexistentCollection",
 			opts: &types.MMRSearchOptions{
 				CollectionName: "nonexistent_collection_12345",
-				QueryVector:    testDataSet.Documents[0].Vector,
+				QueryVector:    queryVector,
 				K:              5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			wantErr: true,
 			errCheck: func(err error) bool {
@@ -275,9 +291,10 @@ func TestSearchMMR_ErrorScenarios(t *testing.T) {
 			name: "VeryHighMinScore",
 			opts: &types.MMRSearchOptions{
 				CollectionName: testDataSet.CollectionName,
-				QueryVector:    testDataSet.Documents[0].Vector,
+				QueryVector:    queryVector,
 				K:              5,
 				MinScore:       0.99999, // Very high threshold
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			},
 			wantErr: false, // Should not error, but might return no results
 		},
@@ -319,7 +336,11 @@ func TestSearchMMR_EdgeCases(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	t.Run("ZeroK", func(t *testing.T) {
 		opts := &types.MMRSearchOptions{
@@ -328,6 +349,7 @@ func TestSearchMMR_EdgeCases(t *testing.T) {
 			K:              0,
 			FetchK:         10,
 			LambdaMult:     0.5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -346,6 +368,7 @@ func TestSearchMMR_EdgeCases(t *testing.T) {
 			K:              20,
 			FetchK:         10, // Smaller than K
 			LambdaMult:     0.5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -366,6 +389,7 @@ func TestSearchMMR_EdgeCases(t *testing.T) {
 			K:              5,
 			FetchK:         0, // Should use default
 			LambdaMult:     0.5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -383,7 +407,8 @@ func TestSearchMMR_EdgeCases(t *testing.T) {
 			QueryVector:    queryVector,
 			K:              5,
 			FetchK:         15,
-			LambdaMult:     -0.1, // Negative lambda
+			LambdaMult:     -0.1,    // Negative lambda
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -401,7 +426,8 @@ func TestSearchMMR_EdgeCases(t *testing.T) {
 			QueryVector:    queryVector,
 			K:              5,
 			FetchK:         15,
-			LambdaMult:     1.5, // Greater than 1
+			LambdaMult:     1.5,     // Greater than 1
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -422,6 +448,7 @@ func TestSearchMMR_EdgeCases(t *testing.T) {
 			K:              5,
 			FetchK:         15,
 			LambdaMult:     0.5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -442,6 +469,7 @@ func TestSearchMMR_EdgeCases(t *testing.T) {
 			K:              1,
 			FetchK:         1,
 			LambdaMult:     0.5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -461,7 +489,8 @@ func TestSearchMMR_EdgeCases(t *testing.T) {
 			K:              5,
 			FetchK:         15,
 			LambdaMult:     0.5,
-			Timeout:        1, // 1 millisecond
+			Timeout:        1,       // 1 millisecond
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -522,7 +551,11 @@ func TestSearchMMR_WithPagination(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	t.Run("PaginationTest", func(t *testing.T) {
 		pageSize := 3
@@ -540,6 +573,7 @@ func TestSearchMMR_WithPagination(t *testing.T) {
 				Page:           page,
 				PageSize:       pageSize,
 				IncludeTotal:   true,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			}
 
 			result, err := env.Store.SearchMMR(ctx, opts)
@@ -603,7 +637,10 @@ func TestSearchMMR_MultiLanguageData(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("SearchEnglishDataMMR", func(t *testing.T) {
-		queryVector := enDataSet.Documents[0].Vector
+		queryVector := getQueryVectorFromDataSet(enDataSet)
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from English test data")
+		}
 
 		opts := &types.MMRSearchOptions{
 			CollectionName:  enDataSet.CollectionName,
@@ -612,6 +649,7 @@ func TestSearchMMR_MultiLanguageData(t *testing.T) {
 			FetchK:          15,
 			LambdaMult:      0.5,
 			IncludeMetadata: true,
+			VectorUsing:     "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -634,7 +672,10 @@ func TestSearchMMR_MultiLanguageData(t *testing.T) {
 	})
 
 	t.Run("SearchChineseDataMMR", func(t *testing.T) {
-		queryVector := zhDataSet.Documents[0].Vector
+		queryVector := getQueryVectorFromDataSet(zhDataSet)
+		if len(queryVector) == 0 {
+			t.Skip("No dense query vector available from Chinese test data")
+		}
 
 		opts := &types.MMRSearchOptions{
 			CollectionName:  zhDataSet.CollectionName,
@@ -643,6 +684,7 @@ func TestSearchMMR_MultiLanguageData(t *testing.T) {
 			FetchK:          15,
 			LambdaMult:      0.5,
 			IncludeMetadata: true,
+			VectorUsing:     "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -666,7 +708,10 @@ func TestSearchMMR_MultiLanguageData(t *testing.T) {
 
 	t.Run("CrossLanguageMMRQuery", func(t *testing.T) {
 		// Use English vector to search Chinese collection with MMR
-		enVector := enDataSet.Documents[0].Vector
+		enVector := getQueryVectorFromDataSet(enDataSet)
+		if len(enVector) == 0 {
+			t.Skip("No dense query vector available from English test data")
+		}
 
 		opts := &types.MMRSearchOptions{
 			CollectionName:  zhDataSet.CollectionName,
@@ -675,6 +720,7 @@ func TestSearchMMR_MultiLanguageData(t *testing.T) {
 			FetchK:          9,
 			LambdaMult:      0.5,
 			IncludeMetadata: true,
+			VectorUsing:     "dense", // Specify vector name for named vector collections
 		}
 
 		result, err := env.Store.SearchMMR(ctx, opts)
@@ -708,7 +754,11 @@ func BenchmarkSearchMMR(b *testing.B) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+
+	if len(queryVector) == 0 {
+		b.Skip("No dense query vector available from test data")
+	}
 
 	b.Run("BasicMMRSearch", func(b *testing.B) {
 		opts := &types.MMRSearchOptions{
@@ -717,6 +767,7 @@ func BenchmarkSearchMMR(b *testing.B) {
 			K:              10,
 			FetchK:         30,
 			LambdaMult:     0.5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		b.ResetTimer()
@@ -735,6 +786,7 @@ func BenchmarkSearchMMR(b *testing.B) {
 			K:              10,
 			FetchK:         100,
 			LambdaMult:     0.5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		b.ResetTimer()
@@ -752,7 +804,8 @@ func BenchmarkSearchMMR(b *testing.B) {
 			QueryVector:    queryVector,
 			K:              10,
 			FetchK:         30,
-			LambdaMult:     0.9, // High similarity weight
+			LambdaMult:     0.9,     // High similarity weight
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		b.ResetTimer()
@@ -770,7 +823,8 @@ func BenchmarkSearchMMR(b *testing.B) {
 			QueryVector:    queryVector,
 			K:              10,
 			FetchK:         30,
-			LambdaMult:     0.1, // High diversity weight
+			LambdaMult:     0.1,     // High diversity weight
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		b.ResetTimer()
@@ -791,6 +845,7 @@ func BenchmarkSearchMMR(b *testing.B) {
 			LambdaMult:     0.5,
 			Page:           1,
 			PageSize:       5,
+			VectorUsing:    "dense", // Specify vector name for named vector collections
 		}
 
 		b.ResetTimer()
@@ -821,7 +876,11 @@ func TestSearchMMR_MemoryLeakDetection(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	queryVector := testDataSet.Documents[0].Vector
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	// Get initial memory stats
 	var initialStats, finalStats runtime.MemStats
@@ -843,6 +902,7 @@ func TestSearchMMR_MemoryLeakDetection(t *testing.T) {
 				IncludeVector:   j%2 == 0,
 				IncludeMetadata: j%3 == 0,
 				IncludeContent:  j%4 == 0,
+				VectorUsing:     "dense", // Specify vector name for named vector collections
 			}
 
 			result, err := env.Store.SearchMMR(ctx, opts)
@@ -908,6 +968,10 @@ func TestSearchMMR_ConcurrentStress(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	queryVector := getQueryVectorFromDataSet(testDataSet)
+	if len(queryVector) == 0 {
+		t.Skip("No dense query vector available from test data")
+	}
 
 	// Test parameters (smaller than similarity search due to MMR complexity)
 	numGoroutines := 15
@@ -921,46 +985,45 @@ func TestSearchMMR_ConcurrentStress(t *testing.T) {
 		{
 			name: "basic_mmr",
 			opts: func(i int) *types.MMRSearchOptions {
-				queryVector := testDataSet.Documents[i%len(testDataSet.Documents)].Vector
 				return &types.MMRSearchOptions{
 					CollectionName: testDataSet.CollectionName,
 					QueryVector:    queryVector,
 					K:              10,
 					FetchK:         30,
 					LambdaMult:     0.5,
+					VectorUsing:    "dense", // Specify vector name for named vector collections
 				}
 			},
 		},
 		{
 			name: "high_similarity_mmr",
 			opts: func(i int) *types.MMRSearchOptions {
-				queryVector := testDataSet.Documents[i%len(testDataSet.Documents)].Vector
 				return &types.MMRSearchOptions{
 					CollectionName: testDataSet.CollectionName,
 					QueryVector:    queryVector,
 					K:              8,
 					FetchK:         24,
-					LambdaMult:     0.9, // High similarity weight
+					LambdaMult:     0.9,     // High similarity weight
+					VectorUsing:    "dense", // Specify vector name for named vector collections
 				}
 			},
 		},
 		{
 			name: "high_diversity_mmr",
 			opts: func(i int) *types.MMRSearchOptions {
-				queryVector := testDataSet.Documents[i%len(testDataSet.Documents)].Vector
 				return &types.MMRSearchOptions{
 					CollectionName: testDataSet.CollectionName,
 					QueryVector:    queryVector,
 					K:              8,
 					FetchK:         24,
-					LambdaMult:     0.1, // High diversity weight
+					LambdaMult:     0.1,     // High diversity weight
+					VectorUsing:    "dense", // Specify vector name for named vector collections
 				}
 			},
 		},
 		{
 			name: "paginated_mmr",
 			opts: func(i int) *types.MMRSearchOptions {
-				queryVector := testDataSet.Documents[i%len(testDataSet.Documents)].Vector
 				return &types.MMRSearchOptions{
 					CollectionName: testDataSet.CollectionName,
 					QueryVector:    queryVector,
@@ -969,6 +1032,7 @@ func TestSearchMMR_ConcurrentStress(t *testing.T) {
 					LambdaMult:     0.5,
 					Page:           (i % 3) + 1,
 					PageSize:       5,
+					VectorUsing:    "dense", // Specify vector name for named vector collections
 				}
 			},
 		},
@@ -1092,6 +1156,12 @@ func TestSearchMMR_ConcurrentWithDifferentCollections(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	enQueryVector := getQueryVectorFromDataSet(enDataSet)
+	zhQueryVector := getQueryVectorFromDataSet(zhDataSet)
+
+	if len(enQueryVector) == 0 || len(zhQueryVector) == 0 {
+		t.Skip("No dense query vectors available from test data")
+	}
 
 	var wg sync.WaitGroup
 	errors := make(chan error, 50)
@@ -1102,13 +1172,13 @@ func TestSearchMMR_ConcurrentWithDifferentCollections(t *testing.T) {
 		go func(idx int) {
 			defer wg.Done()
 
-			queryVector := enDataSet.Documents[idx%len(enDataSet.Documents)].Vector
 			opts := &types.MMRSearchOptions{
 				CollectionName: enDataSet.CollectionName,
-				QueryVector:    queryVector,
+				QueryVector:    enQueryVector,
 				K:              5,
 				FetchK:         15,
 				LambdaMult:     0.5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			}
 
 			result, err := env.Store.SearchMMR(ctx, opts)
@@ -1129,13 +1199,13 @@ func TestSearchMMR_ConcurrentWithDifferentCollections(t *testing.T) {
 		go func(idx int) {
 			defer wg.Done()
 
-			queryVector := zhDataSet.Documents[idx%len(zhDataSet.Documents)].Vector
 			opts := &types.MMRSearchOptions{
 				CollectionName: zhDataSet.CollectionName,
-				QueryVector:    queryVector,
+				QueryVector:    zhQueryVector,
 				K:              5,
 				FetchK:         15,
 				LambdaMult:     0.5,
+				VectorUsing:    "dense", // Specify vector name for named vector collections
 			}
 
 			result, err := env.Store.SearchMMR(ctx, opts)

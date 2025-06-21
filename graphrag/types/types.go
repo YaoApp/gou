@@ -441,10 +441,35 @@ func (p *Pagination) GetStrategy() PaginationStrategy {
 
 // Document represents a document with content and metadata
 type Document struct {
-	ID          string                 `json:"id,omitempty"`
-	PageContent string                 `json:"page_content"`
-	Vector      []float64              `json:"vector,omitempty"` // Document embedding vector
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	ID           string                 `json:"id,omitempty"`
+	Content      string                 `json:"content"`
+	Vector       []float64              `json:"vector,omitempty"`        // Dense vector (legacy field for backward compatibility)
+	DenseVector  []float64              `json:"dense_vector,omitempty"`  // Dense embedding vector
+	SparseVector *SparseVector          `json:"sparse_vector,omitempty"` // Sparse embedding vector
+	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// HasDenseVector returns true if the document has a dense vector (either Vector or DenseVector fields)
+func (d *Document) HasDenseVector() bool {
+	return len(d.Vector) > 0 || len(d.DenseVector) > 0
+}
+
+// HasSparseVector returns true if the document has a sparse vector
+func (d *Document) HasSparseVector() bool {
+	return d.SparseVector != nil && len(d.SparseVector.Indices) > 0
+}
+
+// GetDenseVector returns the dense vector, prioritizing DenseVector field over legacy Vector field
+func (d *Document) GetDenseVector() []float64 {
+	if len(d.DenseVector) > 0 {
+		return d.DenseVector
+	}
+	return d.Vector
+}
+
+// GetSparseVector returns the sparse vector
+func (d *Document) GetSparseVector() *SparseVector {
+	return d.SparseVector
 }
 
 // SearchResultItem represents a single search result with document and score
@@ -537,6 +562,45 @@ func (c *VectorStoreConfig) Validate() error {
 	return nil
 }
 
+// VectorMode represents the vector operation mode for document operations
+type VectorMode string
+
+const (
+	// VectorModeAuto automatically determines which vectors to use based on what's available in the document
+	VectorModeAuto VectorMode = "auto"
+	// VectorModeDenseOnly only processes dense vectors, ignores sparse vectors
+	VectorModeDenseOnly VectorMode = "dense_only"
+	// VectorModeSparseOnly only processes sparse vectors, ignores dense vectors
+	VectorModeSparseOnly VectorMode = "sparse_only"
+	// VectorModeBoth processes both dense and sparse vectors (requires both to be present)
+	VectorModeBoth VectorMode = "both"
+)
+
+// String returns the string representation of the vector mode
+func (vm VectorMode) String() string {
+	return string(vm)
+}
+
+// IsValid checks if the vector mode is valid
+func (vm VectorMode) IsValid() bool {
+	switch vm {
+	case VectorModeAuto, VectorModeDenseOnly, VectorModeSparseOnly, VectorModeBoth:
+		return true
+	default:
+		return false
+	}
+}
+
+// GetSupportedVectorModes returns all supported vector modes
+func GetSupportedVectorModes() []VectorMode {
+	return []VectorMode{
+		VectorModeAuto,
+		VectorModeDenseOnly,
+		VectorModeSparseOnly,
+		VectorModeBoth,
+	}
+}
+
 // AddDocumentOptions represents options for adding documents
 type AddDocumentOptions struct {
 	CollectionName string      `json:"collection_name"`
@@ -545,8 +609,13 @@ type AddDocumentOptions struct {
 	Timeout        int         `json:"timeout,omitempty"`    // Operation timeout in seconds
 	Upsert         bool        `json:"upsert,omitempty"`     // If true, update existing documents with same ID
 
+	// Vector operation mode - determines which vectors to insert/update
+	VectorMode VectorMode `json:"vector_mode,omitempty"` // "dense_only", "sparse_only", "both", "auto" (default: "auto")
+
 	// Named vector support (for collections with multiple vectors)
-	VectorUsing string `json:"vector_using,omitempty"` // Named vector to use for document vectors (e.g., "dense", "sparse")
+	VectorUsing      string `json:"vector_using,omitempty"`       // Named vector to use for document vectors (e.g., "dense", "sparse") - legacy field
+	DenseVectorName  string `json:"dense_vector_name,omitempty"`  // Named vector for dense vectors (default: "dense")
+	SparseVectorName string `json:"sparse_vector_name,omitempty"` // Named vector for sparse vectors (default: "sparse")
 }
 
 // SearchOptions represents options for similarity search
