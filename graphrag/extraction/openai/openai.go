@@ -436,6 +436,14 @@ func (e *Openai) ExtractQuery(ctx context.Context, text string, callback ...type
 					break // Success, exit retry loop
 				} else {
 					err = parseErr
+					// Log the parse error for debugging
+					if cb != nil {
+						cb(types.ExtractionStatusProcessing, types.ExtractionPayload{
+							Current: 0,
+							Total:   1,
+							Message: fmt.Sprintf("Parse error (attempt %d): %v", attempt+1, parseErr),
+						})
+					}
 				}
 			} else {
 				err = fmt.Errorf("no tool call arguments received")
