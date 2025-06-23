@@ -7,13 +7,15 @@ import (
 	"os"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/miekg/dns"
 	"github.com/yaoapp/kun/log"
 )
 
-// DNS cache
+// DNS cache with thread-safe access
 var caches = map[string][]string{}
+var cachesMutex sync.RWMutex
 
 // LookupIP looks up host using the local resolver. It returns a slice of that host's IPv4 and IPv6 addresses.
 func LookupIP(host string, ipv6 ...bool) ([]string, error) {
@@ -28,9 +30,12 @@ func LookupIP(host string, ipv6 ...bool) ([]string, error) {
 
 	// the host was cached
 	cache := fmt.Sprintf("%s_%v", host, ipv6[0])
+	cachesMutex.RLock()
 	if ips, has := caches[cache]; has {
+		cachesMutex.RUnlock()
 		return ips, nil
 	}
+	cachesMutex.RUnlock()
 
 	if runtime.GOOS == "linux" {
 		conf, err := DefaultConfig()
@@ -45,7 +50,9 @@ func LookupIP(host string, ipv6 ...bool) ([]string, error) {
 
 		// cache the host resolved result ( for linux )
 		if len(res) > 0 {
+			cachesMutex.Lock()
 			caches[cache] = res
+			cachesMutex.Unlock()
 		}
 
 		return res, nil
@@ -57,7 +64,8 @@ func LookupIP(host string, ipv6 ...bool) ([]string, error) {
 	if !ipv6[0] {
 		ips, err = net.DefaultResolver.LookupIP(context.Background(), "ip4", host)
 	} else {
-		ips, err = net.LookupIP(host)
+		// Try to get both IPv4 and IPv6, but prioritize IPv6 if available
+		ips, err = net.DefaultResolver.LookupIP(context.Background(), "ip", host)
 	}
 
 	if err != nil {
@@ -71,7 +79,9 @@ func LookupIP(host string, ipv6 ...bool) ([]string, error) {
 
 	// cache the host resolved result
 	if len(res) > 0 {
+		cachesMutex.Lock()
 		caches[cache] = res
+		cachesMutex.Unlock()
 	}
 
 	return res, nil
@@ -100,10 +110,9 @@ func DialContext() func(ctx context.Context, network, addr string) (net.Conn, er
 		for _, ip := range ips {
 			var dialer net.Dialer
 			conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(ip, port))
-			if err != nil {
-				return nil, err
+			if err == nil {
+				return conn, nil
 			}
-			return conn, nil
 		}
 
 		log.Error("DNS resolve fail: %v %s", ips, addr)
@@ -121,21 +130,180 @@ func DialContextAt(servers []string, host string) func(ctx context.Context, netw
 	return nil
 }
 
-// DefaultConfig get the local dns server
+// DefaultConfig get the local dns server with better Linux distribution compatibility
 func DefaultConfig() (*dns.ClientConfig, error) {
+	// Try to read system DNS configuration
 	conf, err := dns.ClientConfigFromFile("/etc/resolv.conf")
-	if err != nil || len(conf.Servers) == 0 {
-		log.Error("error making client from default file: %v, using 127.0.0.53:53", err)
-		return &dns.ClientConfig{Servers: []string{"127.0.0.53"}, Port: "53", Timeout: 1, Attempts: 2}, nil
+	if err == nil && len(conf.Servers) > 0 {
+		// Successfully read DNS servers from resolv.conf
+		return conf, nil
 	}
-	return conf, nil
+
+	log.Error("error reading /etc/resolv.conf: %v, trying fallback DNS servers", err)
+
+	// Fallback DNS servers for different Linux distributions and configurations
+	fallbackServers := getFallbackDNSServers()
+
+	return &dns.ClientConfig{
+		Servers:  fallbackServers,
+		Port:     "53",
+		Timeout:  2, // Increased timeout for better reliability
+		Attempts: 3, // Increased attempts for better reliability
+	}, nil
+}
+
+// getFallbackDNSServers returns a list of fallback DNS servers for different Linux systems
+func getFallbackDNSServers() []string {
+	servers := []string{}
+
+	// Try to detect and use system-specific DNS configurations
+	systemServers := getSystemSpecificDNS()
+	servers = append(servers, systemServers...)
+
+	// Test local DNS servers (avoid duplicates)
+	localDNSCandidates := []string{
+		"127.0.0.1",  // localhost (common for dnsmasq, unbound, pihole)
+		"127.0.0.53", // systemd-resolved (Ubuntu 18.04+, some systemd distros)
+	}
+
+	addedLocal := false
+	for _, dns := range localDNSCandidates {
+		if isDNSServerReachable(dns) && !contains(servers, dns) {
+			servers = append(servers, dns)
+			addedLocal = true
+			break // Only add one working local DNS to avoid duplicates
+		}
+	}
+
+	// If no local DNS found, try systemd-resolved anyway (might work)
+	if !addedLocal && !contains(servers, "127.0.0.53") {
+		if _, err := os.Stat("/run/systemd/resolve/resolv.conf"); err == nil {
+			servers = append(servers, "127.0.0.53")
+		}
+	}
+
+	// Public DNS servers as final fallback (prioritized for reliability)
+	publicDNS := []string{
+		"1.1.1.1",        // Cloudflare DNS Primary (fastest)
+		"8.8.8.8",        // Google DNS Primary
+		"1.0.0.1",        // Cloudflare DNS Secondary
+		"8.8.4.4",        // Google DNS Secondary
+		"208.67.222.222", // OpenDNS Primary
+		"9.9.9.9",        // Quad9 DNS
+	}
+
+	servers = append(servers, publicDNS...)
+
+	log.Info("Using fallback DNS servers: %v", servers[:min(len(servers), 4)]) // Log only first 4 for brevity
+	return servers
+}
+
+// getSystemSpecificDNS detects system-specific DNS configurations
+func getSystemSpecificDNS() []string {
+	servers := []string{}
+
+	// Check for systemd-resolved configurations (Ubuntu 18.04+, Debian 10+, Fedora, Arch, etc.)
+	systemdPaths := []string{
+		"/run/systemd/resolve/resolv.conf",
+		"/run/systemd/resolve/stub-resolv.conf",
+		"/usr/lib/systemd/resolv.conf",
+	}
+
+	for _, path := range systemdPaths {
+		if _, err := os.Stat(path); err == nil {
+			if conf, err := dns.ClientConfigFromFile(path); err == nil && len(conf.Servers) > 0 {
+				servers = append(servers, conf.Servers...)
+				log.Info("Found systemd-resolved DNS servers from %s: %v", path, conf.Servers)
+				break
+			}
+		}
+	}
+
+	// Check for NetworkManager DNS configuration (RHEL, CentOS, Fedora)
+	nmPaths := []string{
+		"/var/run/NetworkManager/resolv.conf",
+		"/etc/NetworkManager/resolv.conf",
+	}
+
+	for _, path := range nmPaths {
+		if _, err := os.Stat(path); err == nil {
+			if conf, err := dns.ClientConfigFromFile(path); err == nil && len(conf.Servers) > 0 {
+				for _, server := range conf.Servers {
+					if !contains(servers, server) {
+						servers = append(servers, server)
+					}
+				}
+				log.Info("Found NetworkManager DNS servers from %s: %v", path, conf.Servers)
+				break
+			}
+		}
+	}
+
+	// Check for dhcpcd configuration (Arch Linux, some embedded systems)
+	if _, err := os.Stat("/etc/dhcpcd.conf"); err == nil {
+		if isDNSServerReachable("127.0.0.1") && !contains(servers, "127.0.0.1") {
+			servers = append(servers, "127.0.0.1")
+			log.Info("Found dhcpcd DNS configuration using localhost")
+		}
+	}
+
+	// Check for dnsmasq configuration (OpenWrt, some custom setups)
+	if _, err := os.Stat("/etc/dnsmasq.conf"); err == nil {
+		if isDNSServerReachable("127.0.0.1") && !contains(servers, "127.0.0.1") {
+			servers = append(servers, "127.0.0.1")
+			log.Info("Found dnsmasq DNS configuration using localhost")
+		}
+	}
+
+	// Check for resolvconf (older Debian/Ubuntu systems)
+	if _, err := os.Stat("/etc/resolvconf/run/resolv.conf"); err == nil {
+		if conf, err := dns.ClientConfigFromFile("/etc/resolvconf/run/resolv.conf"); err == nil && len(conf.Servers) > 0 {
+			for _, server := range conf.Servers {
+				if !contains(servers, server) {
+					servers = append(servers, server)
+				}
+			}
+			log.Info("Found resolvconf DNS servers: %v", conf.Servers)
+		}
+	}
+
+	return servers
+}
+
+// contains checks if a string slice contains a specific string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// isDNSServerReachable checks if a DNS server is reachable with a simple test
+func isDNSServerReachable(server string) bool {
+	// Try to establish a connection to the DNS server
+	conn, err := net.DialTimeout("udp", net.JoinHostPort(server, "53"), 1*time.Second)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }
 
 // linuxLookupIP
 func linuxLookupIP(host string, servers []string, port string, ipv6 bool, attempts ...int) ([]string, error) {
 
-	if servers == nil || len(servers) == 0 {
-		return []string{}, fmt.Errorf("error query servers is nil")
+	if len(servers) == 0 {
+		return []string{}, fmt.Errorf("error query servers is empty")
 	}
 
 	if attempts == nil {

@@ -1004,7 +1004,7 @@ type LLMOptimizer struct {
 type ExtractionResults struct {
 	Usage         ExtractionUsage `json:"usage"`                   // Combined usage statistics
 	Model         string          `json:"model"`                   // Model used for extraction
-	Entities      []Node          `json:"entities,omitempty"`      // Extracted entities
+	Nodes         []Node          `json:"nodes,omitempty"`         // Extracted entities
 	Relationships []Relationship  `json:"relationships,omitempty"` // Extracted relationships
 }
 

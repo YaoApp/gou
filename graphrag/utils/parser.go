@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/kaptinlin/jsonrepair"
@@ -22,6 +23,11 @@ type Parser struct {
 // NewSemanticParser creates a new semantic parser
 func NewSemanticParser(isToolcall bool) *Parser {
 	return &Parser{Toolcall: isToolcall}
+}
+
+// NewExtractionParser creates a new extraction parser for tool call parsing
+func NewExtractionParser() *Parser {
+	return &Parser{Toolcall: true}
 }
 
 // ParseSemanticToolcall parses the final arguments of the toolcall
@@ -44,12 +50,82 @@ func (parser *Parser) ParseSemanticRegular(finalContent string) ([]types.Positio
 	return parser.tryParseRegularPositions()
 }
 
+// ParseExtractionToolcall parses the final arguments of the extraction toolcall
+func (parser *Parser) ParseExtractionToolcall(finalArguments string) ([]types.Node, []types.Relationship, error) {
+	parser.mutex.Lock()
+	defer parser.mutex.Unlock()
+
+	parser.Arguments = finalArguments
+
+	return parser.tryParseExtractionToolcall()
+}
+
 // ParseSemanticPositions parses a single streaming chunk returns a semantic chunk
 func (parser *Parser) ParseSemanticPositions(chunkData []byte) ([]types.Position, error) {
 	if parser.Toolcall {
 		return parser.parseSemanticToolcall(chunkData)
 	}
 	return parser.parseSemanticRegular(chunkData)
+}
+
+// ParseExtractionEntities parses a single streaming chunk for extraction and returns extraction progress
+func (parser *Parser) ParseExtractionEntities(chunkData []byte) ([]types.Node, []types.Relationship, error) {
+	parser.mutex.Lock()
+	defer parser.mutex.Unlock()
+
+	// Skip empty chunks
+	if len(chunkData) == 0 {
+		return nil, nil, nil
+	}
+
+	// Handle SSE format (data: prefix)
+	dataStr := string(chunkData)
+	if strings.HasPrefix(dataStr, "data: ") {
+		dataStr = strings.TrimPrefix(dataStr, "data: ")
+		if strings.TrimSpace(dataStr) == "[DONE]" {
+			parser.finished = true
+			return parser.tryParseExtractionToolcall()
+		}
+		chunkData = []byte(dataStr)
+	}
+
+	// Parse the streaming chunk JSON
+	var chunkObj map[string]interface{}
+	if err := jsoniter.Unmarshal(chunkData, &chunkObj); err != nil {
+		// If JSON parsing fails, return empty for now
+		return nil, nil, nil
+	}
+
+	// Extract tool call arguments from streaming response
+	choices, ok := chunkObj["choices"].([]interface{})
+	if !ok || len(choices) == 0 {
+		return nil, nil, nil
+	}
+
+	choice := choices[0].(map[string]interface{})
+	delta, ok := choice["delta"].(map[string]interface{})
+	if !ok {
+		return nil, nil, nil
+	}
+
+	// Check for tool calls in delta
+	if toolCalls, ok := delta["tool_calls"].([]interface{}); ok && len(toolCalls) > 0 {
+		toolCall := toolCalls[0].(map[string]interface{})
+		if function, ok := toolCall["function"].(map[string]interface{}); ok {
+			if args, ok := function["arguments"].(string); ok {
+				parser.Arguments += args
+			}
+		}
+	}
+
+	// Check finish reason
+	if finishReason, ok := choice["finish_reason"].(string); ok && finishReason != "" {
+		parser.finished = true
+		return parser.tryParseExtractionToolcall()
+	}
+
+	// If not finished, try to parse what we have so far
+	return parser.tryParseExtractionToolcall()
 }
 
 // parseSemanticToolcall parses a single streaming chunk returns a semantic toolcall
@@ -363,4 +439,173 @@ func (parser *Parser) toInt(value interface{}) int {
 	default:
 		return -1
 	}
+}
+
+// tryParseExtractionToolcall attempts to parse entities and relationships from accumulated tool call arguments
+func (parser *Parser) tryParseExtractionToolcall() ([]types.Node, []types.Relationship, error) {
+	arguments := strings.TrimSpace(parser.Arguments)
+	if len(arguments) < 10 {
+		return nil, nil, nil
+	}
+
+	// Try to complete incomplete JSON by truncating to last complete object
+	arguments = parser.completeExtractionJSON(arguments)
+
+	// First try to parse with jsoniter
+	var args map[string]interface{}
+	err := jsoniter.UnmarshalFromString(arguments, &args)
+	if err != nil {
+		// Try to repair the JSON using jsonrepair
+		repaired, errRepair := jsonrepair.JSONRepair(arguments)
+		if errRepair != nil {
+			return nil, nil, fmt.Errorf("failed to repair extraction JSON: %w", errRepair)
+		}
+
+		// Retry with repaired JSON
+		err = jsoniter.UnmarshalFromString(repaired, &args)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to parse repaired extraction JSON: %w", err)
+		}
+	}
+
+	// Parse entities and relationships
+	var nodes []types.Node
+	var relationships []types.Relationship
+
+	// Parse entities
+	if entitiesRaw, ok := args["entities"].([]interface{}); ok {
+		for _, entityRaw := range entitiesRaw {
+			if entityMap, ok := entityRaw.(map[string]interface{}); ok {
+				node := types.Node{
+					ExtractionMethod: types.ExtractionMethodLLM,
+					CreatedAt:        time.Now().Unix(),
+					Version:          1,
+					Status:           types.EntityStatusActive,
+				}
+
+				if id, ok := entityMap["id"].(string); ok {
+					node.ID = id
+				}
+				if name, ok := entityMap["name"].(string); ok {
+					node.Name = name
+				}
+				if entityType, ok := entityMap["type"].(string); ok {
+					node.Type = entityType
+				}
+				if description, ok := entityMap["description"].(string); ok {
+					node.Description = description
+				}
+				if confidence, ok := entityMap["confidence"].(float64); ok {
+					node.Confidence = confidence
+				}
+
+				nodes = append(nodes, node)
+			}
+		}
+	}
+
+	// Parse relationships
+	if relationshipsRaw, ok := args["relationships"].([]interface{}); ok {
+		for _, relationshipRaw := range relationshipsRaw {
+			if relationshipMap, ok := relationshipRaw.(map[string]interface{}); ok {
+				relationship := types.Relationship{
+					ExtractionMethod: types.ExtractionMethodLLM,
+					CreatedAt:        time.Now().Unix(),
+					Version:          1,
+					Status:           types.EntityStatusActive,
+				}
+
+				if startNode, ok := relationshipMap["start_node"].(string); ok {
+					relationship.StartNode = startNode
+				}
+				if endNode, ok := relationshipMap["end_node"].(string); ok {
+					relationship.EndNode = endNode
+				}
+				if relType, ok := relationshipMap["type"].(string); ok {
+					relationship.Type = relType
+				}
+				if description, ok := relationshipMap["description"].(string); ok {
+					relationship.Description = description
+				}
+				if confidence, ok := relationshipMap["confidence"].(float64); ok {
+					relationship.Confidence = confidence
+				}
+
+				relationships = append(relationships, relationship)
+			}
+		}
+	}
+
+	return nodes, relationships, nil
+}
+
+// completeExtractionJSON tries to complete incomplete extraction JSON
+func (parser *Parser) completeExtractionJSON(jsonStr string) string {
+	original := strings.TrimSpace(jsonStr)
+
+	// Check if JSON ends with }]} (entities and relationships arrays closed)
+	if strings.HasSuffix(original, "}]}") {
+		return original // Already complete
+	}
+
+	// Look for incomplete objects in entities or relationships arrays
+	// Common patterns to look for:
+	// - Incomplete entity: {"id":"...","name":"...","type":"...","description":"...","confidence":0.
+	// - Incomplete relationship: {"start_node":"...","end_node":"...","type":"...","description":"...","confidence":0.
+
+	// Find the last complete entity or relationship
+	lastValidEndPos := -1
+
+	// Look for patterns that indicate complete objects followed by incomplete ones
+	for i := 0; i < len(original)-4; i++ {
+		if original[i] == '}' {
+			// Check what follows after the }
+			j := i + 1
+			// Skip whitespace after }
+			for j < len(original) && (original[j] == ' ' || original[j] == '\n' || original[j] == '\t') {
+				j++
+			}
+
+			// Check if we have ,{"id" or ,{"start_node" pattern (beginning of incomplete object)
+			if j < len(original) && original[j] == ',' {
+				remaining := original[j+1:]
+				remaining = strings.TrimSpace(remaining)
+				if strings.HasPrefix(remaining, `{"id"`) || strings.HasPrefix(remaining, `{"start_node"`) {
+					// This } ends a complete object, and what follows is incomplete
+					lastValidEndPos = i
+				}
+			}
+		}
+	}
+
+	// If we found a truncation point, use it
+	if lastValidEndPos > 0 {
+		truncated := original[:lastValidEndPos+1] // Include the closing }
+
+		// Determine if we're in entities or relationships array and close appropriately
+		if strings.Contains(truncated, `"entities":[`) && !strings.Contains(truncated, `],"relationships"`) {
+			// We're still in entities array
+			if !strings.HasSuffix(truncated, "]") {
+				truncated += `],"relationships":[]}`
+			}
+		} else if strings.Contains(truncated, `"relationships":[`) {
+			// We're in relationships array
+			if !strings.HasSuffix(truncated, "]}") {
+				truncated += "]}"
+			}
+		}
+
+		return truncated
+	}
+
+	// If no good truncation point found, try to add minimal closing
+	if strings.Contains(original, `"entities":[`) && !strings.HasSuffix(original, "}") {
+		if strings.Contains(original, `"relationships":[`) {
+			original += "]}"
+		} else {
+			original += `],"relationships":[]}`
+		}
+	}
+
+	return original
 }
