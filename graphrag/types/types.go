@@ -922,6 +922,57 @@ const (
 	ExtractionStatusError      ExtractionStatus = "error"      // Error occurred
 )
 
+// EntityStatus defines the lifecycle status of nodes and relationships
+type EntityStatus string
+
+// Status constants for entity lifecycle management (applies to both nodes and relationships)
+const (
+	EntityStatusActive     EntityStatus = "active"     // Active entity in use
+	EntityStatusMerged     EntityStatus = "merged"     // Merged into another entity
+	EntityStatusDeprecated EntityStatus = "deprecated" // No longer used but preserved
+	EntityStatusDraft      EntityStatus = "draft"      // Draft/unconfirmed entity
+	EntityStatusReviewed   EntityStatus = "reviewed"   // Human reviewed and confirmed
+)
+
+// ExtractionMethod defines the method used for extracting entities and relationships
+type ExtractionMethod string
+
+// Extraction method constants based on actual implementation directories
+const (
+	ExtractionMethodLLM     ExtractionMethod = "llm"     // LLM-based extraction (OpenAI, etc.)
+	ExtractionMethodSpacy   ExtractionMethod = "spacy"   // spaCy NER-based extraction
+	ExtractionMethodDeppke  ExtractionMethod = "deppke"  // Deppke extraction method
+	ExtractionMethodManual  ExtractionMethod = "manual"  // Manual/user-defined extraction
+	ExtractionMethodPattern ExtractionMethod = "pattern" // Pattern-based extraction
+)
+
+// String returns the string representation of ExtractionMethod
+func (em ExtractionMethod) String() string {
+	return string(em)
+}
+
+// IsValid validates if the extraction method is supported
+func (em ExtractionMethod) IsValid() bool {
+	switch em {
+	case ExtractionMethodLLM, ExtractionMethodSpacy, ExtractionMethodDeppke,
+		ExtractionMethodManual, ExtractionMethodPattern:
+		return true
+	default:
+		return false
+	}
+}
+
+// GetSupportedExtractionMethods returns all supported extraction methods
+func GetSupportedExtractionMethods() []ExtractionMethod {
+	return []ExtractionMethod{
+		ExtractionMethodLLM,
+		ExtractionMethodSpacy,
+		ExtractionMethodDeppke,
+		ExtractionMethodManual,
+		ExtractionMethodPattern,
+	}
+}
+
 // ExtractionPayload contains context-specific data for different extraction scenarios
 type ExtractionPayload struct {
 	// Common fields
@@ -937,11 +988,23 @@ type ExtractionPayload struct {
 	Error error `json:"error,omitempty"` // Error details when Status is StatusError
 }
 
+// ExtractionOptions represents options for extraction
+type ExtractionOptions struct {
+	Use          Extraction   `json:"use"`           // Use the extraction method
+	Embedding    Embedding    `json:"embedding"`     // Embedding function to use for extraction
+	LLMOptimizer LLMOptimizer `json:"llm_optimizer"` // LLM optimizer for extraction, deduplication, optimization, etc. if not provided, will not be used
+}
+
+// LLMOptimizer represents the LLM optimizer for extraction
+type LLMOptimizer struct {
+	Connector string `json:"connector"` // Connector to use for extraction
+}
+
 // ExtractionResults represents the results of an extraction process
 type ExtractionResults struct {
 	Usage         ExtractionUsage `json:"usage"`                   // Combined usage statistics
 	Model         string          `json:"model"`                   // Model used for extraction
-	Entities      []Entity        `json:"entities,omitempty"`      // Extracted entities
+	Entities      []Node          `json:"entities,omitempty"`      // Extracted entities
 	Relationships []Relationship  `json:"relationships,omitempty"` // Extracted relationships
 }
 
@@ -954,18 +1017,35 @@ type ExtractionUsage struct {
 
 // ===== Graph Database Types =====
 
-// Entity represents a graph entity
-type Entity struct {
-	ID         string                 `json:"id"`
-	Labels     []string               `json:"labels,omitempty"`     // Node labels/types
-	Properties map[string]interface{} `json:"properties,omitempty"` // Node properties
-}
-
-// Node represents a graph node
+// Node represents a graph node extracted from text (corresponds to Neo4j Node)
 type Node struct {
 	ID         string                 `json:"id"`
-	Labels     []string               `json:"labels,omitempty"`     // Node labels/types
-	Properties map[string]interface{} `json:"properties,omitempty"` // Node properties
+	Name       string                 `json:"name"`                 // Entity name/title
+	Type       string                 `json:"type"`                 // Entity type (Person, Organization, Location, etc.)
+	Labels     []string               `json:"labels,omitempty"`     // Additional labels/categories
+	Properties map[string]interface{} `json:"properties,omitempty"` // Entity properties
+
+	// GraphRAG specific fields
+	Description     string    `json:"description,omitempty"`      // Entity description/summary
+	Confidence      float64   `json:"confidence,omitempty"`       // Extraction confidence score (0-1)
+	EmbeddingVector []float64 `json:"embedding_vector,omitempty"` // Entity embedding for semantic search
+
+	// Source tracking
+	SourceDocuments  []string         `json:"source_documents,omitempty"`  // Document IDs where entity was found
+	SourceChunks     []string         `json:"source_chunks,omitempty"`     // Chunk IDs where entity was extracted
+	ExtractionMethod ExtractionMethod `json:"extraction_method,omitempty"` // Extraction method used
+
+	// Neo4j internal fields (populated when reading from database)
+	InternalID int64  `json:"internal_id,omitempty"` // Neo4j internal node ID
+	ElementID  string `json:"element_id,omitempty"`  // Neo4j element ID (Neo4j 5.0+)
+
+	// Timestamps
+	CreatedAt int64 `json:"created_at,omitempty"` // Unix timestamp when entity was created
+	UpdatedAt int64 `json:"updated_at,omitempty"` // Unix timestamp when entity was last updated
+
+	// Version control
+	Version int          `json:"version,omitempty"` // Node version number
+	Status  EntityStatus `json:"status,omitempty"`  // Node lifecycle status
 }
 
 // Relationship represents a graph relationship/edge
@@ -975,6 +1055,31 @@ type Relationship struct {
 	StartNode  string                 `json:"start_node"`           // Start node ID
 	EndNode    string                 `json:"end_node"`             // End node ID
 	Properties map[string]interface{} `json:"properties,omitempty"` // Relationship properties
+
+	// GraphRAG specific fields
+	Description     string    `json:"description,omitempty"`      // Relationship description
+	Confidence      float64   `json:"confidence,omitempty"`       // Extraction confidence score (0-1)
+	Weight          float64   `json:"weight,omitempty"`           // Relationship strength/weight
+	EmbeddingVector []float64 `json:"embedding_vector,omitempty"` // Relationship embedding
+
+	// Source tracking
+	SourceDocuments  []string         `json:"source_documents,omitempty"`  // Document IDs where relationship was found
+	SourceChunks     []string         `json:"source_chunks,omitempty"`     // Chunk IDs where relationship was extracted
+	ExtractionMethod ExtractionMethod `json:"extraction_method,omitempty"` // Extraction method used
+
+	// Neo4j internal fields (populated when reading from database)
+	InternalID  int64  `json:"internal_id,omitempty"`   // Neo4j internal relationship ID
+	ElementID   string `json:"element_id,omitempty"`    // Neo4j element ID (Neo4j 5.0+)
+	StartNodeID int64  `json:"start_node_id,omitempty"` // Neo4j internal start node ID
+	EndNodeID   int64  `json:"end_node_id,omitempty"`   // Neo4j internal end node ID
+
+	// Timestamps
+	CreatedAt int64 `json:"created_at,omitempty"` // Unix timestamp when relationship was created
+	UpdatedAt int64 `json:"updated_at,omitempty"` // Unix timestamp when relationship was last updated
+
+	// Version control
+	Version int          `json:"version,omitempty"` // Relationship version number
+	Status  EntityStatus `json:"status,omitempty"`  // Relationship lifecycle status
 }
 
 // Path represents a graph path
