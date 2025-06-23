@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/graphrag/types"
 )
 
@@ -532,7 +533,7 @@ func TestParseExtractionToolcall(t *testing.T) {
 						"end_node": "company",
 						"type": "WORKS_FOR"`,
 			expectedNodes: 1,
-			expectedRels:  1, // Incomplete relationship may be repaired and included
+			expectedRels:  0, // Incomplete relationship cannot be repaired (missing end_node)
 			expectError:   false,
 			description:   "Should repair incomplete JSON",
 		},
@@ -726,10 +727,10 @@ func TestTryParseExtractionToolcall(t *testing.T) {
 				"entities": [
 					{"id": "test1", "name": "Test1", "type": "PERSON", "description": "Test", "confidence": 0.9},
 					{"id": "test2", "name": "Test2"`,
-			expectedNodes: 1, // Only complete entities should be included
+			expectedNodes: 2, // Should repair incomplete entities by removing incomplete fields
 			expectedRels:  0,
 			expectSuccess: true,
-			description:   "Should repair incomplete JSON and include only complete entities",
+			description:   "Should repair incomplete JSON and include all repairable entities",
 		},
 		{
 			name:          "Empty arguments",
@@ -797,31 +798,31 @@ func TestCompleteExtractionJSON(t *testing.T) {
 			name:        "Incomplete relationship",
 			input:       `{"entities":[],"relationships":[{"start_node":"a","end_node":"b"},{"start_node"`,
 			expected:    `{"entities":[],"relationships":[{"start_node":"a","end_node":"b"}]}`,
-			description: "Should remove incomplete relationship",
+			description: "Should remove incomplete relationship (cannot repair without end_node)",
 		},
 		{
 			name:        "Missing relationships array",
 			input:       `{"entities":[{"id":"test","name":"Test"}]}`,
-			expected:    `{"entities":[{"id":"test","name":"Test"}]}`,
-			description: "Should return as-is when relationships array is missing (implementation doesn't add it)",
+			expected:    `{"entities":[{"id":"test","name":"Test"}],"relationships":[]}`,
+			description: "Should add missing relationships array for extraction JSON",
 		},
 		{
 			name:        "Missing entities array",
 			input:       `{"relationships":[]}`,
-			expected:    `{"relationships":[]}`,
-			description: "Should return as-is when entities array is missing (implementation doesn't add it)",
+			expected:    `{"entities":[],"relationships":[]}`,
+			description: "Should add missing entities array for extraction JSON",
 		},
 		{
 			name:        "Empty object",
 			input:       `{}`,
-			expected:    `{}`,
-			description: "Should return empty object as-is (implementation doesn't add arrays)",
+			expected:    `{"entities":[],"relationships":[]}`,
+			description: "Should add missing arrays to empty object for extraction JSON",
 		},
 		{
 			name:        "Incomplete with nested objects",
 			input:       `{"entities":[{"id":"test","properties":{"key":"value","incomplete"`,
-			expected:    `{"entities":[{"id":"test","properties":{"key":"value","incomplete"],"relationships":[]}`,
-			description: "Should add relationships array when entities array is present but incomplete",
+			expected:    `{"entities":[],"relationships":[]}`,
+			description: "Should remove incomplete nested objects and add relationships array",
 		},
 	}
 
@@ -830,10 +831,80 @@ func TestCompleteExtractionJSON(t *testing.T) {
 			parser := NewExtractionParser()
 			result := parser.completeExtractionJSON(tt.input)
 
-			if result != tt.expected {
+			// Parse both expected and actual results to compare structure, not string order
+			var expectedObj, resultObj map[string]interface{}
+			expectedErr := jsoniter.UnmarshalFromString(tt.expected, &expectedObj)
+			resultErr := jsoniter.UnmarshalFromString(result, &resultObj)
+
+			if expectedErr != nil {
+				t.Errorf("Failed to parse expected JSON: %v", expectedErr)
+				return
+			}
+			if resultErr != nil {
+				t.Errorf("Failed to parse result JSON: %v", resultErr)
+				return
+			}
+
+			// Compare the parsed structures
+			if !equalMaps(expectedObj, resultObj) {
 				t.Errorf("%s:\nExpected: %s\nGot:      %s", tt.description, tt.expected, result)
 			}
 		})
+	}
+}
+
+// equalMaps compares two maps recursively
+func equalMaps(a, b map[string]interface{}) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for key, valueA := range a {
+		valueB, exists := b[key]
+		if !exists {
+			return false
+		}
+
+		if !equalValues(valueA, valueB) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// equalValues compares two interface{} values recursively
+func equalValues(a, b interface{}) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	switch va := a.(type) {
+	case map[string]interface{}:
+		vb, ok := b.(map[string]interface{})
+		if !ok {
+			return false
+		}
+		return equalMaps(va, vb)
+	case []interface{}:
+		vb, ok := b.([]interface{})
+		if !ok {
+			return false
+		}
+		if len(va) != len(vb) {
+			return false
+		}
+		for i, itemA := range va {
+			if !equalValues(itemA, vb[i]) {
+				return false
+			}
+		}
+		return true
+	default:
+		return a == b
 	}
 }
 

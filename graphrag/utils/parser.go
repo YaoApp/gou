@@ -448,6 +448,26 @@ func (parser *Parser) tryParseExtractionToolcall() ([]types.Node, []types.Relati
 		return nil, nil, nil
 	}
 
+	// For streaming, we might have partial data that doesn't contain entities/relationships yet
+	// Only check for required fields if we have what looks like a complete JSON structure
+	hasClosingBrace := strings.Contains(arguments, "}")
+	hasEntities := strings.Contains(arguments, `"entities"`)
+	hasRelationships := strings.Contains(arguments, `"relationships"`)
+
+	// If it looks like a complete JSON (has closing brace) but missing both required fields
+	if hasClosingBrace && !hasEntities && !hasRelationships {
+		// Allow partial streaming chunks that are clearly incomplete and could still become valid:
+		// - Contains partial field names that could become entities/relationships
+		// - OR contains valid JSON field structure (quotes and colons) indicating partial entity data
+		isPartialChunk := strings.Contains(arguments, `"entit`) || strings.Contains(arguments, `"relation`) ||
+			(strings.Contains(arguments, `"`) && strings.Contains(arguments, `:`))
+
+		if !isPartialChunk {
+			// This looks like a complete JSON but doesn't have the required extraction fields
+			return nil, nil, fmt.Errorf("invalid extraction JSON: missing required fields")
+		}
+	}
+
 	// Try to complete incomplete JSON by truncating to last complete object
 	arguments = parser.completeExtractionJSON(arguments)
 
@@ -546,7 +566,12 @@ func (parser *Parser) completeExtractionJSON(jsonStr string) string {
 	original := strings.TrimSpace(jsonStr)
 
 	// If empty or too short, return minimal valid JSON
-	if len(original) < 10 {
+	if len(original) < 3 {
+		return `{"entities":[],"relationships":[]}`
+	}
+
+	// Handle empty object - add required arrays
+	if original == "{}" {
 		return `{"entities":[],"relationships":[]}`
 	}
 
@@ -561,23 +586,98 @@ func (parser *Parser) completeExtractionJSON(jsonStr string) string {
 		}
 	}
 
-	// Check if JSON is already complete
-	if strings.HasSuffix(original, "}") && strings.Count(original, "{") == strings.Count(original, "}") {
-		return original
+	// Try to parse as-is first
+	var result map[string]interface{}
+	err := jsoniter.UnmarshalFromString(original, &result)
+	if err == nil {
+		// JSON is valid, ensure it has required arrays in correct order
+		orderedResult := map[string]interface{}{
+			"entities":      []interface{}{},
+			"relationships": []interface{}{},
+		}
+
+		if entities, hasEntities := result["entities"]; hasEntities {
+			orderedResult["entities"] = entities
+		}
+		if relationships, hasRelationships := result["relationships"]; hasRelationships {
+			orderedResult["relationships"] = relationships
+		}
+
+		completed, marshalErr := jsoniter.MarshalToString(orderedResult)
+		if marshalErr == nil {
+			return completed
+		}
 	}
 
-	// Try to find a valid truncation point by looking for complete JSON objects
-	// Start from the end and work backwards to find the last complete object
-	var truncated string
+	// JSON is incomplete, try to repair it intelligently
+	return parser.repairIncompleteJSON(original)
+}
+
+// repairIncompleteJSON repairs incomplete JSON by extracting valid parts
+func (parser *Parser) repairIncompleteJSON(jsonStr string) string {
+	// Start building the result
+	result := map[string]interface{}{
+		"entities":      []interface{}{},
+		"relationships": []interface{}{},
+	}
+
+	// Extract entities if present
+	if strings.Contains(jsonStr, `"entities"`) {
+		entities := parser.extractValidEntities(jsonStr)
+		if len(entities) > 0 {
+			result["entities"] = entities
+		}
+	}
+
+	// Extract relationships if present
+	if strings.Contains(jsonStr, `"relationships"`) {
+		relationships := parser.extractValidRelationships(jsonStr)
+		if len(relationships) > 0 {
+			result["relationships"] = relationships
+		}
+	}
+
+	// Convert back to JSON
+	completed, err := jsoniter.MarshalToString(result)
+	if err != nil {
+		return `{"entities":[],"relationships":[]}`
+	}
+
+	return completed
+}
+
+// extractValidEntities extracts valid entities from incomplete JSON
+func (parser *Parser) extractValidEntities(jsonStr string) []interface{} {
+	var entities []interface{}
+
+	// Find entities array start (handle whitespace)
+	entitiesStart := strings.Index(jsonStr, `"entities"`)
+	if entitiesStart == -1 {
+		return entities
+	}
+
+	// Find the opening bracket after "entities"
+	colonPos := strings.Index(jsonStr[entitiesStart:], `:`)
+	if colonPos == -1 {
+		return entities
+	}
+
+	bracketPos := strings.Index(jsonStr[entitiesStart+colonPos:], `[`)
+	if bracketPos == -1 {
+		return entities
+	}
+
+	pos := entitiesStart + colonPos + bracketPos + 1
+
+	// Parse each entity object
 	braceCount := 0
-	bracketCount := 0
+	start := -1
 	inString := false
 	escapeNext := false
 
-	for i := len(original) - 1; i >= 0; i-- {
-		char := original[i]
+	for i := pos; i < len(jsonStr); i++ {
+		char := jsonStr[i]
 
-		// Handle string escaping
 		if escapeNext {
 			escapeNext = false
 			continue
@@ -586,88 +686,197 @@ func (parser *Parser) completeExtractionJSON(jsonStr string) string {
 			escapeNext = true
 			continue
 		}
-
-		// Track string boundaries
 		if char == '"' {
 			inString = !inString
 			continue
 		}
-
-		// Skip characters inside strings
 		if inString {
 			continue
 		}
 
-		// Count braces and brackets
 		switch char {
-		case '}':
-			braceCount++
 		case '{':
+			if braceCount == 0 {
+				start = i
+			}
+			braceCount++
+		case '}':
 			braceCount--
+			if braceCount == 0 && start >= 0 {
+				// Found a complete entity object
+				entityStr := strings.TrimSpace(jsonStr[start : i+1])
+				var entity map[string]interface{}
+				if jsoniter.UnmarshalFromString(entityStr, &entity) == nil {
+					// Ensure entity has at least id field
+					if _, hasID := entity["id"]; hasID {
+						entities = append(entities, entity)
+					}
+				}
+				start = -1
+			}
 		case ']':
-			bracketCount++
-		case '[':
-			bracketCount--
-		}
-
-		// Check if we have a balanced structure at this point
-		if braceCount == 0 && bracketCount == 0 {
-			// Check if this looks like a complete extraction JSON
-			candidate := original[:i+1]
-			if strings.Contains(candidate, `"entities"`) || strings.Contains(candidate, `"relationships"`) {
-				// This looks like a good truncation point
-				truncated = candidate
-				break
-			}
+			// End of entities array
+			return entities
 		}
 	}
 
-	// If we found a good truncation point, use it
-	if truncated != "" {
-		// Ensure it has both entities and relationships fields
-		if !strings.Contains(truncated, `"entities"`) {
-			// Insert entities field at the beginning
-			if strings.HasPrefix(truncated, "{") {
-				truncated = `{"entities":[],` + truncated[1:]
-			}
-		}
-		if !strings.Contains(truncated, `"relationships"`) {
-			// Add relationships field before closing
-			if strings.HasSuffix(truncated, "}") {
-				truncated = truncated[:len(truncated)-1] + `,"relationships":[]}`
-			}
-		}
-		return truncated
-	}
-
-	// If no good truncation found, try to build a minimal valid JSON
-	// Look for any entities or relationships data we can salvage
-	entitiesStart := strings.Index(original, `"entities":[`)
-	relationshipsStart := strings.Index(original, `"relationships":[`)
-
-	result := `{"entities":[],"relationships":[]}`
-
-	// Try to extract entities if found
-	if entitiesStart >= 0 {
-		entitiesEnd := findArrayEnd(original, entitiesStart+len(`"entities":`))
-		if entitiesEnd > entitiesStart {
-			entitiesData := original[entitiesStart+len(`"entities":`) : entitiesEnd+1]
-			result = `{"entities":` + entitiesData + `,"relationships":[]}`
+	// Handle incomplete last entity - try to repair it
+	if start >= 0 && braceCount > 0 {
+		// Try to close the incomplete entity
+		incompleteStr := strings.TrimSpace(jsonStr[start:])
+		repairedEntity := parser.repairIncompleteEntity(incompleteStr)
+		if repairedEntity != nil {
+			entities = append(entities, repairedEntity)
 		}
 	}
 
-	// Try to extract relationships if found
-	if relationshipsStart >= 0 {
-		relationshipsEnd := findArrayEnd(original, relationshipsStart+len(`"relationships":`))
-		if relationshipsEnd > relationshipsStart {
-			relationshipsData := original[relationshipsStart+len(`"relationships":`) : relationshipsEnd+1]
-			if entitiesStart >= 0 {
-				// Replace the relationships part
-				result = strings.Replace(result, `"relationships":[]`, `"relationships":`+relationshipsData, 1)
-			} else {
-				result = `{"entities":[],"relationships":` + relationshipsData + `}`
+	return entities
+}
+
+// extractValidRelationships extracts valid relationships from incomplete JSON
+func (parser *Parser) extractValidRelationships(jsonStr string) []interface{} {
+	var relationships []interface{}
+
+	// Find relationships array start
+	relStart := strings.Index(jsonStr, `"relationships":[`)
+	if relStart == -1 {
+		return relationships
+	}
+
+	// Start after the opening bracket
+	pos := relStart + len(`"relationships":[`)
+
+	// Parse each relationship object
+	braceCount := 0
+	start := -1
+	inString := false
+	escapeNext := false
+
+	for i := pos; i < len(jsonStr); i++ {
+		char := jsonStr[i]
+
+		if escapeNext {
+			escapeNext = false
+			continue
+		}
+		if char == '\\' {
+			escapeNext = true
+			continue
+		}
+		if char == '"' {
+			inString = !inString
+			continue
+		}
+		if inString {
+			continue
+		}
+
+		switch char {
+		case '{':
+			if braceCount == 0 {
+				start = i
+			}
+			braceCount++
+		case '}':
+			braceCount--
+			if braceCount == 0 && start >= 0 {
+				// Found a complete relationship object
+				relStr := strings.TrimSpace(jsonStr[start : i+1])
+				var rel map[string]interface{}
+				if jsoniter.UnmarshalFromString(relStr, &rel) == nil {
+					// Ensure relationship has required fields
+					if _, hasStart := rel["start_node"]; hasStart {
+						if _, hasEnd := rel["end_node"]; hasEnd {
+							relationships = append(relationships, rel)
+						}
+					}
+				}
+				start = -1
+			}
+		case ']':
+			// End of relationships array
+			return relationships
+		}
+	}
+
+	// Don't try to repair incomplete relationships - they need both start_node and end_node
+	return relationships
+}
+
+// repairIncompleteEntity tries to repair an incomplete entity object
+func (parser *Parser) repairIncompleteEntity(entityStr string) map[string]interface{} {
+	// Try to close incomplete nested objects first
+	repaired := parser.closeIncompleteObjects(entityStr)
+
+	// Try to parse the repaired entity
+	var entity map[string]interface{}
+	err := jsoniter.UnmarshalFromString(repaired, &entity)
+	if err == nil {
+		// Check if it has minimum required fields
+		if _, hasID := entity["id"]; hasID {
+			return entity
+		}
+	}
+
+	return nil
+}
+
+// closeIncompleteObjects closes incomplete nested objects in a string
+func (parser *Parser) closeIncompleteObjects(str string) string {
+	// If we have an incomplete string (odd number of quotes), we need to handle it
+	if strings.Count(str, `"`)%2 == 1 {
+		// Find the last quote and see what comes after it
+		lastQuote := strings.LastIndex(str, `"`)
+		if lastQuote >= 0 {
+			beforeQuote := str[:lastQuote]
+
+			// If there's a comma before the incomplete string, check if we should remove it
+			if strings.Contains(beforeQuote, ",") {
+				lastComma := strings.LastIndex(beforeQuote, ",")
+				if lastComma >= 0 {
+					// The incomplete string appears to be a key without a value
+					// Remove the incomplete key by cutting at the last comma
+					result := beforeQuote[:lastComma]
+					// Close any unclosed braces
+					openBraces := strings.Count(result, "{")
+					closeBraces := strings.Count(result, "}")
+					for openBraces > closeBraces {
+						result += "}"
+						closeBraces++
+					}
+					return result
+				}
 			}
 		}
+
+		// If we can't handle it smartly, just close the string and add empty value
+		result := str + `"`
+		if strings.Contains(result, ",") {
+			lastComma := strings.LastIndex(result, ",")
+			afterComma := strings.TrimSpace(result[lastComma+1:])
+			if strings.Count(afterComma, `"`) == 2 && !strings.Contains(afterComma, ":") {
+				result += `: ""`
+			}
+		}
+
+		// Close unclosed braces
+		openBraces := strings.Count(result, "{")
+		closeBraces := strings.Count(result, "}")
+		for openBraces > closeBraces {
+			result += "}"
+			closeBraces++
+		}
+		return result
+	}
+
+	// No incomplete strings, just close unclosed braces
+	result := str
+	openBraces := strings.Count(result, "{")
+	closeBraces := strings.Count(result, "}")
+
+	for openBraces > closeBraces {
+		result += "}"
+		closeBraces++
 	}
 
 	return result
