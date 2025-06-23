@@ -458,13 +458,15 @@ func (parser *Parser) tryParseExtractionToolcall() ([]types.Node, []types.Relati
 		// Try to repair the JSON using jsonrepair
 		repaired, errRepair := jsonrepair.JSONRepair(arguments)
 		if errRepair != nil {
-			return nil, nil, fmt.Errorf("failed to repair extraction JSON: %w", errRepair)
+			// If JSON repair fails, return error for debugging
+			return nil, nil, fmt.Errorf("failed to repair extraction JSON: %w (original: %s)", errRepair, arguments)
 		}
 
 		// Retry with repaired JSON
 		err = jsoniter.UnmarshalFromString(repaired, &args)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to parse repaired extraction JSON: %w", err)
+			// If even repaired JSON fails, return error for debugging
+			return nil, nil, fmt.Errorf("failed to parse repaired extraction JSON: %w (repaired: %s)", err, repaired)
 		}
 	}
 
@@ -543,69 +545,189 @@ func (parser *Parser) tryParseExtractionToolcall() ([]types.Node, []types.Relati
 func (parser *Parser) completeExtractionJSON(jsonStr string) string {
 	original := strings.TrimSpace(jsonStr)
 
-	// Check if JSON ends with }]} (entities and relationships arrays closed)
-	if strings.HasSuffix(original, "}]}") {
-		return original // Already complete
+	// If empty or too short, return minimal valid JSON
+	if len(original) < 10 {
+		return `{"entities":[],"relationships":[]}`
 	}
 
-	// Look for incomplete objects in entities or relationships arrays
-	// Common patterns to look for:
-	// - Incomplete entity: {"id":"...","name":"...","type":"...","description":"...","confidence":0.
-	// - Incomplete relationship: {"start_node":"...","end_node":"...","type":"...","description":"...","confidence":0.
+	// Check for duplicate JSON objects (streaming issue)
+	// Look for pattern like }{"entities" which indicates concatenated objects
+	duplicatePattern := `}{"entities"`
+	if strings.Contains(original, duplicatePattern) {
+		// Find the first complete JSON object
+		firstEnd := strings.Index(original, duplicatePattern)
+		if firstEnd > 0 {
+			original = original[:firstEnd+1] // Keep only the first complete object
+		}
+	}
 
-	// Find the last complete entity or relationship
-	lastValidEndPos := -1
+	// Check if JSON is already complete
+	if strings.HasSuffix(original, "}") && strings.Count(original, "{") == strings.Count(original, "}") {
+		return original
+	}
 
-	// Look for patterns that indicate complete objects followed by incomplete ones
-	for i := 0; i < len(original)-4; i++ {
-		if original[i] == '}' {
-			// Check what follows after the }
-			j := i + 1
-			// Skip whitespace after }
-			for j < len(original) && (original[j] == ' ' || original[j] == '\n' || original[j] == '\t') {
-				j++
-			}
+	// Try to find a valid truncation point by looking for complete JSON objects
+	// Start from the end and work backwards to find the last complete object
+	var truncated string
+	braceCount := 0
+	bracketCount := 0
+	inString := false
+	escapeNext := false
 
-			// Check if we have ,{"id" or ,{"start_node" pattern (beginning of incomplete object)
-			if j < len(original) && original[j] == ',' {
-				remaining := original[j+1:]
-				remaining = strings.TrimSpace(remaining)
-				if strings.HasPrefix(remaining, `{"id"`) || strings.HasPrefix(remaining, `{"start_node"`) {
-					// This } ends a complete object, and what follows is incomplete
-					lastValidEndPos = i
-				}
+	for i := len(original) - 1; i >= 0; i-- {
+		char := original[i]
+
+		// Handle string escaping
+		if escapeNext {
+			escapeNext = false
+			continue
+		}
+		if char == '\\' {
+			escapeNext = true
+			continue
+		}
+
+		// Track string boundaries
+		if char == '"' {
+			inString = !inString
+			continue
+		}
+
+		// Skip characters inside strings
+		if inString {
+			continue
+		}
+
+		// Count braces and brackets
+		switch char {
+		case '}':
+			braceCount++
+		case '{':
+			braceCount--
+		case ']':
+			bracketCount++
+		case '[':
+			bracketCount--
+		}
+
+		// Check if we have a balanced structure at this point
+		if braceCount == 0 && bracketCount == 0 {
+			// Check if this looks like a complete extraction JSON
+			candidate := original[:i+1]
+			if strings.Contains(candidate, `"entities"`) || strings.Contains(candidate, `"relationships"`) {
+				// This looks like a good truncation point
+				truncated = candidate
+				break
 			}
 		}
 	}
 
-	// If we found a truncation point, use it
-	if lastValidEndPos > 0 {
-		truncated := original[:lastValidEndPos+1] // Include the closing }
-
-		// Determine if we're in entities or relationships array and close appropriately
-		if strings.Contains(truncated, `"entities":[`) && !strings.Contains(truncated, `],"relationships"`) {
-			// We're still in entities array
-			if !strings.HasSuffix(truncated, "]") {
-				truncated += `],"relationships":[]}`
-			}
-		} else if strings.Contains(truncated, `"relationships":[`) {
-			// We're in relationships array
-			if !strings.HasSuffix(truncated, "]}") {
-				truncated += "]}"
+	// If we found a good truncation point, use it
+	if truncated != "" {
+		// Ensure it has both entities and relationships fields
+		if !strings.Contains(truncated, `"entities"`) {
+			// Insert entities field at the beginning
+			if strings.HasPrefix(truncated, "{") {
+				truncated = `{"entities":[],` + truncated[1:]
 			}
 		}
-
+		if !strings.Contains(truncated, `"relationships"`) {
+			// Add relationships field before closing
+			if strings.HasSuffix(truncated, "}") {
+				truncated = truncated[:len(truncated)-1] + `,"relationships":[]}`
+			}
+		}
 		return truncated
 	}
 
-	// If no good truncation point found, try to add minimal closing
-	if strings.Contains(original, `"entities":[`) && !strings.HasSuffix(original, "}") {
-		if strings.Contains(original, `"relationships":[`) {
-			original += "]}"
-		} else {
-			original += `],"relationships":[]}`
+	// If no good truncation found, try to build a minimal valid JSON
+	// Look for any entities or relationships data we can salvage
+	entitiesStart := strings.Index(original, `"entities":[`)
+	relationshipsStart := strings.Index(original, `"relationships":[`)
+
+	result := `{"entities":[],"relationships":[]}`
+
+	// Try to extract entities if found
+	if entitiesStart >= 0 {
+		entitiesEnd := findArrayEnd(original, entitiesStart+len(`"entities":`))
+		if entitiesEnd > entitiesStart {
+			entitiesData := original[entitiesStart+len(`"entities":`) : entitiesEnd+1]
+			result = `{"entities":` + entitiesData + `,"relationships":[]}`
 		}
 	}
 
-	return original
+	// Try to extract relationships if found
+	if relationshipsStart >= 0 {
+		relationshipsEnd := findArrayEnd(original, relationshipsStart+len(`"relationships":`))
+		if relationshipsEnd > relationshipsStart {
+			relationshipsData := original[relationshipsStart+len(`"relationships":`) : relationshipsEnd+1]
+			if entitiesStart >= 0 {
+				// Replace the relationships part
+				result = strings.Replace(result, `"relationships":[]`, `"relationships":`+relationshipsData, 1)
+			} else {
+				result = `{"entities":[],"relationships":` + relationshipsData + `}`
+			}
+		}
+	}
+
+	return result
+}
+
+// findArrayEnd finds the end position of a JSON array starting at the given position
+func findArrayEnd(jsonStr string, startPos int) int {
+	if startPos >= len(jsonStr) {
+		return -1
+	}
+
+	// Skip whitespace to find the opening bracket
+	i := startPos
+	for i < len(jsonStr) && (jsonStr[i] == ' ' || jsonStr[i] == '\t' || jsonStr[i] == '\n') {
+		i++
+	}
+
+	if i >= len(jsonStr) || jsonStr[i] != '[' {
+		return -1
+	}
+
+	// Count brackets to find the matching closing bracket
+	bracketCount := 0
+	inString := false
+	escapeNext := false
+
+	for i < len(jsonStr) {
+		char := jsonStr[i]
+
+		if escapeNext {
+			escapeNext = false
+			i++
+			continue
+		}
+
+		if char == '\\' {
+			escapeNext = true
+			i++
+			continue
+		}
+
+		if char == '"' {
+			inString = !inString
+			i++
+			continue
+		}
+
+		if !inString {
+			if char == '[' {
+				bracketCount++
+			} else if char == ']' {
+				bracketCount--
+				if bracketCount == 0 {
+					return i
+				}
+			}
+		}
+
+		i++
+	}
+
+	return -1
 }
