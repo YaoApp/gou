@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/cast"
@@ -49,7 +50,15 @@ func getTransport(isHTTPS bool, proxy string) *http.Transport {
 	// Create new transport with individual dial context to avoid DNS race conditions
 	dialContext := dns.DialContext()
 	tr := &http.Transport{
-		DialContext: dialContext,
+		DialContext:         dialContext,
+		MaxIdleConns:        100,              // Production-grade connection pool
+		MaxIdleConnsPerHost: 10,               // Higher per-host limit for better performance
+		IdleConnTimeout:     30 * time.Second, // Close idle connections after 30s
+		DisableKeepAlives:   false,            // Enable keep-alives for performance
+		// Additional production settings
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
 	}
 
 	if isHTTPS {
@@ -65,6 +74,17 @@ func getTransport(isHTTPS bool, proxy string) *http.Transport {
 
 	transportPool[key] = tr
 	return tr
+}
+
+// CloseAllTransports closes all idle connections in the transport pool
+// This is useful for testing and cleanup
+func CloseAllTransports() {
+	poolMutex.Lock()
+	defer poolMutex.Unlock()
+
+	for _, tr := range transportPool {
+		tr.CloseIdleConnections()
+	}
 }
 
 // New make a new  http Request
