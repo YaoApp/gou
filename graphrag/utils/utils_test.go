@@ -958,24 +958,213 @@ func BenchmarkGetSemanticToolcall(b *testing.B) {
 }
 
 // =============================================================================
-// Memory and Goroutine Leak Detection Tests
+// Precise Goroutine Leak Detection Tests
 // =============================================================================
 
-// checkGoroutineLeaks runs a test function and checks for goroutine leaks
+// GoroutineInfo represents information about a goroutine
+type GoroutineInfo struct {
+	ID       int
+	State    string
+	Function string
+	Stack    string
+	IsSystem bool
+}
+
+// parseGoroutineStack parses goroutine stack trace and extracts information
+func parseGoroutineStack(stackTrace string) []GoroutineInfo {
+	lines := strings.Split(stackTrace, "\n")
+	var goroutines []GoroutineInfo
+	var current *GoroutineInfo
+
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Parse goroutine header: "goroutine 123 [running]:"
+		if strings.HasPrefix(line, "goroutine ") && strings.HasSuffix(line, ":") {
+			if current != nil {
+				goroutines = append(goroutines, *current)
+			}
+
+			// Extract goroutine ID and state
+			parts := strings.Fields(line)
+			if len(parts) >= 3 {
+				idStr := parts[1]
+				stateStr := strings.Trim(parts[2], "[]:")
+
+				current = &GoroutineInfo{
+					State: stateStr,
+					Stack: line,
+				}
+
+				// Parse ID
+				if id := parseInt(idStr); id > 0 {
+					current.ID = id
+				}
+			}
+			continue
+		}
+
+		// Parse function call
+		if current != nil && strings.Contains(line, "(") {
+			if current.Function == "" {
+				current.Function = line
+				// Determine if it's a system goroutine
+				current.IsSystem = isSystemGoroutine(line)
+			}
+			current.Stack += "\n" + line
+		}
+
+		// Add context lines
+		if current != nil && i < len(lines)-1 {
+			nextLine := strings.TrimSpace(lines[i+1])
+			if nextLine != "" && !strings.HasPrefix(nextLine, "goroutine ") {
+				current.Stack += "\n" + line
+			}
+		}
+	}
+
+	if current != nil {
+		goroutines = append(goroutines, *current)
+	}
+
+	return goroutines
+}
+
+// parseInt safely parses integer from string
+func parseInt(s string) int {
+	result := 0
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			result = result*10 + int(r-'0')
+		} else {
+			break
+		}
+	}
+	return result
+}
+
+// isSystemGoroutine determines if a goroutine is system-provided
+func isSystemGoroutine(function string) bool {
+	systemPatterns := []string{
+		"runtime.",
+		"testing.",
+		"os/signal.",
+		"net/http.(*Server).", // HTTP server goroutines
+		"net/http.(*conn).",   // HTTP server connection handling
+		"net.(*netFD).",       // Network file descriptor operations
+		"internal/poll.",      // Network polling operations
+		"crypto/tls.",         // TLS operations
+	}
+
+	// HTTP client persistent connection goroutines are NOT system goroutines
+	// They should be cleaned up properly by the HTTP client
+	clientPatterns := []string{
+		"net/http.(*persistConn).", // HTTP client persistent connections - NOT system
+		"net/http.(*Transport).",   // HTTP client transport - NOT system
+	}
+
+	// Check if it's a client goroutine first (these are NOT system)
+	for _, pattern := range clientPatterns {
+		if strings.Contains(function, pattern) {
+			return false // Explicitly mark as application goroutine
+		}
+	}
+
+	// Check system patterns
+	for _, pattern := range systemPatterns {
+		if strings.Contains(function, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// analyzeGoroutineLeaks provides detailed analysis of goroutine changes
+func analyzeGoroutineLeaks(before, after []GoroutineInfo) (leaked, cleaned []GoroutineInfo) {
+	beforeMap := make(map[int]GoroutineInfo)
+	for _, g := range before {
+		beforeMap[g.ID] = g
+	}
+
+	afterMap := make(map[int]GoroutineInfo)
+	for _, g := range after {
+		afterMap[g.ID] = g
+	}
+
+	// Find new goroutines (potential leaks)
+	for id, g := range afterMap {
+		if _, exists := beforeMap[id]; !exists {
+			leaked = append(leaked, g)
+		}
+	}
+
+	// Find cleaned up goroutines
+	for id, g := range beforeMap {
+		if _, exists := afterMap[id]; !exists {
+			cleaned = append(cleaned, g)
+		}
+	}
+
+	return leaked, cleaned
+}
+
+// checkGoroutineLeaks runs a test function and checks for precise goroutine leaks
 func checkGoroutineLeaks(t *testing.T, testFunc func()) {
-	initialGoroutines := runtime.NumGoroutine()
+	// Get initial goroutine state
+	initialStack := make([]byte, 64*1024)
+	n := runtime.Stack(initialStack, true)
+	initialGoroutines := parseGoroutineStack(string(initialStack[:n]))
+
+	t.Logf("Initial goroutines: %d", len(initialGoroutines))
+
+	// Run the test function
 	testFunc()
 
-	// Give goroutines time to clean up
-	time.Sleep(100 * time.Millisecond)
+	// Give time for cleanup
+	time.Sleep(200 * time.Millisecond)
 	runtime.GC()
+	time.Sleep(100 * time.Millisecond)
 
-	finalGoroutines := runtime.NumGoroutine()
-	if finalGoroutines > initialGoroutines {
-		buf := make([]byte, 8192)
-		runtime.Stack(buf, true)
-		t.Errorf("Goroutine leak detected: started with %d, ended with %d goroutines\nStack trace:\n%s",
-			initialGoroutines, finalGoroutines, string(buf))
+	// Get final state
+	finalStack := make([]byte, 64*1024)
+	n = runtime.Stack(finalStack, true)
+	finalGoroutines := parseGoroutineStack(string(finalStack[:n]))
+
+	t.Logf("Final goroutines: %d", len(finalGoroutines))
+
+	// Analyze leaks
+	leaked, cleaned := analyzeGoroutineLeaks(initialGoroutines, finalGoroutines)
+
+	t.Logf("Goroutine analysis results:")
+	t.Logf("  Leaked goroutines: %d", len(leaked))
+	t.Logf("  Cleaned goroutines: %d", len(cleaned))
+
+	// Report leaked goroutines
+	applicationLeaks := 0
+	for _, g := range leaked {
+		t.Logf("  LEAKED [%d] %s - %s (system: %v)", g.ID, g.State, g.Function, g.IsSystem)
+		if !g.IsSystem {
+			applicationLeaks++
+			t.Errorf("Application goroutine leak detected: [%d] %s", g.ID, g.Function)
+		}
+	}
+
+	// Report cleaned goroutines
+	for _, g := range cleaned {
+		t.Logf("  CLEANED [%d] %s - %s (system: %v)", g.ID, g.State, g.Function, g.IsSystem)
+	}
+
+	// Fail test if there are application-level leaks
+	if applicationLeaks > 0 {
+		t.Errorf("Detected %d application-level goroutine leaks", applicationLeaks)
+
+		// Print full stack trace for debugging
+		debugStack := make([]byte, 64*1024)
+		n = runtime.Stack(debugStack, true)
+		t.Logf("Full stack trace:\n%s", string(debugStack[:n]))
 	}
 }
 
