@@ -577,9 +577,16 @@ func TestMemoryLeakDetection(t *testing.T) {
 	var memAfter runtime.MemStats
 	runtime.ReadMemStats(&memAfter)
 
-	// Calculate memory usage
-	memGrowth := memAfter.Alloc - memBefore.Alloc
-	memGrowthMB := float64(memGrowth) / (1024 * 1024)
+	// Calculate memory usage (handle potential negative growth)
+	var memGrowthMB float64
+	if memAfter.Alloc >= memBefore.Alloc {
+		memGrowth := memAfter.Alloc - memBefore.Alloc
+		memGrowthMB = float64(memGrowth) / (1024 * 1024)
+	} else {
+		// Memory decreased (negative growth)
+		memDecrease := memBefore.Alloc - memAfter.Alloc
+		memGrowthMB = -float64(memDecrease) / (1024 * 1024)
+	}
 
 	t.Logf("Memory before: %d bytes", memBefore.Alloc)
 	t.Logf("Memory after: %d bytes", memAfter.Alloc)
