@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/yaoapp/gou/connector"
+	"github.com/yaoapp/gou/http"
 	"github.com/yaoapp/xun/dbal/query"
 	"github.com/yaoapp/xun/dbal/schema"
 )
@@ -1122,6 +1123,9 @@ func checkGoroutineLeaks(t *testing.T, testFunc func()) {
 
 	// Run the test function
 	testFunc()
+
+	// Force close all HTTP client connections (utils uses http.New which creates transports)
+	http.CloseAllTransports()
 
 	// Give time for cleanup
 	time.Sleep(200 * time.Millisecond)
