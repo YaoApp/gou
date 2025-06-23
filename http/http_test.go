@@ -1505,9 +1505,9 @@ func TestProxyConfiguration(t *testing.T) {
 			assert.Equal(t, 100, transport.MaxIdleConns, "MaxIdleConns should be 100")
 			assert.Equal(t, 10, transport.MaxIdleConnsPerHost, "MaxIdleConnsPerHost should be 10")
 			assert.Equal(t, 30*time.Second, transport.IdleConnTimeout, "IdleConnTimeout should be 30s")
-			assert.Equal(t, 10*time.Second, transport.TLSHandshakeTimeout, "TLSHandshakeTimeout should be 10s")
-			assert.Equal(t, 10*time.Second, transport.ResponseHeaderTimeout, "ResponseHeaderTimeout should be 10s")
-			assert.Equal(t, 1*time.Second, transport.ExpectContinueTimeout, "ExpectContinueTimeout should be 1s")
+			assert.Equal(t, 30*time.Second, transport.TLSHandshakeTimeout, "TLSHandshakeTimeout should be 30s")
+			assert.Equal(t, 300*time.Second, transport.ResponseHeaderTimeout, "ResponseHeaderTimeout should be 300s")
+			assert.Equal(t, 30*time.Second, transport.ExpectContinueTimeout, "ExpectContinueTimeout should be 30s")
 		})
 	}
 }

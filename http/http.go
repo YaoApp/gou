@@ -56,9 +56,9 @@ func getTransport(isHTTPS bool, proxy string) *http.Transport {
 		IdleConnTimeout:     30 * time.Second, // Close idle connections after 30s
 		DisableKeepAlives:   false,            // Enable keep-alives for performance
 		// Additional production settings
-		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: 10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
+		TLSHandshakeTimeout:   30 * time.Second,
+		ResponseHeaderTimeout: 300 * time.Second,
+		ExpectContinueTimeout: 30 * time.Second,
 	}
 
 	if isHTTPS {
