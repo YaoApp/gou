@@ -428,7 +428,7 @@ func testPost(c *gin.Context) {
 	}
 
 	var payload interface{}
-	if data != nil && len(data) > 0 {
+	if len(data) > 0 {
 		err = jsoniter.Unmarshal(data, &payload)
 		if err != nil {
 			c.JSON(400, gin.H{"message": err.Error(), "code": 400})
