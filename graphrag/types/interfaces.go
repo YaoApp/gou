@@ -54,6 +54,18 @@ type VectorStore interface {
 	Close() error
 }
 
+// ===== Chunking Interfaces =====
+
+// Chunking represents a chunking function interface
+// This handles text-to-chunk conversion, separate from chunk storage
+type Chunking interface {
+	Chunk(ctx context.Context, text string, options *ChunkingOptions, callback func(chunk *Chunk) error) error
+	ChunkFile(ctx context.Context, file string, options *ChunkingOptions, callback func(chunk *Chunk) error) error
+	ChunkStream(ctx context.Context, stream io.ReadSeeker, options *ChunkingOptions, callback func(chunk *Chunk) error) error
+}
+
+// ===== Embedding Interfaces =====
+
 // Embedding represents an embedding function interface
 // This handles text-to-vector conversion, separate from vector storage
 type Embedding interface {
@@ -73,13 +85,18 @@ type Embedding interface {
 // EmbeddingProgress defines the callback function for progress reporting with flexible payload
 type EmbeddingProgress func(status EmbeddingStatus, payload EmbeddingPayload)
 
-// ChunkingFunction represents a chunking function interface
-// This handles text-to-chunk conversion, separate from chunk storage
-type ChunkingFunction interface {
-	Chunk(ctx context.Context, text string, options *ChunkingOptions, callback func(chunk *Chunk) error) error
-	ChunkFile(ctx context.Context, file string, options *ChunkingOptions, callback func(chunk *Chunk) error) error
-	ChunkStream(ctx context.Context, stream io.ReadSeeker, options *ChunkingOptions, callback func(chunk *Chunk) error) error
+// ===== Extraction Interfaces =====
+
+// Extraction represents an extraction function interface
+type Extraction interface {
+	ExtractDocuments(ctx context.Context, texts []string, callback ...ExtractionProgress) (*ExtractionResults, error)
+	ExtractQuery(ctx context.Context, text string, callback ...ExtractionProgress) (*ExtractionResults, error)
 }
+
+// ExtractionProgress defines the callback function for progress reporting with flexible payload
+type ExtractionProgress func(status ExtractionStatus, payload ExtractionPayload)
+
+// ===== NOT IMPLEMENTED =====
 
 // VectorStoreFactory represents a factory for creating vector stores
 type VectorStoreFactory interface {

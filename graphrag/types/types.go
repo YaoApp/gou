@@ -911,7 +911,55 @@ type EmbeddingPayload struct {
 	Error error `json:"error,omitempty"` // Error details when Status is StatusError
 }
 
+// ExtractionStatus defines the status of extraction process
+type ExtractionStatus string
+
+// Status constants for extraction process
+const (
+	ExtractionStatusStarting   ExtractionStatus = "starting"   // Starting the extraction process
+	ExtractionStatusProcessing ExtractionStatus = "processing" // Processing extraction
+	ExtractionStatusCompleted  ExtractionStatus = "completed"  // Successfully completed
+	ExtractionStatusError      ExtractionStatus = "error"      // Error occurred
+)
+
+// ExtractionPayload contains context-specific data for different extraction scenarios
+type ExtractionPayload struct {
+	// Common fields
+	Current int    `json:"current"` // Current progress count
+	Total   int    `json:"total"`   // Total items to process
+	Message string `json:"message"` // Status message
+
+	// Document embedding specific
+	DocumentIndex *int    `json:"document_index,omitempty"` // Index of current document being processed
+	DocumentText  *string `json:"document_text,omitempty"`  // Text being processed (truncated if too long)
+
+	// Error specific
+	Error error `json:"error,omitempty"` // Error details when Status is StatusError
+}
+
+// ExtractionResults represents the results of an extraction process
+type ExtractionResults struct {
+	Usage         ExtractionUsage `json:"usage"`                   // Combined usage statistics
+	Model         string          `json:"model"`                   // Model used for extraction
+	Entities      []Entity        `json:"entities,omitempty"`      // Extracted entities
+	Relationships []Relationship  `json:"relationships,omitempty"` // Extracted relationships
+}
+
+// ExtractionUsage represents usage statistics for extraction operations
+type ExtractionUsage struct {
+	TotalTokens  int `json:"total_tokens"`  // Total number of tokens processed
+	PromptTokens int `json:"prompt_tokens"` // Number of tokens in the input
+	TotalTexts   int `json:"total_texts"`   // Total number of texts processed
+}
+
 // ===== Graph Database Types =====
+
+// Entity represents a graph entity
+type Entity struct {
+	ID         string                 `json:"id"`
+	Labels     []string               `json:"labels,omitempty"`     // Node labels/types
+	Properties map[string]interface{} `json:"properties,omitempty"` // Node properties
+}
 
 // Node represents a graph node
 type Node struct {
