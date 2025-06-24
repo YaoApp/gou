@@ -271,7 +271,7 @@ func printHelp() {
 	fmt.Println("  -depth int            Maximum chunk depth (default 3)")
 	fmt.Println("  -concurrent int       Maximum concurrent operations - chunking (default 6), embedding (default 10), extraction (default 5)")
 	fmt.Println("  -toolcall             Use toolcall for semantic chunking (default false)")
-	fmt.Println("  -connector string     Connector type: openai, custom (default openai)")
+	fmt.Println("  -connector string     Connector type: openai (with toolcall), custom (without toolcall) (default openai)")
 	fmt.Println("  -context int          Context size (default 1000)")
 	fmt.Println("  -embedding-model string Embedding model for embedding method (default text-embedding-3-small)")
 	fmt.Println("  -extraction-model string Extraction model for extraction method (default gpt-4o-mini)")
@@ -1010,16 +1010,40 @@ func runExtraction(ctx context.Context, dirPath, connectorType, model string, co
 
 	var extractor types.Extraction
 
+	// Determine model name for later use
+	var actualModel string
+	if connectorType == "openai" {
+		actualModel = model
+	} else if connectorType == "custom" {
+		actualModel = os.Getenv("RAG_LLM_TEST_SMODEL")
+		if actualModel == "" {
+			return fmt.Errorf("RAG_LLM_TEST_SMODEL environment variable is not set for custom connector")
+		}
+	}
+
 	// Create extraction instance based on connector type
 	switch connectorType {
 	case "openai", "custom":
 		connectorName := getConnectorName(connectorType)
+
+		// Determine toolcall support based on connector type
+		var toolcall *bool
+		if connectorType == "openai" {
+			// OpenAI supports toolcall, use default (true)
+			toolcall = nil
+		} else if connectorType == "custom" {
+			// Custom/local LLM typically doesn't support toolcall
+			toolcallDisabled := false
+			toolcall = &toolcallDisabled
+		}
+
 		extractor, err = openai.NewOpenai(openai.Options{
 			ConnectorName: connectorName,
 			Concurrent:    concurrent,
-			Model:         model,
+			Model:         actualModel,
 			Temperature:   0.1, // Low temperature for consistent extraction
 			MaxTokens:     4000,
+			Toolcall:      toolcall,
 			RetryAttempts: 3,
 			RetryDelay:    time.Second,
 		})
@@ -1075,6 +1099,13 @@ func runExtraction(ctx context.Context, dirPath, connectorType, model string, co
 
 	fmt.Printf("Processing %d valid chunk files...\n", len(fileContents))
 
+	// Show toolcall status
+	if connectorType == "openai" {
+		fmt.Printf("Using toolcall mode: enabled (OpenAI API)\n")
+	} else if connectorType == "custom" {
+		fmt.Printf("Using toolcall mode: disabled (Custom LLM)\n")
+	}
+
 	// Create progress callback for batch processing
 	progressCallback := func(status types.ExtractionStatus, payload types.ExtractionPayload) {
 		switch status {
@@ -1104,18 +1135,54 @@ func runExtraction(ctx context.Context, dirPath, connectorType, model string, co
 		return fmt.Errorf("failed to extract entities and relationships: %w", err)
 	}
 
-	if extractionResults.Usage.TotalTexts != len(validFiles) {
-		return fmt.Errorf("extraction count mismatch: got results for %d files, expected %d files", extractionResults.Usage.TotalTexts, len(validFiles))
-	}
-
-	// Save extraction results to files
+	// Create individual results for each file (including failed ones)
 	fmt.Println("Saving extraction result files...")
+	successCount := 0
+
+	// Process each file individually to handle partial failures
 	for i, filePath := range validFiles {
-		if err := saveExtractionFile(filePath, fileContents[i], extractionResults, i, extractor, suffix); err != nil {
+		var fileResult *types.ExtractionResults
+
+		// Check if this file was successfully processed
+		if extractionResults != nil && i < extractionResults.Usage.TotalTexts {
+			// Create individual result for this file
+			fileResult = &types.ExtractionResults{
+				Usage: types.ExtractionUsage{
+					TotalTokens:  extractionResults.Usage.TotalTokens / extractionResults.Usage.TotalTexts,  // Approximate per file
+					PromptTokens: extractionResults.Usage.PromptTokens / extractionResults.Usage.TotalTexts, // Approximate per file
+					TotalTexts:   1,
+				},
+				Model:         extractionResults.Model,
+				Nodes:         extractionResults.Nodes,         // All nodes (will be filtered by file if needed)
+				Relationships: extractionResults.Relationships, // All relationships (will be filtered by file if needed)
+			}
+			successCount++
+		} else {
+			// Create empty result for failed extraction
+			fileResult = &types.ExtractionResults{
+				Usage: types.ExtractionUsage{
+					TotalTokens:  0,
+					PromptTokens: 0,
+					TotalTexts:   1,
+				},
+				Model:         actualModel,
+				Nodes:         []types.Node{},
+				Relationships: []types.Relationship{},
+			}
+		}
+
+		if err := saveExtractionFile(filePath, fileContents[i], fileResult, i, extractor, suffix); err != nil {
 			color.Red("  Error saving %s: %v\n", filepath.Base(filePath), err)
 			errorCount++
 		} else {
-			color.Green("  Saved %s -> %s.json\n", filepath.Base(filePath), filepath.Base(filePath))
+			if len(fileResult.Nodes) > 0 || len(fileResult.Relationships) > 0 {
+				color.Green("  Saved %s -> %s.json (%d entities, %d relationships)\n",
+					filepath.Base(filePath), filepath.Base(filePath),
+					len(fileResult.Nodes), len(fileResult.Relationships))
+			} else {
+				color.Yellow("  Saved %s -> %s.json (empty - extraction failed)\n",
+					filepath.Base(filePath), filepath.Base(filePath))
+			}
 		}
 	}
 

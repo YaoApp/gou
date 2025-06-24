@@ -20,6 +20,7 @@ type Options struct {
 	Temperature   float64                  // Temperature for generation (0.0-2.0)
 	MaxTokens     int                      // Maximum tokens for generation
 	Prompt        string                   // Custom extraction prompt (optional)
+	Toolcall      *bool                    // Whether to use toolcall for extraction (nil = default true)
 	Tools         []map[string]interface{} // Custom tools (optional, defaults to extraction tools)
 	RetryAttempts int                      // Number of retry attempts for failed requests
 	RetryDelay    time.Duration            // Delay between retry attempts
@@ -33,6 +34,7 @@ type Openai struct {
 	Temperature   float64
 	MaxTokens     int
 	Prompt        string
+	Toolcall      bool
 	Tools         []map[string]interface{}
 	RetryAttempts int
 	RetryDelay    time.Duration
@@ -80,9 +82,19 @@ func NewOpenai(options Options) (*Openai, error) {
 		}
 	}
 
-	// Use custom tools if provided, otherwise use default extraction tools
+	// Determine if toolcall should be used
+	var toolcall bool
+	if options.Toolcall != nil {
+		// User explicitly set toolcall value
+		toolcall = *options.Toolcall
+	} else {
+		// Default to true when not specified
+		toolcall = true
+	}
+
+	// Use custom tools if provided, otherwise use default extraction tools when toolcall is enabled
 	tools := options.Tools
-	if len(tools) == 0 {
+	if len(tools) == 0 && toolcall {
 		tools = utils.ExtractionToolcall
 	}
 
@@ -93,6 +105,7 @@ func NewOpenai(options Options) (*Openai, error) {
 		Temperature:   options.Temperature,
 		MaxTokens:     options.MaxTokens,
 		Prompt:        options.Prompt,
+		Toolcall:      toolcall,
 		Tools:         tools,
 		RetryAttempts: options.RetryAttempts,
 		RetryDelay:    options.RetryDelay,
@@ -101,11 +114,13 @@ func NewOpenai(options Options) (*Openai, error) {
 
 // NewOpenaiWithDefaults create a new Openai extraction function with default settings
 func NewOpenaiWithDefaults(connectorName string) (*Openai, error) {
+	toolcall := true
 	return NewOpenai(Options{
 		ConnectorName: connectorName,
 		Concurrent:    5,
 		Temperature:   0.1,
 		MaxTokens:     4000,
+		Toolcall:      &toolcall, // Default to toolcall mode
 		RetryAttempts: 3,
 		RetryDelay:    time.Second,
 	})
@@ -340,8 +355,13 @@ func (e *Openai) ExtractQuery(ctx context.Context, text string, callback ...type
 		})
 	}
 
-	// Prepare extraction prompt
-	systemPrompt := utils.ExtractionPrompt(e.Prompt)
+	// Prepare extraction prompt - use JSON format instructions for non-toolcall mode
+	var systemPrompt string
+	if e.Toolcall {
+		systemPrompt = utils.ExtractionPrompt(e.Prompt)
+	} else {
+		systemPrompt = utils.ExtractionPromptWithJSONFormat(e.Prompt)
+	}
 
 	// Prepare messages
 	messages := []map[string]interface{}{
@@ -358,10 +378,14 @@ func (e *Openai) ExtractQuery(ctx context.Context, text string, callback ...type
 	payload := map[string]interface{}{
 		"model":       e.Model,
 		"messages":    messages,
-		"tools":       e.Tools,
-		"tool_choice": "required",
 		"temperature": e.Temperature,
 		"max_tokens":  e.MaxTokens,
+	}
+
+	// Add toolcall parameters if toolcall is enabled
+	if e.Toolcall {
+		payload["tools"] = e.Tools
+		payload["tool_choice"] = "required"
 	}
 
 	// Report processing
@@ -381,7 +405,8 @@ func (e *Openai) ExtractQuery(ctx context.Context, text string, callback ...type
 	for attempt := 0; attempt <= e.RetryAttempts; attempt++ {
 		// Create stream parser for extraction tool calls
 		parser := utils.NewExtractionParser()
-		lastEntityCount = 0 // Reset counters for each attempt
+		parser.SetToolcall(e.Toolcall) // Set toolcall mode in parser
+		lastEntityCount = 0            // Reset counters for each attempt
 		lastRelationshipCount = 0
 
 		// Stream callback function with progress reporting
@@ -416,37 +441,72 @@ func (e *Openai) ExtractQuery(ctx context.Context, text string, callback ...type
 		// Make streaming request using utils.StreamLLM
 		err = utils.StreamLLM(ctx, e.Connector, "chat/completions", payload, streamCallback)
 		if err == nil {
-			// Parse the accumulated tool call arguments
-			if parser.Arguments != "" {
-				nodes, relationships, parseErr := parser.ParseExtractionToolcall(parser.Arguments)
-				if parseErr == nil {
-					// Create extraction result from parsed data
-					usage := types.ExtractionUsage{
-						PromptTokens: len(strings.Fields(text)),
-						TotalTokens:  len(strings.Fields(text)), // Approximate, will be updated if available
-						TotalTexts:   1,
-					}
+			// Parse the accumulated data based on toolcall mode
+			if e.Toolcall {
+				if parser.Arguments != "" {
+					nodes, relationships, parseErr := parser.ParseExtractionToolcall(parser.Arguments)
+					if parseErr == nil {
+						// Create extraction result from parsed data
+						usage := types.ExtractionUsage{
+							PromptTokens: len(strings.Fields(text)),
+							TotalTokens:  len(strings.Fields(text)), // Approximate, will be updated if available
+							TotalTexts:   1,
+						}
 
-					extractionResult = &types.ExtractionResults{
-						Usage:         usage,
-						Model:         e.Model,
-						Nodes:         nodes,
-						Relationships: relationships,
+						extractionResult = &types.ExtractionResults{
+							Usage:         usage,
+							Model:         e.Model,
+							Nodes:         nodes,
+							Relationships: relationships,
+						}
+						break // Success, exit retry loop
+					} else {
+						err = parseErr
+						// Log the parse error for debugging
+						if cb != nil {
+							cb(types.ExtractionStatusProcessing, types.ExtractionPayload{
+								Current: 0,
+								Total:   1,
+								Message: fmt.Sprintf("Parse error (attempt %d): %v", attempt+1, parseErr),
+							})
+						}
 					}
-					break // Success, exit retry loop
 				} else {
-					err = parseErr
-					// Log the parse error for debugging
-					if cb != nil {
-						cb(types.ExtractionStatusProcessing, types.ExtractionPayload{
-							Current: 0,
-							Total:   1,
-							Message: fmt.Sprintf("Parse error (attempt %d): %v", attempt+1, parseErr),
-						})
-					}
+					err = fmt.Errorf("no tool call arguments received")
 				}
 			} else {
-				err = fmt.Errorf("no tool call arguments received")
+				// Non-toolcall mode: parse regular content
+				if parser.Content != "" {
+					nodes, relationships, parseErr := parser.ParseExtractionRegular(parser.Content)
+					if parseErr == nil {
+						// Create extraction result from parsed data
+						usage := types.ExtractionUsage{
+							PromptTokens: len(strings.Fields(text)),
+							TotalTokens:  len(strings.Fields(text)), // Approximate, will be updated if available
+							TotalTexts:   1,
+						}
+
+						extractionResult = &types.ExtractionResults{
+							Usage:         usage,
+							Model:         e.Model,
+							Nodes:         nodes,
+							Relationships: relationships,
+						}
+						break // Success, exit retry loop
+					} else {
+						err = parseErr
+						// Log the parse error for debugging
+						if cb != nil {
+							cb(types.ExtractionStatusProcessing, types.ExtractionPayload{
+								Current: 0,
+								Total:   1,
+								Message: fmt.Sprintf("Parse error (attempt %d): %v", attempt+1, parseErr),
+							})
+						}
+					}
+				} else {
+					err = fmt.Errorf("no content received from LLM")
+				}
 			}
 		}
 
@@ -504,4 +564,9 @@ func (e *Openai) GetTemperature() float64 {
 // GetMaxTokens returns the max tokens setting
 func (e *Openai) GetMaxTokens() int {
 	return e.MaxTokens
+}
+
+// GetToolcall returns the toolcall setting
+func (e *Openai) GetToolcall() bool {
+	return e.Toolcall
 }

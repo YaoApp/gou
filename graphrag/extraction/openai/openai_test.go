@@ -159,6 +159,84 @@ func TestNewOpenaiWithDefaults(t *testing.T) {
 	if extractor.GetMaxTokens() != 4000 {
 		t.Errorf("Expected max tokens = 4000, got %d", extractor.GetMaxTokens())
 	}
+	if !extractor.GetToolcall() {
+		t.Errorf("Expected toolcall = true, got %v", extractor.GetToolcall())
+	}
+}
+
+func TestToolcallOption(t *testing.T) {
+	setupConnector(t)
+	defer teardownConnector(t)
+
+	// Helper function to create bool pointer
+	boolPtr := func(b bool) *bool { return &b }
+
+	tests := []struct {
+		name             string
+		options          Options
+		expectedToolcall bool
+		description      string
+	}{
+		{
+			name: "Explicit toolcall enabled",
+			options: Options{
+				ConnectorName: testConnectorName,
+				Toolcall:      boolPtr(true),
+			},
+			expectedToolcall: true,
+			description:      "Should enable toolcall when explicitly set to true",
+		},
+		{
+			name: "Explicit toolcall disabled",
+			options: Options{
+				ConnectorName: testConnectorName,
+				Toolcall:      boolPtr(false),
+			},
+			expectedToolcall: false,
+			description:      "Should disable toolcall when explicitly set to false",
+		},
+		{
+			name: "Default toolcall with no tools",
+			options: Options{
+				ConnectorName: testConnectorName,
+			},
+			expectedToolcall: true,
+			description:      "Should default to toolcall when not specified",
+		},
+		{
+			name: "Custom tools with toolcall disabled",
+			options: Options{
+				ConnectorName: testConnectorName,
+				Toolcall:      boolPtr(false),
+				Tools:         []map[string]interface{}{{"test": "tool"}},
+			},
+			expectedToolcall: false,
+			description:      "Should respect explicit toolcall=false even with custom tools",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			extractor, err := NewOpenai(tt.options)
+			if err != nil {
+				t.Fatalf("NewOpenai() error = %v", err)
+			}
+
+			if extractor.GetToolcall() != tt.expectedToolcall {
+				t.Errorf("%s: Expected toolcall = %v, got %v", tt.description, tt.expectedToolcall, extractor.GetToolcall())
+			}
+
+			// If toolcall is enabled, should have tools
+			if extractor.GetToolcall() && len(extractor.Tools) == 0 {
+				t.Errorf("%s: Expected tools when toolcall is enabled", tt.description)
+			}
+
+			// If toolcall is disabled, tools should be empty (unless custom tools provided)
+			if !extractor.GetToolcall() && len(tt.options.Tools) == 0 && len(extractor.Tools) > 0 {
+				t.Errorf("%s: Expected no default tools when toolcall is disabled", tt.description)
+			}
+		})
+	}
 }
 
 func TestExtractQuery(t *testing.T) {
@@ -280,15 +358,13 @@ func TestExtractQuery(t *testing.T) {
 			t.Skip("RAG_LLM_TEST_URL not set, skipping local LLM test")
 		}
 
-		// Create extractor with local LLM connector and custom tools (no toolcall)
+		// Create extractor with local LLM connector and disabled toolcall
+		toolcallDisabled := false
 		extractor, err := NewOpenai(Options{
 			ConnectorName: testLocalConnector,
 			Concurrent:    8, // Higher concurrency for local LLM
 			Temperature:   0.1,
-			MaxTokens:     2000,
-			RetryAttempts: 1, // Reduce retry attempts for faster test
-			RetryDelay:    500 * time.Millisecond,
-			Tools:         []map[string]interface{}{}, // Empty tools - will use regular response parsing
+			Toolcall:      &toolcallDisabled, // Explicitly disable toolcall
 		})
 		if err != nil {
 			t.Fatalf("Failed to create local LLM extractor: %v", err)
@@ -694,11 +770,12 @@ func TestToolcallVsNonToolcall(t *testing.T) {
 			t.Skip("RAG_LLM_TEST_URL not set, skipping local LLM test")
 		}
 
+		toolcallDisabled := false
 		extractor, err := NewOpenai(Options{
 			ConnectorName: testLocalConnector,
 			Concurrent:    8,
 			Temperature:   0.1,
-			Tools:         []map[string]interface{}{}, // Empty tools - no toolcall
+			Toolcall:      &toolcallDisabled, // Explicitly disable toolcall
 		})
 		if err != nil {
 			t.Fatalf("Failed to create local LLM extractor: %v", err)
@@ -706,8 +783,15 @@ func TestToolcallVsNonToolcall(t *testing.T) {
 
 		result, err := extractor.ExtractQuery(ctx, testText)
 		if err != nil {
-			t.Logf("Local LLM extraction failed (expected if service not available): %v", err)
-			t.Skip("Local LLM service not available")
+			// Check for common network errors that indicate service is not available
+			if strings.Contains(err.Error(), "connection refused") ||
+				strings.Contains(err.Error(), "no such host") ||
+				strings.Contains(err.Error(), "context deadline exceeded") ||
+				strings.Contains(err.Error(), "i/o timeout") {
+				t.Logf("Local LLM service not available: %v", err)
+				t.Skip("Local LLM service not available")
+			}
+			t.Fatalf("Local LLM extraction failed: %v", err)
 		}
 
 		if len(result.Nodes) == 0 {
