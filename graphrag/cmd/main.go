@@ -1135,31 +1135,22 @@ func runExtraction(ctx context.Context, dirPath, connectorType, model string, co
 		return fmt.Errorf("failed to extract entities and relationships: %w", err)
 	}
 
-	// Create individual results for each file (including failed ones)
+	// Save extraction results for each file (each result corresponds to its source file by index)
 	fmt.Println("Saving extraction result files...")
 	successCount := 0
 
-	// Process each file individually to handle partial failures
+	// Process each file individually - extractionResults[i] corresponds to validFiles[i] and fileContents[i]
 	for i, filePath := range validFiles {
-		var fileResult *types.ExtractionResults
+		var fileResult *types.ExtractionResult
 
-		// Check if this file was successfully processed
-		if extractionResults != nil && i < extractionResults.Usage.TotalTexts {
-			// Create individual result for this file
-			fileResult = &types.ExtractionResults{
-				Usage: types.ExtractionUsage{
-					TotalTokens:  extractionResults.Usage.TotalTokens / extractionResults.Usage.TotalTexts,  // Approximate per file
-					PromptTokens: extractionResults.Usage.PromptTokens / extractionResults.Usage.TotalTexts, // Approximate per file
-					TotalTexts:   1,
-				},
-				Model:         extractionResults.Model,
-				Nodes:         extractionResults.Nodes,         // All nodes (will be filtered by file if needed)
-				Relationships: extractionResults.Relationships, // All relationships (will be filtered by file if needed)
-			}
+		// Get the extraction result for this file by index
+		if extractionResults != nil && i < len(extractionResults) && extractionResults[i] != nil {
+			// Use the result at index i for file at index i
+			fileResult = extractionResults[i]
 			successCount++
 		} else {
-			// Create empty result for failed extraction
-			fileResult = &types.ExtractionResults{
+			// Create empty result for failed extraction at index i
+			fileResult = &types.ExtractionResult{
 				Usage: types.ExtractionUsage{
 					TotalTokens:  0,
 					PromptTokens: 0,
@@ -1171,6 +1162,7 @@ func runExtraction(ctx context.Context, dirPath, connectorType, model string, co
 			}
 		}
 
+		// Save the result for file at index i using its corresponding content and result
 		if err := saveExtractionFile(filePath, fileContents[i], fileResult, i, extractor, suffix); err != nil {
 			color.Red("  Error saving %s: %v\n", filepath.Base(filePath), err)
 			errorCount++
@@ -1186,17 +1178,34 @@ func runExtraction(ctx context.Context, dirPath, connectorType, model string, co
 		}
 	}
 
+	// Calculate totals from all results
+	totalEntities := 0
+	totalRelationships := 0
+	totalTokens := 0
+	modelName := actualModel
+
+	for _, result := range extractionResults {
+		if result != nil {
+			totalEntities += len(result.Nodes)
+			totalRelationships += len(result.Relationships)
+			totalTokens += result.Usage.TotalTokens
+			if result.Model != "" {
+				modelName = result.Model
+			}
+		}
+	}
+
 	cost := time.Since(start)
 	fmt.Printf("\n--------------------------------\n")
 	fmt.Printf("Extraction completed: %d files processed, %d errors in %s\n", len(validFiles), errorCount, cost.Round(time.Millisecond))
 	fmt.Printf("--------------------------------\n")
 	fmt.Printf("Directory: %s\n", dirPath)
-	fmt.Printf("Model: %s\n", extractionResults.Model)
+	fmt.Printf("Model: %s\n", modelName)
 	fmt.Printf("Concurrent: %d\n", concurrent)
-	fmt.Printf("Total Entities: %d\n", len(extractionResults.Nodes))
-	fmt.Printf("Total Relationships: %d\n", len(extractionResults.Relationships))
-	fmt.Printf("Total Tokens: %d\n", extractionResults.Usage.TotalTokens)
-	fmt.Printf("Total Texts: %d\n", extractionResults.Usage.TotalTexts)
+	fmt.Printf("Total Entities: %d\n", totalEntities)
+	fmt.Printf("Total Relationships: %d\n", totalRelationships)
+	fmt.Printf("Total Tokens: %d\n", totalTokens)
+	fmt.Printf("Total Texts: %d\n", len(extractionResults))
 	fmt.Printf("Time Cost: %s\n", cost)
 	fmt.Printf("--------------------------------\n")
 
@@ -1230,7 +1239,7 @@ func findChunkFilesInDirectory(dirPath string) ([]string, error) {
 }
 
 // saveExtractionFile saves extraction data to a JSON file with entities and relationships
-func saveExtractionFile(filePath, text string, extractionResults *types.ExtractionResults, index int, extractor types.Extraction, suffix string) error {
+func saveExtractionFile(filePath, text string, extractionResults *types.ExtractionResult, index int, extractor types.Extraction, suffix string) error {
 	// Prepare extraction data
 	extractionData := map[string]interface{}{
 		"file":                filepath.Base(filePath),

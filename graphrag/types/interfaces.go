@@ -89,8 +89,8 @@ type EmbeddingProgress func(status EmbeddingStatus, payload EmbeddingPayload)
 
 // Extraction represents an extraction function interface
 type Extraction interface {
-	ExtractDocuments(ctx context.Context, texts []string, callback ...ExtractionProgress) (*ExtractionResults, error)
-	ExtractQuery(ctx context.Context, text string, callback ...ExtractionProgress) (*ExtractionResults, error)
+	ExtractDocuments(ctx context.Context, texts []string, callback ...ExtractionProgress) ([]*ExtractionResult, error)
+	ExtractQuery(ctx context.Context, text string, callback ...ExtractionProgress) (*ExtractionResult, error)
 }
 
 // ExtractionProgress defines the callback function for progress reporting with flexible payload

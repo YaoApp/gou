@@ -1000,8 +1000,8 @@ type LLMOptimizer struct {
 	Connector string `json:"connector"` // Connector to use for extraction
 }
 
-// ExtractionResults represents the results of an extraction process
-type ExtractionResults struct {
+// ExtractionResult represents the result of an extraction process
+type ExtractionResult struct {
 	Usage         ExtractionUsage `json:"usage"`                   // Combined usage statistics
 	Model         string          `json:"model"`                   // Model used for extraction
 	Nodes         []Node          `json:"nodes,omitempty"`         // Extracted entities
