@@ -1,35 +1,59 @@
 {
   "entities": [
     {
-      "id": "yao_technology",
+      "id": "yao",
       "name": "Yao",
-      "type": "TECHNOLOGY",
-      "description": "Yao is a technology platform or framework mentioned in the context of data model development.",
+      "type": "CONCEPT",
+      "labels": [
+        "concept",
+        "data modeling"
+      ],
+      "properties": {
+        "category": "data modeling",
+        "domain": "software development"
+      },
+      "description": "Yao is a concept related to data modeling and development processes.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "data_model_concept",
+      "id": "data_model",
       "name": "data model",
       "type": "CONCEPT",
-      "description": "The data model is a crucial concept in Yao, essential for planning data structure and relationships.",
+      "labels": [
+        "concept",
+        "data structure"
+      ],
+      "properties": {
+        "category": "data modeling",
+        "domain": "software development"
+      },
+      "description": "The data model is crucial in Yao, involving planning the data structure and relationships.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
       "id": "models_directory",
       "name": "models directory",
-      "type": "LOCATION",
-      "description": "The directory where the data model should be defined when starting a new project in Yao.",
-      "confidence": 0.8,
+      "type": "OBJECT",
+      "labels": [
+        "directory",
+        "project setup"
+      ],
+      "properties": {
+        "category": "project setup",
+        "domain": "software development"
+      },
+      "description": "The directory where the data model is defined when starting a new project.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
@@ -37,10 +61,18 @@
       "id": "table_widget",
       "name": "Table widget",
       "type": "OBJECT",
+      "labels": [
+        "widget",
+        "UI component"
+      ],
+      "properties": {
+        "category": "UI component",
+        "domain": "software development"
+      },
       "description": "A widget created based on the data model in Yao.",
-      "confidence": 0.8,
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
@@ -48,10 +80,18 @@
       "id": "form_widget",
       "name": "Form widget",
       "type": "OBJECT",
+      "labels": [
+        "widget",
+        "UI component"
+      ],
+      "properties": {
+        "category": "UI component",
+        "domain": "software development"
+      },
       "description": "A widget created based on the data model in Yao.",
-      "confidence": 0.8,
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
@@ -59,10 +99,18 @@
       "id": "api_widget",
       "name": "API widget",
       "type": "OBJECT",
+      "labels": [
+        "widget",
+        "API component"
+      ],
+      "properties": {
+        "category": "API component",
+        "domain": "software development"
+      },
       "description": "A widget created based on the data model in Yao.",
-      "confidence": 0.8,
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
@@ -70,10 +118,18 @@
       "id": "test_data",
       "name": "test data",
       "type": "OBJECT",
-      "description": "Data prepared for testing purposes to enhance development efficiency in Yao.",
-      "confidence": 0.8,
+      "labels": [
+        "data",
+        "testing"
+      ],
+      "properties": {
+        "category": "testing",
+        "domain": "software development"
+      },
+      "description": "Data prepared for testing purposes to enhance development efficiency.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
@@ -81,32 +137,56 @@
       "id": "import_process",
       "name": "import process",
       "type": "CONCEPT",
-      "description": "A process for importing data, which is a good practice in Yao development.",
-      "confidence": 0.8,
+      "labels": [
+        "process",
+        "data import"
+      ],
+      "properties": {
+        "category": "data import",
+        "domain": "software development"
+      },
+      "description": "A process for importing demo data to enhance development efficiency.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "model_dsl_technology",
-      "name": "Model DSL",
-      "type": "TECHNOLOGY",
-      "description": "A domain-specific language used to define models in Yao, which can be sent to AI to generate test data.",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750758941,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "ai_technology",
+      "id": "ai",
       "name": "AI",
       "type": "TECHNOLOGY",
-      "description": "Artificial Intelligence used to generate test data by processing the Model DSL in Yao.",
-      "confidence": 0.8,
+      "labels": [
+        "technology",
+        "artificial intelligence"
+      ],
+      "properties": {
+        "category": "data generation",
+        "domain": "software development"
+      },
+      "description": "AI is used to generate test data by sending the Model DSL to it.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "model_dsl",
+      "name": "Model DSL",
+      "type": "TECHNOLOGY",
+      "labels": [
+        "technology",
+        "DSL"
+      ],
+      "properties": {
+        "category": "model definition",
+        "domain": "software development"
+      },
+      "description": "A domain-specific language used to define models and generate test data with AI.",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
@@ -114,93 +194,120 @@
       "id": "import_process_example",
       "name": "Import Process Example",
       "type": "OBJECT",
-      "description": "An example script for the import process available on GitHub.",
-      "confidence": 0.8,
+      "labels": [
+        "example",
+        "documentation"
+      ],
+      "properties": {
+        "category": "documentation",
+        "domain": "software development"
+      },
+      "description": "An example of the import process available at a specific URL.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-9.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-9.txt",
-  "generated_at": "2025-06-24T17:55:53+08:00",
+  "generated_at": "2025-06-24T19:54:25+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
-      "type": "RELATED_TO",
-      "start_node": "yao_technology",
-      "end_node": "data_model_concept",
-      "description": "In Yao, the data model is crucial for planning data structure and relationships.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758941,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "LOCATED_IN",
-      "start_node": "data_model_concept",
+      "type": "DEFINED_IN",
+      "start_node": "data_model",
       "end_node": "models_directory",
-      "description": "The data model should be defined in the models directory when starting a new project.",
-      "confidence": 0.8,
+      "properties": {
+        "context": "project setup",
+        "method": "definition"
+      },
+      "description": "The data model is defined in the models directory when starting a new project.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "CREATES",
-      "start_node": "data_model_concept",
-      "end_node": "table_widget",
+      "type": "CREATED_FROM",
+      "start_node": "table_widget",
+      "end_node": "data_model",
+      "properties": {
+        "context": "widget creation",
+        "method": "based on model"
+      },
       "description": "The Table widget is created based on the data model in Yao.",
-      "confidence": 0.8,
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "CREATES",
-      "start_node": "data_model_concept",
-      "end_node": "form_widget",
+      "type": "CREATED_FROM",
+      "start_node": "form_widget",
+      "end_node": "data_model",
+      "properties": {
+        "context": "widget creation",
+        "method": "based on model"
+      },
       "description": "The Form widget is created based on the data model in Yao.",
-      "confidence": 0.8,
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "CREATES",
-      "start_node": "data_model_concept",
-      "end_node": "api_widget",
+      "type": "CREATED_FROM",
+      "start_node": "api_widget",
+      "end_node": "data_model",
+      "properties": {
+        "context": "widget creation",
+        "method": "based on model"
+      },
       "description": "The API widget is created based on the data model in Yao.",
-      "confidence": 0.8,
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "PART_OF",
-      "start_node": "test_data",
-      "end_node": "import_process",
-      "description": "Preparing test data and creating an import process is a good practice in Yao development.",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
       "type": "USES",
-      "start_node": "model_dsl_technology",
-      "end_node": "ai_technology",
-      "description": "The Model DSL is sent to AI to generate test data in Yao.",
-      "confidence": 0.8,
+      "start_node": "import_process",
+      "end_node": "test_data",
+      "properties": {
+        "context": "data import",
+        "method": "usage"
+      },
+      "description": "The import process uses test data to enhance development efficiency.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "USES",
+      "start_node": "ai",
+      "end_node": "model_dsl",
+      "properties": {
+        "context": "data generation",
+        "method": "usage"
+      },
+      "description": "AI uses the Model DSL to generate test data.",
+      "confidence": 0.9,
+      "weight": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
@@ -208,17 +315,22 @@
       "type": "RELATED_TO",
       "start_node": "import_process_example",
       "end_node": "import_process",
-      "description": "The Import Process Example is related to the import process and is available on GitHub.",
-      "confidence": 0.8,
+      "properties": {
+        "context": "documentation",
+        "method": "example"
+      },
+      "description": "The Import Process Example is related to the import process and is available at a specific URL.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 715,
   "total_entities": 11,
-  "total_relationships": 8,
+  "total_relationships": 7,
   "usage": {
     "total_tokens": 109,
     "prompt_tokens": 109,

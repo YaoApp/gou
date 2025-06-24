@@ -4,54 +4,18 @@
       "id": "yao_application",
       "name": "Yao Application",
       "type": "CONCEPT",
-      "description": "A Yao application is a collection of widget DSLs and custom processes.",
-      "confidence": 0.9,
+      "labels": [
+        "software",
+        "application"
+      ],
+      "properties": {
+        "components": "widget DSLs and custom processes",
+        "language": "TypeScript or JavaScript"
+      },
+      "description": "A Yao application is a collection of widget DSLs and custom processes written in TypeScript or JavaScript.",
+      "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "widget_dsls",
-      "name": "Widget DSLs",
-      "type": "CONCEPT",
-      "description": "Part of a Yao application, written in TypeScript or JavaScript.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "custom_processes",
-      "name": "Custom Processes",
-      "type": "CONCEPT",
-      "description": "Part of a Yao application, alongside widget DSLs.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "typescript",
-      "name": "TypeScript",
-      "type": "TECHNOLOGY",
-      "description": "A programming language used to write widget DSLs in a Yao application.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "javascript",
-      "name": "JavaScript",
-      "type": "TECHNOLOGY",
-      "description": "A programming language used to write widget DSLs in a Yao application.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766053,
       "version": 1,
       "status": "active"
     },
@@ -59,232 +23,81 @@
       "id": "sui_template_engine",
       "name": "SUI Template Engine",
       "type": "TECHNOLOGY",
-      "description": "A template engine used for building web pages, new in version 0.10.4.",
+      "labels": [
+        "template engine",
+        "web development"
+      ],
+      "properties": {
+        "purpose": "build web pages",
+        "version": "0.10.4"
+      },
+      "description": "The SUI template engine, new in version 0.10.4, helps build web pages for websites.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766053,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "version_0_10_4",
-      "name": "Version 0.10.4",
+      "id": "widget_types",
+      "name": "Widget Types",
       "type": "CONCEPT",
-      "description": "The version in which the SUI template engine was introduced.",
-      "confidence": 0.9,
+      "labels": [
+        "software component",
+        "directory structure"
+      ],
+      "properties": {
+        "examples": "models, tables, forms, apis"
+      },
+      "description": "Each widget type has its own directory in the project root, such as models, tables, forms, apis, etc.",
+      "confidence": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "web_pages",
-      "name": "Web Pages",
-      "type": "OBJECT",
-      "description": "Web pages that can be built using the SUI template engine.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "widget_type",
-      "name": "Widget Type",
-      "type": "CONCEPT",
-      "description": "Each widget type has its own directory in the project root.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "models_directory",
-      "name": "Models Directory",
-      "type": "OBJECT",
-      "description": "A directory in the project root for models widget type.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "tables_directory",
-      "name": "Tables Directory",
-      "type": "OBJECT",
-      "description": "A directory in the project root for tables widget type.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "forms_directory",
-      "name": "Forms Directory",
-      "type": "OBJECT",
-      "description": "A directory in the project root for forms widget type.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "apis_directory",
-      "name": "APIs Directory",
-      "type": "OBJECT",
-      "description": "A directory in the project root for APIs widget type.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "etc_directory",
-      "name": "Etc Directory",
-      "type": "OBJECT",
-      "description": "A directory in the project root for etc widget type.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766053,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-2.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-2.txt",
-  "generated_at": "2025-06-24T17:55:53+08:00",
+  "generated_at": "2025-06-24T19:54:25+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
-      "type": "PART_OF",
+      "type": "USES",
       "start_node": "yao_application",
-      "end_node": "widget_dsls",
-      "description": "A Yao application is a collection of widget DSLs and custom processes.",
+      "end_node": "sui_template_engine",
+      "properties": {
+        "context": "web development",
+        "version": "0.10.4"
+      },
+      "description": "Yao Application uses the SUI Template Engine to build web pages.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766053,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "PART_OF",
+      "type": "CONTAINS",
       "start_node": "yao_application",
-      "end_node": "custom_processes",
-      "description": "A Yao application is a collection of widget DSLs and custom processes.",
-      "confidence": 0.9,
+      "end_node": "widget_types",
+      "properties": {
+        "examples": "models, tables, forms, apis",
+        "structure": "directory"
+      },
+      "description": "Yao Application contains various widget types, each with its own directory.",
+      "confidence": 0.85,
+      "weight": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "WRITTEN_IN",
-      "start_node": "widget_dsls",
-      "end_node": "typescript",
-      "description": "Widget DSLs are written in TypeScript or JavaScript.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "WRITTEN_IN",
-      "start_node": "widget_dsls",
-      "end_node": "javascript",
-      "description": "Widget DSLs are written in TypeScript or JavaScript.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "BUILDS",
-      "start_node": "sui_template_engine",
-      "end_node": "web_pages",
-      "description": "The SUI template engine helps build web pages.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "NEW_IN",
-      "start_node": "sui_template_engine",
-      "end_node": "version_0_10_4",
-      "description": "The SUI template engine is new in version 0.10.4.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "HAS_DIRECTORY",
-      "start_node": "widget_type",
-      "end_node": "models_directory",
-      "description": "Each widget type has its own directory in the project root, such as models.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "HAS_DIRECTORY",
-      "start_node": "widget_type",
-      "end_node": "tables_directory",
-      "description": "Each widget type has its own directory in the project root, such as tables.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "HAS_DIRECTORY",
-      "start_node": "widget_type",
-      "end_node": "forms_directory",
-      "description": "Each widget type has its own directory in the project root, such as forms.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "HAS_DIRECTORY",
-      "start_node": "widget_type",
-      "end_node": "apis_directory",
-      "description": "Each widget type has its own directory in the project root, such as apis.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "HAS_DIRECTORY",
-      "start_node": "widget_type",
-      "end_node": "etc_directory",
-      "description": "Each widget type has its own directory in the project root, such as etc.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766053,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 391,
-  "total_entities": 14,
-  "total_relationships": 11,
+  "total_entities": 3,
+  "total_relationships": 2,
   "usage": {
     "total_tokens": 63,
     "prompt_tokens": 63,

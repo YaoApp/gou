@@ -4,10 +4,14 @@
       "id": "dsl_source_files",
       "name": "DSL source files",
       "type": "OBJECT",
-      "description": "DSL source files are named in lowercase with the `.[TYPE].yao` extension, such as `article.mod.yao`.",
+      "labels": [
+        "file",
+        "source"
+      ],
+      "description": "Files named in lowercase with the `.[TYPE].yao` extension, such as `article.mod.yao`.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
@@ -15,126 +19,170 @@
       "id": "custom_process_files",
       "name": "Custom process files",
       "type": "OBJECT",
-      "description": "Custom process files are lowercase in the `scripts` directory, such as `article.ts`.",
+      "labels": [
+        "file",
+        "process"
+      ],
+      "description": "Files located in the `scripts` directory, named in lowercase, such as `article.ts`.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
       "id": "yao_application_directory_structure",
-      "name": "yao application directory structure",
-      "type": "OBJECT",
-      "description": "The yao application directory structure, which includes various directories and files for different purposes.",
+      "name": "Yao application directory structure",
+      "type": "CONCEPT",
+      "labels": [
+        "directory",
+        "structure"
+      ],
+      "description": "The directory structure of a Yao application, including various directories like aigcs, apis, charts, connectors, dashboards, data, and db.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "aigc_widgets",
-      "name": "AIGC Widgets",
-      "type": "OBJECT",
-      "description": "AIGC Widgets are used as a process in the yao application directory.",
-      "confidence": 0.8,
+      "id": "aigcs_directory",
+      "name": "aigcs",
+      "type": "LOCATION",
+      "labels": [
+        "directory",
+        "location"
+      ],
+      "description": "Directory for AIGC Widgets, using the prompt as a process.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "api_widgets",
-      "name": "API Widgets",
-      "type": "OBJECT",
-      "description": "API Widgets define the REST API in the yao application directory.",
-      "confidence": 0.8,
+      "id": "apis_directory",
+      "name": "apis",
+      "type": "LOCATION",
+      "labels": [
+        "directory",
+        "location"
+      ],
+      "description": "Directory for API Widgets, defining the REST API.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "app_yao",
+      "id": "app_yao_file",
       "name": "app.yao",
       "type": "OBJECT",
-      "description": "Application Configuration file in the yao application directory.",
-      "confidence": 0.8,
+      "labels": [
+        "file",
+        "configuration"
+      ],
+      "description": "File for Application Configuration in the Yao application directory.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "charts",
+      "id": "charts_directory",
       "name": "charts",
-      "type": "OBJECT",
-      "description": "Chart Widgets are chart-type pages in the admin panel of the yao application directory.",
-      "confidence": 0.8,
+      "type": "LOCATION",
+      "labels": [
+        "directory",
+        "location"
+      ],
+      "description": "Directory for Chart Widgets, chart-type pages in the admin panel.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "connectors",
+      "id": "connectors_directory",
       "name": "connectors",
-      "type": "OBJECT",
-      "description": "Connectors in the yao application directory, including AI Connectors, Database Connectors, Redis Connectors, etc.",
-      "confidence": 0.8,
+      "type": "LOCATION",
+      "labels": [
+        "directory",
+        "location"
+      ],
+      "description": "Directory for AI Connectors, Database Connectors, Redis Connectors, etc.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "dashboards",
+      "id": "dashboards_directory",
       "name": "dashboards",
-      "type": "OBJECT",
-      "description": "Dashboard Widgets are dashboard-type pages in the admin panel of the yao application directory.",
-      "confidence": 0.8,
+      "type": "LOCATION",
+      "labels": [
+        "directory",
+        "location"
+      ],
+      "description": "Directory for Dashboard Widgets, dashboard-type pages in the admin panel.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "data",
+      "id": "data_directory",
       "name": "data",
-      "type": "OBJECT",
-      "description": "The default application data directory in the yao application, which can be accessed using the File System Process or JSAPI.",
-      "confidence": 0.8,
+      "type": "LOCATION",
+      "labels": [
+        "directory",
+        "location"
+      ],
+      "description": "Default application data directory, accessible via File System Process or JSAPI. Customizable via environment variables.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "db",
+      "id": "db_directory",
       "name": "db",
-      "type": "OBJECT",
-      "description": "The sqlite database directory in the yao application, which is the default option for the database.",
-      "confidence": 0.8,
+      "type": "LOCATION",
+      "labels": [
+        "directory",
+        "location"
+      ],
+      "description": "Directory for the sqlite database, the default database option.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-3.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-3.txt",
-  "generated_at": "2025-06-24T17:55:53+08:00",
+  "generated_at": "2025-06-24T19:54:25+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
       "type": "PART_OF",
       "start_node": "dsl_source_files",
       "end_node": "yao_application_directory_structure",
-      "description": "DSL source files are part of the yao application directory structure.",
+      "properties": {
+        "context": "file organization"
+      },
+      "description": "DSL source files are part of the Yao application directory structure.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
@@ -142,98 +190,134 @@
       "type": "PART_OF",
       "start_node": "custom_process_files",
       "end_node": "yao_application_directory_structure",
-      "description": "Custom process files are part of the yao application directory structure.",
+      "properties": {
+        "context": "file organization"
+      },
+      "description": "Custom process files are part of the Yao application directory structure.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
       "type": "PART_OF",
-      "start_node": "aigc_widgets",
+      "start_node": "aigcs_directory",
       "end_node": "yao_application_directory_structure",
-      "description": "AIGC Widgets are part of the yao application directory structure.",
-      "confidence": 0.8,
+      "properties": {
+        "context": "directory organization"
+      },
+      "description": "The aigcs directory is part of the Yao application directory structure.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
       "type": "PART_OF",
-      "start_node": "api_widgets",
+      "start_node": "apis_directory",
       "end_node": "yao_application_directory_structure",
-      "description": "API Widgets are part of the yao application directory structure.",
-      "confidence": 0.8,
+      "properties": {
+        "context": "directory organization"
+      },
+      "description": "The apis directory is part of the Yao application directory structure.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
       "type": "PART_OF",
-      "start_node": "app_yao",
+      "start_node": "app_yao_file",
       "end_node": "yao_application_directory_structure",
-      "description": "The app.yao file is part of the yao application directory structure.",
-      "confidence": 0.8,
+      "properties": {
+        "context": "file organization"
+      },
+      "description": "The app.yao file is part of the Yao application directory structure.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
       "type": "PART_OF",
-      "start_node": "charts",
+      "start_node": "charts_directory",
       "end_node": "yao_application_directory_structure",
-      "description": "Chart Widgets are part of the yao application directory structure.",
-      "confidence": 0.8,
+      "properties": {
+        "context": "directory organization"
+      },
+      "description": "The charts directory is part of the Yao application directory structure.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
       "type": "PART_OF",
-      "start_node": "connectors",
+      "start_node": "connectors_directory",
       "end_node": "yao_application_directory_structure",
-      "description": "Connectors are part of the yao application directory structure.",
-      "confidence": 0.8,
+      "properties": {
+        "context": "directory organization"
+      },
+      "description": "The connectors directory is part of the Yao application directory structure.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
       "type": "PART_OF",
-      "start_node": "dashboards",
+      "start_node": "dashboards_directory",
       "end_node": "yao_application_directory_structure",
-      "description": "Dashboard Widgets are part of the yao application directory structure.",
-      "confidence": 0.8,
+      "properties": {
+        "context": "directory organization"
+      },
+      "description": "The dashboards directory is part of the Yao application directory structure.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
       "type": "PART_OF",
-      "start_node": "data",
+      "start_node": "data_directory",
       "end_node": "yao_application_directory_structure",
-      "description": "The data directory is part of the yao application directory structure.",
-      "confidence": 0.8,
+      "properties": {
+        "context": "directory organization"
+      },
+      "description": "The data directory is part of the Yao application directory structure.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     },
     {
       "type": "PART_OF",
-      "start_node": "db",
+      "start_node": "db_directory",
       "end_node": "yao_application_directory_structure",
-      "description": "The db directory is part of the yao application directory structure.",
-      "confidence": 0.8,
+      "properties": {
+        "context": "directory organization"
+      },
+      "description": "The db directory is part of the Yao application directory structure.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758941,
+      "created_at": 1750766064,
       "version": 1,
       "status": "active"
     }

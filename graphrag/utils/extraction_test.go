@@ -269,7 +269,7 @@ func TestExtractionToolcallEntitySchema(t *testing.T) {
 	}
 
 	// Check required entity fields
-	expectedEntityFields := []string{"id", "name", "type", "description", "confidence"}
+	expectedEntityFields := []string{"id", "name", "type", "description", "confidence", "labels", "properties"}
 	for _, field := range expectedEntityFields {
 		if _, exists := itemProperties[field]; !exists {
 			t.Errorf("Entity schema missing required field: %s", field)
@@ -292,6 +292,34 @@ func TestExtractionToolcallEntitySchema(t *testing.T) {
 
 	if confidence["maximum"] != 1.0 {
 		t.Error("Confidence maximum should be 1.0")
+	}
+
+	// Check labels field constraints
+	labels, ok := itemProperties["labels"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Labels field schema is missing")
+	}
+
+	if labels["type"] != "array" {
+		t.Error("Labels field should be of type array")
+	}
+
+	if labels["minItems"] != 1.0 {
+		t.Error("Labels minItems should be 1")
+	}
+
+	// Check properties field constraints
+	propertiesField, ok := itemProperties["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Properties field schema is missing")
+	}
+
+	if propertiesField["type"] != "object" {
+		t.Error("Properties field should be of type object")
+	}
+
+	if propertiesField["minProperties"] != 1.0 {
+		t.Error("Properties minProperties should be 1")
 	}
 
 	// Check required fields for entities
@@ -324,7 +352,7 @@ func TestExtractionToolcallRelationshipSchema(t *testing.T) {
 	}
 
 	// Check required relationship fields
-	expectedRelationshipFields := []string{"start_node", "end_node", "type", "description", "confidence"}
+	expectedRelationshipFields := []string{"start_node", "end_node", "type", "description", "confidence", "properties", "weight"}
 	for _, field := range expectedRelationshipFields {
 		if _, exists := itemProperties[field]; !exists {
 			t.Errorf("Relationship schema missing required field: %s", field)
@@ -347,6 +375,38 @@ func TestExtractionToolcallRelationshipSchema(t *testing.T) {
 
 	if confidence["maximum"] != 1.0 {
 		t.Error("Relationship confidence maximum should be 1.0")
+	}
+
+	// Check properties field constraints for relationships
+	propertiesField, ok := itemProperties["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Relationship properties field schema is missing")
+	}
+
+	if propertiesField["type"] != "object" {
+		t.Error("Relationship properties field should be of type object")
+	}
+
+	if propertiesField["minProperties"] != 1.0 {
+		t.Error("Relationship properties minProperties should be 1")
+	}
+
+	// Check weight field constraints
+	weight, ok := itemProperties["weight"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Weight field schema is missing")
+	}
+
+	if weight["type"] != "number" {
+		t.Error("Weight field should be of type number")
+	}
+
+	if weight["minimum"] != 0.0 {
+		t.Error("Weight minimum should be 0.0")
+	}
+
+	if weight["maximum"] != 1.0 {
+		t.Error("Weight maximum should be 1.0")
 	}
 
 	// Check required fields for relationships

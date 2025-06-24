@@ -1,13 +1,32 @@
 {
   "entities": [
     {
+      "id": "yao_runtime",
+      "name": "Yao Runtime",
+      "type": "TECHNOLOGY",
+      "labels": [
+        "execution environment",
+        "server-side"
+      ],
+      "description": "Yao Runtime is a server-side execution environment for running processes, specifically designed for executing internal and custom processes written in various languages.",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750766061,
+      "version": 1,
+      "status": "active"
+    },
+    {
       "id": "internal_process",
       "name": "Internal Process",
       "type": "CONCEPT",
-      "description": "Defined in Yao's source code, found in the Yao repository, and written in Go.",
+      "labels": [
+        "process",
+        "internal"
+      ],
+      "description": "Internal processes are defined in Yao's source code and executed directly, typically written in Go.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
@@ -15,10 +34,14 @@
       "id": "custom_process",
       "name": "Custom Process",
       "type": "CONCEPT",
-      "description": "Written in TypeScript or JavaScript, located in the `scripts` directory of a project, and executed using the V8 engine.",
+      "labels": [
+        "process",
+        "custom"
+      ],
+      "description": "Custom processes are written in TypeScript or JavaScript and located in the 'scripts' directory of a project, executed using the V8 engine.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
@@ -26,177 +49,207 @@
       "id": "grpc_plugin",
       "name": "GRPC Plugin",
       "type": "CONCEPT",
-      "description": "Written in any language, located in the `plugins` directory of a project.",
+      "labels": [
+        "plugin",
+        "grpc"
+      ],
+      "description": "GRPC Plugins can be written in any language and are located in the 'plugins' directory of a project.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "yao",
-      "name": "Yao",
-      "type": "TECHNOLOGY",
-      "description": "A system that includes a runtime environment for running processes, with specific commands and APIs.",
+      "id": "yao_respository",
+      "name": "Yao Repository",
+      "type": "LOCATION",
+      "labels": [
+        "repository",
+        "source code"
+      ],
+      "description": "The repository where Yao's source code, including internal processes, is stored.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "yao_runtime",
-      "name": "Yao Runtime",
-      "type": "TECHNOLOGY",
-      "description": "A server-side execution environment for running processes, specifically designed for Yao, and not supporting Node.js APIs.",
+      "id": "scripts_directory",
+      "name": "scripts directory",
+      "type": "LOCATION",
+      "labels": [
+        "directory",
+        "scripts"
+      ],
+      "description": "The directory in a project where custom processes written in TypeScript or JavaScript are stored.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "v8_engine",
-      "name": "V8 engine",
-      "type": "TECHNOLOGY",
-      "description": "A JavaScript engine used to execute Custom Processes in Yao.",
+      "id": "plugins_directory",
+      "name": "plugins directory",
+      "type": "LOCATION",
+      "labels": [
+        "directory",
+        "plugins"
+      ],
+      "description": "The directory in a project where GRPC plugins are stored.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "yao_run_command",
+      "name": "yao run command",
+      "type": "TECHNOLOGY",
+      "labels": [
+        "command",
+        "execution"
+      ],
+      "description": "A command used to execute processes in Yao Runtime.",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
       "id": "process_references",
       "name": "Process References",
-      "type": "CONCEPT",
-      "description": "Documentation or references for processes in Yao, accessible via a specific link.",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750758943,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "scripts_test_ts",
-      "name": "scripts/test.ts",
-      "type": "OBJECT",
-      "description": "A TypeScript file containing Custom Processes like Hello and Pets.",
+      "type": "DOCUMENT",
+      "labels": [
+        "documentation",
+        "reference"
+      ],
+      "description": "Documentation providing more information about processes in Yao.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "process_api",
-      "name": "Process",
-      "type": "TECHNOLOGY",
-      "description": "An API provided by Yao for executing processes, used in Custom Processes.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-14.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-14.txt",
-  "generated_at": "2025-06-24T17:55:53+08:00",
+  "generated_at": "2025-06-24T19:54:25+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
-      "type": "PART_OF",
+      "type": "DEFINED_IN",
       "start_node": "internal_process",
-      "end_node": "yao",
-      "description": "Internal Process is part of Yao's system, defined in its source code.",
+      "end_node": "yao_respository",
+      "properties": {
+        "context": "source code location"
+      },
+      "description": "Internal processes are defined in Yao's source code, which is located in the Yao repository.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "PART_OF",
+      "type": "LOCATED_IN",
       "start_node": "custom_process",
-      "end_node": "yao",
-      "description": "Custom Process is part of Yao's system, written in TypeScript or JavaScript.",
+      "end_node": "scripts_directory",
+      "properties": {
+        "context": "directory location"
+      },
+      "description": "Custom processes are located in the 'scripts' directory of a project.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "PART_OF",
+      "type": "LOCATED_IN",
       "start_node": "grpc_plugin",
-      "end_node": "yao",
-      "description": "GRPC Plugin is part of Yao's system, located in the `plugins` directory.",
+      "end_node": "plugins_directory",
+      "properties": {
+        "context": "directory location"
+      },
+      "description": "GRPC plugins are located in the 'plugins' directory of a project.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
+      "type": "EXECUTED_IN",
       "start_node": "custom_process",
       "end_node": "yao_runtime",
-      "description": "Custom Processes use the V8 engine for execution in Yao Runtime.",
+      "properties": {
+        "context": "execution environment"
+      },
+      "description": "Custom processes are executed in the Yao Runtime using the V8 engine.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "EXECUTED_IN",
+      "start_node": "internal_process",
+      "end_node": "yao_runtime",
+      "properties": {
+        "context": "execution environment"
+      },
+      "description": "Internal processes are executed directly in the Yao Runtime.",
+      "confidence": 0.9,
+      "weight": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
       "type": "USES",
-      "start_node": "process_api",
+      "start_node": "yao_run_command",
       "end_node": "yao_runtime",
-      "description": "Yao Runtime uses the Process API to execute processes.",
+      "properties": {
+        "context": "command usage"
+      },
+      "description": "The 'yao run' command is used to execute processes in Yao Runtime.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
       "type": "RELATED_TO",
       "start_node": "process_references",
-      "end_node": "yao",
-      "description": "Process References provide documentation for processes in Yao.",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750758943,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USES",
-      "start_node": "yao",
-      "end_node": "yao",
-      "description": "Yao uses the `yao run` command to execute processes.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758943,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "PART_OF",
-      "start_node": "yao",
       "end_node": "yao_runtime",
-      "description": "Yao Runtime is part of the Yao system, providing an execution environment.",
+      "properties": {
+        "context": "documentation"
+      },
+      "description": "Process References provide more information about processes in Yao Runtime.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758943,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 1629,
   "total_entities": 9,
-  "total_relationships": 8,
+  "total_relationships": 7,
   "usage": {
     "total_tokens": 231,
     "prompt_tokens": 231,
