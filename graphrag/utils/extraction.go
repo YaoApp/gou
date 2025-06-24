@@ -85,8 +85,68 @@ Common relationship types include but are not limited to:
 6. **Consider context**: Understand the domain and context of the text
 7. **Validate confidence**: Be honest about your confidence levels
 8. **Unique identification**: Each entity should have a unique, descriptive ID
+9. **🌐 Language consistency**: **CRITICAL** - Use the SAME LANGUAGE as the input text for all entity names, descriptions, and relationship descriptions. If the input is in Chinese, output in Chinese. If in English, output in English. If in Japanese, output in Japanese, etc. DO NOT translate or change the language of the extracted content.
 
-🚨 **FINAL REMINDER**: Your extractions will be used for knowledge graph construction. Accuracy and completeness are paramount!
+🚨 **FINAL REMINDER**: Your extractions will be used for knowledge graph construction. Accuracy, completeness, and LANGUAGE CONSISTENCY are paramount!
+`
+
+// Non-toolcall JSON format instructions
+const extractionJSONFormatInstructions = `
+
+## 🚨 CRITICAL JSON OUTPUT FORMAT REQUIREMENTS 🚨
+
+You MUST return your response as a valid JSON object with the following EXACT structure. Do NOT include any other text, explanations, or markdown formatting. Only return the JSON:
+
+{
+  "entities": [
+    {
+      "id": "unique_entity_id",
+      "name": "Entity Name",
+      "type": "ENTITY_TYPE",
+      "description": "Detailed description of the entity",
+      "confidence": 0.95
+    }
+  ],
+  "relationships": [
+    {
+      "start_node": "source_entity_id",
+      "end_node": "target_entity_id", 
+      "type": "RELATIONSHIP_TYPE",
+      "description": "Detailed description of the relationship",
+      "confidence": 0.90
+    }
+  ]
+}
+
+### MANDATORY FIELD REQUIREMENTS:
+
+**For each entity:**
+- ✅ "id": MUST be a unique, descriptive identifier (e.g., "john_smith_engineer", "google_company")
+- ✅ "name": MUST be the exact name as it appears in the text
+- ✅ "type": MUST be one of: PERSON, ORGANIZATION, LOCATION, CONCEPT, EVENT, OBJECT, DATE, TECHNOLOGY, or similar
+- ✅ "description": MUST provide context and details about the entity
+- ✅ "confidence": MUST be a number between 0.0 and 1.0
+
+**For each relationship:**
+- ✅ "start_node": MUST exactly match an entity "id" from the entities array
+- ✅ "end_node": MUST exactly match an entity "id" from the entities array  
+- ✅ "type": MUST be descriptive (e.g., "WORKS_FOR", "LOCATED_IN", "PART_OF", "CREATES")
+- ✅ "description": MUST explain the relationship with context
+- ✅ "confidence": MUST be a number between 0.0 and 1.0
+
+### ❌ CRITICAL VALIDATION RULES:
+- NO empty strings ("") for any field
+- NO missing required fields
+- NO relationships with non-existent entity IDs
+- NO duplicate entity IDs
+- NO invalid JSON syntax
+- NO additional text outside the JSON
+
+### 🌐 LANGUAGE CONSISTENCY:
+- Use the SAME LANGUAGE as the input text for ALL entity names, descriptions, and relationship descriptions
+- If input is Chinese, output Chinese. If English, output English. DO NOT translate!
+
+🚨 **FINAL WARNING**: Return ONLY the JSON object. Any additional text will cause parsing errors!
 `
 
 // ExtractionToolcallRaw is the toolcall for entity and relationship extraction
@@ -175,12 +235,18 @@ const ExtractionToolcallRaw = `
 // ExtractionToolcall is the extraction toolcall
 var ExtractionToolcall = GetExtractionToolcall()
 
-// ExtractionPrompt returns the extraction prompt
+// ExtractionPrompt returns the extraction prompt, with JSON format instructions for non-toolcall mode
 func ExtractionPrompt(userPrompt string) string {
 	if strings.TrimSpace(userPrompt) != "" {
 		return userPrompt
 	}
 	return extractionPromptTemplate
+}
+
+// ExtractionPromptWithJSONFormat returns the extraction prompt with JSON format instructions for non-toolcall mode
+func ExtractionPromptWithJSONFormat(userPrompt string) string {
+	basePrompt := ExtractionPrompt(userPrompt)
+	return basePrompt + extractionJSONFormatInstructions
 }
 
 // GetExtractionToolcall returns the extraction toolcall

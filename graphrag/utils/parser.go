@@ -30,6 +30,13 @@ func NewExtractionParser() *Parser {
 	return &Parser{Toolcall: true}
 }
 
+// SetToolcall sets the toolcall mode for the parser
+func (parser *Parser) SetToolcall(isToolcall bool) {
+	parser.mutex.Lock()
+	defer parser.mutex.Unlock()
+	parser.Toolcall = isToolcall
+}
+
 // ParseSemanticToolcall parses the final arguments of the toolcall
 func (parser *Parser) ParseSemanticToolcall(finalArguments string) ([]types.Position, error) {
 	parser.mutex.Lock()
@@ -70,62 +77,10 @@ func (parser *Parser) ParseSemanticPositions(chunkData []byte) ([]types.Position
 
 // ParseExtractionEntities parses a single streaming chunk for extraction and returns extraction progress
 func (parser *Parser) ParseExtractionEntities(chunkData []byte) ([]types.Node, []types.Relationship, error) {
-	parser.mutex.Lock()
-	defer parser.mutex.Unlock()
-
-	// Skip empty chunks
-	if len(chunkData) == 0 {
-		return nil, nil, nil
+	if parser.Toolcall {
+		return parser.parseExtractionToolcall(chunkData)
 	}
-
-	// Handle SSE format (data: prefix)
-	dataStr := string(chunkData)
-	if strings.HasPrefix(dataStr, "data: ") {
-		dataStr = strings.TrimPrefix(dataStr, "data: ")
-		if strings.TrimSpace(dataStr) == "[DONE]" {
-			parser.finished = true
-			return parser.tryParseExtractionToolcall()
-		}
-		chunkData = []byte(dataStr)
-	}
-
-	// Parse the streaming chunk JSON
-	var chunkObj map[string]interface{}
-	if err := jsoniter.Unmarshal(chunkData, &chunkObj); err != nil {
-		// If JSON parsing fails, return empty for now
-		return nil, nil, nil
-	}
-
-	// Extract tool call arguments from streaming response
-	choices, ok := chunkObj["choices"].([]interface{})
-	if !ok || len(choices) == 0 {
-		return nil, nil, nil
-	}
-
-	choice := choices[0].(map[string]interface{})
-	delta, ok := choice["delta"].(map[string]interface{})
-	if !ok {
-		return nil, nil, nil
-	}
-
-	// Check for tool calls in delta
-	if toolCalls, ok := delta["tool_calls"].([]interface{}); ok && len(toolCalls) > 0 {
-		toolCall := toolCalls[0].(map[string]interface{})
-		if function, ok := toolCall["function"].(map[string]interface{}); ok {
-			if args, ok := function["arguments"].(string); ok {
-				parser.Arguments += args
-			}
-		}
-	}
-
-	// Check finish reason
-	if finishReason, ok := choice["finish_reason"].(string); ok && finishReason != "" {
-		parser.finished = true
-		return parser.tryParseExtractionToolcall()
-	}
-
-	// If not finished, try to parse what we have so far
-	return parser.tryParseExtractionToolcall()
+	return parser.parseExtractionRegular(chunkData)
 }
 
 // parseSemanticToolcall parses a single streaming chunk returns a semantic toolcall
@@ -506,19 +461,29 @@ func (parser *Parser) tryParseExtractionToolcall() ([]types.Node, []types.Relati
 				}
 
 				if id, ok := entityMap["id"].(string); ok {
-					node.ID = id
+					node.ID = strings.TrimSpace(id)
 				}
 				if name, ok := entityMap["name"].(string); ok {
-					node.Name = name
+					node.Name = strings.TrimSpace(name)
 				}
 				if entityType, ok := entityMap["type"].(string); ok {
-					node.Type = entityType
+					node.Type = strings.TrimSpace(entityType)
 				}
 				if description, ok := entityMap["description"].(string); ok {
 					node.Description = description
 				}
 				if confidence, ok := entityMap["confidence"].(float64); ok {
 					node.Confidence = confidence
+				}
+
+				// Skip entities with empty required fields (ID, Name are required, Type gets default)
+				if node.ID == "" || node.Name == "" {
+					continue
+				}
+
+				// Provide default type if empty
+				if node.Type == "" {
+					node.Type = "ENTITY"
 				}
 
 				nodes = append(nodes, node)
@@ -538,19 +503,29 @@ func (parser *Parser) tryParseExtractionToolcall() ([]types.Node, []types.Relati
 				}
 
 				if startNode, ok := relationshipMap["start_node"].(string); ok {
-					relationship.StartNode = startNode
+					relationship.StartNode = strings.TrimSpace(startNode)
 				}
 				if endNode, ok := relationshipMap["end_node"].(string); ok {
-					relationship.EndNode = endNode
+					relationship.EndNode = strings.TrimSpace(endNode)
 				}
 				if relType, ok := relationshipMap["type"].(string); ok {
-					relationship.Type = relType
+					relationship.Type = strings.TrimSpace(relType)
 				}
 				if description, ok := relationshipMap["description"].(string); ok {
 					relationship.Description = description
 				}
 				if confidence, ok := relationshipMap["confidence"].(float64); ok {
 					relationship.Confidence = confidence
+				}
+
+				// Skip relationships with empty required fields (StartNode, EndNode are required, Type gets default)
+				if relationship.StartNode == "" || relationship.EndNode == "" {
+					continue
+				}
+
+				// Provide default type if empty
+				if relationship.Type == "" {
+					relationship.Type = "RELATED_TO"
 				}
 
 				relationships = append(relationships, relationship)
@@ -908,19 +883,16 @@ func findArrayEnd(jsonStr string, startPos int) int {
 
 		if escapeNext {
 			escapeNext = false
-			i++
 			continue
 		}
 
 		if char == '\\' {
 			escapeNext = true
-			i++
 			continue
 		}
 
 		if char == '"' {
 			inString = !inString
-			i++
 			continue
 		}
 
@@ -939,4 +911,392 @@ func findArrayEnd(jsonStr string, startPos int) int {
 	}
 
 	return -1
+}
+
+// ParseExtractionRegular parses entities and relationships from regular LLM content
+func (parser *Parser) ParseExtractionRegular(finalContent string) ([]types.Node, []types.Relationship, error) {
+	parser.mutex.Lock()
+	defer parser.mutex.Unlock()
+
+	parser.Content = finalContent
+
+	return parser.tryParseExtractionRegular()
+}
+
+// tryParseExtractionRegular attempts to parse entities and relationships from regular LLM content
+func (parser *Parser) tryParseExtractionRegular() ([]types.Node, []types.Relationship, error) {
+	content := strings.TrimSpace(parser.Content)
+	if len(content) < 10 {
+		return nil, nil, nil
+	}
+
+	// Step 1: Extract JSON from content
+	jsonStr := parser.extractExtractionJSON(content)
+	if jsonStr == "" {
+		return nil, nil, fmt.Errorf("no valid JSON found in content")
+	}
+
+	// Step 2: Try to parse directly first
+	var extractionData map[string]interface{}
+	err := jsoniter.UnmarshalFromString(jsonStr, &extractionData)
+	if err != nil {
+		// Step 3: Check if this is a format error (complete structure but invalid syntax)
+		// vs incomplete structure (missing brackets, etc.)
+		isFormatError := parser.isFormatErrorNotStructural(jsonStr)
+
+		if isFormatError {
+			// Try jsonrepair for format errors (trailing commas, unquoted keys, etc.)
+			repaired, errRepair := jsonrepair.JSONRepair(jsonStr)
+			if errRepair == nil {
+				// Try to parse repaired JSON
+				err = jsoniter.UnmarshalFromString(repaired, &extractionData)
+				if err == nil {
+					// Success with jsonrepair, use the repaired JSON
+					jsonStr = repaired
+				}
+			}
+		}
+
+		// Step 4: If still can't parse (either jsonrepair failed or this was structural issue),
+		// use toolcall's completeExtractionJSON for structural issues
+		if err != nil {
+			jsonStr = parser.completeExtractionJSON(jsonStr)
+
+			// Try to parse the completed JSON
+			err = jsoniter.UnmarshalFromString(jsonStr, &extractionData)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to parse JSON after all repair attempts: %w (final: %s)", err, jsonStr)
+			}
+		}
+	}
+
+	// Step 5: Parse entities and relationships - exactly the same as toolcall mode
+	var nodes []types.Node
+	var relationships []types.Relationship
+
+	// Parse entities (same as toolcall mode)
+	if entitiesRaw, ok := extractionData["entities"].([]interface{}); ok {
+		for _, entityRaw := range entitiesRaw {
+			if entityMap, ok := entityRaw.(map[string]interface{}); ok {
+				node := types.Node{
+					ExtractionMethod: types.ExtractionMethodLLM,
+					CreatedAt:        time.Now().Unix(),
+					Version:          1,
+					Status:           types.EntityStatusActive,
+				}
+
+				if id, ok := entityMap["id"].(string); ok {
+					node.ID = strings.TrimSpace(id)
+				}
+				if name, ok := entityMap["name"].(string); ok {
+					node.Name = strings.TrimSpace(name)
+				}
+				if entityType, ok := entityMap["type"].(string); ok {
+					node.Type = strings.TrimSpace(entityType)
+				}
+				if description, ok := entityMap["description"].(string); ok {
+					node.Description = description
+				}
+				if confidence, ok := entityMap["confidence"].(float64); ok {
+					node.Confidence = confidence
+				}
+
+				// Skip entities with empty required fields (ID, Name are required, Type gets default)
+				if node.ID == "" || node.Name == "" {
+					continue
+				}
+
+				// Provide default type if empty
+				if node.Type == "" {
+					node.Type = "ENTITY"
+				}
+
+				nodes = append(nodes, node)
+			}
+		}
+	}
+
+	// Parse relationships (same as toolcall mode)
+	if relationshipsRaw, ok := extractionData["relationships"].([]interface{}); ok {
+		for _, relationshipRaw := range relationshipsRaw {
+			if relationshipMap, ok := relationshipRaw.(map[string]interface{}); ok {
+				relationship := types.Relationship{
+					ExtractionMethod: types.ExtractionMethodLLM,
+					CreatedAt:        time.Now().Unix(),
+					Version:          1,
+					Status:           types.EntityStatusActive,
+				}
+
+				if startNode, ok := relationshipMap["start_node"].(string); ok {
+					relationship.StartNode = strings.TrimSpace(startNode)
+				}
+				if endNode, ok := relationshipMap["end_node"].(string); ok {
+					relationship.EndNode = strings.TrimSpace(endNode)
+				}
+				if relType, ok := relationshipMap["type"].(string); ok {
+					relationship.Type = strings.TrimSpace(relType)
+				}
+				if description, ok := relationshipMap["description"].(string); ok {
+					relationship.Description = description
+				}
+				if confidence, ok := relationshipMap["confidence"].(float64); ok {
+					relationship.Confidence = confidence
+				}
+
+				// Skip relationships with empty required fields (StartNode, EndNode are required, Type gets default)
+				if relationship.StartNode == "" || relationship.EndNode == "" {
+					continue
+				}
+
+				// Provide default type if empty
+				if relationship.Type == "" {
+					relationship.Type = "RELATED_TO"
+				}
+
+				relationships = append(relationships, relationship)
+			}
+		}
+	}
+
+	return nodes, relationships, nil
+}
+
+// isFormatErrorNotStructural checks if JSON error is due to format issues rather than incomplete structure
+func (parser *Parser) isFormatErrorNotStructural(jsonStr string) bool {
+	// Check for common format errors that jsonrepair can fix:
+	// 1. Trailing commas
+	if strings.Contains(jsonStr, ",}") || strings.Contains(jsonStr, ",]") {
+		return true
+	}
+
+	// 2. Unquoted keys (simple heuristic: contains "entities:" or "relationships:")
+	if strings.Contains(jsonStr, "entities:") || strings.Contains(jsonStr, "relationships:") {
+		return true
+	}
+
+	// 3. Check if structure looks complete (has matching braces for main object)
+	// Count opening and closing braces
+	openBraces := strings.Count(jsonStr, "{")
+	closeBraces := strings.Count(jsonStr, "}")
+
+	// If braces are balanced, it's likely a format error, not structural
+	if openBraces == closeBraces && openBraces > 0 {
+		return true
+	}
+
+	// If significantly unbalanced, it's likely incomplete structure
+	return false
+}
+
+// extractExtractionJSON extracts JSON from text content for extraction
+func (parser *Parser) extractExtractionJSON(text string) string {
+	// Remove markdown code blocks if present
+	text = strings.TrimSpace(text)
+	text = strings.ReplaceAll(text, "```json", "")
+	text = strings.ReplaceAll(text, "```", "")
+	text = strings.TrimSpace(text)
+
+	// If the text looks like JSON (starts with { and contains entities or relationships), return it directly
+	if strings.HasPrefix(text, "{") && (strings.Contains(text, `"entities"`) || strings.Contains(text, `entities:`)) {
+		return text
+	}
+
+	// Otherwise, try to find JSON objects in the text
+	jsonObjects := parser.extractAllJSONObjects(text)
+
+	// Find the JSON object that contains entities or relationships
+	for _, jsonObj := range jsonObjects {
+		if strings.Contains(jsonObj, `"entities"`) || strings.Contains(jsonObj, `"relationships"`) {
+			return jsonObj
+		}
+	}
+
+	// If no JSON with entities/relationships found, return the first valid JSON
+	if len(jsonObjects) > 0 {
+		return jsonObjects[0]
+	}
+
+	// If still no JSON found, try to extract from mixed text (like "Here is the result: {json} end")
+	// Look for { and try to find the matching }
+	startPos := strings.Index(text, "{")
+	if startPos != -1 {
+		// Find the last } in the text
+		endPos := strings.LastIndex(text, "}")
+		if endPos > startPos {
+			candidate := text[startPos : endPos+1]
+			if strings.Contains(candidate, `"entities"`) || strings.Contains(candidate, `entities:`) {
+				return candidate
+			}
+		}
+	}
+
+	return ""
+}
+
+// extractAllJSONObjects extracts all JSON objects from text
+func (parser *Parser) extractAllJSONObjects(text string) []string {
+	var jsonObjects []string
+
+	for i := 0; i < len(text); i++ {
+		if text[i] == '{' {
+			// Find matching closing brace
+			braceCount := 0
+			endPos := -1
+			inString := false
+			escapeNext := false
+
+			for j := i; j < len(text); j++ {
+				char := text[j]
+
+				if escapeNext {
+					escapeNext = false
+					continue
+				}
+				if char == '\\' {
+					escapeNext = true
+					continue
+				}
+				if char == '"' {
+					inString = !inString
+					continue
+				}
+				if inString {
+					continue
+				}
+
+				if char == '{' {
+					braceCount++
+				} else if char == '}' {
+					braceCount--
+					if braceCount == 0 {
+						endPos = j
+						break
+					}
+				}
+			}
+
+			if endPos != -1 {
+				jsonObj := strings.TrimSpace(text[i : endPos+1])
+				jsonObjects = append(jsonObjects, jsonObj)
+				i = endPos // Skip to end of this JSON object
+			}
+		}
+	}
+
+	return jsonObjects
+}
+
+// parseExtractionToolcall parses a single streaming chunk for toolcall-based extraction
+func (parser *Parser) parseExtractionToolcall(chunkData []byte) ([]types.Node, []types.Relationship, error) {
+	parser.mutex.Lock()
+	defer parser.mutex.Unlock()
+
+	// Skip empty chunks
+	if len(chunkData) == 0 {
+		return nil, nil, nil
+	}
+
+	// Handle SSE format (data: prefix)
+	dataStr := string(chunkData)
+	if strings.HasPrefix(dataStr, "data: ") {
+		dataStr = strings.TrimPrefix(dataStr, "data: ")
+		if strings.TrimSpace(dataStr) == "[DONE]" {
+			parser.finished = true
+			return parser.tryParseExtractionToolcall()
+		}
+		chunkData = []byte(dataStr)
+	}
+
+	// Parse the streaming chunk JSON
+	var chunkObj map[string]interface{}
+	if err := jsoniter.Unmarshal(chunkData, &chunkObj); err != nil {
+		// If JSON parsing fails, return empty for now
+		return nil, nil, nil
+	}
+
+	// Extract tool call arguments from streaming response
+	choices, ok := chunkObj["choices"].([]interface{})
+	if !ok || len(choices) == 0 {
+		return nil, nil, nil
+	}
+
+	choice := choices[0].(map[string]interface{})
+	delta, ok := choice["delta"].(map[string]interface{})
+	if !ok {
+		return nil, nil, nil
+	}
+
+	// Check for tool calls in delta
+	if toolCalls, ok := delta["tool_calls"].([]interface{}); ok && len(toolCalls) > 0 {
+		toolCall := toolCalls[0].(map[string]interface{})
+		if function, ok := toolCall["function"].(map[string]interface{}); ok {
+			if args, ok := function["arguments"].(string); ok {
+				parser.Arguments += args
+			}
+		}
+	}
+
+	// Check finish reason
+	if finishReason, ok := choice["finish_reason"].(string); ok && finishReason != "" {
+		parser.finished = true
+		return parser.tryParseExtractionToolcall()
+	}
+
+	// If not finished, try to parse what we have so far
+	return parser.tryParseExtractionToolcall()
+}
+
+// parseExtractionRegular parses a single streaming chunk for regular (non-toolcall) extraction
+func (parser *Parser) parseExtractionRegular(chunkData []byte) ([]types.Node, []types.Relationship, error) {
+	parser.mutex.Lock()
+	defer parser.mutex.Unlock()
+
+	// Skip empty chunks
+	if len(chunkData) == 0 {
+		return nil, nil, nil
+	}
+
+	// Handle SSE format (data: prefix)
+	dataStr := string(chunkData)
+	if strings.HasPrefix(dataStr, "data: ") {
+		dataStr = strings.TrimPrefix(dataStr, "data: ")
+		if strings.TrimSpace(dataStr) == "[DONE]" {
+			parser.finished = true
+			return parser.tryParseExtractionRegular()
+		}
+		chunkData = []byte(dataStr)
+	}
+
+	// Parse the streaming chunk JSON
+	var chunkObj map[string]interface{}
+	if err := jsoniter.Unmarshal(chunkData, &chunkObj); err != nil {
+		// If JSON parsing fails, return empty for now
+		return nil, nil, nil
+	}
+
+	// Extract content from streaming response
+	choices, ok := chunkObj["choices"].([]interface{})
+	if !ok || len(choices) == 0 {
+		return nil, nil, nil
+	}
+
+	choice := choices[0].(map[string]interface{})
+	delta, ok := choice["delta"].(map[string]interface{})
+	if !ok {
+		return nil, nil, nil
+	}
+
+	// Extract content from delta
+	if content, ok := delta["content"].(string); ok {
+		parser.Content += content
+	}
+
+	// Check finish reason
+	if finishReason, ok := choice["finish_reason"].(string); ok && finishReason != "" {
+		parser.finished = true
+		return parser.tryParseExtractionRegular()
+	}
+
+	// If not finished, try to parse what we have so far
+	return parser.tryParseExtractionRegular()
 }

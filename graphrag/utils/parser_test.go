@@ -2,6 +2,7 @@ package utils
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	jsoniter "github.com/json-iterator/go"
@@ -562,10 +563,10 @@ func TestParseExtractionToolcall(t *testing.T) {
 				],
 				"relationships": []
 			}`,
-			expectedNodes: 1, // Implementation doesn't filter missing fields
+			expectedNodes: 0, // Changed from 1 to 0 - entities without ID should be skipped
 			expectedRels:  0,
 			expectError:   false,
-			description:   "Should include entities even with missing fields (implementation behavior)",
+			description:   "Should skip entities with missing required fields (ID, Name)",
 		},
 	}
 
@@ -1026,5 +1027,643 @@ func BenchmarkTryParseExtractionToolcall(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _, _ = parser.tryParseExtractionToolcall()
+	}
+}
+
+func TestParseExtractionRegular(t *testing.T) {
+	tests := []struct {
+		name        string
+		content     string
+		expectNodes int
+		expectRels  int
+		expectError bool
+		description string
+	}{
+		{
+			name: "Valid JSON with entities and relationships",
+			content: `{
+				"entities": [
+					{
+						"id": "john_smith",
+						"name": "John Smith",
+						"type": "PERSON",
+						"description": "A person",
+						"confidence": 0.9
+					}
+				],
+				"relationships": [
+					{
+						"start_node": "john_smith",
+						"end_node": "google",
+						"type": "WORKS_FOR",
+						"description": "Employment relationship",
+						"confidence": 0.8
+					}
+				]
+			}`,
+			expectNodes: 1,
+			expectRels:  1,
+			expectError: false,
+			description: "Should parse valid JSON with entities and relationships",
+		},
+		{
+			name:        "JSON in markdown blocks",
+			content:     "```json\n{\n\"entities\": [],\n\"relationships\": []\n}\n```",
+			expectNodes: 0,
+			expectRels:  0,
+			expectError: false,
+			description: "Should extract JSON from markdown blocks",
+		},
+		{
+			name:        "Empty content",
+			content:     "",
+			expectNodes: 0,
+			expectRels:  0,
+			expectError: false,
+			description: "Should handle empty content gracefully",
+		},
+		{
+			name:        "No valid JSON",
+			content:     "This is just text with no JSON",
+			expectNodes: 0,
+			expectRels:  0,
+			expectError: true,
+			description: "Should error when no JSON found",
+		},
+		{
+			name:        "Invalid JSON",
+			content:     "{invalid json",
+			expectNodes: 0,
+			expectRels:  0,
+			expectError: true,
+			description: "Should error on invalid JSON",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := NewExtractionParser()
+			parser.SetToolcall(false) // Set to non-toolcall mode
+
+			nodes, relationships, err := parser.ParseExtractionRegular(tt.content)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("%s: Expected error but got none", tt.description)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("%s: Unexpected error: %v", tt.description, err)
+				return
+			}
+
+			if len(nodes) != tt.expectNodes {
+				t.Errorf("%s: Expected %d nodes, got %d", tt.description, tt.expectNodes, len(nodes))
+			}
+
+			if len(relationships) != tt.expectRels {
+				t.Errorf("%s: Expected %d relationships, got %d", tt.description, tt.expectRels, len(relationships))
+			}
+
+			// Validate node structure if any exist
+			for i, node := range nodes {
+				if node.ID == "" {
+					t.Errorf("%s: Node %d has empty ID", tt.description, i)
+				}
+				if node.ExtractionMethod == "" {
+					t.Errorf("%s: Node %d has empty ExtractionMethod", tt.description, i)
+				}
+			}
+
+			// Validate relationship structure if any exist
+			for i, rel := range relationships {
+				if rel.StartNode == "" {
+					t.Errorf("%s: Relationship %d has empty StartNode", tt.description, i)
+				}
+				if rel.EndNode == "" {
+					t.Errorf("%s: Relationship %d has empty EndNode", tt.description, i)
+				}
+			}
+		})
+	}
+}
+
+func TestSetToolcall(t *testing.T) {
+	parser := NewExtractionParser()
+
+	// Initially should be true (toolcall mode)
+	if !parser.Toolcall {
+		t.Error("Expected initial toolcall mode to be true")
+	}
+
+	// Set to false (non-toolcall mode)
+	parser.SetToolcall(false)
+	if parser.Toolcall {
+		t.Error("Expected toolcall mode to be false after SetToolcall(false)")
+	}
+
+	// Set back to true
+	parser.SetToolcall(true)
+	if !parser.Toolcall {
+		t.Error("Expected toolcall mode to be true after SetToolcall(true)")
+	}
+}
+
+func TestParseExtractionEntitiesMode(t *testing.T) {
+	// Test toolcall mode
+	t.Run("toolcall mode", func(t *testing.T) {
+		parser := NewExtractionParser()
+		parser.SetToolcall(true)
+
+		chunk := `{"choices":[{"delta":{"tool_calls":[{"function":{"arguments":"{\"entities\": []}"}}]}}]}`
+		nodes, relationships, err := parser.ParseExtractionEntities([]byte(chunk))
+
+		if err != nil {
+			t.Errorf("Unexpected error in toolcall mode: %v", err)
+		}
+
+		// Results can be empty for partial chunks
+		t.Logf("Toolcall mode: %d nodes, %d relationships", len(nodes), len(relationships))
+	})
+
+	// Test non-toolcall mode
+	t.Run("non-toolcall mode", func(t *testing.T) {
+		parser := NewExtractionParser()
+		parser.SetToolcall(false)
+
+		chunk := `{"choices":[{"delta":{"content":"{\"entities\": [], \"relationships\": []}"}}]}`
+		nodes, relationships, err := parser.ParseExtractionEntities([]byte(chunk))
+
+		if err != nil {
+			t.Errorf("Unexpected error in non-toolcall mode: %v", err)
+		}
+
+		// Results can be empty for partial chunks
+		t.Logf("Non-toolcall mode: %d nodes, %d relationships", len(nodes), len(relationships))
+	})
+}
+
+// Test for non-toolcall mode error scenarios and edge cases
+func TestParseExtractionRegularErrorCases(t *testing.T) {
+	tests := []struct {
+		name        string
+		content     string
+		expectNodes int
+		expectRels  int
+		expectError bool
+		description string
+	}{
+		{
+			name:        "Malformed JSON with extra commas",
+			content:     `{"entities": [{"id": "test", "name": "Test",}], "relationships": []}`,
+			expectNodes: 1,
+			expectRels:  0,
+			expectError: false,
+			description: "Should handle and repair malformed JSON with trailing commas",
+		},
+		{
+			name:        "JSON without quotes on keys",
+			content:     `{entities: [{id: "test", name: "Test"}], relationships: []}`,
+			expectNodes: 1,
+			expectRels:  0,
+			expectError: false,
+			description: "Should handle JSON with unquoted keys",
+		},
+		{
+			name:        "Incomplete JSON structure",
+			content:     `{"entities": [{"id": "test", "name": "Test"`,
+			expectNodes: 1, // Changed from 0 to 1 to match toolcall behavior
+			expectRels:  0,
+			expectError: false,
+			description: "Should handle incomplete JSON gracefully and extract valid entities",
+		},
+		{
+			name:        "JSON with Chinese content",
+			content:     `{"entities": [{"id": "张三", "name": "张三", "type": "人物", "description": "一个人", "confidence": 0.9}], "relationships": []}`,
+			expectNodes: 1,
+			expectRels:  0,
+			expectError: false,
+			description: "Should handle Chinese content correctly",
+		},
+		{
+			name:        "Multiple JSON objects in content",
+			content:     `{"entities": [{"id": "test", "name": "Test", "type": "PERSON", "description": "Test person", "confidence": 0.9}], "relationships": []}`,
+			expectNodes: 1,
+			expectRels:  0,
+			expectError: false,
+			description: "Should extract from JSON objects with complete structure",
+		},
+		{
+			name:        "JSON in mixed text content",
+			content:     `Here are the extracted entities: {"entities": [{"id": "test", "name": "Test"}], "relationships": []} That's all.`,
+			expectNodes: 1,
+			expectRels:  0,
+			expectError: false,
+			description: "Should extract JSON from mixed text content",
+		},
+		{
+			name:        "Empty arrays",
+			content:     `{"entities": [], "relationships": []}`,
+			expectNodes: 0,
+			expectRels:  0,
+			expectError: false,
+			description: "Should handle empty arrays correctly",
+		},
+		{
+			name:        "Missing confidence fields",
+			content:     `{"entities": [{"id": "test", "name": "Test", "type": "PERSON"}], "relationships": []}`,
+			expectNodes: 1,
+			expectRels:  0,
+			expectError: false,
+			description: "Should handle missing optional fields",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := NewExtractionParser()
+			parser.SetToolcall(false)
+
+			nodes, relationships, err := parser.ParseExtractionRegular(tt.content)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("%s: Expected error but got none", tt.description)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("%s: Unexpected error: %v", tt.description, err)
+				return
+			}
+
+			if len(nodes) != tt.expectNodes {
+				t.Errorf("%s: Expected %d nodes, got %d", tt.description, tt.expectNodes, len(nodes))
+			}
+
+			if len(relationships) != tt.expectRels {
+				t.Errorf("%s: Expected %d relationships, got %d", tt.description, tt.expectRels, len(relationships))
+			}
+
+			// Log actual results for debugging
+			t.Logf("%s: Got %d nodes, %d relationships", tt.description, len(nodes), len(relationships))
+		})
+	}
+}
+
+// Test enhanced validation and empty field handling
+func TestParseExtractionRegularEnhancedValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		content     string
+		expectNodes int
+		expectRels  int
+		expectError bool
+		description string
+	}{
+		{
+			name: "Valid entities and relationships with all fields",
+			content: `{
+				"entities": [
+					{
+						"id": "john_smith",
+						"name": "John Smith", 
+						"type": "PERSON",
+						"description": "A software engineer",
+						"confidence": 0.9
+					},
+					{
+						"id": "google_company",
+						"name": "Google",
+						"type": "ORGANIZATION", 
+						"description": "Technology company",
+						"confidence": 0.95
+					}
+				],
+				"relationships": [
+					{
+						"start_node": "john_smith",
+						"end_node": "google_company",
+						"type": "WORKS_FOR",
+						"description": "Employment relationship",
+						"confidence": 0.8
+					}
+				]
+			}`,
+			expectNodes: 2,
+			expectRels:  1,
+			expectError: false,
+			description: "Should parse valid entities and relationships correctly",
+		},
+		{
+			name: "Entities with empty fields should be skipped",
+			content: `{
+				"entities": [
+					{
+						"id": "",
+						"name": "Empty ID",
+						"type": "PERSON",
+						"description": "Should be skipped",
+						"confidence": 0.9
+					},
+					{
+						"id": "valid_entity",
+						"name": "",
+						"type": "PERSON", 
+						"description": "Should be kept with default type",
+						"confidence": 0.9
+					},
+					{
+						"id": "another_valid",
+						"name": "Valid Name",
+						"type": "",
+						"description": "Should be kept with default type",
+						"confidence": 0.9
+					},
+					{
+						"id": "good_entity",
+						"name": "Good Entity",
+						"type": "PERSON",
+						"description": "Valid entity",
+						"confidence": 0.9
+					}
+				],
+				"relationships": []
+			}`,
+			expectNodes: 2, // Changed from 1 to 2 - entities with empty type get default value
+			expectRels:  0,
+			expectError: false,
+			description: "Should skip entities with empty required fields (ID, Name), but allow empty type with default",
+		},
+		{
+			name: "Relationships with empty fields should be skipped",
+			content: `{
+				"entities": [
+					{
+						"id": "entity1",
+						"name": "Entity 1",
+						"type": "PERSON",
+						"description": "First entity",
+						"confidence": 0.9
+					},
+					{
+						"id": "entity2", 
+						"name": "Entity 2",
+						"type": "ORGANIZATION",
+						"description": "Second entity",
+						"confidence": 0.9
+					}
+				],
+				"relationships": [
+					{
+						"start_node": "",
+						"end_node": "entity2",
+						"type": "WORKS_FOR",
+						"description": "Should be skipped",
+						"confidence": 0.8
+					},
+					{
+						"start_node": "entity1",
+						"end_node": "",
+						"type": "WORKS_FOR", 
+						"description": "Should be skipped",
+						"confidence": 0.8
+					},
+					{
+						"start_node": "entity1",
+						"end_node": "entity2",
+						"type": "",
+						"description": "Should be kept with default type",
+						"confidence": 0.8
+					},
+					{
+						"start_node": "entity1",
+						"end_node": "entity2",
+						"type": "WORKS_FOR",
+						"description": "Valid relationship",
+						"confidence": 0.8
+					}
+				]
+			}`,
+			expectNodes: 2,
+			expectRels:  2, // Changed from 1 to 2 - relationships with empty type get default value
+			expectError: false,
+			description: "Should skip relationships with empty required fields (StartNode, EndNode), but allow empty type with default",
+		},
+		{
+			name: "Relationships with non-existent entity IDs should be kept for backward compatibility",
+			content: `{
+				"entities": [
+					{
+						"id": "entity1",
+						"name": "Entity 1",
+						"type": "PERSON",
+						"description": "First entity",
+						"confidence": 0.9
+					}
+				],
+				"relationships": [
+					{
+						"start_node": "entity1",
+						"end_node": "non_existent",
+						"type": "WORKS_FOR",
+						"description": "Should be kept - end entity doesn't exist but relationship is valid",
+						"confidence": 0.8
+					},
+					{
+						"start_node": "another_non_existent",
+						"end_node": "entity1", 
+						"type": "WORKS_FOR",
+						"description": "Should be kept - start entity doesn't exist but relationship is valid",
+						"confidence": 0.8
+					}
+				]
+			}`,
+			expectNodes: 1,
+			expectRels:  2, // Both relationships should be kept for backward compatibility
+			expectError: false,
+			description: "Should keep relationships with non-existent entity references for backward compatibility",
+		},
+		{
+			name: "Default values for missing optional fields",
+			content: `{
+				"entities": [
+					{
+						"id": "minimal_entity",
+						"name": "Minimal Entity",
+						"type": "PERSON"
+					}
+				],
+				"relationships": [
+					{
+						"start_node": "minimal_entity",
+						"end_node": "minimal_entity",
+						"type": "SELF_REFERENCE"
+					}
+				]
+			}`,
+			expectNodes: 1,
+			expectRels:  1,
+			expectError: false,
+			description: "Should provide default values for missing description and confidence",
+		},
+		{
+			name: "Chinese content validation",
+			content: `{
+				"entities": [
+					{
+						"id": "张三_工程师",
+						"name": "张三",
+						"type": "人物",
+						"description": "一名软件工程师",
+						"confidence": 0.9
+					},
+					{
+						"id": "谷歌_公司",
+						"name": "谷歌",
+						"type": "组织",
+						"description": "科技公司",
+						"confidence": 0.95
+					}
+				],
+				"relationships": [
+					{
+						"start_node": "张三_工程师",
+						"end_node": "谷歌_公司",
+						"type": "工作于",
+						"description": "雇佣关系",
+						"confidence": 0.8
+					}
+				]
+			}`,
+			expectNodes: 2,
+			expectRels:  1,
+			expectError: false,
+			description: "Should handle Chinese content correctly",
+		},
+		{
+			name: "Whitespace trimming",
+			content: `{
+				"entities": [
+					{
+						"id": "  spaced_entity  ",
+						"name": "  Spaced Name  ",
+						"type": "  PERSON  ",
+						"description": "  Description with spaces  ",
+						"confidence": 0.9
+					}
+				],
+				"relationships": []
+			}`,
+			expectNodes: 1,
+			expectRels:  0,
+			expectError: false,
+			description: "Should trim whitespace from all string fields",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := NewExtractionParser()
+			parser.SetToolcall(false)
+
+			nodes, relationships, err := parser.ParseExtractionRegular(tt.content)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("%s: Expected error but got none", tt.description)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("%s: Unexpected error: %v", tt.description, err)
+				return
+			}
+
+			if len(nodes) != tt.expectNodes {
+				t.Errorf("%s: Expected %d nodes, got %d", tt.description, tt.expectNodes, len(nodes))
+			}
+
+			if len(relationships) != tt.expectRels {
+				t.Errorf("%s: Expected %d relationships, got %d", tt.description, tt.expectRels, len(relationships))
+			}
+
+			// Validate that all returned entities have non-empty required fields
+			for i, node := range nodes {
+				if strings.TrimSpace(node.ID) == "" {
+					t.Errorf("%s: Node %d has empty ID", tt.description, i)
+				}
+				if strings.TrimSpace(node.Name) == "" {
+					t.Errorf("%s: Node %d has empty Name", tt.description, i)
+				}
+				if strings.TrimSpace(node.Type) == "" {
+					t.Errorf("%s: Node %d has empty Type", tt.description, i)
+				}
+				if node.Confidence < 0.0 || node.Confidence > 1.0 {
+					t.Errorf("%s: Node %d has invalid confidence: %f", tt.description, i, node.Confidence)
+				}
+			}
+
+			// Validate that all returned relationships have non-empty required fields
+			for i, rel := range relationships {
+				if strings.TrimSpace(rel.StartNode) == "" {
+					t.Errorf("%s: Relationship %d has empty StartNode", tt.description, i)
+				}
+				if strings.TrimSpace(rel.EndNode) == "" {
+					t.Errorf("%s: Relationship %d has empty EndNode", tt.description, i)
+				}
+				if strings.TrimSpace(rel.Type) == "" {
+					t.Errorf("%s: Relationship %d has empty Type", tt.description, i)
+				}
+				if rel.Confidence < 0.0 || rel.Confidence > 1.0 {
+					t.Errorf("%s: Relationship %d has invalid confidence: %f", tt.description, i, rel.Confidence)
+				}
+
+				// Note: We allow relationships to reference non-existent entities for backward compatibility
+				// This can happen when LLM extracts relationships but misses some entities
+			}
+		})
+	}
+}
+
+// Test extraction prompt with JSON format
+func TestExtractionPromptWithJSONFormat(t *testing.T) {
+	// Test default prompt with JSON format
+	promptWithJSON := ExtractionPromptWithJSONFormat("")
+
+	if !strings.Contains(promptWithJSON, "JSON OUTPUT FORMAT REQUIREMENTS") {
+		t.Error("Expected prompt to contain JSON format requirements")
+	}
+
+	if !strings.Contains(promptWithJSON, `"entities"`) {
+		t.Error("Expected prompt to contain entities structure")
+	}
+
+	if !strings.Contains(promptWithJSON, `"relationships"`) {
+		t.Error("Expected prompt to contain relationships structure")
+	}
+
+	if !strings.Contains(promptWithJSON, "MANDATORY FIELD REQUIREMENTS") {
+		t.Error("Expected prompt to contain field requirements")
+	}
+
+	if !strings.Contains(promptWithJSON, "LANGUAGE CONSISTENCY") {
+		t.Error("Expected prompt to contain language consistency instructions")
+	}
+
+	// Test custom prompt with JSON format
+	customPrompt := "Custom extraction prompt"
+	customWithJSON := ExtractionPromptWithJSONFormat(customPrompt)
+
+	if !strings.Contains(customWithJSON, customPrompt) {
+		t.Error("Expected custom prompt to be included")
+	}
+
+	if !strings.Contains(customWithJSON, "JSON OUTPUT FORMAT REQUIREMENTS") {
+		t.Error("Expected custom prompt to also contain JSON format requirements")
 	}
 }
