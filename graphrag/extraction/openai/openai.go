@@ -127,14 +127,9 @@ func NewOpenaiWithDefaults(connectorName string) (*Openai, error) {
 }
 
 // ExtractDocuments extract entities and relationships from documents with optional progress callback
-func (e *Openai) ExtractDocuments(ctx context.Context, texts []string, callback ...types.ExtractionProgress) (*types.ExtractionResults, error) {
+func (e *Openai) ExtractDocuments(ctx context.Context, texts []string, callback ...types.ExtractionProgress) ([]*types.ExtractionResult, error) {
 	if len(texts) == 0 {
-		return &types.ExtractionResults{
-			Usage:         types.ExtractionUsage{},
-			Model:         e.Model,
-			Nodes:         []types.Node{},
-			Relationships: []types.Relationship{},
-		}, nil
+		return []*types.ExtractionResult{}, nil
 	}
 
 	var cb types.ExtractionProgress
@@ -152,7 +147,7 @@ func (e *Openai) ExtractDocuments(ctx context.Context, texts []string, callback 
 	}
 
 	// Use concurrent requests for better performance
-	results := make([]*types.ExtractionResults, len(texts))
+	results := make([]*types.ExtractionResult, len(texts))
 	errors := make([]error, len(texts))
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -318,22 +313,15 @@ func (e *Openai) ExtractDocuments(ctx context.Context, texts []string, callback 
 		})
 	}
 
-	return &types.ExtractionResults{
-		Usage: types.ExtractionUsage{
-			TotalTokens:  totalTokens,
-			PromptTokens: promptTokens,
-			TotalTexts:   successCount, // Only count successful extractions
-		},
-		Model:         e.Model,
-		Nodes:         allNodes,
-		Relationships: allRelationships,
-	}, nil
+	// Return results array with same length as input texts
+	// Failed extractions will have nil at corresponding index
+	return results, nil
 }
 
 // ExtractQuery extract entities and relationships from a single text with optional progress callback
-func (e *Openai) ExtractQuery(ctx context.Context, text string, callback ...types.ExtractionProgress) (*types.ExtractionResults, error) {
+func (e *Openai) ExtractQuery(ctx context.Context, text string, callback ...types.ExtractionProgress) (*types.ExtractionResult, error) {
 	if text == "" {
-		return &types.ExtractionResults{
+		return &types.ExtractionResult{
 			Usage:         types.ExtractionUsage{},
 			Model:         e.Model,
 			Nodes:         []types.Node{},
@@ -398,7 +386,7 @@ func (e *Openai) ExtractQuery(ctx context.Context, text string, callback ...type
 	}
 
 	// Execute with retry logic using streaming
-	var extractionResult *types.ExtractionResults
+	var extractionResult *types.ExtractionResult
 	var err error
 	var lastEntityCount, lastRelationshipCount int // Track previous counts
 
@@ -453,7 +441,7 @@ func (e *Openai) ExtractQuery(ctx context.Context, text string, callback ...type
 							TotalTexts:   1,
 						}
 
-						extractionResult = &types.ExtractionResults{
+						extractionResult = &types.ExtractionResult{
 							Usage:         usage,
 							Model:         e.Model,
 							Nodes:         nodes,
@@ -486,7 +474,7 @@ func (e *Openai) ExtractQuery(ctx context.Context, text string, callback ...type
 							TotalTexts:   1,
 						}
 
-						extractionResult = &types.ExtractionResults{
+						extractionResult = &types.ExtractionResult{
 							Usage:         usage,
 							Model:         e.Model,
 							Nodes:         nodes,

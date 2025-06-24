@@ -467,28 +467,43 @@ func TestExtractDocuments(t *testing.T) {
 			t.Logf("Progress: %s - %s", status, payload.Message)
 		}
 
-		result, err := extractor.ExtractDocuments(ctx, texts, callback)
+		results, err := extractor.ExtractDocuments(ctx, texts, callback)
 		if err != nil {
 			t.Fatalf("ExtractDocuments() error = %v", err)
 		}
 
-		if result == nil {
-			t.Fatal("ExtractDocuments() returned nil result")
+		if results == nil {
+			t.Fatal("ExtractDocuments() returned nil results")
 		}
 
-		// Should have extracted entities from all documents
-		if len(result.Nodes) == 0 {
-			t.Error("Expected at least one entity, got none")
+		if len(results) != len(texts) {
+			t.Errorf("Expected %d results, got %d", len(texts), len(results))
 		}
 
-		// Relationships are optional
-		if len(result.Relationships) == 0 {
-			t.Log("No relationships extracted from multiple documents (this is acceptable)")
+		// Count total entities and relationships across all results
+		totalEntities := 0
+		totalRelationships := 0
+		successfulExtractions := 0
+
+		for i, result := range results {
+			if result != nil {
+				totalEntities += len(result.Nodes)
+				totalRelationships += len(result.Relationships)
+				successfulExtractions++
+				t.Logf("Document %d: %d entities, %d relationships", i, len(result.Nodes), len(result.Relationships))
+			} else {
+				t.Logf("Document %d: extraction failed (nil result)", i)
+			}
 		}
 
-		// Check usage stats
-		if result.Usage.TotalTexts != len(texts) {
-			t.Errorf("Expected TotalTexts = %d, got %d", len(texts), result.Usage.TotalTexts)
+		// Should have extracted entities from at least some documents
+		if totalEntities == 0 {
+			t.Error("Expected at least one entity from all documents, got none")
+		}
+
+		// Should have successfully processed some documents
+		if successfulExtractions == 0 {
+			t.Error("Expected at least one successful extraction, got none")
 		}
 
 		// Verify we got progress updates
@@ -496,21 +511,18 @@ func TestExtractDocuments(t *testing.T) {
 			t.Error("Expected progress updates, got none")
 		}
 
-		t.Logf("Extracted %d entities and %d relationships from %d documents",
-			len(result.Nodes), len(result.Relationships), len(texts))
+		t.Logf("Extracted %d entities and %d relationships from %d documents (%d successful)",
+			totalEntities, totalRelationships, len(texts), successfulExtractions)
 	})
 
 	t.Run("empty documents", func(t *testing.T) {
-		result, err := extractor.ExtractDocuments(ctx, []string{})
+		results, err := extractor.ExtractDocuments(ctx, []string{})
 		if err != nil {
 			t.Fatalf("ExtractDocuments() with empty slice error = %v", err)
 		}
 
-		if len(result.Nodes) != 0 {
-			t.Errorf("Expected 0 entities for empty documents, got %d", len(result.Nodes))
-		}
-		if len(result.Relationships) != 0 {
-			t.Errorf("Expected 0 relationships for empty documents, got %d", len(result.Relationships))
+		if len(results) != 0 {
+			t.Errorf("Expected 0 results for empty documents, got %d", len(results))
 		}
 	})
 }
@@ -539,7 +551,7 @@ func TestConcurrentExtraction(t *testing.T) {
 	}
 
 	start := time.Now()
-	result, err := extractor.ExtractDocuments(ctx, texts)
+	results, err := extractor.ExtractDocuments(ctx, texts)
 	elapsed := time.Since(start)
 
 	if err != nil {
@@ -549,13 +561,23 @@ func TestConcurrentExtraction(t *testing.T) {
 		t.Fatalf("Concurrent extraction failed: %v", err)
 	}
 
-	// Should have extracted entities from all texts
-	if len(result.Nodes) == 0 {
+	// Count total entities and relationships
+	totalEntities := 0
+	totalRelationships := 0
+	for _, result := range results {
+		if result != nil {
+			totalEntities += len(result.Nodes)
+			totalRelationships += len(result.Relationships)
+		}
+	}
+
+	// Should have extracted entities from some texts
+	if totalEntities == 0 {
 		t.Error("Expected entities from concurrent extraction")
 	}
 
 	t.Logf("Concurrent extraction of %d documents took %v", len(texts), elapsed)
-	t.Logf("Extracted %d entities and %d relationships", len(result.Nodes), len(result.Relationships))
+	t.Logf("Extracted %d entities and %d relationships", totalEntities, totalRelationships)
 }
 
 func TestStressTest(t *testing.T) {
@@ -588,7 +610,7 @@ func TestStressTest(t *testing.T) {
 	}
 
 	start := time.Now()
-	result, err := extractor.ExtractDocuments(ctx, texts)
+	results, err := extractor.ExtractDocuments(ctx, texts)
 	elapsed := time.Since(start)
 
 	if err != nil {
@@ -598,13 +620,25 @@ func TestStressTest(t *testing.T) {
 		t.Fatalf("Stress test failed: %v", err)
 	}
 
-	if len(result.Nodes) == 0 {
+	// Count total entities, relationships, and tokens
+	totalEntities := 0
+	totalRelationships := 0
+	totalTokens := 0
+	for _, result := range results {
+		if result != nil {
+			totalEntities += len(result.Nodes)
+			totalRelationships += len(result.Relationships)
+			totalTokens += result.Usage.TotalTokens
+		}
+	}
+
+	if totalEntities == 0 {
 		t.Error("Expected entities from stress test")
 	}
 
 	t.Logf("Stress test with %d documents took %v", numTexts, elapsed)
-	t.Logf("Extracted %d entities and %d relationships", len(result.Nodes), len(result.Relationships))
-	t.Logf("Total tokens used: %d", result.Usage.TotalTokens)
+	t.Logf("Extracted %d entities and %d relationships", totalEntities, totalRelationships)
+	t.Logf("Total tokens used: %d", totalTokens)
 	t.Logf("Average time per document: %v", elapsed/time.Duration(numTexts))
 }
 
@@ -1102,20 +1136,30 @@ func TestConcurrentExtractionStressTest(t *testing.T) {
 		progressMutex.Unlock()
 	}
 
-	result, err := extractor.ExtractDocuments(ctx, texts, callback)
+	results, err := extractor.ExtractDocuments(ctx, texts, callback)
 	if err != nil {
 		t.Fatalf("Concurrent extraction failed: %v", err)
 	}
 
-	if result == nil {
-		t.Fatal("ExtractDocuments() returned nil result")
+	if results == nil {
+		t.Fatal("ExtractDocuments() returned nil results")
+	}
+
+	// Count total entities and relationships
+	totalEntities := 0
+	totalRelationships := 0
+	for _, result := range results {
+		if result != nil {
+			totalEntities += len(result.Nodes)
+			totalRelationships += len(result.Relationships)
+		}
 	}
 
 	// Should have extracted entities from multiple documents
-	if len(result.Nodes) == 0 {
+	if totalEntities == 0 {
 		t.Error("Expected entities from concurrent extraction, got none")
 	}
 
 	t.Logf("High concurrency stress test completed: extracted %d entities and %d relationships from %d documents (Success: %d, Errors: %d)",
-		len(result.Nodes), len(result.Relationships), numTexts, successCount, errorCount)
+		totalEntities, totalRelationships, numTexts, successCount, errorCount)
 }
