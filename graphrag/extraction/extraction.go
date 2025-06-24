@@ -30,12 +30,12 @@ func (extra *Extraction) LLMOptimizer(llmOptimizer types.LLMOptimizer) *Extracti
 
 // ExtractDocuments extracts entities and relationships from documents
 func (extra *Extraction) ExtractDocuments(ctx context.Context, texts []string, callback ...types.ExtractionProgress) (*types.ExtractionResults, error) {
-	return nil, nil
+	return extra.Options.Use.ExtractDocuments(ctx, texts, callback...)
 }
 
 // ExtractQuery extracts entities and relationships from a query
 func (extra *Extraction) ExtractQuery(ctx context.Context, text string, callback ...types.ExtractionProgress) (*types.ExtractionResults, error) {
-	return nil, nil
+	return extra.Options.Use.ExtractQuery(ctx, text, callback...)
 }
 
 // Deduplicate deduplicates the extracted entities and relationships

@@ -16,6 +16,7 @@ import (
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/graphrag/chunking"
 	"github.com/yaoapp/gou/graphrag/embedding"
+	"github.com/yaoapp/gou/graphrag/extraction/openai"
 	"github.com/yaoapp/gou/graphrag/types"
 	"github.com/yaoapp/gou/graphrag/vector/qdrant"
 )
@@ -23,17 +24,18 @@ import (
 func main() {
 	var (
 		filePath         = flag.String("file", "", "Path to the file to chunk (required for chunking)")
-		dirPath          = flag.String("dir", "", "Path to the directory to embed (required for embedding)")
+		dirPath          = flag.String("dir", "", "Path to the directory to embed (required for embedding) or extract (required for extraction)")
 		size             = flag.Int("size", 300, "Chunk size")
 		overlap          = flag.Int("overlap", 50, "Chunk overlap")
 		maxDepth         = flag.Int("depth", 3, "Maximum chunk depth")
-		maxConcurrent    = flag.Int("concurrent", 6, "Maximum concurrent operations for chunking (default 6), or for embedding (default 10)")
-		method           = flag.String("method", "structured", "Processing method: structured, semantic, both, embedding, or clear-collections")
+		maxConcurrent    = flag.Int("concurrent", 6, "Maximum concurrent operations for chunking (default 6), embedding (default 10), or extraction (default 5)")
+		method           = flag.String("method", "structured", "Processing method: structured, semantic, both, embedding, extraction, or clear-collections")
 		toolcall         = flag.Bool("toolcall", false, "Use toolcall for semantic chunking")
 		connector        = flag.String("connector", "openai", "Connector type: openai, fastembed, custom")
 		contextSize      = flag.Int("context", 1000, "Context size")
 		embeddingModel   = flag.String("embedding-model", "text-embedding-3-small", "Embedding model for embedding method")
-		suffix           = flag.String("suffix", "", "Suffix for embedding files")
+		extractionModel  = flag.String("extraction-model", "gpt-4o-mini", "Extraction model for extraction method")
+		suffix           = flag.String("suffix", "", "Suffix for embedding/extraction files")
 		dimension        = flag.Int("dimension", 1536, "Embedding dimension for embedding method")
 		clearCollections = flag.Bool("clear-collections", false, "Clear all collections from Qdrant")
 		help             = flag.Bool("help", false, "Show help message")
@@ -52,10 +54,11 @@ func main() {
 		"semantic":          true,
 		"both":              true,
 		"embedding":         true,
+		"extraction":        true,
 		"clear-collections": true,
 	}
 	if !validMethods[*method] {
-		fmt.Fprintf(os.Stderr, "Error: Invalid method '%s'. Valid methods are: structured, semantic, both, embedding, clear-collections\n", *method)
+		fmt.Fprintf(os.Stderr, "Error: Invalid method '%s'. Valid methods are: structured, semantic, both, embedding, extraction, clear-collections\n", *method)
 		printHelp()
 		os.Exit(1)
 	}
@@ -102,6 +105,39 @@ func main() {
 		}
 
 		fmt.Println("\n=== Embedding completed successfully ===")
+		return
+	}
+
+	// Handle extraction method
+	if *method == "extraction" {
+		if *dirPath == "" {
+			fmt.Fprintf(os.Stderr, "Error: -dir flag is required for extraction method\n")
+			printHelp()
+			os.Exit(1)
+		}
+
+		// Check if directory exists
+		if _, err := os.Stat(*dirPath); os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "Error: Directory %s does not exist\n", *dirPath)
+			os.Exit(1)
+		}
+
+		// Set default concurrent for extraction if not specified
+		if *maxConcurrent == 6 {
+			*maxConcurrent = 5 // Default for extraction
+		}
+
+		fmt.Printf("Processing directory: %s\n", *dirPath)
+		fmt.Printf("Extraction model: %s\n", *extractionModel)
+		fmt.Printf("Concurrent: %d\n", *maxConcurrent)
+
+		ctx := context.Background()
+		if err := runExtraction(ctx, *dirPath, *connector, *extractionModel, *maxConcurrent, *suffix); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Extraction failed: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("\n=== Extraction completed successfully ===")
 		return
 	}
 
@@ -208,7 +244,7 @@ func main() {
 }
 
 func printHelp() {
-	fmt.Println("GraphRAG Chunking & Embedding Tool")
+	fmt.Println("GraphRAG Chunking, Embedding & Extraction Tool")
 	fmt.Println("Usage: go run tools.go [options]")
 	fmt.Println()
 	fmt.Println("For chunking methods:")
@@ -217,30 +253,35 @@ func printHelp() {
 	fmt.Println("For embedding method:")
 	fmt.Println("  go run tools.go -method embedding -dir <path> [options]")
 	fmt.Println()
+	fmt.Println("For extraction method:")
+	fmt.Println("  go run tools.go -method extraction -dir <path> [options]")
+	fmt.Println()
 	fmt.Println("For clearing collections:")
 	fmt.Println("  go run tools.go -method clear-collections")
 	fmt.Println("  go run tools.go -clear-collections")
 	fmt.Println()
 	fmt.Println("Required flags:")
 	fmt.Println("  -file string    Path to the file to chunk (required for chunking methods)")
-	fmt.Println("  -dir string     Path to the directory to embed (required for embedding method)")
+	fmt.Println("  -dir string     Path to the directory to embed/extract (required for embedding/extraction methods)")
 	fmt.Println()
 	fmt.Println("Optional flags:")
-	fmt.Println("  -method string        Processing method: structured, semantic, both, embedding, or clear-collections (default structured)")
+	fmt.Println("  -method string        Processing method: structured, semantic, both, embedding, extraction, or clear-collections (default structured)")
 	fmt.Println("  -size int             Chunk size (default 300)")
 	fmt.Println("  -overlap int          Chunk overlap (default 50)")
 	fmt.Println("  -depth int            Maximum chunk depth (default 3)")
-	fmt.Println("  -concurrent int       Maximum concurrent operations - chunking (default 6), embedding (default 10)")
+	fmt.Println("  -concurrent int       Maximum concurrent operations - chunking (default 6), embedding (default 10), extraction (default 5)")
 	fmt.Println("  -toolcall             Use toolcall for semantic chunking (default false)")
 	fmt.Println("  -connector string     Connector type: openai, custom (default openai)")
 	fmt.Println("  -context int          Context size (default 1000)")
 	fmt.Println("  -embedding-model string Embedding model for embedding method (default text-embedding-3-small)")
+	fmt.Println("  -extraction-model string Extraction model for extraction method (default gpt-4o-mini)")
 	fmt.Println("  -dimension int        Embedding dimension for embedding method (default 1536)")
+	fmt.Println("  -suffix string        Suffix for embedding/extraction files (default json)")
 	fmt.Println("  -clear-collections    Clear all collections from Qdrant")
 	fmt.Println("  -help                 Show this help message")
 	fmt.Println()
 	fmt.Println("Environment variables:")
-	fmt.Println("  OPENAI_TEST_KEY       OpenAI API key for semantic chunking and embedding")
+	fmt.Println("  OPENAI_TEST_KEY       OpenAI API key for semantic chunking, embedding, and extraction")
 	fmt.Println("  RAG_LLM_TEST_KEY      Custom LLM API key")
 	fmt.Println("  RAG_LLM_TEST_URL      Custom LLM API URL")
 	fmt.Println("  RAG_LLM_TEST_SMODEL   Custom LLM model name")
@@ -253,6 +294,7 @@ func printHelp() {
 	fmt.Println("  Semantic chunks: <dir>/semantic/")
 	fmt.Println("  Position mapping: basename.mapping.json")
 	fmt.Println("  Embedding files: original-filename.json")
+	fmt.Println("  Extraction files: original-filename.json")
 }
 
 func setupOutputDirectories(semanticDir, structuredDir, method string) error {
@@ -951,6 +993,208 @@ func runClearCollections(ctx context.Context) error {
 
 	if errorCount > 0 {
 		return fmt.Errorf("failed to clear %d collections", errorCount)
+	}
+
+	return nil
+}
+
+// runExtraction processes all chunk files in a directory and generates knowledge graph extractions
+func runExtraction(ctx context.Context, dirPath, connectorType, model string, concurrent int, suffix string) error {
+	start := time.Now()
+
+	// Create connector
+	_, err := createAICConnector(connectorType)
+	if err != nil {
+		return fmt.Errorf("failed to create connector: %w", err)
+	}
+
+	var extractor types.Extraction
+
+	// Create extraction instance based on connector type
+	switch connectorType {
+	case "openai", "custom":
+		connectorName := getConnectorName(connectorType)
+		extractor, err = openai.NewOpenai(openai.Options{
+			ConnectorName: connectorName,
+			Concurrent:    concurrent,
+			Model:         model,
+			Temperature:   0.1, // Low temperature for consistent extraction
+			MaxTokens:     4000,
+			RetryAttempts: 3,
+			RetryDelay:    time.Second,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create OpenAI extractor: %w", err)
+		}
+	default:
+		return fmt.Errorf("unsupported connector type for extraction: %s", connectorType)
+	}
+
+	// Find all chunk files in directory (only *.1.chunk-*.txt files)
+	files, err := findChunkFilesInDirectory(dirPath)
+	if err != nil {
+		return fmt.Errorf("failed to find chunk files: %w", err)
+	}
+
+	if len(files) == 0 {
+		fmt.Println("No chunk files found in directory")
+		return nil
+	}
+
+	fmt.Printf("Found %d chunk files to process\n", len(files))
+
+	// Read all file contents
+	fmt.Println("Reading chunk file contents...")
+	fileContents := make([]string, 0, len(files))
+	validFiles := make([]string, 0, len(files))
+	errorCount := 0
+
+	for _, filePath := range files {
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			color.Red("  Error reading %s: %v\n", filepath.Base(filePath), err)
+			errorCount++
+			continue
+		}
+
+		text := string(content)
+		if text == "" {
+			color.Yellow("  Skipping empty file: %s\n", filepath.Base(filePath))
+			continue
+		}
+
+		fileContents = append(fileContents, text)
+		validFiles = append(validFiles, filePath)
+		fmt.Printf("  Read %s (%d chars)\n", filepath.Base(filePath), len(text))
+	}
+
+	if len(fileContents) == 0 {
+		fmt.Println("No valid chunk files to process")
+		return nil
+	}
+
+	fmt.Printf("Processing %d valid chunk files...\n", len(fileContents))
+
+	// Create progress callback for batch processing
+	progressCallback := func(status types.ExtractionStatus, payload types.ExtractionPayload) {
+		switch status {
+		case types.ExtractionStatusStarting:
+			color.Cyan("Starting batch extraction (%s): %s\n", connectorType, payload.Message)
+		case types.ExtractionStatusProcessing:
+			if payload.DocumentIndex != nil {
+				color.Yellow("Processing chunk %d/%d: %s\n",
+					payload.Current, payload.Total, filepath.Base(validFiles[*payload.DocumentIndex]))
+			} else {
+				color.Yellow("Processing: %s (%d/%d)\n", payload.Message, payload.Current, payload.Total)
+			}
+		case types.ExtractionStatusCompleted:
+			color.Green("Batch extraction completed: %s\n", payload.Message)
+		case types.ExtractionStatusError:
+			if payload.DocumentIndex != nil {
+				color.Red("Error processing chunk %d: %s\n", *payload.DocumentIndex, payload.Message)
+			} else {
+				color.Red("Error: %s\n", payload.Message)
+			}
+		}
+	}
+
+	// Extract entities and relationships from all documents
+	extractionResults, err := extractor.ExtractDocuments(ctx, fileContents, progressCallback)
+	if err != nil {
+		return fmt.Errorf("failed to extract entities and relationships: %w", err)
+	}
+
+	if extractionResults.Usage.TotalTexts != len(validFiles) {
+		return fmt.Errorf("extraction count mismatch: got results for %d files, expected %d files", extractionResults.Usage.TotalTexts, len(validFiles))
+	}
+
+	// Save extraction results to files
+	fmt.Println("Saving extraction result files...")
+	for i, filePath := range validFiles {
+		if err := saveExtractionFile(filePath, fileContents[i], extractionResults, i, extractor, suffix); err != nil {
+			color.Red("  Error saving %s: %v\n", filepath.Base(filePath), err)
+			errorCount++
+		} else {
+			color.Green("  Saved %s -> %s.json\n", filepath.Base(filePath), filepath.Base(filePath))
+		}
+	}
+
+	cost := time.Since(start)
+	fmt.Printf("\n--------------------------------\n")
+	fmt.Printf("Extraction completed: %d files processed, %d errors in %s\n", len(validFiles), errorCount, cost.Round(time.Millisecond))
+	fmt.Printf("--------------------------------\n")
+	fmt.Printf("Directory: %s\n", dirPath)
+	fmt.Printf("Model: %s\n", extractionResults.Model)
+	fmt.Printf("Concurrent: %d\n", concurrent)
+	fmt.Printf("Total Entities: %d\n", len(extractionResults.Nodes))
+	fmt.Printf("Total Relationships: %d\n", len(extractionResults.Relationships))
+	fmt.Printf("Total Tokens: %d\n", extractionResults.Usage.TotalTokens)
+	fmt.Printf("Total Texts: %d\n", extractionResults.Usage.TotalTexts)
+	fmt.Printf("Time Cost: %s\n", cost)
+	fmt.Printf("--------------------------------\n")
+
+	return nil
+}
+
+// findChunkFilesInDirectory finds all *.1.chunk-*.txt files in a directory
+func findChunkFilesInDirectory(dirPath string) ([]string, error) {
+	var files []string
+
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip directories and hidden files
+		if info.IsDir() || strings.HasPrefix(info.Name(), ".") {
+			return nil
+		}
+
+		// Only process *.1.chunk-*.txt files
+		filename := info.Name()
+		if strings.Contains(filename, ".1.chunk-") && strings.HasSuffix(filename, ".txt") {
+			files = append(files, path)
+		}
+
+		return nil
+	})
+
+	return files, err
+}
+
+// saveExtractionFile saves extraction data to a JSON file with entities and relationships
+func saveExtractionFile(filePath, text string, extractionResults *types.ExtractionResults, index int, extractor types.Extraction, suffix string) error {
+	// Prepare extraction data
+	extractionData := map[string]interface{}{
+		"file":                filepath.Base(filePath),
+		"full_path":           filePath,
+		"model":               extractionResults.Model,
+		"text_length":         len(text),
+		"generated_at":        time.Now().Format(time.RFC3339),
+		"usage":               extractionResults.Usage,
+		"total_entities":      len(extractionResults.Nodes),
+		"total_relationships": len(extractionResults.Relationships),
+		"entities":            extractionResults.Nodes,
+		"relationships":       extractionResults.Relationships,
+	}
+
+	if suffix == "" {
+		suffix = "json"
+	}
+
+	// Generate output filename
+	dir := filepath.Dir(filePath)
+	filename := filepath.Base(filePath)
+	outputFile := filepath.Join(dir, filename+"."+suffix)
+
+	// Write extraction to JSON file
+	jsonData, err := json.MarshalIndent(extractionData, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal extraction data: %w", err)
+	}
+
+	if err := os.WriteFile(outputFile, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write extraction file: %w", err)
 	}
 
 	return nil
