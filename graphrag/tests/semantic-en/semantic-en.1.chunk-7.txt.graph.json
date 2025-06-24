@@ -2,12 +2,39 @@
   "entities": [
     {
       "id": "yao_start_command",
-      "name": "`yao start`",
+      "name": "yao start",
       "type": "COMMAND",
-      "description": "Command to start the application server in Yao.",
-      "confidence": 1,
+      "labels": [
+        "command",
+        "application server"
+      ],
+      "properties": {
+        "mode": "development",
+        "purpose": "start server"
+      },
+      "description": "The command to start the application server in Yao.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758939,
+      "created_at": 1750766059,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "yao_run_command",
+      "name": "yao run",
+      "type": "COMMAND",
+      "labels": [
+        "command",
+        "process"
+      ],
+      "properties": {
+        "purpose": "run process",
+        "usage": "testing"
+      },
+      "description": "The command to run a process in Yao, used for testing before integration.",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750766059,
       "version": 1,
       "status": "active"
     },
@@ -15,21 +42,18 @@
       "id": "development_mode",
       "name": "development mode",
       "type": "CONCEPT",
-      "description": "Mode in which Yao watches changes to the DSL and Process files and automatically reloads the application server.",
-      "confidence": 1,
+      "labels": [
+        "mode",
+        "development"
+      ],
+      "properties": {
+        "feature": "auto-reload",
+        "files": "DSL and Process"
+      },
+      "description": "A mode in Yao where changes to DSL and Process files are watched and the server is reloaded automatically.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758939,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "yao_run_command",
-      "name": "`yao run`",
-      "type": "COMMAND",
-      "description": "Command to run a process in Yao, used for testing before integration.",
-      "confidence": 1,
-      "extraction_method": "llm",
-      "created_at": 1750758939,
+      "created_at": 1750766059,
       "version": 1,
       "status": "active"
     },
@@ -37,122 +61,117 @@
       "id": "visual_studio_code",
       "name": "Visual Studio Code",
       "type": "SOFTWARE",
-      "description": "Recommended IDE for developing Yao applications, with support for syntax highlighting and auto-completion for `.yao` files.",
-      "confidence": 1,
+      "labels": [
+        "IDE",
+        "software"
+      ],
+      "properties": {
+        "file_type": "jsonc",
+        "recommended_for": "Yao development"
+      },
+      "description": "The recommended IDE for developing Yao applications, supporting syntax highlighting and auto-completion for .yao files.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758939,
+      "created_at": 1750766059,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "yao_file_type",
-      "name": "`.yao` file type",
-      "type": "FILE_TYPE",
-      "description": "File type in Yao that should be set to `jsonc` for syntax highlighting and auto-completion in Visual Studio Code.",
-      "confidence": 1,
-      "extraction_method": "llm",
-      "created_at": 1750758939,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "building_your_application",
-      "name": "Building Your Application",
-      "type": "DOCUMENTATION",
-      "description": "Documentation section for building applications with Yao.",
-      "confidence": 1,
-      "extraction_method": "llm",
-      "created_at": 1750758939,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "yao_technology",
+      "id": "yao",
       "name": "Yao",
       "type": "TECHNOLOGY",
-      "description": "A new way of building web applications, providing commands like `yao start` and `yao run`.",
-      "confidence": 1,
+      "labels": [
+        "technology",
+        "web application"
+      ],
+      "properties": {
+        "category": "web development",
+        "commands": [
+          "yao start",
+          "yao run"
+        ]
+      },
+      "description": "A new way of building web applications, offering commands like 'yao start' and 'yao run'.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758939,
+      "created_at": 1750766059,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-7.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-7.txt",
-  "generated_at": "2025-06-24T17:55:53+08:00",
+  "generated_at": "2025-06-24T19:54:25+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
       "type": "USES",
-      "start_node": "`yao start`",
-      "end_node": "Yao",
-      "description": "The `yao start` command is used to start the application server in Yao.",
-      "confidence": 1,
+      "start_node": "yao_start_command",
+      "end_node": "yao",
+      "properties": {
+        "context": "server management",
+        "method": "command execution"
+      },
+      "description": "The 'yao start' command is used within the Yao technology to start the application server.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758939,
+      "created_at": 1750766059,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "USES",
+      "start_node": "yao_run_command",
+      "end_node": "yao",
+      "properties": {
+        "context": "process management",
+        "method": "command execution"
+      },
+      "description": "The 'yao run' command is used within the Yao technology to run processes for testing.",
+      "confidence": 0.9,
+      "weight": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750766059,
       "version": 1,
       "status": "active"
     },
     {
       "type": "RELATED_TO",
-      "start_node": "development mode",
-      "end_node": "Yao",
-      "description": "Development mode in Yao watches changes to DSL and Process files and reloads the server.",
-      "confidence": 1,
+      "start_node": "development_mode",
+      "end_node": "yao",
+      "properties": {
+        "context": "development",
+        "feature": "auto-reload"
+      },
+      "description": "Development mode is a feature of Yao that allows automatic reloading of the server when changes are detected.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758939,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USES",
-      "start_node": "`yao run`",
-      "end_node": "Yao",
-      "description": "The `yao run` command is used to run a process in Yao.",
-      "confidence": 1,
-      "extraction_method": "llm",
-      "created_at": 1750758939,
+      "created_at": 1750766059,
       "version": 1,
       "status": "active"
     },
     {
       "type": "RECOMMENDED_FOR",
-      "start_node": "Visual Studio Code",
-      "end_node": "Yao",
-      "description": "Visual Studio Code is recommended for developing Yao applications.",
-      "confidence": 1,
+      "start_node": "visual_studio_code",
+      "end_node": "yao",
+      "properties": {
+        "context": "development",
+        "feature": "IDE support"
+      },
+      "description": "Visual Studio Code is recommended for developing applications using Yao.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758939,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "RELATED_TO",
-      "start_node": "`.yao` file type",
-      "end_node": "Visual Studio Code",
-      "description": "The `.yao` file type should be set to `jsonc` in Visual Studio Code for syntax highlighting and auto-completion.",
-      "confidence": 1,
-      "extraction_method": "llm",
-      "created_at": 1750758939,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "RELATED_TO",
-      "start_node": "Building Your Application",
-      "end_node": "Yao",
-      "description": "The 'Building Your Application' documentation is related to building applications with Yao.",
-      "confidence": 1,
-      "extraction_method": "llm",
-      "created_at": 1750758939,
+      "created_at": 1750766059,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 763,
-  "total_entities": 7,
-  "total_relationships": 6,
+  "total_entities": 5,
+  "total_relationships": 4,
   "usage": {
     "total_tokens": 123,
     "prompt_tokens": 123,

@@ -476,6 +476,24 @@ func (parser *Parser) tryParseExtractionToolcall() ([]types.Node, []types.Relati
 					node.Confidence = confidence
 				}
 
+				// Handle labels array
+				if labelsRaw, ok := entityMap["labels"].([]interface{}); ok {
+					labels := make([]string, 0, len(labelsRaw))
+					for _, labelRaw := range labelsRaw {
+						if label, ok := labelRaw.(string); ok && strings.TrimSpace(label) != "" {
+							labels = append(labels, strings.TrimSpace(label))
+						}
+					}
+					if len(labels) > 0 {
+						node.Labels = labels
+					}
+				}
+
+				// Handle properties map
+				if propertiesRaw, ok := entityMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
+					node.Properties = propertiesRaw
+				}
+
 				// Skip entities with empty required fields (ID, Name are required, Type gets default)
 				if node.ID == "" || node.Name == "" {
 					continue
@@ -516,6 +534,16 @@ func (parser *Parser) tryParseExtractionToolcall() ([]types.Node, []types.Relati
 				}
 				if confidence, ok := relationshipMap["confidence"].(float64); ok {
 					relationship.Confidence = confidence
+				}
+
+				// Handle properties map
+				if propertiesRaw, ok := relationshipMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
+					relationship.Properties = propertiesRaw
+				}
+
+				// Handle weight
+				if weight, ok := relationshipMap["weight"].(float64); ok {
+					relationship.Weight = weight
 				}
 
 				// Skip relationships with empty required fields (StartNode, EndNode are required, Type gets default)
@@ -857,62 +885,6 @@ func (parser *Parser) closeIncompleteObjects(str string) string {
 	return result
 }
 
-// findArrayEnd finds the end position of a JSON array starting at the given position
-func findArrayEnd(jsonStr string, startPos int) int {
-	if startPos >= len(jsonStr) {
-		return -1
-	}
-
-	// Skip whitespace to find the opening bracket
-	i := startPos
-	for i < len(jsonStr) && (jsonStr[i] == ' ' || jsonStr[i] == '\t' || jsonStr[i] == '\n') {
-		i++
-	}
-
-	if i >= len(jsonStr) || jsonStr[i] != '[' {
-		return -1
-	}
-
-	// Count brackets to find the matching closing bracket
-	bracketCount := 0
-	inString := false
-	escapeNext := false
-
-	for i < len(jsonStr) {
-		char := jsonStr[i]
-
-		if escapeNext {
-			escapeNext = false
-			continue
-		}
-
-		if char == '\\' {
-			escapeNext = true
-			continue
-		}
-
-		if char == '"' {
-			inString = !inString
-			continue
-		}
-
-		if !inString {
-			if char == '[' {
-				bracketCount++
-			} else if char == ']' {
-				bracketCount--
-				if bracketCount == 0 {
-					return i
-				}
-			}
-		}
-
-		i++
-	}
-
-	return -1
-}
-
 // ParseExtractionRegular parses entities and relationships from regular LLM content
 func (parser *Parser) ParseExtractionRegular(finalContent string) ([]types.Node, []types.Relationship, error) {
 	parser.mutex.Lock()
@@ -1001,6 +973,24 @@ func (parser *Parser) tryParseExtractionRegular() ([]types.Node, []types.Relatio
 					node.Confidence = confidence
 				}
 
+				// Handle labels array
+				if labelsRaw, ok := entityMap["labels"].([]interface{}); ok {
+					labels := make([]string, 0, len(labelsRaw))
+					for _, labelRaw := range labelsRaw {
+						if label, ok := labelRaw.(string); ok && strings.TrimSpace(label) != "" {
+							labels = append(labels, strings.TrimSpace(label))
+						}
+					}
+					if len(labels) > 0 {
+						node.Labels = labels
+					}
+				}
+
+				// Handle properties map
+				if propertiesRaw, ok := entityMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
+					node.Properties = propertiesRaw
+				}
+
 				// Skip entities with empty required fields (ID, Name are required, Type gets default)
 				if node.ID == "" || node.Name == "" {
 					continue
@@ -1041,6 +1031,16 @@ func (parser *Parser) tryParseExtractionRegular() ([]types.Node, []types.Relatio
 				}
 				if confidence, ok := relationshipMap["confidence"].(float64); ok {
 					relationship.Confidence = confidence
+				}
+
+				// Handle properties map
+				if propertiesRaw, ok := relationshipMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
+					relationship.Properties = propertiesRaw
+				}
+
+				// Handle weight
+				if weight, ok := relationshipMap["weight"].(float64); ok {
+					relationship.Weight = weight
 				}
 
 				// Skip relationships with empty required fields (StartNode, EndNode are required, Type gets default)

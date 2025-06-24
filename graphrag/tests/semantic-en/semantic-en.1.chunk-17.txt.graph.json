@@ -1,24 +1,21 @@
 {
   "entities": [
     {
-      "id": "yao_run_models_article_find",
-      "name": "yao run models.article.Find",
-      "type": "TECHNOLOGY",
-      "description": "A process used to find data in the 'article' model using the Yao framework.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758938,
-      "version": 1,
-      "status": "active"
-    },
-    {
       "id": "table_widget",
       "name": "Table Widget",
-      "type": "TECHNOLOGY",
-      "description": "A widget used to display data in an admin panel, capable of binding to the Model Widget and generating CRUD operations.",
+      "type": "OBJECT",
+      "labels": [
+        "widget",
+        "admin tool"
+      ],
+      "properties": {
+        "binding": "Model Widget",
+        "function": "display data"
+      },
+      "description": "Table Widget is used to display the data in an admin panel and is bound to the Model Widget to automatically generate basic CRUD operations.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758938,
+      "created_at": 1750766056,
       "version": 1,
       "status": "active"
     },
@@ -26,43 +23,36 @@
       "id": "table_dsl",
       "name": "Table DSL",
       "type": "TECHNOLOGY",
-      "description": "A domain-specific language for operating on data with processes and REST APIs, used in the context of the Table Widget.",
+      "labels": [
+        "technology",
+        "data operation"
+      ],
+      "properties": {
+        "components": "processes, REST APIs",
+        "operations": "Find, Search"
+      },
+      "description": "Table DSL contains a set of processes and REST APIs to operate on the data, such as Find and Search.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758938,
+      "created_at": 1750766056,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "yao_run_yao_tables_search",
-      "name": "yao run yao.tables.Search",
-      "type": "TECHNOLOGY",
-      "description": "A process used to search data in the 'article' model using the Yao framework.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758938,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "rest_api_search_article",
-      "name": "REST API Search Article",
-      "type": "TECHNOLOGY",
-      "description": "A REST API endpoint for searching data in the 'article' model, requiring authentication.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758938,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "yao_framework",
+      "id": "yao",
       "name": "Yao",
       "type": "TECHNOLOGY",
-      "description": "A software framework available under the Apache 2.0 License and the Yao Commercial License, allowing for use, modification, and distribution.",
+      "labels": [
+        "software",
+        "technology"
+      ],
+      "properties": {
+        "licenses": "Apache 2.0, Yao Commercial"
+      },
+      "description": "Yao is a technology available under two distinct licenses: the Apache 2.0 License and the Yao Commercial License.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758938,
+      "created_at": 1750766056,
       "version": 1,
       "status": "active"
     },
@@ -70,67 +60,63 @@
       "id": "apache_2_license",
       "name": "Apache 2.0 License",
       "type": "CONCEPT",
-      "description": "A license that allows free use, modification, and distribution of software, requiring inclusion of the original copyright notice and license terms.",
+      "labels": [
+        "license",
+        "open source"
+      ],
+      "properties": {
+        "permissions": "use, modify, distribute",
+        "requirements": "include copyright notice and license terms"
+      },
+      "description": "Under the Apache 2.0 License, you are free to use, modify, and distribute Yao, with the requirement that the original copyright notice and license terms be included in any distribution.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758938,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "yao_commercial_license",
-      "name": "Yao Commercial License",
-      "type": "CONCEPT",
-      "description": "A commercial license option for the Yao framework, details unspecified in the text.",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750758938,
+      "created_at": 1750766056,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-17.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-17.txt",
-  "generated_at": "2025-06-24T17:55:53+08:00",
+  "generated_at": "2025-06-24T19:54:25+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
       "type": "USES",
       "start_node": "table_widget",
       "end_node": "table_dsl",
-      "description": "The Table Widget uses the Table DSL to operate on data.",
+      "properties": {
+        "context": "data operation",
+        "method": "processes and REST APIs"
+      },
+      "description": "Table Widget uses Table DSL to operate on data through processes and REST APIs.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758938,
+      "created_at": 1750766056,
       "version": 1,
       "status": "active"
     },
     {
       "type": "AVAILABLE_UNDER",
-      "start_node": "yao_framework",
+      "start_node": "yao",
       "end_node": "apache_2_license",
-      "description": "Yao is available under the Apache 2.0 License.",
+      "properties": {
+        "context": "licensing",
+        "type": "open source"
+      },
+      "description": "Yao is available under the Apache 2.0 License, allowing free use, modification, and distribution.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758938,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "AVAILABLE_UNDER",
-      "start_node": "yao_framework",
-      "end_node": "yao_commercial_license",
-      "description": "Yao is available under the Yao Commercial License.",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750758938,
+      "created_at": 1750766056,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 1328,
-  "total_entities": 8,
-  "total_relationships": 3,
+  "total_entities": 4,
+  "total_relationships": 2,
   "usage": {
     "total_tokens": 203,
     "prompt_tokens": 203,

@@ -1,235 +1,263 @@
 {
   "entities": [
     {
-      "id": "table_component",
+      "id": "表格组件",
       "name": "表格组件",
       "type": "TECHNOLOGY",
-      "description": "用于在管理面板中显示数据的组件，可以绑定到模型组件并自动生成基本的CRUD操作",
+      "labels": [
+        "组件",
+        "数据展示"
+      ],
+      "properties": {
+        "功能": "数据展示",
+        "用途": "管理面板"
+      },
+      "description": "用于在管理面板中显示数据的组件",
       "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "management_panel",
-      "name": "管理面板",
-      "type": "TECHNOLOGY",
-      "description": "显示数据的界面，表格组件在其中使用",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750759011,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "model_component",
+      "id": "模型组件",
       "name": "模型组件",
       "type": "TECHNOLOGY",
-      "description": "可以绑定到表格组件的组件",
+      "labels": [
+        "组件",
+        "数据模型"
+      ],
+      "properties": {
+        "关联": "表格组件",
+        "功能": "数据模型定义"
+      },
+      "description": "与表格组件绑定的组件，用于数据模型定义",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "crud_operations",
+      "id": "CRUD操作",
       "name": "CRUD操作",
       "type": "CONCEPT",
-      "description": "基本的创建、读取、更新和删除操作，由表格组件自动生成",
+      "labels": [
+        "操作",
+        "数据管理"
+      ],
+      "properties": {
+        "类型": "数据操作",
+        "自动化": "是"
+      },
+      "description": "基本的创建、读取、更新和删除操作",
       "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "table_dsl",
+      "id": "表格DSL",
       "name": "表格DSL",
       "type": "TECHNOLOGY",
-      "description": "包含一组进程和REST API来操作数据，如查找、搜索等",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759011,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "articles_table",
-      "name": "Articles",
-      "type": "TECHNOLOGY",
-      "description": "表格DSL中的一个表格实例，绑定到article模型",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759011,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "article_model",
-      "name": "article",
-      "type": "TECHNOLOGY",
-      "description": "与Articles表格绑定的模型",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759011,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "article_form",
-      "name": "article",
-      "type": "TECHNOLOGY",
-      "description": "与Articles表格关联的表单",
+      "labels": [
+        "DSL",
+        "配置"
+      ],
+      "properties": {
+        "格式": "JSON",
+        "用途": "表格配置"
+      },
+      "description": "定义表格操作的领域特定语言",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "yao_process",
-      "name": "yao进程",
-      "type": "TECHNOLOGY",
-      "description": "用于搜索数据的进程，如yao.tables.Search",
-      "confidence": 0.95,
+      "id": "Articles",
+      "name": "Articles",
+      "type": "OBJECT",
+      "labels": [
+        "表格",
+        "示例"
+      ],
+      "properties": {
+        "上下文": "示例配置",
+        "绑定模型": "article"
+      },
+      "description": "示例中定义的表格名称",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "rest_api",
+      "id": "article",
+      "name": "article",
+      "type": "OBJECT",
+      "labels": [
+        "模型",
+        "数据"
+      ],
+      "properties": {
+        "关联表单": "article",
+        "类型": "数据模型"
+      },
+      "description": "绑定的数据模型",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750766137,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "yao.tables.Search",
+      "name": "yao.tables.Search",
+      "type": "TECHNOLOGY",
+      "labels": [
+        "进程",
+        "搜索"
+      ],
+      "properties": {
+        "功能": "数据搜索",
+        "调用方式": "命令行"
+      },
+      "description": "用于搜索表格数据的进程",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750766137,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "REST_API",
       "name": "REST API",
       "type": "TECHNOLOGY",
-      "description": "用于操作数据的API接口，如/api/__yao/table/article/search",
+      "labels": [
+        "API",
+        "接口"
+      ],
+      "properties": {
+        "协议": "HTTP",
+        "认证方式": "Bearer Token"
+      },
+      "description": "用于操作表格数据的API接口",
       "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-zh.1.chunk-13.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-zh/semantic-zh.1.chunk-13.txt",
-  "generated_at": "2025-06-24T17:57:00+08:00",
+  "generated_at": "2025-06-24T19:56:08+08:00",
   "model": "ep-20250326204837-sxlxr",
   "relationships": [
     {
-      "type": "USES",
-      "start_node": "table_component",
-      "end_node": "management_panel",
-      "description": "表格组件用于在管理面板中显示数据",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759011,
-      "version": 1,
-      "status": "active"
-    },
-    {
       "type": "BINDS_TO",
-      "start_node": "table_component",
-      "end_node": "model_component",
+      "start_node": "表格组件",
+      "end_node": "模型组件",
+      "properties": {
+        "绑定方式": "配置绑定",
+        "结果": "自动生成CRUD操作"
+      },
       "description": "表格组件可以绑定到模型组件",
       "confidence": 0.95,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     },
     {
       "type": "GENERATES",
-      "start_node": "table_component",
-      "end_node": "crud_operations",
-      "description": "表格组件自动生成基本的CRUD操作",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759011,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "CONTAINS",
-      "start_node": "table_component",
-      "end_node": "table_dsl",
-      "description": "表格组件包含表格DSL",
+      "start_node": "表格组件",
+      "end_node": "CRUD操作",
+      "properties": {
+        "操作类型": "基本CRUD",
+        "生成方式": "自动"
+      },
+      "description": "表格组件绑定模型后自动生成CRUD操作",
       "confidence": 0.9,
+      "weight": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "INCLUDES",
-      "start_node": "table_dsl",
-      "end_node": "yao_process",
-      "description": "表格DSL包含一组进程来操作数据",
-      "confidence": 0.95,
+      "type": "DEFINES",
+      "start_node": "表格DSL",
+      "end_node": "表格组件",
+      "properties": {
+        "定义内容": "表格配置",
+        "格式": "JSON"
+      },
+      "description": "表格DSL用于定义表格组件的操作",
+      "confidence": 0.9,
+      "weight": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750759011,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "INCLUDES",
-      "start_node": "table_dsl",
-      "end_node": "rest_api",
-      "description": "表格DSL包含REST API来操作数据",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     },
     {
       "type": "BINDS_TO",
-      "start_node": "articles_table",
-      "end_node": "article_model",
+      "start_node": "Articles",
+      "end_node": "article",
+      "properties": {
+        "绑定配置": "action.bind",
+        "表单关联": "article"
+      },
       "description": "Articles表格绑定到article模型",
       "confidence": 0.95,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "ASSOCIATED_WITH",
-      "start_node": "articles_table",
-      "end_node": "article_form",
-      "description": "Articles表格关联到article表单",
+      "type": "OPERATES",
+      "start_node": "yao.tables.Search",
+      "end_node": "表格组件",
+      "properties": {
+        "操作类型": "搜索",
+        "调用方式": "命令行"
+      },
+      "description": "搜索进程用于操作表格数据",
       "confidence": 0.9,
+      "weight": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "OPERATES_ON",
-      "start_node": "yao_process",
-      "end_node": "articles_table",
-      "description": "yao进程可以操作Articles表格的数据",
+      "type": "PROVIDES_INTERFACE",
+      "start_node": "REST_API",
+      "end_node": "表格组件",
+      "properties": {
+        "接口类型": "HTTP",
+        "认证方式": "Bearer Token"
+      },
+      "description": "REST API提供操作表格的接口",
       "confidence": 0.95,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750759011,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "OPERATES_ON",
-      "start_node": "rest_api",
-      "end_node": "article_model",
-      "description": "REST API可以操作article模型的数据",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759011,
+      "created_at": 1750766137,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 737,
-  "total_entities": 10,
-  "total_relationships": 10,
+  "total_entities": 8,
+  "total_relationships": 6,
   "usage": {
     "total_tokens": 69,
     "prompt_tokens": 69,

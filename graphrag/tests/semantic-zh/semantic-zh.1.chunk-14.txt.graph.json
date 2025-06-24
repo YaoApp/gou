@@ -4,93 +4,137 @@
       "id": "yao_software",
       "name": "Yao",
       "type": "TECHNOLOGY",
-      "description": "一个可用的软件，提供两种不同的许可证选项",
-      "confidence": 0.98,
+      "labels": [
+        "software",
+        "technology",
+        "open-source"
+      ],
+      "properties": {
+        "license_type": "dual",
+        "purpose": "application_development"
+      },
+      "description": "A software mentioned in the text available under two different licenses",
+      "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750758993,
+      "created_at": 1750766125,
       "version": 1,
       "status": "active"
     },
     {
       "id": "apache_2_0_license",
       "name": "Apache 2.0 许可证",
-      "type": "CONCEPT",
-      "description": "一种开放源代码许可证，允许自由使用、修改和分发软件，需包含原始版权声明和许可证条款",
-      "confidence": 0.97,
+      "type": "LICENSE",
+      "labels": [
+        "license",
+        "open-source",
+        "legal"
+      ],
+      "properties": {
+        "requirements": "include_original_copyright",
+        "url": "https://github.com/YaoApp/yao/blob/main/LICENSE"
+      },
+      "description": "An open-source license allowing free use, modification, and distribution of Yao",
+      "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750758993,
+      "created_at": 1750766125,
       "version": 1,
       "status": "active"
     },
     {
       "id": "yao_commercial_license",
       "name": "Yao 商业许可证",
-      "type": "CONCEPT",
-      "description": "为支持Yao的未来开发而引入的商业许可证，适用于超出Apache 2.0许可证范围的特定商业用途",
-      "confidence": 0.96,
-      "extraction_method": "llm",
-      "created_at": 1750758993,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "application_hosting",
-      "name": "应用程序托管",
-      "type": "TECHNOLOGY",
-      "description": "Yao未来产品之一",
+      "type": "LICENSE",
+      "labels": [
+        "license",
+        "commercial",
+        "legal"
+      ],
+      "properties": {
+        "purpose": "support_future_development",
+        "target_users": "commercial_users"
+      },
+      "description": "A commercial license for Yao supporting future products and specific commercial uses",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758993,
+      "created_at": 1750766125,
       "version": 1,
       "status": "active"
     },
     {
       "id": "ai_web_app_generation",
       "name": "AI Web 应用程序生成服务",
-      "type": "TECHNOLOGY",
-      "description": "Yao未来产品之一",
-      "confidence": 0.9,
+      "type": "SERVICE",
+      "labels": [
+        "service",
+        "AI",
+        "future_product"
+      ],
+      "properties": {
+        "category": "AI_services",
+        "status": "future"
+      },
+      "description": "A future product mentioned that will be supported by the commercial license",
+      "confidence": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750758993,
+      "created_at": 1750766125,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "app_hosting",
+      "name": "应用程序托管",
+      "type": "SERVICE",
+      "labels": [
+        "service",
+        "hosting",
+        "future_product"
+      ],
+      "properties": {
+        "category": "hosting_services",
+        "status": "future"
+      },
+      "description": "A future application hosting service mentioned",
+      "confidence": 0.85,
+      "extraction_method": "llm",
+      "created_at": 1750766125,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-zh.1.chunk-14.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-zh/semantic-zh.1.chunk-14.txt",
-  "generated_at": "2025-06-24T17:57:00+08:00",
+  "generated_at": "2025-06-24T19:56:08+08:00",
   "model": "ep-20250326204837-sxlxr",
   "relationships": [
     {
-      "type": "AVAILABLE_UNDER",
+      "type": "LICENSED_UNDER",
       "start_node": "yao_software",
       "end_node": "apache_2_0_license",
-      "description": "Yao在Apache 2.0许可证下可用",
-      "confidence": 0.98,
+      "properties": {
+        "license_type": "open-source",
+        "usage_terms": "free_use_modification_distribution"
+      },
+      "description": "Yao is available under the Apache 2.0 license",
+      "confidence": 0.95,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758993,
+      "created_at": 1750766125,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "AVAILABLE_UNDER",
+      "type": "LICENSED_UNDER",
       "start_node": "yao_software",
       "end_node": "yao_commercial_license",
-      "description": "Yao在商业许可证下可用",
-      "confidence": 0.98,
-      "extraction_method": "llm",
-      "created_at": 1750758993,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "SUPPORTS",
-      "start_node": "yao_commercial_license",
-      "end_node": "application_hosting",
-      "description": "商业许可证支持应用程序托管产品的开发",
+      "properties": {
+        "license_type": "commercial",
+        "purpose": "support_future_development"
+      },
+      "description": "Yao is also available under a commercial license",
       "confidence": 0.9,
+      "weight": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750758993,
+      "created_at": 1750766125,
       "version": 1,
       "status": "active"
     },
@@ -98,10 +142,31 @@
       "type": "SUPPORTS",
       "start_node": "yao_commercial_license",
       "end_node": "ai_web_app_generation",
-      "description": "商业许可证支持AI Web应用程序生成服务的开发",
-      "confidence": 0.9,
+      "properties": {
+        "relationship": "funding",
+        "support_type": "future_product"
+      },
+      "description": "The commercial license supports future AI web application generation services",
+      "confidence": 0.85,
+      "weight": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750758993,
+      "created_at": 1750766125,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "SUPPORTS",
+      "start_node": "yao_commercial_license",
+      "end_node": "app_hosting",
+      "properties": {
+        "relationship": "funding",
+        "support_type": "future_product"
+      },
+      "description": "The commercial license supports future application hosting services",
+      "confidence": 0.85,
+      "weight": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750766125,
       "version": 1,
       "status": "active"
     }

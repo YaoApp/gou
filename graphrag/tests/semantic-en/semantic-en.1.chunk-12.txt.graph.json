@@ -1,147 +1,244 @@
 {
   "entities": [
     {
-      "id": "yao_technology_platform",
+      "id": "yao",
       "name": "Yao",
       "type": "TECHNOLOGY",
-      "description": "Yao is a technology platform that allows for the creation of admin panels without frontend coding. It uses Table, Form, and API widgets to build applications and employs DSL to describe pages and processes.",
-      "confidence": 1,
+      "labels": [
+        "technology",
+        "platform"
+      ],
+      "properties": {
+        "domain": "web development",
+        "purpose": "admin panel creation"
+      },
+      "description": "Yao is a technology platform used for creating admin panels without frontend coding, utilizing Table, Form, and API widgets.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "admin_panel_concept",
-      "name": "Admin panel",
-      "type": "CONCEPT",
-      "description": "Admin panel is a user interface that allows administrators to manage and control applications or systems. In the context of Yao, it can be created without frontend coding using specific widgets.",
-      "confidence": 1,
-      "extraction_method": "llm",
-      "created_at": 1750758942,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "table_widget_technology",
-      "name": "Table widget",
+      "id": "table_widget",
+      "name": "Table Widget",
       "type": "TECHNOLOGY",
-      "description": "Table widget is a component used in Yao to build admin panels. It is part of the technology stack that allows for data handling and presentation.",
-      "confidence": 1,
+      "labels": [
+        "widget",
+        "technology"
+      ],
+      "properties": {
+        "domain": "web development",
+        "function": "table creation"
+      },
+      "description": "A widget used in Yao for building admin panels, part of the technology stack.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "form_widget_technology",
-      "name": "Form widget",
+      "id": "form_widget",
+      "name": "Form Widget",
       "type": "TECHNOLOGY",
-      "description": "Form widget is a component used in Yao to build admin panels. It is part of the technology stack that allows for data input and management.",
-      "confidence": 1,
+      "labels": [
+        "widget",
+        "technology"
+      ],
+      "properties": {
+        "domain": "web development",
+        "function": "form creation"
+      },
+      "description": "A widget used in Yao for building admin panels, part of the technology stack.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "api_widget_technology",
-      "name": "API widget",
+      "id": "api_widget",
+      "name": "API Widget",
       "type": "TECHNOLOGY",
-      "description": "API widget is a component used in Yao to build admin panels. It is part of the technology stack that allows for interaction with APIs and data processing.",
-      "confidence": 1,
+      "labels": [
+        "widget",
+        "technology"
+      ],
+      "properties": {
+        "domain": "web development",
+        "function": "API integration"
+      },
+      "description": "A widget used in Yao for building admin panels, part of the technology stack.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "dsl_concept",
+      "id": "dsl",
       "name": "DSL",
-      "type": "CONCEPT",
-      "description": "DSL (Domain-Specific Language) is used in Yao to describe pages and processes, making the creation of admin panels more powerful than traditional HTML.",
-      "confidence": 1,
+      "type": "TECHNOLOGY",
+      "labels": [
+        "language",
+        "technology"
+      ],
+      "properties": {
+        "domain": "web development",
+        "purpose": "page and process description"
+      },
+      "description": "A domain-specific language used in Yao to describe pages and processes for admin panels.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "highly_customized_ui_concept",
+      "id": "documentation",
+      "name": "Documentation",
+      "type": "OBJECT",
+      "labels": [
+        "guide",
+        "resource"
+      ],
+      "properties": {
+        "domain": "web development",
+        "purpose": "user guidance"
+      },
+      "description": "Guides provided to help users build applications and use widgets in Yao.",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750766061,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "highly_customized_ui",
       "name": "Highly Customized UI",
       "type": "CONCEPT",
-      "description": "Highly Customized UI refers to user interfaces that require extensive customization beyond standard templates or components. In Yao, creating such UIs might require custom coding.",
-      "confidence": 1,
+      "labels": [
+        "concept",
+        "design"
+      ],
+      "properties": {
+        "challenge": "customization",
+        "domain": "web development"
+      },
+      "description": "A concept referring to the need for custom code when creating highly customized user interfaces in Yao.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-12.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-12.txt",
-  "generated_at": "2025-06-24T17:55:53+08:00",
+  "generated_at": "2025-06-24T19:54:25+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
       "type": "USES",
-      "start_node": "yao_technology_platform",
-      "end_node": "table_widget_technology",
-      "description": "Yao uses Table widget as a component to build admin panels.",
-      "confidence": 1,
+      "start_node": "yao",
+      "end_node": "table_widget",
+      "properties": {
+        "context": "admin panel creation",
+        "method": "widget usage"
+      },
+      "description": "Yao uses Table, Form, and API widgets to build admin panels.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
       "type": "USES",
-      "start_node": "yao_technology_platform",
-      "end_node": "form_widget_technology",
-      "description": "Yao uses Form widget as a component to build admin panels.",
-      "confidence": 1,
+      "start_node": "yao",
+      "end_node": "form_widget",
+      "properties": {
+        "context": "admin panel creation",
+        "method": "widget usage"
+      },
+      "description": "Yao uses Table, Form, and API widgets to build admin panels.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
       "type": "USES",
-      "start_node": "yao_technology_platform",
-      "end_node": "api_widget_technology",
-      "description": "Yao uses API widget as a component to build admin panels.",
-      "confidence": 1,
+      "start_node": "yao",
+      "end_node": "api_widget",
+      "properties": {
+        "context": "admin panel creation",
+        "method": "widget usage"
+      },
+      "description": "Yao uses Table, Form, and API widgets to build admin panels.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
       "type": "USES",
-      "start_node": "yao_technology_platform",
-      "end_node": "dsl_concept",
-      "description": "Yao employs DSL to describe pages and processes, enhancing the power of admin panel creation.",
-      "confidence": 1,
+      "start_node": "yao",
+      "end_node": "dsl",
+      "properties": {
+        "context": "admin panel creation",
+        "method": "language usage"
+      },
+      "description": "Yao uses DSL to describe pages and processes for admin panels.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     },
     {
       "type": "RELATED_TO",
-      "start_node": "highly_customized_ui_concept",
-      "end_node": "yao_technology_platform",
-      "description": "Highly Customized UI may require custom coding, which is not the best fit for Yao's standard capabilities.",
-      "confidence": 1,
+      "start_node": "documentation",
+      "end_node": "yao",
+      "properties": {
+        "context": "user guidance",
+        "relationship": "support"
+      },
+      "description": "Documentation is related to Yao as it provides guidance for building applications and using widgets.",
+      "confidence": 0.9,
+      "weight": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750758942,
+      "created_at": 1750766061,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "CHALLENGE",
+      "start_node": "highly_customized_ui",
+      "end_node": "yao",
+      "properties": {
+        "context": "web development",
+        "issue": "customization"
+      },
+      "description": "Highly Customized UI is a challenge for Yao, requiring custom code for certain applications.",
+      "confidence": 0.9,
+      "weight": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750766061,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 838,
   "total_entities": 7,
-  "total_relationships": 5,
+  "total_relationships": 6,
   "usage": {
     "total_tokens": 131,
     "prompt_tokens": 131,

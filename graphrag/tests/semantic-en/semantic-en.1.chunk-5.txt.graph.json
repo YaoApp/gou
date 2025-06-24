@@ -4,10 +4,17 @@
       "id": "neo_directory",
       "name": "neo",
       "type": "OBJECT",
+      "labels": [
+        "directory",
+        "configuration"
+      ],
+      "properties": {
+        "purpose": "AI Chatbot configuration"
+      },
       "description": "The AI Chatbot configuration directory",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758935,
+      "created_at": 1750766057,
       "version": 1,
       "status": "active"
     },
@@ -15,10 +22,18 @@
       "id": "plugins_directory",
       "name": "plugins",
       "type": "OBJECT",
-      "description": "The Default GRPC plugins directory",
+      "labels": [
+        "directory",
+        "plugins"
+      ],
+      "properties": {
+        "customizable": "environment variables",
+        "default": "GRPC plugins"
+      },
+      "description": "The Default GRPC plugins directory, with an option for a custom plugins directory set in environment variables.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758935,
+      "created_at": 1750766057,
       "version": 1,
       "status": "active"
     },
@@ -26,10 +41,18 @@
       "id": "public_directory",
       "name": "public",
       "type": "OBJECT",
-      "description": "The static files directory, can be accessed via the HTTP server. SUI template engine generates the web pages here too.",
+      "labels": [
+        "directory",
+        "static files"
+      ],
+      "properties": {
+        "access": "HTTP server",
+        "generation": "SUI template engine"
+      },
+      "description": "The static files directory, accessible via the HTTP server. SUI template engine generates web pages here.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758935,
+      "created_at": 1750766057,
       "version": 1,
       "status": "active"
     },
@@ -37,10 +60,17 @@
       "id": "scripts_directory",
       "name": "scripts",
       "type": "OBJECT",
-      "description": "Custom Process: write the custom process in TypeScript or JavaScript",
+      "labels": [
+        "directory",
+        "scripts"
+      ],
+      "properties": {
+        "language": "TypeScript or JavaScript"
+      },
+      "description": "Directory for custom processes written in TypeScript or JavaScript.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758935,
+      "created_at": 1750766057,
       "version": 1,
       "status": "active"
     },
@@ -48,111 +78,76 @@
       "id": "tables_directory",
       "name": "tables",
       "type": "OBJECT",
-      "description": "Table Widgets: table-type pages in the admin panel",
+      "labels": [
+        "directory",
+        "widgets"
+      ],
+      "properties": {
+        "location": "admin panel",
+        "type": "table widgets"
+      },
+      "description": "Directory for table widgets, specifically table-type pages in the admin panel.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758935,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "sui_template_engine",
-      "name": "SUI template engine",
-      "type": "TECHNOLOGY",
-      "description": "SUI template engine",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750758935,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "http_server",
-      "name": "HTTP server",
-      "type": "TECHNOLOGY",
-      "description": "HTTP server",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750758935,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "typescript",
-      "name": "TypeScript",
-      "type": "TECHNOLOGY",
-      "description": "TypeScript",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750758935,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "javascript",
-      "name": "JavaScript",
-      "type": "TECHNOLOGY",
-      "description": "JavaScript",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750758935,
+      "created_at": 1750766057,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-5.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-5.txt",
-  "generated_at": "2025-06-24T17:55:53+08:00",
+  "generated_at": "2025-06-24T19:54:25+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
-      "type": "RELATED_TO",
+      "type": "ACCESSIBLE_VIA",
       "start_node": "public_directory",
-      "end_node": "http_server",
-      "description": "The public directory can be accessed via the HTTP server.",
-      "confidence": 0.8,
+      "end_node": "HTTP_server",
+      "properties": {
+        "method": "HTTP server"
+      },
+      "description": "The public directory is accessible via the HTTP server.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758935,
+      "created_at": 1750766057,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
+      "type": "GENERATES",
       "start_node": "public_directory",
-      "end_node": "sui_template_engine",
+      "end_node": "SUI_template_engine",
+      "properties": {
+        "process": "web page generation"
+      },
       "description": "The SUI template engine generates web pages in the public directory.",
-      "confidence": 0.8,
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758935,
+      "created_at": 1750766057,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
+      "type": "WRITTEN_IN",
       "start_node": "scripts_directory",
-      "end_node": "typescript",
-      "description": "Custom processes can be written in TypeScript in the scripts directory.",
-      "confidence": 0.8,
+      "end_node": "TypeScript_JavaScript",
+      "properties": {
+        "language": "TypeScript or JavaScript"
+      },
+      "description": "Custom processes in the scripts directory are written in TypeScript or JavaScript.",
+      "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758935,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USES",
-      "start_node": "scripts_directory",
-      "end_node": "javascript",
-      "description": "Custom processes can be written in JavaScript in the scripts directory.",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750758935,
+      "created_at": 1750766057,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 525,
-  "total_entities": 9,
-  "total_relationships": 4,
+  "total_entities": 5,
+  "total_relationships": 3,
   "usage": {
     "total_tokens": 81,
     "prompt_tokens": 81,

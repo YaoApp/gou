@@ -4,10 +4,18 @@
       "id": "yao_backend_service",
       "name": "Yao",
       "type": "TECHNOLOGY",
-      "description": "Yao is a backend service that can be utilized for building applications.",
+      "labels": [
+        "backend",
+        "service"
+      ],
+      "properties": {
+        "domain": "software",
+        "type": "backend service"
+      },
+      "description": "Yao is used as a backend service for various applications.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
@@ -15,54 +23,111 @@
       "id": "mobile_app_client",
       "name": "Mobile App Client",
       "type": "TECHNOLOGY",
-      "description": "Mobile App Client refers to the client-side application for mobile devices, which can be developed natively or using a mobile app development framework.",
-      "confidence": 0.8,
+      "labels": [
+        "mobile",
+        "client"
+      ],
+      "properties": {
+        "domain": "software",
+        "type": "mobile application"
+      },
+      "description": "A client application for mobile devices that can be developed natively or using a framework, utilizing Yao as a backend service.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
     {
       "id": "sui_template_engine",
-      "name": "SUI template engine",
+      "name": "SUI Template Engine",
       "type": "TECHNOLOGY",
-      "description": "SUI template engine is a new feature introduced in Yao 0.10.4 for building web pages, though still experimental.",
+      "labels": [
+        "template engine",
+        "web development"
+      ],
+      "properties": {
+        "domain": "software",
+        "type": "template engine"
+      },
+      "description": "Introduced in Yao 0.10.4, the SUI template engine is an experimental tool for building web pages.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "rest_api",
-      "name": "REST API",
+      "id": "react_framework",
+      "name": "React",
       "type": "TECHNOLOGY",
-      "description": "REST API is a method for connecting frontend frameworks like React or Vue to Yao.",
+      "labels": [
+        "frontend",
+        "framework"
+      ],
+      "properties": {
+        "domain": "software",
+        "type": "frontend framework"
+      },
+      "description": "A frontend framework that can be connected to Yao via REST API for advanced frontend needs.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "typescript",
+      "id": "vue_framework",
+      "name": "Vue",
+      "type": "TECHNOLOGY",
+      "labels": [
+        "frontend",
+        "framework"
+      ],
+      "properties": {
+        "domain": "software",
+        "type": "frontend framework"
+      },
+      "description": "A frontend framework that can be connected to Yao via REST API for advanced frontend needs.",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750766065,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "typescript_language",
       "name": "TypeScript",
       "type": "TECHNOLOGY",
-      "description": "TypeScript is the recommended language for writing custom processes in Yao, running in the V8 engine.",
+      "labels": [
+        "programming language"
+      ],
+      "properties": {
+        "domain": "software",
+        "type": "programming language"
+      },
+      "description": "The recommended language for writing custom processes in Yao, running in the V8 engine.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
     {
       "id": "v8_engine",
-      "name": "V8 engine",
+      "name": "V8 Engine",
       "type": "TECHNOLOGY",
-      "description": "V8 engine is the JavaScript engine that runs TypeScript processes in Yao.",
-      "confidence": 0.8,
+      "labels": [
+        "engine"
+      ],
+      "properties": {
+        "domain": "software",
+        "type": "JavaScript engine"
+      },
+      "description": "The engine in which TypeScript processes are run for Yao.",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
@@ -70,10 +135,17 @@
       "id": "go_language",
       "name": "Go",
       "type": "TECHNOLOGY",
-      "description": "Go is a programming language recommended for high-performance processes in Yao, faster than TypeScript.",
+      "labels": [
+        "programming language"
+      ],
+      "properties": {
+        "domain": "software",
+        "type": "programming language"
+      },
+      "description": "A programming language recommended for high-performance processes in Yao, faster than TypeScript.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
@@ -81,49 +153,59 @@
       "id": "yao_process",
       "name": "Yao Process",
       "type": "CONCEPT",
-      "description": "A Process in Yao is an atomic function that runs in the Yao Runtime, with hundreds of internal processes available.",
+      "labels": [
+        "process",
+        "function"
+      ],
+      "properties": {
+        "domain": "software",
+        "type": "process"
+      },
+      "description": "An atomic function that runs in the Yao Runtime, with hundreds of internal processes available.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "react",
-      "name": "React",
+      "id": "rest_api",
+      "name": "REST API",
       "type": "TECHNOLOGY",
-      "description": "React is a frontend framework that can be connected to Yao via REST API for advanced frontend needs.",
+      "labels": [
+        "API",
+        "interface"
+      ],
+      "properties": {
+        "domain": "software",
+        "type": "API"
+      },
+      "description": "A method to connect frontend frameworks like React or Vue to Yao.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "vue",
-      "name": "Vue",
-      "type": "TECHNOLOGY",
-      "description": "Vue is a frontend framework that can be connected to Yao via REST API for advanced frontend needs.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-13.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-13.txt",
-  "generated_at": "2025-06-24T17:55:53+08:00",
+  "generated_at": "2025-06-24T19:54:25+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
       "type": "USES",
-      "start_node": "yao_backend_service",
-      "end_node": "mobile_app_client",
+      "start_node": "mobile_app_client",
+      "end_node": "yao_backend_service",
+      "properties": {
+        "context": "application development",
+        "method": "backend integration"
+      },
       "description": "Mobile App Client uses Yao as a backend service.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
@@ -131,54 +213,79 @@
       "type": "PART_OF",
       "start_node": "sui_template_engine",
       "end_node": "yao_backend_service",
-      "description": "SUI template engine is a part of Yao 0.10.4.",
+      "properties": {
+        "context": "software version",
+        "method": "integration"
+      },
+      "description": "SUI Template Engine is part of Yao 0.10.4.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
     {
       "type": "USES",
-      "start_node": "react",
+      "start_node": "react_framework",
       "end_node": "yao_backend_service",
-      "description": "React framework can be connected to Yao via REST API.",
+      "properties": {
+        "context": "frontend development",
+        "method": "API connection"
+      },
+      "description": "React framework can be connected to Yao via REST API for frontend development.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
     {
       "type": "USES",
-      "start_node": "vue",
+      "start_node": "vue_framework",
       "end_node": "yao_backend_service",
-      "description": "Vue framework can be connected to Yao via REST API.",
+      "properties": {
+        "context": "frontend development",
+        "method": "API connection"
+      },
+      "description": "Vue framework can be connected to Yao via REST API for frontend development.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "RUNS_ON",
-      "start_node": "typescript",
+      "type": "USES",
+      "start_node": "typescript_language",
       "end_node": "v8_engine",
-      "description": "TypeScript processes run in the V8 engine.",
+      "properties": {
+        "context": "process execution",
+        "method": "engine usage"
+      },
+      "description": "TypeScript is run in the V8 engine for Yao processes.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
     {
       "type": "USES",
       "start_node": "go_language",
-      "end_node": "yao_backend_service",
+      "end_node": "yao_process",
+      "properties": {
+        "context": "process development",
+        "method": "language usage"
+      },
       "description": "Go is used for high-performance processes in Yao.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     },
@@ -186,10 +293,15 @@
       "type": "PART_OF",
       "start_node": "yao_process",
       "end_node": "yao_backend_service",
-      "description": "Yao Process is an atomic function that runs in the Yao Runtime.",
+      "properties": {
+        "context": "runtime environment",
+        "method": "process integration"
+      },
+      "description": "Yao Process is part of the Yao Runtime.",
       "confidence": 0.9,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750758945,
+      "created_at": 1750766065,
       "version": 1,
       "status": "active"
     }

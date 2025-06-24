@@ -1,24 +1,45 @@
 {
   "entities": [
     {
-      "id": "scripts",
+      "id": "scripts_directory",
       "name": "scripts",
       "type": "OBJECT",
-      "description": "自定义进程：用 TypeScript 或 JavaScript 编写自定义进程",
+      "labels": [
+        "directory",
+        "development",
+        "process"
+      ],
+      "properties": {
+        "content_type": "custom_processes",
+        "languages": [
+          "TypeScript",
+          "JavaScript"
+        ]
+      },
+      "description": "Directory for custom processes written in TypeScript or JavaScript",
       "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750759002,
+      "created_at": 1750766132,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "tables",
+      "id": "tables_directory",
       "name": "tables",
       "type": "OBJECT",
-      "description": "表格组件：管理面板中的表格类型页面",
+      "labels": [
+        "directory",
+        "component",
+        "ui"
+      ],
+      "properties": {
+        "context": "user_interface",
+        "purpose": "management_panel_tables"
+      },
+      "description": "Directory for table components used in management panels",
       "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750759002,
+      "created_at": 1750766132,
       "version": 1,
       "status": "active"
     },
@@ -26,10 +47,19 @@
       "id": "other_components",
       "name": "其他组件类型",
       "type": "OBJECT",
-      "description": "其他组件类型，或您自定义的组件类型",
+      "labels": [
+        "component",
+        "custom",
+        "development"
+      ],
+      "properties": {
+        "type": "miscellaneous_components",
+        "variability": "user_customizable"
+      },
+      "description": "Other component types or custom components defined by the user",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750759002,
+      "created_at": 1750766132,
       "version": 1,
       "status": "active"
     },
@@ -37,10 +67,19 @@
       "id": "yao_application",
       "name": "Yao 应用程序",
       "type": "TECHNOLOGY",
-      "description": "需要编写 DSL 和进程来开发的应用程序",
-      "confidence": 0.95,
+      "labels": [
+        "framework",
+        "development",
+        "application"
+      ],
+      "properties": {
+        "development_approach": "DSL_based",
+        "process_type": "custom_processes"
+      },
+      "description": "Yao application development framework",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750759002,
+      "created_at": 1750766132,
       "version": 1,
       "status": "active"
     },
@@ -48,82 +87,102 @@
       "id": "dsl",
       "name": "DSL",
       "type": "TECHNOLOGY",
-      "description": "用于描述组件，如模型、API、表格、表单等",
+      "labels": [
+        "language",
+        "description",
+        "component"
+      ],
+      "properties": {
+        "targets": [
+          "models",
+          "APIs",
+          "tables",
+          "forms"
+        ],
+        "usage": "component_description"
+      },
+      "description": "Domain Specific Language used to describe components like models, APIs, tables, forms",
       "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750759002,
+      "created_at": 1750766132,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "process",
-      "name": "进程",
+      "id": "custom_process",
+      "name": "自定义进程",
       "type": "TECHNOLOGY",
-      "description": "用 TypeScript 或 JavaScript 编写自定义进程，或使用 GRPC 插件",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759002,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "typescript",
-      "name": "TypeScript",
-      "type": "TECHNOLOGY",
-      "description": "用于编写自定义进程的编程语言",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759002,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "javascript",
-      "name": "JavaScript",
-      "type": "TECHNOLOGY",
-      "description": "用于编写自定义进程的编程语言",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759002,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "grpc",
-      "name": "GRPC",
-      "type": "TECHNOLOGY",
-      "description": "可用于编写自定义进程的插件",
+      "labels": [
+        "process",
+        "executable",
+        "development"
+      ],
+      "properties": {
+        "implementation_options": [
+          "TypeScript",
+          "JavaScript",
+          "GRPC"
+        ],
+        "nature": "customizable"
+      },
+      "description": "Custom processes written in TypeScript/JavaScript or using GRPC plugins",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750759002,
+      "created_at": 1750766132,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-zh.1.chunk-4.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-zh/semantic-zh.1.chunk-4.txt",
-  "generated_at": "2025-06-24T17:57:00+08:00",
+  "generated_at": "2025-06-24T19:56:08+08:00",
   "model": "ep-20250326204837-sxlxr",
   "relationships": [
     {
-      "type": "USES",
-      "start_node": "scripts",
-      "end_node": "typescript",
-      "description": "scripts 使用 TypeScript 编写自定义进程",
-      "confidence": 0.95,
+      "type": "CONTAINS",
+      "start_node": "scripts_directory",
+      "end_node": "custom_process",
+      "properties": {
+        "containment_type": "physical_storage",
+        "relationship": "parent_child"
+      },
+      "description": "The scripts directory contains custom processes implementations",
+      "confidence": 0.9,
+      "weight": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750759002,
+      "created_at": 1750766132,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
-      "start_node": "scripts",
-      "end_node": "javascript",
-      "description": "scripts 使用 JavaScript 编写自定义进程",
-      "confidence": 0.95,
+      "type": "PART_OF",
+      "start_node": "tables_directory",
+      "end_node": "yao_application",
+      "properties": {
+        "component_type": "ui_element",
+        "role": "management_interface"
+      },
+      "description": "Tables directory is part of Yao application components",
+      "confidence": 0.85,
+      "weight": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750759002,
+      "created_at": 1750766132,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "PART_OF",
+      "start_node": "other_components",
+      "end_node": "yao_application",
+      "properties": {
+        "category": "miscellaneous",
+        "flexibility": "user_extensible"
+      },
+      "description": "Other components are part of the Yao application ecosystem",
+      "confidence": 0.85,
+      "weight": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750766132,
       "version": 1,
       "status": "active"
     },
@@ -131,61 +190,58 @@
       "type": "USES",
       "start_node": "yao_application",
       "end_node": "dsl",
-      "description": "开发 Yao 应用程序需要编写 DSL",
+      "properties": {
+        "necessity": "mandatory",
+        "usage_context": "development_requirement"
+      },
+      "description": "Yao application development requires writing DSL for component description",
       "confidence": 0.95,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750759002,
+      "created_at": 1750766132,
       "version": 1,
       "status": "active"
     },
     {
       "type": "USES",
       "start_node": "yao_application",
-      "end_node": "process",
-      "description": "开发 Yao 应用程序需要编写进程",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759002,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USES",
-      "start_node": "process",
-      "end_node": "typescript",
-      "description": "进程可以使用 TypeScript 编写",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759002,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USES",
-      "start_node": "process",
-      "end_node": "javascript",
-      "description": "进程可以使用 JavaScript 编写",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750759002,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USES",
-      "start_node": "process",
-      "end_node": "grpc",
-      "description": "进程可以使用 GRPC 插件",
+      "end_node": "custom_process",
+      "properties": {
+        "flexibility": "multiple_options",
+        "implementation_choice": [
+          "TypeScript",
+          "JavaScript",
+          "GRPC"
+        ]
+      },
+      "description": "Yao application development involves writing custom processes",
       "confidence": 0.9,
+      "weight": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750759002,
+      "created_at": 1750766132,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "RELATED_TO",
+      "start_node": "dsl",
+      "end_node": "custom_process",
+      "properties": {
+        "development_phase": "implementation",
+        "relationship_nature": "complementary"
+      },
+      "description": "DSL description and custom processes are both development components in Yao",
+      "confidence": 0.8,
+      "weight": 0.75,
+      "extraction_method": "llm",
+      "created_at": 1750766132,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 555,
-  "total_entities": 9,
-  "total_relationships": 7,
+  "total_entities": 6,
+  "total_relationships": 6,
   "usage": {
     "total_tokens": 38,
     "prompt_tokens": 38,
