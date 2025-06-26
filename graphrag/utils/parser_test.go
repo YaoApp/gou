@@ -1635,7 +1635,7 @@ func TestExtractionPromptWithJSONFormat(t *testing.T) {
 	// Test default prompt with JSON format
 	promptWithJSON := ExtractionPromptWithJSONFormat("")
 
-	if !strings.Contains(promptWithJSON, "JSON OUTPUT FORMAT REQUIREMENTS") {
+	if !strings.Contains(promptWithJSON, "JSON Output Format") {
 		t.Error("Expected prompt to contain JSON format requirements")
 	}
 
@@ -1647,11 +1647,11 @@ func TestExtractionPromptWithJSONFormat(t *testing.T) {
 		t.Error("Expected prompt to contain relationships structure")
 	}
 
-	if !strings.Contains(promptWithJSON, "MANDATORY FIELD REQUIREMENTS") {
+	if !strings.Contains(promptWithJSON, "Requirements:") {
 		t.Error("Expected prompt to contain field requirements")
 	}
 
-	if !strings.Contains(promptWithJSON, "LANGUAGE CONSISTENCY") {
+	if !strings.Contains(promptWithJSON, "same language as user input text") {
 		t.Error("Expected prompt to contain language consistency instructions")
 	}
 
@@ -1663,7 +1663,7 @@ func TestExtractionPromptWithJSONFormat(t *testing.T) {
 		t.Error("Expected custom prompt to be included")
 	}
 
-	if !strings.Contains(customWithJSON, "JSON OUTPUT FORMAT REQUIREMENTS") {
+	if !strings.Contains(customWithJSON, "JSON Output Format") {
 		t.Error("Expected custom prompt to also contain JSON format requirements")
 	}
 }

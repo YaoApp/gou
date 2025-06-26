@@ -1,209 +1,283 @@
 {
   "entities": [
     {
-      "id": "cli",
+      "id": "cli_execution_method",
       "name": "CLI",
-      "type": "TECHNOLOGY",
+      "type": "Execution Method",
       "labels": [
-        "interface",
         "command line"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "tool"
-      },
-      "description": "Command Line Interface used to execute commands such as 'yao run'.",
+      "description": "Command line interface method using `yao run` command",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903831,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "http_server",
+      "id": "http_server_execution_method",
       "name": "HTTP Server",
-      "type": "TECHNOLOGY",
+      "type": "Execution Method",
       "labels": [
-        "server",
-        "api"
+        "server"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "server"
-      },
-      "description": "Built-in HTTP server used to run processes via REST API.",
+      "description": "Built-in HTTP server method to run processes via REST API",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903831,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "yao_widget",
+      "id": "yao_widget_concept",
       "name": "Yao Widget",
-      "type": "TECHNOLOGY",
+      "type": "Concept",
       "labels": [
         "widget",
         "component"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "component"
-      },
-      "description": "A self-contained unit in Yao that combines UI, interaction, logic, and data without frontend and backend concepts.",
-      "confidence": 0.9,
+      "description": "A self-contained unit combining UI, interaction, logic, and data",
+      "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903831,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "dsl",
+      "id": "table_widget_type",
+      "name": "Table",
+      "type": "Widget Type",
+      "labels": [
+        "widget"
+      ],
+      "description": "A type of widget in Yao",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "form_widget_type",
+      "name": "Form",
+      "type": "Widget Type",
+      "labels": [
+        "widget"
+      ],
+      "description": "A type of widget in Yao",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "list_widget_type",
+      "name": "List",
+      "type": "Widget Type",
+      "labels": [
+        "widget"
+      ],
+      "description": "A type of widget in Yao",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "chart_widget_type",
+      "name": "Chart",
+      "type": "Widget Type",
+      "labels": [
+        "widget"
+      ],
+      "description": "A type of widget in Yao",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "data_model_widget_type",
+      "name": "Data Model",
+      "type": "Widget Type",
+      "labels": [
+        "widget"
+      ],
+      "description": "A type of widget in Yao",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "api_widget_type",
+      "name": "API",
+      "type": "Widget Type",
+      "labels": [
+        "widget"
+      ],
+      "description": "A type of widget in Yao",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "store_widget_type",
+      "name": "Store",
+      "type": "Widget Type",
+      "labels": [
+        "widget"
+      ],
+      "description": "A type of widget in Yao",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "flow_widget_type",
+      "name": "Flow",
+      "type": "Widget Type",
+      "labels": [
+        "widget"
+      ],
+      "description": "A type of widget in Yao",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "dsl_technology",
       "name": "DSL",
-      "type": "TECHNOLOGY",
+      "type": "Technology",
       "labels": [
-        "language",
-        "json"
+        "language"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "language"
-      },
-      "description": "Domain-Specific Language used to describe a Yao Widget in JSON format.",
+      "description": "Descriptive language used to describe a Widget in JSON format",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "processes",
-      "name": "Processes",
-      "type": "CONCEPT",
-      "labels": [
-        "operations",
-        "functions"
-      ],
-      "properties": {
-        "domain": "software",
-        "type": "concept"
-      },
-      "description": "A set of operations or functions that a Widget can perform.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766057,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "rest_api",
-      "name": "REST API",
-      "type": "TECHNOLOGY",
-      "labels": [
-        "api",
-        "integration"
-      ],
-      "properties": {
-        "domain": "software",
-        "type": "api"
-      },
-      "description": "A set of REST APIs that some Widgets have for integration and interaction.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903831,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-15.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-15.txt",
-  "generated_at": "2025-06-24T19:54:25+08:00",
+  "generated_at": "2025-06-26T10:10:31+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
-      "type": "USES",
-      "start_node": "cli",
-      "end_node": "yao_widget",
-      "properties": {
-        "context": "execution",
-        "method": "command"
-      },
-      "description": "CLI uses the 'yao run' command to execute Yao Widgets.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "type": "could_be",
+      "start_node": "yao_widget_concept",
+      "end_node": "table_widget_type",
+      "description": "A Yao Widget could be a Table",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903831,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
-      "start_node": "http_server",
-      "end_node": "yao_widget",
-      "properties": {
-        "context": "execution",
-        "method": "api"
-      },
-      "description": "HTTP Server runs processes of Yao Widgets via REST API.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "type": "could_be",
+      "start_node": "yao_widget_concept",
+      "end_node": "form_widget_type",
+      "description": "A Yao Widget could be a Form",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903831,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "DESCRIBED_BY",
-      "start_node": "yao_widget",
-      "end_node": "dsl",
-      "properties": {
-        "context": "description",
-        "format": "json"
-      },
-      "description": "Yao Widget is described using DSL in JSON format.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "type": "could_be",
+      "start_node": "yao_widget_concept",
+      "end_node": "list_widget_type",
+      "description": "A Yao Widget could be a List",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903831,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "PART_OF",
-      "start_node": "yao_widget",
-      "end_node": "processes",
-      "properties": {
-        "context": "structure",
-        "role": "functionality"
-      },
-      "description": "Processes are part of a Yao Widget.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "type": "could_be",
+      "start_node": "yao_widget_concept",
+      "end_node": "chart_widget_type",
+      "description": "A Yao Widget could be a Chart",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903831,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "PART_OF",
-      "start_node": "yao_widget",
-      "end_node": "rest_api",
-      "properties": {
-        "context": "structure",
-        "role": "integration"
-      },
-      "description": "Some Yao Widgets have a set of REST APIs.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "type": "could_be",
+      "start_node": "yao_widget_concept",
+      "end_node": "data_model_widget_type",
+      "description": "A Yao Widget could be a Data Model",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "could_be",
+      "start_node": "yao_widget_concept",
+      "end_node": "api_widget_type",
+      "description": "A Yao Widget could be an API",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "could_be",
+      "start_node": "yao_widget_concept",
+      "end_node": "store_widget_type",
+      "description": "A Yao Widget could be a Store",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "could_be",
+      "start_node": "yao_widget_concept",
+      "end_node": "flow_widget_type",
+      "description": "A Yao Widget could be a Flow",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "described_using",
+      "start_node": "yao_widget_concept",
+      "end_node": "dsl_technology",
+      "description": "A Yao Widget is described using DSL in JSON format",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750903831,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 809,
-  "total_entities": 6,
-  "total_relationships": 5,
+  "total_entities": 12,
+  "total_relationships": 9,
   "usage": {
     "total_tokens": 146,
     "prompt_tokens": 146,

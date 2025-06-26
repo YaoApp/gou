@@ -6,364 +6,306 @@ import (
 )
 
 const extractionPromptTemplate = `
-# Entity and Relationship Extraction Task
+# Knowledge Graph Extraction
 
-🚨 **CRITICAL INSTRUCTIONS**: You are an expert knowledge graph extraction system. Your task is to extract entities and relationships from the provided text with high accuracy and completeness.
+Extract entities and relationships from the provided text for knowledge graph construction.
 
-🔥 **MANDATORY FIELD REQUIREMENTS** - ABSOLUTELY REQUIRED:
-- Every entity MUST have non-empty "labels" array (minimum 1 item)
-- Every entity MUST have non-empty "properties" object (minimum 1 property)  
-- Every relationship MUST have non-empty "properties" object (minimum 1 property)
-- Every relationship MUST have "weight" value (0.0-1.0)
-- FAILURE TO PROVIDE THESE FIELDS WILL RESULT IN EXTRACTION ERROR
-
-## Core Principles
-
-### ✅ Required Actions
-- **Extract ALL relevant entities**: Identify all important entities including people, organizations, locations, concepts, events, objects, etc.
-- **Extract ALL relationships**: Identify all meaningful relationships between entities
-- **Maintain accuracy**: Only extract information that is explicitly stated or strongly implied in the text
-- **Provide descriptions**: Include clear, concise descriptions for entities and relationships
-- **Assign confidence scores**: Rate your confidence in each extraction (0.0-1.0)
-- **Categorize properly**: Assign appropriate types to entities and relationships
-
-### ❌ STRICTLY FORBIDDEN
-- **NO HALLUCINATION**: Never invent information not present in the text
-- **NO SPECULATION**: Don't extract relationships that aren't clearly indicated
-- **NO GENERIC ENTITIES**: Avoid overly broad or meaningless entity names
-- **NO DUPLICATE ENTITIES**: Each entity should have a unique ID and name
+## Core Rules
+- **Accuracy First**: Only extract explicitly stated or clearly implied information
+- **No Hallucination**: Never invent facts not present in the text
+- **Language Consistency**: Use the same language as the user input text for ALL entity names, types, descriptions, and labels
+- **Confidence Scoring**: Rate extractions based on textual evidence strength
 
 ## Entity Types
-Common entity types include but are not limited to:
-- **PERSON**: Individual people, characters
-- **ORGANIZATION**: Companies, institutions, groups
-- **LOCATION**: Places, cities, countries, buildings
-- **EVENT**: Happenings, incidents, activities
-- **CONCEPT**: Ideas, theories, principles
-- **OBJECT**: Physical items, products, tools
-- **DATE**: Temporal references
-- **TECHNOLOGY**: Software, systems, methods
+Extract entity types based on the actual content. Common examples include but are not limited to:
+- People, organizations, locations
+- Concepts, events, objects
+- Dates, technologies, products
+- Any meaningful entities that appear in the text
 
-## Relationship Types
-Common relationship types include but are not limited to:
-- **WORKS_FOR**: Person works for organization
-- **LOCATED_IN**: Entity is located in location
-- **PART_OF**: Entity is part of another entity
-- **RELATED_TO**: General relationship between entities
-- **CAUSES**: One entity causes another
-- **USES**: Entity uses another entity
-- **CREATES**: Entity creates another entity
-- **LEADS**: Entity leads another entity
-- **PARTICIPATES_IN**: Entity participates in event
+## Relationship Types  
+Extract relationship types that accurately describe the connections found in the text. Examples include but are not limited to:
+- Action relationships (works for, creates, uses)
+- Spatial relationships (located in, part of)
+- Temporal relationships (happens before, during)
+- Conceptual relationships (related to, causes)
+- Any meaningful relationships that appear in the text
 
-## Example
+## Confidence Scoring Guidelines
 
-**Input Text**: "John Smith works for Google in Mountain View. He is the lead engineer of the AI team that developed the search algorithm."
+### High Confidence (0.8-1.0)
+- Explicitly stated facts with clear textual evidence
+- Direct quotes or definitive statements
+- Well-known entities with unambiguous references
 
-**Expected Output**:
-- **Entities**: John Smith (PERSON), Google (ORGANIZATION), Mountain View (LOCATION), AI team (ORGANIZATION), search algorithm (TECHNOLOGY)
-- **Relationships**: John Smith WORKS_FOR Google, Google LOCATED_IN Mountain View, John Smith LEADS AI team, AI team CREATES search algorithm
+### Medium Confidence (0.5-0.79)
+- Implied relationships with reasonable inference
+- Entities mentioned but requiring context interpretation
+- Common sense connections clearly supported by text
 
-## Quality Requirements
+### Low Confidence (0.3-0.49)
+- Weak textual evidence requiring significant interpretation
+- Ambiguous references or unclear context
+- Tentative connections with limited support
 
-### High-Quality Entities
-- **Specific names**: Use exact names from text, not generic terms
-- **Proper types**: Assign the most specific appropriate type
-- **Rich descriptions**: Provide context and details
-- **High confidence**: Only extract entities you're confident about
-- **🔥 REQUIRED labels**: ALWAYS provide at least one label/category for each entity
-- **🔥 REQUIRED properties**: ALWAYS provide at least one property (even if just {"extracted": true})
+### Minimal Confidence (0.0-0.29)
+- Highly speculative or barely supported by text
+- Usually excluded from final extraction
 
-### High-Quality Relationships
-- **Clear semantics**: Relationship type should clearly describe the connection
-- **Bidirectional awareness**: Consider if relationships are directional
-- **Contextual descriptions**: Explain the relationship in context
-- **Confidence scoring**: Rate based on how explicitly stated the relationship is
-- **🔥 REQUIRED properties**: ALWAYS provide at least one property (even if just {"extracted": true})
-- **🔥 REQUIRED weight**: ALWAYS assign a weight between 0.0-1.0 based on relationship strength
+## Output Requirements
 
-## Output Format
+### Entities
+- **id**: Unique descriptive identifier
+- **name**: Exact name from text
+- **type**: Entity classification based on content
+- **description**: Contextual explanation
+- **confidence**: Score based on textual evidence (0.0-1.0)
+- **labels**: Optional categorization tags (can be empty array)
+- **props**: Optional attributes (can be empty object)
 
-🚨 **CRITICAL**: Use the provided function calls to structure your output. Each entity and relationship must be properly formatted with all required fields.
+### Relationships
+- **start_node/end_node**: Entity IDs
+- **type**: Relationship classification based on actual connection in text
+- **description**: Contextual explanation
+- **confidence**: Score based on relationship evidence (0.0-1.0)
+- **props**: Optional attributes (can be empty object)
+- **weight**: Optional relationship strength (0.0-1.0, defaults to confidence if not specified)
 
-## Key Reminders
+Focus on extracting high-quality, well-supported facts rather than comprehensive coverage.
 
-1. **Read carefully**: Analyze the entire text before extracting
-2. **Be comprehensive**: Don't miss important entities or relationships
-3. **Stay grounded**: Only extract what's actually in the text
-4. **Maintain consistency**: Use consistent naming and typing
-5. **Quality over quantity**: Better to extract fewer high-quality items than many low-quality ones
-6. **Consider context**: Understand the domain and context of the text
-7. **Validate confidence**: Be honest about your confidence levels
-8. **Unique identification**: Each entity should have a unique, descriptive ID
-9. **🌐 Language consistency**: **CRITICAL** - Use the SAME LANGUAGE as the input text for all entity names, descriptions, and relationship descriptions. If the input is in Chinese, output in Chinese. If in English, output in English. If in Japanese, output in Japanese, etc. DO NOT translate or change the language of the extracted content.
+## Examples
 
-🚨 **FINAL REMINDER**: Your extractions will be used for knowledge graph construction. Accuracy, completeness, and LANGUAGE CONSISTENCY are paramount!
+### English Example
+**Text**: "John works at Google as a software engineer"
+**Output**:
+- **Entities**: 
+  - John (person): {"role": "software engineer"}
+  - Google (organization): {"industry": "technology"}
+- **Relationship**: 
+  - John works_for Google: {"position": "software engineer"}
 
-🔥 **CRITICAL FIELD REQUIREMENTS**: 
-- Every entity MUST have "labels" and "properties" fields (non-empty)
-- Every relationship MUST have "properties" and "weight" fields (non-empty)
-- If you cannot determine specific labels/properties, use generic ones like ["entity"] or {"type": "general"}
-
-🚨 **PROPERTIES FIELD EXAMPLES - MANDATORY TO INCLUDE**:
-For entities: {"domain": "software", "category": "tool"} or {"type": "technology", "purpose": "development"}
-For relationships: {"context": "usage", "method": "application"} or {"type": "functional", "strength": "strong"}
-
-🔥 **STRICT JSON FORMAT REQUIREMENT**:
-EVERY entity MUST follow this exact format:
+**JSON Format**:
 {
-  "id": "...",
-  "name": "...",
-  "type": "...",
-  "description": "...",
-  "confidence": 0.9,
-  "labels": ["label1", "label2"],
-  "properties": {"key1": "value1", "key2": "value2"}
+  "entities": [
+    {
+      "id": "john_person",
+      "name": "John",
+      "type": "person", 
+      "description": "Software engineer mentioned in text",
+      "confidence": 0.9,
+      "labels": ["employee"],
+      "props": {"role": "software engineer"}
+    },
+    {
+      "id": "google_company",
+      "name": "Google",
+      "type": "organization",
+      "description": "Technology company",
+      "confidence": 0.95,
+      "labels": ["technology", "company"],
+      "props": {"industry": "technology"}
+    }
+  ],
+  "relationships": [
+    {
+      "start_node": "john_person",
+      "end_node": "google_company", 
+      "type": "works_for",
+      "description": "Employment relationship",
+      "confidence": 0.9,
+      "props": {"position": "software engineer"},
+      "weight": 0.9
+    }
+  ]
 }
 
-EVERY relationship MUST follow this exact format:
+### Chinese Example  
+**Text**: "张三在腾讯担任高级工程师"
+**Output**:
+- **Entities**:
+  - 张三 (人员): {"职位": "高级工程师"}
+  - 腾讯 (公司): {"行业": "科技"}
+- **Relationship**:
+  - 张三 在工作 腾讯: {"职位": "高级工程师"}
+
+**JSON Format**:
 {
-  "start_node": "...",
-  "end_node": "...",
-  "type": "...",
-  "description": "...",
-  "confidence": 0.9,
-  "properties": {"key1": "value1", "key2": "value2"},
-  "weight": 0.9
+  "entities": [
+    {
+      "id": "zhangsan_person",
+      "name": "张三",
+      "type": "人员",
+      "description": "文中提到的高级工程师", 
+      "confidence": 0.9,
+      "labels": ["员工"],
+      "props": {"职位": "高级工程师"}
+    },
+    {
+      "id": "tencent_company",
+      "name": "腾讯", 
+      "type": "公司",
+      "description": "科技公司",
+      "confidence": 0.95,
+      "labels": ["科技公司", "企业"],
+      "props": {"industry": "科技"}
+    }
+  ],
+  "relationships": [
+    {
+      "start_node": "zhangsan_person",
+      "end_node": "tencent_company",
+      "type": "在工作",
+      "description": "雇佣关系", 
+      "confidence": 0.9,
+      "props": {"职位": "高级工程师"},
+      "weight": 0.9
+    }
+  ]
 }
 `
 
 // Non-toolcall JSON format instructions
 const extractionJSONFormatInstructions = `
 
-## 🚨 CRITICAL JSON OUTPUT FORMAT REQUIREMENTS 🚨
+## JSON Output Format
 
-You MUST return your response as a valid JSON object with the following EXACT structure. Do NOT include any other text, explanations, or markdown formatting. Only return the JSON:
+Return a valid JSON object with this structure:
 
 {
   "entities": [
     {
       "id": "unique_entity_id",
       "name": "Entity Name",
-      "type": "ENTITY_TYPE",
-      "description": "Detailed description of the entity",
-      "confidence": 0.95,
-      "labels": ["technology", "software", "tool"],
-      "properties": {
-        "domain": "software_development",
-        "purpose": "application_building",
-        "approach": "generative_programming"
+      "type": "dynamic_based_on_content",
+      "description": "Description of the entity",
+      "confidence": 0.85,
+      "labels": ["optional", "category", "tags"],
+      "props": {
+        "optional_key": "optional_value"
       }
     }
   ],
   "relationships": [
     {
       "start_node": "source_entity_id",
-      "end_node": "target_entity_id", 
-      "type": "RELATIONSHIP_TYPE",
-      "description": "Detailed description of the relationship",
+      "end_node": "target_entity_id",
+      "type": "dynamic_based_on_content", 
+      "description": "Description of relationship",
       "confidence": 0.90,
-      "properties": {
-        "context": "development_process",
-        "method": "automated_generation",
-        "benefit": "faster_development"
+      "props": {
+        "optional_key": "optional_value"
       },
       "weight": 0.85
     }
   ]
 }
 
-### MANDATORY FIELD REQUIREMENTS:
+**Requirements:**
+- All listed fields are required
+- labels[] and props{} can be empty but must be present
+- weight defaults to confidence value if not specified
+- Use same language as user input text for all text fields
 
-**For each entity:**
-- ✅ "id": MUST be a unique, descriptive identifier (e.g., "john_smith_engineer", "google_company")
-- ✅ "name": MUST be the exact name as it appears in the text
-- ✅ "type": MUST be one of: PERSON, ORGANIZATION, LOCATION, CONCEPT, EVENT, OBJECT, DATE, TECHNOLOGY, or similar
-- ✅ "description": MUST provide context and details about the entity
-- ✅ "confidence": MUST be a number between 0.0 and 1.0
-- 🚨 "labels": MANDATORY array of category labels/tags for the entity (minimum 1 item required)
-- 🚨 "properties": MANDATORY object with key-value properties and attributes (minimum 1 property required)
-
-**For each relationship:**
-- ✅ "start_node": MUST exactly match an entity "id" from the entities array
-- ✅ "end_node": MUST exactly match an entity "id" from the entities array  
-- ✅ "type": MUST be descriptive (e.g., "WORKS_FOR", "LOCATED_IN", "PART_OF", "CREATES")
-- ✅ "description": MUST explain the relationship with context
-- ✅ "confidence": MUST be a number between 0.0 and 1.0
-- 🚨 "properties": MANDATORY object with key-value properties and attributes (minimum 1 property required)
-- 🚨 "weight": MANDATORY number (0.0-1.0) representing relationship strength/importance
-
-### ❌ CRITICAL VALIDATION RULES:
-- NO empty strings ("") for any field
-- NO missing required fields
-- NO relationships with non-existent entity IDs
-- NO duplicate entity IDs
-- NO invalid JSON syntax
-- NO additional text outside the JSON
-
-### 🌐 LANGUAGE CONSISTENCY:
-- Use the SAME LANGUAGE as the input text for ALL entity names, descriptions, and relationship descriptions
-- If input is Chinese, output Chinese. If English, output English. DO NOT translate!
-
-🚨 **CRITICAL REQUIREMENTS CHECKLIST**:
-✅ Every entity has "labels" array with at least 1 item
-✅ Every entity has "properties" object with at least 1 key-value pair  
-✅ Every relationship has "properties" object with at least 1 key-value pair
-✅ Every relationship has "weight" number between 0.0-1.0
-
-**EXTRACTION WILL FAIL if any of these fields are missing!**
-
-### 📝 **EXAMPLE FOR REFERENCE**:
-For text: "John works at Google as a software engineer"
-
-REQUIRED OUTPUT FORMAT:
-{
-  "entities": [
-    {
-      "id": "john_person",
-      "name": "John",
-      "type": "PERSON", 
-      "description": "A person mentioned in the text",
-      "confidence": 0.9,
-      "labels": ["person", "employee"],
-      "properties": {
-        "role": "software engineer",
-        "mentioned_context": "workplace"
-      }
-    },
-    {
-      "id": "google_company",
-      "name": "Google",
-      "type": "ORGANIZATION",
-      "description": "Technology company mentioned as employer",
-      "confidence": 0.95,
-      "labels": ["company", "technology", "employer"],
-      "properties": {
-        "industry": "technology",
-        "type": "corporation"
-      }
-    }
-  ],
-  "relationships": [
-    {
-      "start_node": "john_person",
-      "end_node": "google_company",
-      "type": "WORKS_FOR",
-      "description": "John is employed by Google",
-      "confidence": 0.9,
-      "properties": {
-        "employment_type": "full_time",
-        "role_description": "software engineer"
-      },
-      "weight": 0.8
-    }
-  ]
-}
-
-🚨 **FINAL WARNING**: Return ONLY the JSON object. Any additional text will cause parsing errors!
+Return only the JSON object.
 `
 
-// ExtractionToolcallRaw is the toolcall for entity and relationship extraction
+// ExtractionToolcallRaw is the optimized toolcall for entity and relationship extraction
 const ExtractionToolcallRaw = `
 [
   {
     "type": "function",
     "function": {
       "name": "extract_entities_and_relationships",
-      "description": "Extract entities and relationships from text for knowledge graph construction. CRITICAL: Only extract information that is explicitly stated or strongly implied in the text. NO HALLUCINATION allowed. Provide accurate confidence scores and detailed descriptions. 🚨 ABSOLUTE REQUIREMENT: Every entity MUST have 'labels' array (at least 1 item) and 'properties' object (at least 1 key-value pair). Every relationship MUST have 'properties' object (at least 1 key-value pair) and 'weight' number. PROPERTIES FIELD IS MANDATORY - examples: entity properties {\"domain\": \"software\", \"type\": \"tool\"}, relationship properties {\"context\": \"usage\", \"strength\": \"high\"}. These fields are NOT optional - omitting them will cause extraction failure.",
+      "description": "Extract entities and relationships from text for knowledge graph construction. Extract only explicitly stated or clearly implied information. Apply confidence scoring based on textual evidence strength. IMPORTANT: Extract meaningful attributes in 'props' field when mentioned in text - avoid empty props unless no attributes are available. Use 'props' instead of 'properties' to avoid JSON Schema conflicts. CRITICAL: Use the same language as user input text for ALL outputs (entity names, types, descriptions, labels, relationship types).",
       "parameters": {
         "type": "object",
         "properties": {
           "entities": {
             "type": "array",
-            "description": "List of extracted entities with their properties. Each entity must have a unique ID and proper type classification.",
+            "description": "List of extracted entities with confidence scoring based on textual evidence",
             "items": {
               "type": "object",
               "properties": {
                 "id": {
                   "type": "string",
-                  "description": "Unique identifier for the entity (use descriptive names, e.g., 'john_smith_google_engineer')"
+                  "description": "Unique descriptive identifier for the entity"
                 },
                 "name": {
-                  "type": "string",
-                  "description": "The actual name or title of the entity as it appears in the text"
+                  "type": "string", 
+                  "description": "Entity name as it appears in the text (use same language as user input)"
                 },
                 "type": {
                   "type": "string",
-                  "description": "Entity type (e.g., PERSON, ORGANIZATION, LOCATION, CONCEPT, EVENT, OBJECT, DATE, TECHNOLOGY)"
+                  "description": "Entity type based on content in same language as user input (e.g., person/人员, organization/公司, location/地点, etc.)"
                 },
                 "description": {
                   "type": "string",
-                  "description": "Detailed description of the entity including context from the text"
+                  "description": "Contextual description of the entity from the text (use same language as user input)"
                 },
                 "confidence": {
                   "type": "number",
-                  "description": "Confidence score for this entity extraction (0.0-1.0)",
+                  "description": "Confidence score (0.0-1.0): 0.8-1.0 (explicit facts), 0.5-0.79 (reasonable inference), 0.3-0.49 (weak evidence), 0.0-0.29 (speculative)",
                   "minimum": 0.0,
                   "maximum": 1.0
                 },
                 "labels": {
                   "type": "array",
-                  "description": "MANDATORY: Entity labels/categories. Must provide at least one label. Cannot be empty.",
+                  "description": "Optional category labels/tags. Can be empty array if no meaningful categorization available.",
                   "items": {
                     "type": "string"
                   },
-                  "minItems": 1
+                  "default": []
                 },
-                "properties": {
-                  "type": "object",
-                  "description": "MANDATORY: Entity properties and attributes as key-value pairs. Must provide at least one property. Cannot be empty. Example: {\"domain\": \"software\", \"purpose\": \"development\"}",
-                  "additionalProperties": true,
-                  "minProperties": 1,
-                  "default": {"category": "entity"}
+                "props": {
+                  "type": "object", 
+                  "description": "Entity attributes as key-value pairs. Include meaningful properties when available from text (e.g., {\"industry\": \"technology\"}, {\"role\": \"engineer\"}, {\"location\": \"headquarters\"}). Can be empty object only if no specific attributes mentioned.",
+                  "default": {}
                 }
               },
-              "required": ["id", "name", "type", "description", "confidence", "labels", "properties"]
+              "required": ["id", "name", "type", "description", "confidence", "labels", "props"]
             }
           },
           "relationships": {
             "type": "array",
-            "description": "List of extracted relationships between entities. Each relationship must connect two entities that exist in the entities list.",
+            "description": "List of extracted relationships with confidence scoring based on relationship evidence",
             "items": {
               "type": "object",
               "properties": {
                 "start_node": {
                   "type": "string",
-                  "description": "ID of the source entity (must match an entity ID from the entities list)"
+                  "description": "ID of source entity (must match an entity ID)"
                 },
                 "end_node": {
-                  "type": "string",
-                  "description": "ID of the target entity (must match an entity ID from the entities list)"
+                  "type": "string", 
+                  "description": "ID of target entity (must match an entity ID)"
                 },
                 "type": {
                   "type": "string",
-                  "description": "Relationship type (e.g., WORKS_FOR, LOCATED_IN, PART_OF, RELATED_TO, CAUSES, USES, CREATES, LEADS)"
+                  "description": "Relationship type based on actual connection in text, use same language as user input (e.g., works_for/在工作, located_in/位于, part_of/属于, etc.)"
                 },
                 "description": {
                   "type": "string",
-                  "description": "Detailed description of the relationship including context from the text"
+                  "description": "Contextual description of the relationship from the text (use same language as user input)"
                 },
                 "confidence": {
                   "type": "number",
-                  "description": "Confidence score for this relationship extraction (0.0-1.0)",
+                  "description": "Confidence score (0.0-1.0): 0.8-1.0 (explicit), 0.5-0.79 (implied), 0.3-0.49 (weak), 0.0-0.29 (speculative)",
                   "minimum": 0.0,
                   "maximum": 1.0
                 },
-                "properties": {
+                "props": {
                   "type": "object",
-                  "description": "MANDATORY: Relationship properties and attributes as key-value pairs. Must provide at least one property. Cannot be empty. Example: {\"context\": \"development\", \"method\": \"tool_usage\"}",
-                  "additionalProperties": true,
-                  "minProperties": 1,
-                  "default": {"type": "relationship"}
+                  "description": "Relationship attributes as key-value pairs. Include meaningful properties when available from text (e.g., {\"duration\": \"5 years\"}, {\"type\": \"full_time\"}, {\"since\": \"2020\"}). Can be empty object only if no specific attributes mentioned.",
+                  "default": {}
                 },
                 "weight": {
                   "type": "number",
-                  "description": "MANDATORY: Relationship strength/weight (0.0-1.0), representing the strength or importance of this relationship. Must be provided. Cannot be null or empty.",
+                  "description": "Optional relationship strength/importance (0.0-1.0). Defaults to confidence value if not specified.",
                   "minimum": 0.0,
                   "maximum": 1.0
                 }
               },
-              "required": ["start_node", "end_node", "type", "description", "confidence", "properties", "weight"]
+              "required": ["start_node", "end_node", "type", "description", "confidence", "props"]
             }
           }
         },

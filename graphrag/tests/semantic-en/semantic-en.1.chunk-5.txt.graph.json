@@ -3,151 +3,94 @@
     {
       "id": "neo_directory",
       "name": "neo",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "directory",
         "configuration"
       ],
-      "properties": {
-        "purpose": "AI Chatbot configuration"
-      },
       "description": "The AI Chatbot configuration directory",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903820,
       "version": 1,
       "status": "active"
     },
     {
       "id": "plugins_directory",
       "name": "plugins",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "directory",
         "plugins"
       ],
-      "properties": {
-        "customizable": "environment variables",
-        "default": "GRPC plugins"
-      },
-      "description": "The Default GRPC plugins directory, with an option for a custom plugins directory set in environment variables.",
+      "description": "The Default GRPC plugins directory",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903820,
       "version": 1,
       "status": "active"
     },
     {
       "id": "public_directory",
       "name": "public",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "directory",
         "static files"
       ],
-      "properties": {
-        "access": "HTTP server",
-        "generation": "SUI template engine"
-      },
-      "description": "The static files directory, accessible via the HTTP server. SUI template engine generates web pages here.",
+      "description": "The static files directory, can be accessed via the HTTP server",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903820,
       "version": 1,
       "status": "active"
     },
     {
       "id": "scripts_directory",
       "name": "scripts",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "directory",
-        "scripts"
+        "custom process"
       ],
-      "properties": {
-        "language": "TypeScript or JavaScript"
-      },
-      "description": "Directory for custom processes written in TypeScript or JavaScript.",
+      "description": "Custom Process: write the custom process in TypeScript or JavaScript",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903820,
       "version": 1,
       "status": "active"
     },
     {
       "id": "tables_directory",
       "name": "tables",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "directory",
-        "widgets"
+        "table widgets"
       ],
-      "properties": {
-        "location": "admin panel",
-        "type": "table widgets"
-      },
-      "description": "Directory for table widgets, specifically table-type pages in the admin panel.",
+      "description": "Table Widgets: table-type pages in the admin panel",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903820,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-5.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-5.txt",
-  "generated_at": "2025-06-24T19:54:25+08:00",
+  "generated_at": "2025-06-26T10:10:31+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
-      "type": "ACCESSIBLE_VIA",
-      "start_node": "public_directory",
-      "end_node": "HTTP_server",
-      "properties": {
-        "method": "HTTP server"
-      },
-      "description": "The public directory is accessible via the HTTP server.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "type": "can_be_set_in",
+      "start_node": "plugins_directory",
+      "end_node": "environment_variables",
+      "description": "Custom plugins directory can be set in environment variables",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766057,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "GENERATES",
-      "start_node": "public_directory",
-      "end_node": "SUI_template_engine",
-      "properties": {
-        "process": "web page generation"
-      },
-      "description": "The SUI template engine generates web pages in the public directory.",
-      "confidence": 0.9,
-      "weight": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766057,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "WRITTEN_IN",
-      "start_node": "scripts_directory",
-      "end_node": "TypeScript_JavaScript",
-      "properties": {
-        "language": "TypeScript or JavaScript"
-      },
-      "description": "Custom processes in the scripts directory are written in TypeScript or JavaScript.",
-      "confidence": 0.9,
-      "weight": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903820,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 525,
   "total_entities": 5,
-  "total_relationships": 3,
+  "total_relationships": 1,
   "usage": {
     "total_tokens": 81,
     "prompt_tokens": 81,

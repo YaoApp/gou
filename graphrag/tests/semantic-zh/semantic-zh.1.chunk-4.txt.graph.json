@@ -3,245 +3,175 @@
     {
       "id": "scripts_directory",
       "name": "scripts",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "directory",
         "development",
-        "process"
+        "code"
       ],
       "properties": {
-        "content_type": "custom_processes",
-        "languages": [
-          "TypeScript",
-          "JavaScript"
-        ]
+        "language": "TypeScript/JavaScript"
       },
       "description": "Directory for custom processes written in TypeScript or JavaScript",
       "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750766132,
+      "created_at": 1750903701,
       "version": 1,
       "status": "active"
     },
     {
       "id": "tables_directory",
       "name": "tables",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "directory",
         "component",
-        "ui"
+        "UI"
       ],
       "properties": {
-        "context": "user_interface",
-        "purpose": "management_panel_tables"
+        "purpose": "management panel tables"
       },
       "description": "Directory for table components used in management panels",
       "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750766132,
+      "created_at": 1750903701,
       "version": 1,
       "status": "active"
     },
     {
       "id": "other_components",
       "name": "其他组件类型",
-      "type": "OBJECT",
+      "type": "component_category",
       "labels": [
         "component",
-        "custom",
-        "development"
+        "custom"
       ],
-      "properties": {
-        "type": "miscellaneous_components",
-        "variability": "user_customizable"
-      },
-      "description": "Other component types or custom components defined by the user",
+      "description": "Other component types or custom component types",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766132,
+      "created_at": 1750903701,
       "version": 1,
       "status": "active"
     },
     {
       "id": "yao_application",
       "name": "Yao 应用程序",
-      "type": "TECHNOLOGY",
+      "type": "software_application",
       "labels": [
-        "framework",
         "development",
-        "application"
+        "framework"
       ],
-      "properties": {
-        "development_approach": "DSL_based",
-        "process_type": "custom_processes"
-      },
-      "description": "Yao application development framework",
+      "description": "Yao application development",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766132,
+      "created_at": 1750903701,
       "version": 1,
       "status": "active"
     },
     {
       "id": "dsl",
       "name": "DSL",
-      "type": "TECHNOLOGY",
+      "type": "development_concept",
       "labels": [
         "language",
-        "description",
-        "component"
+        "configuration"
       ],
       "properties": {
-        "targets": [
-          "models",
-          "APIs",
-          "tables",
-          "forms"
-        ],
-        "usage": "component_description"
+        "usage": "describing components like models, APIs, tables, forms"
       },
-      "description": "Domain Specific Language used to describe components like models, APIs, tables, forms",
-      "confidence": 0.95,
+      "description": "Domain Specific Language for describing components",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766132,
+      "created_at": 1750903701,
       "version": 1,
       "status": "active"
     },
     {
       "id": "custom_process",
       "name": "自定义进程",
-      "type": "TECHNOLOGY",
+      "type": "development_concept",
       "labels": [
-        "process",
-        "executable",
-        "development"
+        "development",
+        "process"
       ],
       "properties": {
-        "implementation_options": [
-          "TypeScript",
-          "JavaScript",
-          "GRPC"
-        ],
-        "nature": "customizable"
+        "implementation": "TypeScript/JavaScript or GRPC"
       },
       "description": "Custom processes written in TypeScript/JavaScript or using GRPC plugins",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766132,
+      "created_at": 1750903701,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-zh.1.chunk-4.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-zh/semantic-zh.1.chunk-4.txt",
-  "generated_at": "2025-06-24T19:56:08+08:00",
+  "generated_at": "2025-06-26T10:09:02+08:00",
   "model": "ep-20250326204837-sxlxr",
   "relationships": [
     {
-      "type": "CONTAINS",
+      "type": "contains",
       "start_node": "scripts_directory",
       "end_node": "custom_process",
-      "properties": {
-        "containment_type": "physical_storage",
-        "relationship": "parent_child"
-      },
-      "description": "The scripts directory contains custom processes implementations",
+      "description": "Scripts directory contains custom process implementations",
       "confidence": 0.9,
-      "weight": 0.85,
-      "extraction_method": "llm",
-      "created_at": 1750766132,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "PART_OF",
-      "start_node": "tables_directory",
-      "end_node": "yao_application",
-      "properties": {
-        "component_type": "ui_element",
-        "role": "management_interface"
-      },
-      "description": "Tables directory is part of Yao application components",
-      "confidence": 0.85,
-      "weight": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750766132,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "PART_OF",
-      "start_node": "other_components",
-      "end_node": "yao_application",
-      "properties": {
-        "category": "miscellaneous",
-        "flexibility": "user_extensible"
-      },
-      "description": "Other components are part of the Yao application ecosystem",
-      "confidence": 0.85,
-      "weight": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750766132,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USES",
-      "start_node": "yao_application",
-      "end_node": "dsl",
-      "properties": {
-        "necessity": "mandatory",
-        "usage_context": "development_requirement"
-      },
-      "description": "Yao application development requires writing DSL for component description",
-      "confidence": 0.95,
       "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766132,
+      "created_at": 1750903701,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
+      "type": "requires",
+      "start_node": "yao_application",
+      "end_node": "dsl",
+      "description": "Yao application development requires DSL",
+      "confidence": 0.9,
+      "weight": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750903701,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "requires",
       "start_node": "yao_application",
       "end_node": "custom_process",
-      "properties": {
-        "flexibility": "multiple_options",
-        "implementation_choice": [
-          "TypeScript",
-          "JavaScript",
-          "GRPC"
-        ]
-      },
-      "description": "Yao application development involves writing custom processes",
+      "description": "Yao application development requires custom processes",
       "confidence": 0.9,
-      "weight": 0.85,
+      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766132,
+      "created_at": 1750903701,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "RELATED_TO",
-      "start_node": "dsl",
-      "end_node": "custom_process",
-      "properties": {
-        "development_phase": "implementation",
-        "relationship_nature": "complementary"
-      },
-      "description": "DSL description and custom processes are both development components in Yao",
-      "confidence": 0.8,
-      "weight": 0.75,
+      "type": "part_of",
+      "start_node": "tables_directory",
+      "end_node": "yao_application",
+      "description": "Tables directory is part of Yao application structure",
+      "confidence": 0.85,
+      "weight": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750766132,
+      "created_at": 1750903701,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "part_of",
+      "start_node": "scripts_directory",
+      "end_node": "yao_application",
+      "description": "Scripts directory is part of Yao application structure",
+      "confidence": 0.85,
+      "weight": 0.85,
+      "extraction_method": "llm",
+      "created_at": 1750903701,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 555,
   "total_entities": 6,
-  "total_relationships": 6,
+  "total_relationships": 5,
   "usage": {
     "total_tokens": 38,
     "prompt_tokens": 38,

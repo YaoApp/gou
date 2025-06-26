@@ -3,172 +3,156 @@
     {
       "id": "yao_application",
       "name": "Yao application",
-      "type": "CONCEPT",
+      "type": "concept",
       "labels": [
         "application",
         "software"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "application"
-      },
-      "description": "A type of application developed using specific steps and tools, including writing DSL, custom processes, and using Yao runtime.",
+      "description": "A type of application developed using Yao platform",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     },
     {
       "id": "dsl",
       "name": "DSL",
-      "type": "TECHNOLOGY",
+      "type": "technology",
       "labels": [
         "language",
         "technology"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "language"
-      },
-      "description": "A domain-specific language used to describe widgets in a Yao application, such as Model, API, Table, Form, etc.",
-      "confidence": 0.9,
+      "description": "A language used to describe widgets in Yao applications",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "typescript_javascript",
-      "name": "TypeScript or JavaScript",
-      "type": "TECHNOLOGY",
+      "id": "typescript",
+      "name": "TypeScript",
+      "type": "technology",
       "labels": [
-        "programming language",
-        "technology"
+        "programming language"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "language"
-      },
-      "description": "Programming languages used to write custom processes in a Yao application.",
+      "description": "A programming language used to write custom processes in Yao applications",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903823,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "javascript",
+      "name": "JavaScript",
+      "type": "technology",
+      "labels": [
+        "programming language"
+      ],
+      "description": "A programming language used to write custom processes in Yao applications",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     },
     {
       "id": "grpc_plugins",
       "name": "GRPC plugins",
-      "type": "TECHNOLOGY",
+      "type": "technology",
       "labels": [
         "plugin",
         "technology"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "plugin"
-      },
-      "description": "Plugins used as an alternative to writing custom processes in TypeScript or JavaScript for a Yao application.",
-      "confidence": 0.9,
+      "description": "Plugins used in Yao applications for custom processes",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     },
     {
       "id": "yao_runtime",
       "name": "Yao runtime",
-      "type": "TECHNOLOGY",
+      "type": "technology",
       "labels": [
         "runtime",
-        "technology"
+        "environment"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "runtime"
-      },
-      "description": "The runtime environment used to debug and run a Yao application.",
+      "description": "The runtime environment used to debug and run Yao applications",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-6.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-6.txt",
-  "generated_at": "2025-06-24T19:54:25+08:00",
+  "generated_at": "2025-06-26T10:10:31+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
-      "type": "USES",
+      "type": "uses",
       "start_node": "yao_application",
       "end_node": "dsl",
-      "properties": {
-        "context": "development",
-        "method": "description"
-      },
-      "description": "Yao application uses DSL to describe widgets such as Model, API, Table, Form, etc.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "description": "Yao applications use DSL to describe widgets",
+      "confidence": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
+      "type": "uses",
       "start_node": "yao_application",
-      "end_node": "typescript_javascript",
-      "properties": {
-        "context": "development",
-        "method": "custom process"
-      },
-      "description": "Yao application uses TypeScript or JavaScript to write custom processes.",
+      "end_node": "typescript",
+      "description": "Yao applications use TypeScript to write custom processes",
       "confidence": 0.9,
-      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
+      "type": "uses",
+      "start_node": "yao_application",
+      "end_node": "javascript",
+      "description": "Yao applications use JavaScript to write custom processes",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750903823,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "uses",
       "start_node": "yao_application",
       "end_node": "grpc_plugins",
-      "properties": {
-        "context": "development",
-        "method": "custom process"
-      },
-      "description": "Yao application uses GRPC plugins as an alternative to TypeScript or JavaScript for custom processes.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "description": "Yao applications use GRPC plugins for custom processes",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
+      "type": "uses",
       "start_node": "yao_application",
       "end_node": "yao_runtime",
-      "properties": {
-        "context": "execution",
-        "method": "debug and run"
-      },
-      "description": "Yao application uses Yao runtime to debug and run the application.",
+      "description": "Yao applications use Yao runtime to debug and run",
       "confidence": 0.9,
-      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 449,
-  "total_entities": 5,
-  "total_relationships": 4,
+  "total_entities": 6,
+  "total_relationships": 5,
   "usage": {
     "total_tokens": 77,
     "prompt_tokens": 77,

@@ -1,225 +1,112 @@
 {
   "entities": [
     {
-      "id": "flow_widgets",
+      "id": "flows_directory",
       "name": "flows",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "widget",
-        "process"
+        "Flow Widgets"
       ],
       "description": "Flow Widgets: define the process flow",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903821,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "form_widgets",
+      "id": "forms_directory",
       "name": "forms",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "widget",
-        "form"
+        "Form Widgets"
       ],
       "description": "Form Widgets: form-type pages in the admin panel",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903821,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "application_icons",
+      "id": "icons_directory",
       "name": "icons",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "icon",
-        "application"
+        "Icons"
       ],
       "description": "The application icons used in the admin panel",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903821,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "i18n_language_files",
+      "id": "langs_directory",
       "name": "langs",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "language",
-        "i18n"
+        "Language Files"
       ],
       "description": "I18n language files used in the admin panel",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903821,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "login_widgets",
+      "id": "logins_directory",
       "name": "logins",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "widget",
-        "login"
+        "Login Widgets"
       ],
       "description": "Login Widgets: login-type pages in the admin panel",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903821,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "application_log_directory",
+      "id": "logs_directory",
       "name": "logs",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "log",
-        "directory"
+        "Log Directory"
       ],
       "description": "The application log directory, the default option of log. Custom log directory can be set in environment variables.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903821,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "model_widgets",
+      "id": "models_directory",
       "name": "models",
-      "type": "OBJECT",
+      "type": "directory",
       "labels": [
-        "widget",
-        "model"
+        "Model Widgets"
       ],
       "description": "Model Widgets: define the data structure",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903821,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-4.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-4.txt",
-  "generated_at": "2025-06-24T19:54:25+08:00",
+  "generated_at": "2025-06-26T10:10:31+08:00",
   "model": "gpt-4o",
-  "relationships": [
-    {
-      "type": "USED_IN",
-      "start_node": "flow_widgets",
-      "end_node": "admin_panel",
-      "properties": {
-        "context": "usage"
-      },
-      "description": "Flow Widgets are used in the admin panel to define the process flow",
-      "confidence": 0.9,
-      "weight": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766056,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USED_IN",
-      "start_node": "form_widgets",
-      "end_node": "admin_panel",
-      "properties": {
-        "context": "usage"
-      },
-      "description": "Form Widgets are used in the admin panel for form-type pages",
-      "confidence": 0.9,
-      "weight": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766056,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USED_IN",
-      "start_node": "application_icons",
-      "end_node": "admin_panel",
-      "properties": {
-        "context": "usage"
-      },
-      "description": "Application icons are used in the admin panel",
-      "confidence": 0.9,
-      "weight": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766056,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USED_IN",
-      "start_node": "i18n_language_files",
-      "end_node": "admin_panel",
-      "properties": {
-        "context": "usage"
-      },
-      "description": "I18n language files are used in the admin panel",
-      "confidence": 0.9,
-      "weight": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766056,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USED_IN",
-      "start_node": "login_widgets",
-      "end_node": "admin_panel",
-      "properties": {
-        "context": "usage"
-      },
-      "description": "Login Widgets are used in the admin panel for login-type pages",
-      "confidence": 0.9,
-      "weight": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766056,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "CONFIGURABLE_BY",
-      "start_node": "application_log_directory",
-      "end_node": "environment_variables",
-      "properties": {
-        "context": "configuration"
-      },
-      "description": "The application log directory can be configured by setting custom log directory in environment variables",
-      "confidence": 0.9,
-      "weight": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766056,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USED_IN",
-      "start_node": "model_widgets",
-      "end_node": "admin_panel",
-      "properties": {
-        "context": "usage"
-      },
-      "description": "Model Widgets are used in the admin panel to define the data structure",
-      "confidence": 0.9,
-      "weight": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766056,
-      "version": 1,
-      "status": "active"
-    }
-  ],
+  "relationships": null,
   "text_length": 524,
   "total_entities": 7,
-  "total_relationships": 7,
+  "total_relationships": 0,
   "usage": {
     "total_tokens": 83,
     "prompt_tokens": 83,

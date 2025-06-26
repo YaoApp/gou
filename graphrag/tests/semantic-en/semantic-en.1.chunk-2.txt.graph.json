@@ -1,103 +1,132 @@
 {
   "entities": [
     {
-      "id": "yao_application",
+      "id": "yao_application_concept",
       "name": "Yao Application",
-      "type": "CONCEPT",
+      "type": "concept",
       "labels": [
         "software",
         "application"
       ],
-      "properties": {
-        "components": "widget DSLs and custom processes",
-        "language": "TypeScript or JavaScript"
-      },
-      "description": "A Yao application is a collection of widget DSLs and custom processes written in TypeScript or JavaScript.",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750766053,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "sui_template_engine",
-      "name": "SUI Template Engine",
-      "type": "TECHNOLOGY",
-      "labels": [
-        "template engine",
-        "web development"
-      ],
-      "properties": {
-        "purpose": "build web pages",
-        "version": "0.10.4"
-      },
-      "description": "The SUI template engine, new in version 0.10.4, helps build web pages for websites.",
+      "description": "A collection of widget DSLs and custom processes written in TypeScript or JavaScript",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766053,
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "widget_types",
-      "name": "Widget Types",
-      "type": "CONCEPT",
+      "id": "sui_template_engine_technology",
+      "name": "SUI template engine",
+      "type": "technology",
       "labels": [
-        "software component",
-        "directory structure"
+        "web",
+        "template engine"
       ],
-      "properties": {
-        "examples": "models, tables, forms, apis"
-      },
-      "description": "Each widget type has its own directory in the project root, such as models, tables, forms, apis, etc.",
-      "confidence": 0.85,
+      "description": "Helps build web pages, new in version 0.10.4",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766053,
+      "created_at": 1750903823,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "typescript_language",
+      "name": "TypeScript",
+      "type": "technology",
+      "labels": [
+        "programming language"
+      ],
+      "description": "Programming language used for writing custom processes in Yao applications",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750903823,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "javascript_language",
+      "name": "JavaScript",
+      "type": "technology",
+      "labels": [
+        "programming language"
+      ],
+      "description": "Programming language used for writing custom processes in Yao applications",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750903823,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "widget_type_concept",
+      "name": "widget type",
+      "type": "concept",
+      "labels": [
+        "software",
+        "component"
+      ],
+      "description": "Each widget type has its own directory in the project root",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-2.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-2.txt",
-  "generated_at": "2025-06-24T19:54:25+08:00",
+  "generated_at": "2025-06-26T10:10:31+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
-      "type": "USES",
-      "start_node": "yao_application",
-      "end_node": "sui_template_engine",
-      "properties": {
-        "context": "web development",
-        "version": "0.10.4"
-      },
-      "description": "Yao Application uses the SUI Template Engine to build web pages.",
+      "type": "uses",
+      "start_node": "yao_application_concept",
+      "end_node": "typescript_language",
+      "description": "Yao applications use TypeScript for custom processes",
       "confidence": 0.9,
-      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766053,
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "CONTAINS",
-      "start_node": "yao_application",
-      "end_node": "widget_types",
-      "properties": {
-        "examples": "models, tables, forms, apis",
-        "structure": "directory"
-      },
-      "description": "Yao Application contains various widget types, each with its own directory.",
-      "confidence": 0.85,
-      "weight": 0.85,
+      "type": "uses",
+      "start_node": "yao_application_concept",
+      "end_node": "javascript_language",
+      "description": "Yao applications use JavaScript for custom processes",
+      "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766053,
+      "created_at": 1750903823,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "includes",
+      "start_node": "yao_application_concept",
+      "end_node": "sui_template_engine_technology",
+      "description": "Yao applications can include the SUI template engine for building web pages",
+      "confidence": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750903823,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "part_of",
+      "start_node": "widget_type_concept",
+      "end_node": "yao_application_concept",
+      "description": "Each widget type is part of a Yao application",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903823,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 391,
-  "total_entities": 3,
-  "total_relationships": 2,
+  "total_entities": 5,
+  "total_relationships": 4,
   "usage": {
     "total_tokens": 63,
     "prompt_tokens": 63,
