@@ -489,8 +489,10 @@ func (parser *Parser) tryParseExtractionToolcall() ([]types.Node, []types.Relati
 					}
 				}
 
-				// Handle properties map
-				if propertiesRaw, ok := entityMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
+				// Handle properties map (check both 'props' and 'properties' for backward compatibility)
+				if propsRaw, ok := entityMap["props"].(map[string]interface{}); ok && len(propsRaw) > 0 {
+					node.Properties = propsRaw
+				} else if propertiesRaw, ok := entityMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
 					node.Properties = propertiesRaw
 				}
 
@@ -536,8 +538,10 @@ func (parser *Parser) tryParseExtractionToolcall() ([]types.Node, []types.Relati
 					relationship.Confidence = confidence
 				}
 
-				// Handle properties map
-				if propertiesRaw, ok := relationshipMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
+				// Handle properties map (check both 'props' and 'properties' for backward compatibility)
+				if propsRaw, ok := relationshipMap["props"].(map[string]interface{}); ok && len(propsRaw) > 0 {
+					relationship.Properties = propsRaw
+				} else if propertiesRaw, ok := relationshipMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
 					relationship.Properties = propertiesRaw
 				}
 
@@ -986,8 +990,10 @@ func (parser *Parser) tryParseExtractionRegular() ([]types.Node, []types.Relatio
 					}
 				}
 
-				// Handle properties map
-				if propertiesRaw, ok := entityMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
+				// Handle properties map (check both 'props' and 'properties' for backward compatibility)
+				if propsRaw, ok := entityMap["props"].(map[string]interface{}); ok && len(propsRaw) > 0 {
+					node.Properties = propsRaw
+				} else if propertiesRaw, ok := entityMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
 					node.Properties = propertiesRaw
 				}
 
@@ -1033,8 +1039,10 @@ func (parser *Parser) tryParseExtractionRegular() ([]types.Node, []types.Relatio
 					relationship.Confidence = confidence
 				}
 
-				// Handle properties map
-				if propertiesRaw, ok := relationshipMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
+				// Handle properties map (check both 'props' and 'properties' for backward compatibility)
+				if propsRaw, ok := relationshipMap["props"].(map[string]interface{}); ok && len(propsRaw) > 0 {
+					relationship.Properties = propsRaw
+				} else if propertiesRaw, ok := relationshipMap["properties"].(map[string]interface{}); ok && len(propertiesRaw) > 0 {
 					relationship.Properties = propertiesRaw
 				}
 

@@ -1,153 +1,131 @@
 {
   "entities": [
     {
-      "id": "内部进程",
+      "id": "internal_process",
       "name": "内部进程",
-      "type": "TECHNOLOGY",
+      "type": "process",
       "labels": [
-        "进程",
-        "技术"
+        "execution"
       ],
       "properties": {
-        "执行方式": "直接执行",
-        "语言": "Go"
+        "execution": "直接执行",
+        "language": "Go"
       },
-      "description": "用 Go 编写的进程，直接执行",
+      "description": "用 Go 编写，直接执行",
       "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750766150,
+      "created_at": 1750903711,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "自定义进程",
+      "id": "custom_process",
       "name": "自定义进程",
-      "type": "TECHNOLOGY",
+      "type": "process",
       "labels": [
-        "进程",
-        "技术"
+        "execution"
       ],
       "properties": {
-        "执行引擎": "V8",
-        "语言": "TypeScript/JavaScript"
+        "engine": "V8",
+        "languages": [
+          "TypeScript",
+          "JavaScript"
+        ]
       },
-      "description": "用 TypeScript 或 JavaScript 编写的进程，使用 V8 引擎执行",
+      "description": "用 TypeScript 或 JavaScript 编写，使用 V8 引擎执行",
       "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750766150,
+      "created_at": 1750903711,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "Yao_API",
+      "id": "yao_api",
       "name": "Yao API",
-      "type": "TECHNOLOGY",
+      "type": "api",
       "labels": [
-        "API",
-        "技术"
+        "development"
       ],
       "properties": {
-        "包含": [
+        "apis": [
           "Process",
           "文件系统",
           "HTTP 请求"
         ]
       },
-      "description": "Yao 提供的 API，包括 Process、文件系统和 HTTP 请求等",
+      "description": "提供 Process、文件系统和 HTTP 请求等 API",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766150,
+      "created_at": 1750903711,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "Yao_运行时",
+      "id": "yao_runtime",
       "name": "Yao 运行时",
-      "type": "TECHNOLOGY",
+      "type": "runtime",
       "labels": [
-        "运行时",
-        "技术"
+        "execution"
       ],
       "properties": {
-        "特点": "不支持 Node.js API"
+        "note": "不是 Node.js"
       },
-      "description": "专门用于运行进程的运行时环境，不支持 Node.js API",
+      "description": "专门用于运行进程，不支持 Node.js API",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766150,
+      "created_at": 1750903711,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "CLI",
+      "id": "yao_cli",
       "name": "CLI",
-      "type": "TECHNOLOGY",
+      "type": "tool",
       "labels": [
-        "命令行",
-        "执行方式"
+        "execution"
       ],
       "properties": {
-        "命令": "yao run"
+        "command": "yao run"
       },
-      "description": "使用 `yao run` 命令执行进程的方式",
+      "description": "使用 `yao run` 命令执行进程",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766150,
+      "created_at": 1750903711,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "HTTP_服务器",
+      "id": "yao_http_server",
       "name": "HTTP 服务器",
-      "type": "TECHNOLOGY",
+      "type": "server",
       "labels": [
-        "服务器",
-        "执行方式"
+        "execution"
       ],
       "properties": {
-        "协议": "REST API"
+        "protocol": "REST API"
       },
-      "description": "内置的 HTTP 服务器，通过 REST API 运行进程",
+      "description": "内置 HTTP 服务器通过 REST API 运行进程",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766150,
+      "created_at": 1750903711,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "Yao_组件",
+      "id": "yao_component",
       "name": "Yao 组件",
-      "type": "TECHNOLOGY",
+      "type": "component",
       "labels": [
-        "组件",
-        "技术"
+        "development"
       ],
       "properties": {
-        "包含": [
+        "characteristics": [
           "UI",
           "交互",
           "逻辑",
           "数据"
         ],
-        "特点": "自包含单元"
-      },
-      "description": "Yao 中的组件，是 UI、交互、逻辑和数据的组合，自包含的单元",
-      "confidence": 0.95,
-      "extraction_method": "llm",
-      "created_at": 1750766150,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "组件类型",
-      "name": "组件类型",
-      "type": "CONCEPT",
-      "labels": [
-        "类型",
-        "概念"
-      ],
-      "properties": {
-        "示例": [
+        "types": [
           "表格",
           "表单",
           "列表",
@@ -158,161 +136,95 @@
           "流程"
         ]
       },
-      "description": "Yao 组件可以是表格、表单、列表、图表、数据模型、API、存储、流程等",
-      "confidence": 0.9,
+      "description": "UI、交互、逻辑和数据的组合，自包含的单元",
+      "confidence": 0.95,
       "extraction_method": "llm",
-      "created_at": 1750766150,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "REST_API",
-      "name": "REST API",
-      "type": "TECHNOLOGY",
-      "labels": [
-        "API",
-        "技术"
-      ],
-      "properties": {
-        "用途": "集成和使用"
-      },
-      "description": "一些组件提供的 REST API，可用于其他组件、自定义进程或集成到其他应用程序中",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766150,
+      "created_at": 1750903711,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-zh.1.chunk-11.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-zh/semantic-zh.1.chunk-11.txt",
-  "generated_at": "2025-06-24T19:56:08+08:00",
+  "generated_at": "2025-06-26T10:09:02+08:00",
   "model": "ep-20250326204837-sxlxr",
   "relationships": [
     {
-      "type": "USES",
-      "start_node": "内部进程",
-      "end_node": "Yao_API",
-      "properties": {
-        "方式": "直接执行"
-      },
-      "description": "内部进程使用 Yao 提供的 API",
-      "confidence": 0.85,
-      "weight": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750766150,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USES",
-      "start_node": "自定义进程",
-      "end_node": "Yao_API",
-      "properties": {
-        "方式": "通过 V8 引擎执行"
-      },
-      "description": "自定义进程使用 Yao 提供的 API",
-      "confidence": 0.85,
-      "weight": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750766150,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "PROVIDES",
-      "start_node": "Yao_运行时",
-      "end_node": "Yao_API",
-      "properties": {
-        "类型": "Process、文件系统、HTTP 请求"
-      },
-      "description": "Yao 运行时提供 API",
+      "type": "uses",
+      "start_node": "custom_process",
+      "end_node": "yao_api",
+      "description": "自定义进程使用 Yao API 编写",
       "confidence": 0.9,
+      "weight": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750903711,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "runs_on",
+      "start_node": "custom_process",
+      "end_node": "yao_runtime",
+      "description": "自定义进程在 Yao 运行时上执行",
+      "confidence": 0.9,
+      "weight": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750903711,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "runs_on",
+      "start_node": "internal_process",
+      "end_node": "yao_runtime",
+      "description": "内部进程在 Yao 运行时上执行",
+      "confidence": 0.9,
+      "weight": 0.9,
+      "extraction_method": "llm",
+      "created_at": 1750903711,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "type": "controls",
+      "start_node": "yao_cli",
+      "end_node": "yao_runtime",
+      "description": "CLI 控制 Yao 运行时执行进程",
+      "confidence": 0.85,
       "weight": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750766150,
+      "created_at": 1750903711,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "EXECUTES",
-      "start_node": "CLI",
-      "end_node": "Yao_运行时",
-      "properties": {
-        "命令": "yao run"
-      },
-      "description": "CLI 使用 `yao run` 命令执行 Yao 运行时中的进程",
-      "confidence": 0.9,
-      "weight": 0.85,
-      "extraction_method": "llm",
-      "created_at": 1750766150,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "EXECUTES",
-      "start_node": "HTTP_服务器",
-      "end_node": "Yao_运行时",
-      "properties": {
-        "协议": "REST API"
-      },
-      "description": "HTTP 服务器通过 REST API 运行 Yao 运行时中的进程",
-      "confidence": 0.9,
-      "weight": 0.85,
-      "extraction_method": "llm",
-      "created_at": 1750766150,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "USES",
-      "start_node": "Yao_组件",
-      "end_node": "Yao_API",
-      "properties": {
-        "用途": "UI、交互、逻辑和数据组合"
-      },
-      "description": "Yao 组件使用 Yao 提供的 API",
+      "type": "controls",
+      "start_node": "yao_http_server",
+      "end_node": "yao_runtime",
+      "description": "HTTP 服务器控制 Yao 运行时执行进程",
       "confidence": 0.85,
-      "weight": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750766150,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "INCLUDES",
-      "start_node": "Yao_组件",
-      "end_node": "组件类型",
-      "properties": {
-        "类型": "多样"
-      },
-      "description": "Yao 组件可以包括多种类型，如表格、表单、列表、图表等",
-      "confidence": 0.9,
       "weight": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750766150,
+      "created_at": 1750903711,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "PROVIDES",
-      "start_node": "Yao_组件",
-      "end_node": "REST_API",
-      "properties": {
-        "用途": "集成和使用"
-      },
-      "description": "一些 Yao 组件提供 REST API",
+      "type": "has",
+      "start_node": "yao_component",
+      "end_node": "yao_api",
+      "description": "Yao 组件包含一组进程和可能的 REST API",
       "confidence": 0.85,
-      "weight": 0.8,
+      "weight": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750766150,
+      "created_at": 1750903711,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 978,
-  "total_entities": 9,
-  "total_relationships": 8,
+  "total_entities": 7,
+  "total_relationships": 6,
   "usage": {
     "total_tokens": 56,
     "prompt_tokens": 56,

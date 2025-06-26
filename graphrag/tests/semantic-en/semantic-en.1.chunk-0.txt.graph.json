@@ -3,118 +3,53 @@
     {
       "id": "yao_tool",
       "name": "Yao",
-      "type": "TECHNOLOGY",
+      "type": "tool",
       "labels": [
-        "software",
-        "tool"
+        "generative programming",
+        "development tool"
       ],
-      "description": "Yao is a tool focused on generative programming, helping to build applications faster and offering a great development experience.",
+      "description": "A tool focused on generative programming, offering a powerful development experience.",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903820,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "generative_programming",
+      "id": "generative_programming_concept",
       "name": "Generative Programming",
-      "type": "CONCEPT",
+      "type": "concept",
       "labels": [
-        "programming",
-        "paradigm"
+        "programming paradigm"
       ],
-      "description": "Generative programming is a programming paradigm that focuses on generating code that is easy to read and modify, facilitating collaboration between developers and machines.",
-      "confidence": 0.9,
+      "description": "A programming paradigm that Yao focuses on, aiming for seamless collaboration between developers and machines.",
+      "confidence": 0.85,
       "extraction_method": "llm",
-      "created_at": 1750766056,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "key_concepts_yao",
-      "name": "Key Concepts",
-      "type": "CONCEPT",
-      "labels": [
-        "concepts",
-        "learning"
-      ],
-      "description": "Key concepts in Yao that need to be understood to effectively use the tool.",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750766056,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "ai_collaborator_concept",
-      "name": "AI Collaborator Concept",
-      "type": "CONCEPT",
-      "labels": [
-        "AI",
-        "collaboration"
-      ],
-      "description": "The idea of AI as a collaborator rather than a master, emphasizing seamless collaboration between developers and machines.",
-      "confidence": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903820,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-0.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-0.txt",
-  "generated_at": "2025-06-24T19:54:25+08:00",
+  "generated_at": "2025-06-26T10:10:31+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
-      "type": "FOCUSES_ON",
+      "type": "focuses_on",
       "start_node": "yao_tool",
-      "end_node": "generative_programming",
-      "properties": {
-        "context": "core paradigm"
-      },
-      "description": "Yao focuses on generative programming as its core paradigm.",
+      "end_node": "generative_programming_concept",
+      "description": "Yao focuses on generative programming as its core concept.",
       "confidence": 0.9,
-      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766056,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "REQUIRES_UNDERSTANDING_OF",
-      "start_node": "yao_tool",
-      "end_node": "key_concepts_yao",
-      "properties": {
-        "context": "learning requirement"
-      },
-      "description": "Understanding key concepts is necessary to effectively use Yao.",
-      "confidence": 0.8,
-      "weight": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750766056,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "RELATED_TO",
-      "start_node": "generative_programming",
-      "end_node": "ai_collaborator_concept",
-      "properties": {
-        "context": "AI collaboration"
-      },
-      "description": "Generative programming is related to the concept of AI as a collaborator, not a master.",
-      "confidence": 0.8,
-      "weight": 0.8,
-      "extraction_method": "llm",
-      "created_at": 1750766056,
+      "created_at": 1750903820,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 1013,
-  "total_entities": 4,
-  "total_relationships": 3,
+  "total_entities": 2,
+  "total_relationships": 1,
   "usage": {
     "total_tokens": 173,
     "prompt_tokens": 173,

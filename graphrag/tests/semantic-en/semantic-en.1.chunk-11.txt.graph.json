@@ -1,279 +1,193 @@
 {
   "entities": [
     {
-      "id": "documentation",
+      "id": "documentation_concept",
       "name": "documentation",
-      "type": "OBJECT",
+      "type": "concept",
       "labels": [
-        "document",
         "guide"
       ],
-      "properties": {
-        "purpose": "application development",
-        "type": "guide"
-      },
-      "description": "Documentation for building a simple application, including creating models, writing custom processes, and developing REST APIs.",
+      "description": "Guidelines for building a simple application",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "models",
+      "id": "models_concept",
       "name": "Models",
-      "type": "CONCEPT",
+      "type": "concept",
       "labels": [
-        "concept",
         "development"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "development concept"
-      },
-      "description": "Concept of creating models as part of application development.",
-      "confidence": 0.9,
+      "description": "Part of application development process",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "custom_processes",
+      "id": "custom_processes_concept",
       "name": "custom processes",
-      "type": "CONCEPT",
+      "type": "concept",
       "labels": [
-        "concept",
         "development"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "development concept"
-      },
-      "description": "Writing custom processes as part of application development.",
-      "confidence": 0.9,
+      "description": "Processes written by developers",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "rest_apis",
+      "id": "rest_apis_concept",
       "name": "REST APIs",
-      "type": "TECHNOLOGY",
+      "type": "concept",
       "labels": [
-        "technology",
-        "API"
+        "development"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "API"
-      },
-      "description": "Developing REST APIs as part of application development.",
-      "confidence": 0.9,
+      "description": "APIs developed as part of application",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "typescript",
+      "id": "typescript_technology",
       "name": "TypeScript",
-      "type": "TECHNOLOGY",
+      "type": "technology",
       "labels": [
-        "technology",
         "programming language"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "programming language"
-      },
-      "description": "TypeScript is recommended for writing custom processes.",
+      "description": "Programming language recommended for writing custom processes",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "javascript",
+      "id": "javascript_technology",
       "name": "JavaScript",
-      "type": "TECHNOLOGY",
+      "type": "technology",
       "labels": [
-        "technology",
         "programming language"
       ],
-      "properties": {
-        "domain": "software",
-        "type": "programming language"
-      },
-      "description": "JavaScript is crucial for writing custom processes and building websites.",
+      "description": "Programming language crucial for writing custom processes",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "html",
+      "id": "html_technology",
       "name": "HTML",
-      "type": "TECHNOLOGY",
+      "type": "technology",
       "labels": [
-        "technology",
-        "markup language"
+        "web development"
       ],
-      "properties": {
-        "domain": "web",
-        "type": "markup language"
-      },
-      "description": "Basic understanding of HTML is essential for building websites.",
-      "confidence": 0.9,
+      "description": "Technology essential for building websites",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "css",
+      "id": "css_technology",
       "name": "CSS",
-      "type": "TECHNOLOGY",
+      "type": "technology",
       "labels": [
-        "technology",
-        "style sheet language"
+        "web development"
       ],
-      "properties": {
-        "domain": "web",
-        "type": "style sheet language"
-      },
-      "description": "Basic understanding of CSS is essential for building websites.",
-      "confidence": 0.9,
+      "description": "Technology essential for building websites",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-11.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-11.txt",
-  "generated_at": "2025-06-24T19:54:25+08:00",
+  "generated_at": "2025-06-26T10:10:31+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
-      "type": "RELATED_TO",
-      "start_node": "documentation",
-      "end_node": "models",
-      "properties": {
-        "context": "application development",
-        "type": "inclusion"
-      },
-      "description": "The documentation includes information on creating models.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "type": "includes",
+      "start_node": "documentation_concept",
+      "end_node": "models_concept",
+      "description": "Documentation includes information on creating Models",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "RELATED_TO",
-      "start_node": "documentation",
-      "end_node": "custom_processes",
-      "properties": {
-        "context": "application development",
-        "type": "inclusion"
-      },
-      "description": "The documentation includes information on writing custom processes.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "type": "includes",
+      "start_node": "documentation_concept",
+      "end_node": "custom_processes_concept",
+      "description": "Documentation includes information on writing custom processes",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "RELATED_TO",
-      "start_node": "documentation",
-      "end_node": "rest_apis",
-      "properties": {
-        "context": "application development",
-        "type": "inclusion"
-      },
-      "description": "The documentation includes information on developing REST APIs.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "type": "includes",
+      "start_node": "documentation_concept",
+      "end_node": "rest_apis_concept",
+      "description": "Documentation includes information on developing REST APIs",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
-      "start_node": "typescript",
-      "end_node": "custom_processes",
-      "properties": {
-        "context": "programming",
-        "type": "recommendation"
-      },
-      "description": "TypeScript is recommended for writing custom processes.",
+      "type": "recommended_technology",
+      "start_node": "custom_processes_concept",
+      "end_node": "typescript_technology",
+      "description": "TypeScript is recommended for writing custom processes",
       "confidence": 0.9,
-      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
-      "start_node": "javascript",
-      "end_node": "custom_processes",
-      "properties": {
-        "context": "programming",
-        "type": "necessity"
-      },
-      "description": "JavaScript is crucial for writing custom processes.",
+      "type": "crucial_technology",
+      "start_node": "custom_processes_concept",
+      "end_node": "javascript_technology",
+      "description": "JavaScript is crucial for writing custom processes",
       "confidence": 0.9,
-      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "RELATED_TO",
-      "start_node": "javascript",
-      "end_node": "html",
-      "properties": {
-        "context": "web development",
-        "type": "association"
-      },
-      "description": "JavaScript is related to HTML in the context of building websites.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "type": "related_technology",
+      "start_node": "html_technology",
+      "end_node": "css_technology",
+      "description": "HTML and CSS are related technologies essential for building websites",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766062,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "type": "RELATED_TO",
-      "start_node": "javascript",
-      "end_node": "css",
-      "properties": {
-        "context": "web development",
-        "type": "association"
-      },
-      "description": "JavaScript is related to CSS in the context of building websites.",
-      "confidence": 0.9,
-      "weight": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766062,
+      "created_at": 1750903824,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 611,
   "total_entities": 8,
-  "total_relationships": 7,
+  "total_relationships": 6,
   "usage": {
     "total_tokens": 75,
     "prompt_tokens": 75,

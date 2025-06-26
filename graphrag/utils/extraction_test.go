@@ -62,10 +62,10 @@ func TestExtractionPrompt(t *testing.T) {
 				}
 
 				// Verify template contains key elements
-				if !strings.Contains(result, "Entity and Relationship Extraction Task") {
+				if !strings.Contains(result, "Knowledge Graph Extraction") {
 					t.Errorf("%s: Default template missing main title", tt.description)
 				}
-				if !strings.Contains(result, "CRITICAL INSTRUCTIONS") {
+				if !strings.Contains(result, "Core Rules") {
 					t.Errorf("%s: Default template missing critical instructions", tt.description)
 				}
 				if !strings.Contains(result, "Entity Types") {
@@ -84,22 +84,19 @@ func TestExtractionPromptTemplate(t *testing.T) {
 	template := extractionPromptTemplate
 
 	essentialElements := []string{
-		"Entity and Relationship Extraction Task",
-		"CRITICAL INSTRUCTIONS",
-		"Core Principles",
-		"Required Actions",
-		"STRICTLY FORBIDDEN",
+		"Knowledge Graph Extraction",
+		"Core Rules",
+		"Accuracy First",
+		"No Hallucination",
+		"Language Consistency",
+		"Confidence Scoring",
 		"Entity Types",
 		"Relationship Types",
-		"Example",
-		"Quality Requirements",
-		"Output Format",
-		"Key Reminders",
-		"PERSON", "ORGANIZATION", "LOCATION", // Entity types
-		"WORKS_FOR", "LOCATED_IN", "PART_OF", // Relationship types
-		"NO HALLUCINATION",
-		"confidence scores",
-		"unique ID",
+		"Examples",
+		"English Example",
+		"Chinese Example",
+		"Confidence Scoring",
+		"based on content",
 	}
 
 	for _, element := range essentialElements {
@@ -108,19 +105,19 @@ func TestExtractionPromptTemplate(t *testing.T) {
 		}
 	}
 
-	// Check template structure
-	if len(template) < 1000 {
+	// Check template structure (should be shorter now due to optimization)
+	if len(template) < 500 {
 		t.Error("Extraction prompt template seems too short")
 	}
 
-	// Verify it contains instructions about function calls
-	if !strings.Contains(template, "function calls") {
-		t.Error("Template should mention function calls for output format")
+	// Verify it emphasizes accuracy
+	if !strings.Contains(template, "Accuracy First") {
+		t.Error("Template should emphasize accuracy")
 	}
 
-	// Verify it emphasizes accuracy
-	if !strings.Contains(template, "accuracy") {
-		t.Error("Template should emphasize accuracy")
+	// Verify it contains confidence scoring guidelines
+	if !strings.Contains(template, "High Confidence") {
+		t.Error("Template should contain confidence scoring guidelines")
 	}
 }
 
@@ -269,7 +266,7 @@ func TestExtractionToolcallEntitySchema(t *testing.T) {
 	}
 
 	// Check required entity fields
-	expectedEntityFields := []string{"id", "name", "type", "description", "confidence", "labels", "properties"}
+	expectedEntityFields := []string{"id", "name", "type", "description", "confidence", "labels", "props"}
 	for _, field := range expectedEntityFields {
 		if _, exists := itemProperties[field]; !exists {
 			t.Errorf("Entity schema missing required field: %s", field)
@@ -304,22 +301,24 @@ func TestExtractionToolcallEntitySchema(t *testing.T) {
 		t.Error("Labels field should be of type array")
 	}
 
-	if labels["minItems"] != 1.0 {
-		t.Error("Labels minItems should be 1")
+	// Labels are now optional, so no minItems constraint
+	if _, hasMinItems := labels["minItems"]; hasMinItems {
+		t.Error("Labels should not have minItems constraint (labels are optional)")
 	}
 
-	// Check properties field constraints
-	propertiesField, ok := itemProperties["properties"].(map[string]interface{})
+	// Check props field constraints
+	propsField, ok := itemProperties["props"].(map[string]interface{})
 	if !ok {
-		t.Fatal("Properties field schema is missing")
+		t.Fatal("Props field schema is missing")
 	}
 
-	if propertiesField["type"] != "object" {
-		t.Error("Properties field should be of type object")
+	if propsField["type"] != "object" {
+		t.Error("Props field should be of type object")
 	}
 
-	if propertiesField["minProperties"] != 1.0 {
-		t.Error("Properties minProperties should be 1")
+	// Props are optional, so no minProperties constraint
+	if _, hasMinProps := propsField["minProperties"]; hasMinProps {
+		t.Error("Props should not have minProperties constraint (props are optional)")
 	}
 
 	// Check required fields for entities
@@ -351,12 +350,17 @@ func TestExtractionToolcallRelationshipSchema(t *testing.T) {
 		t.Fatal("Relationship item properties are missing")
 	}
 
-	// Check required relationship fields
-	expectedRelationshipFields := []string{"start_node", "end_node", "type", "description", "confidence", "properties", "weight"}
+	// Check required relationship fields (weight is optional)
+	expectedRelationshipFields := []string{"start_node", "end_node", "type", "description", "confidence", "props"}
 	for _, field := range expectedRelationshipFields {
 		if _, exists := itemProperties[field]; !exists {
 			t.Errorf("Relationship schema missing required field: %s", field)
 		}
+	}
+
+	// Check that weight field exists but is optional
+	if _, exists := itemProperties["weight"]; !exists {
+		t.Error("Weight field should exist in schema even if optional")
 	}
 
 	// Check confidence field constraints
@@ -377,18 +381,19 @@ func TestExtractionToolcallRelationshipSchema(t *testing.T) {
 		t.Error("Relationship confidence maximum should be 1.0")
 	}
 
-	// Check properties field constraints for relationships
-	propertiesField, ok := itemProperties["properties"].(map[string]interface{})
+	// Check props field constraints for relationships
+	propsField, ok := itemProperties["props"].(map[string]interface{})
 	if !ok {
-		t.Fatal("Relationship properties field schema is missing")
+		t.Fatal("Relationship props field schema is missing")
 	}
 
-	if propertiesField["type"] != "object" {
-		t.Error("Relationship properties field should be of type object")
+	if propsField["type"] != "object" {
+		t.Error("Relationship props field should be of type object")
 	}
 
-	if propertiesField["minProperties"] != 1.0 {
-		t.Error("Relationship properties minProperties should be 1")
+	// Props are optional, so no minProperties constraint
+	if _, hasMinProps := propsField["minProperties"]; hasMinProps {
+		t.Error("Relationship props should not have minProperties constraint (props are optional)")
 	}
 
 	// Check weight field constraints
@@ -430,8 +435,8 @@ func TestExtractionToolcallDescriptions(t *testing.T) {
 		"Extract entities and relationships",
 		"knowledge graph",
 		"CRITICAL",
-		"NO HALLUCINATION",
-		"confidence scores",
+		"props",
+		"confidence scoring",
 	}
 
 	for _, phrase := range keyPhrases {
@@ -446,14 +451,14 @@ func TestExtractionToolcallDescriptions(t *testing.T) {
 
 	entities := properties["entities"].(map[string]interface{})
 	entitiesDesc := entities["description"].(string)
-	if !strings.Contains(entitiesDesc, "unique ID") {
-		t.Error("Entities description should mention unique ID requirement")
+	if !strings.Contains(entitiesDesc, "confidence scoring") {
+		t.Error("Entities description should mention confidence scoring")
 	}
 
 	relationships := properties["relationships"].(map[string]interface{})
 	relationshipsDesc := relationships["description"].(string)
-	if !strings.Contains(relationshipsDesc, "entities list") {
-		t.Error("Relationships description should mention entities list requirement")
+	if !strings.Contains(relationshipsDesc, "confidence scoring") {
+		t.Error("Relationships description should mention confidence scoring")
 	}
 }
 

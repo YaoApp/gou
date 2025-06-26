@@ -1,170 +1,117 @@
 {
   "entities": [
     {
-      "id": "practice_learning_method",
+      "id": "practice_concept",
       "name": "Practice",
-      "type": "CONCEPT",
+      "type": "Concept",
       "labels": [
-        "learning method"
+        "learning_method"
       ],
-      "properties": {
-        "approach": "hands-on",
-        "type": "learning method"
-      },
-      "description": "Hands-on practice as a method of learning.",
+      "description": "Hands-on practice as a method of learning",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903822,
       "version": 1,
       "status": "active"
     },
     {
-      "id": "read_source_code_learning_method",
-      "name": "Read Source Code",
-      "type": "CONCEPT",
+      "id": "source_code_concept",
+      "name": "Source Code",
+      "type": "Concept",
       "labels": [
-        "learning method"
+        "learning_method"
       ],
-      "properties": {
-        "approach": "reading",
-        "type": "learning method"
-      },
-      "description": "Reading application source code to understand widget descriptions and process writing.",
+      "description": "Reading application source code as a method of learning",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903822,
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "documentation_concept",
+      "name": "Documentation",
+      "type": "Concept",
+      "labels": [
+        "learning_resource"
+      ],
+      "description": "Following documentation to build a simple application",
+      "confidence": 0.8,
+      "extraction_method": "llm",
+      "created_at": 1750903822,
       "version": 1,
       "status": "active"
     },
     {
       "id": "yao_website_repo",
       "name": "Yao Website Repo",
-      "type": "OBJECT",
+      "type": "Repository",
       "labels": [
         "repository"
       ],
-      "properties": {
-        "platform": "GitHub",
-        "type": "repository"
-      },
-      "description": "A repository for the Yao website available on GitHub.",
+      "description": "GitHub repository for Yao website",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903822,
       "version": 1,
       "status": "active"
     },
     {
       "id": "yao_app_xgen_repo",
       "name": "Yao app for Xgen developing",
-      "type": "OBJECT",
+      "type": "Repository",
       "labels": [
         "repository"
       ],
-      "properties": {
-        "platform": "GitHub",
-        "type": "repository"
-      },
-      "description": "A repository for developing Yao app for Xgen available on GitHub.",
+      "description": "GitHub repository for Yao app development for Xgen",
       "confidence": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "documentation_guide",
-      "name": "Documentation",
-      "type": "OBJECT",
-      "labels": [
-        "guide"
-      ],
-      "properties": {
-        "purpose": "building application",
-        "type": "guide"
-      },
-      "description": "Documentation to follow for building a simple application and exploring the basics.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766057,
-      "version": 1,
-      "status": "active"
-    },
-    {
-      "id": "planning_before_development",
-      "name": "Planning Before Starting Development",
-      "type": "CONCEPT",
-      "labels": [
-        "development strategy"
-      ],
-      "properties": {
-        "phase": "pre-development",
-        "type": "strategy"
-      },
-      "description": "The concept of planning before starting the development process.",
-      "confidence": 0.9,
-      "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903822,
       "version": 1,
       "status": "active"
     }
   ],
   "file": "semantic-en.1.chunk-8.txt",
   "full_path": "/Users/max/Yao/gou/graphrag/tests/semantic-en/semantic-en.1.chunk-8.txt",
-  "generated_at": "2025-06-24T19:54:25+08:00",
+  "generated_at": "2025-06-26T10:10:31+08:00",
   "model": "gpt-4o",
   "relationships": [
     {
-      "type": "USES",
-      "start_node": "practice_learning_method",
-      "end_node": "documentation_guide",
-      "properties": {
-        "context": "learning",
-        "method": "hands-on"
-      },
-      "description": "Practice involves following the documentation to build a simple application.",
-      "confidence": 0.9,
-      "weight": 0.9,
+      "type": "follow",
+      "start_node": "practice_concept",
+      "end_node": "documentation_concept",
+      "description": "Following documentation as part of hands-on practice",
+      "confidence": 0.8,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903822,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
-      "start_node": "read_source_code_learning_method",
+      "type": "refer_to",
+      "start_node": "source_code_concept",
       "end_node": "yao_website_repo",
-      "properties": {
-        "context": "learning",
-        "method": "reading"
-      },
-      "description": "Reading source code involves referring to the Yao Website Repo.",
+      "description": "Referring to Yao Website Repo for reading source code",
       "confidence": 0.9,
-      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903822,
       "version": 1,
       "status": "active"
     },
     {
-      "type": "USES",
-      "start_node": "read_source_code_learning_method",
+      "type": "refer_to",
+      "start_node": "source_code_concept",
       "end_node": "yao_app_xgen_repo",
-      "properties": {
-        "context": "learning",
-        "method": "reading"
-      },
-      "description": "Reading source code involves referring to the Yao app for Xgen developing repo.",
+      "description": "Referring to Yao app for Xgen developing for reading source code",
       "confidence": 0.9,
-      "weight": 0.9,
       "extraction_method": "llm",
-      "created_at": 1750766057,
+      "created_at": 1750903822,
       "version": 1,
       "status": "active"
     }
   ],
   "text_length": 539,
-  "total_entities": 6,
+  "total_entities": 5,
   "total_relationships": 3,
   "usage": {
     "total_tokens": 76,
