@@ -26,8 +26,8 @@ func TestNewStore(t *testing.T) {
 		t.Error("New store should not be connected initially")
 	}
 
-	if store.Enterprise() {
-		t.Error("New store should not be enterprise by default")
+	if store.UseSeparateDatabase() {
+		t.Error("New store should not use separate database by default")
 	}
 
 	// Verify default config
@@ -41,25 +41,25 @@ func TestNewStore(t *testing.T) {
 	}
 }
 
-// TestEnterprise tests Enterprise and SetEnterprise methods
-func TestEnterprise(t *testing.T) {
+// TestUseSeparateDatabase tests UseSeparateDatabase and SetUseSeparateDatabase methods
+func TestUseSeparateDatabase(t *testing.T) {
 	store := NewStore()
 
 	// Should default to false
-	if store.Enterprise() {
-		t.Error("New store should not be enterprise by default")
+	if store.UseSeparateDatabase() {
+		t.Error("New store should not use separate database by default")
 	}
 
-	// Test setting enterprise flag
-	store.SetEnterprise(true)
-	if !store.Enterprise() {
-		t.Error("Store should be enterprise after setting flag to true")
+	// Test setting separate database flag
+	store.SetUseSeparateDatabase(true)
+	if !store.UseSeparateDatabase() {
+		t.Error("Store should use separate database after setting flag to true")
 	}
 
-	// Test unsetting enterprise flag
-	store.SetEnterprise(false)
-	if store.Enterprise() {
-		t.Error("Store should not be enterprise after setting flag to false")
+	// Test unsetting separate database flag
+	store.SetUseSeparateDatabase(false)
+	if store.UseSeparateDatabase() {
+		t.Error("Store should not use separate database after setting flag to false")
 	}
 }
 
@@ -90,12 +90,12 @@ func TestStoreConcurrency(t *testing.T) {
 	numGoroutines := 10
 	numOperations := 100
 
-	// Test concurrent Enterprise calls
-	t.Run("ConcurrentEnterprise", func(t *testing.T) {
+	// Test concurrent UseSeparateDatabase calls
+	t.Run("ConcurrentUseSeparateDatabase", func(t *testing.T) {
 		for i := 0; i < numGoroutines; i++ {
 			go func() {
 				for j := 0; j < numOperations; j++ {
-					_ = store.Enterprise()
+					_ = store.UseSeparateDatabase()
 					runtime.Gosched()
 				}
 			}()
@@ -114,12 +114,12 @@ func TestStoreConcurrency(t *testing.T) {
 		}
 	})
 
-	// Test concurrent SetEnterprise calls
-	t.Run("ConcurrentSetEnterprise", func(t *testing.T) {
+	// Test concurrent SetUseSeparateDatabase calls
+	t.Run("ConcurrentSetUseSeparateDatabase", func(t *testing.T) {
 		for i := 0; i < numGoroutines; i++ {
 			go func(id int) {
 				for j := 0; j < numOperations; j++ {
-					store.SetEnterprise(id%2 == 0)
+					store.SetUseSeparateDatabase(id%2 == 0)
 					runtime.Gosched()
 				}
 			}(i)
@@ -153,13 +153,13 @@ func BenchmarkNewStore(b *testing.B) {
 	}
 }
 
-// BenchmarkEnterprise benchmarks Enterprise method
-func BenchmarkEnterprise(b *testing.B) {
+// BenchmarkUseSeparateDatabase benchmarks UseSeparateDatabase method
+func BenchmarkUseSeparateDatabase(b *testing.B) {
 	store := NewStore()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = store.Enterprise()
+		_ = store.UseSeparateDatabase()
 	}
 }
 
@@ -173,24 +173,24 @@ func BenchmarkGetConfig(b *testing.B) {
 	}
 }
 
-// BenchmarkSetEnterprise benchmarks SetEnterprise method
-func BenchmarkSetEnterprise(b *testing.B) {
+// BenchmarkSetUseSeparateDatabase benchmarks SetUseSeparateDatabase method
+func BenchmarkSetUseSeparateDatabase(b *testing.B) {
 	store := NewStore()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		store.SetEnterprise(i%2 == 0)
+		store.SetUseSeparateDatabase(i%2 == 0)
 	}
 }
 
-// BenchmarkEnterpriseConcurrent benchmarks concurrent Enterprise calls
-func BenchmarkEnterpriseConcurrent(b *testing.B) {
+// BenchmarkUseSeparateDatabaseConcurrent benchmarks concurrent UseSeparateDatabase calls
+func BenchmarkUseSeparateDatabaseConcurrent(b *testing.B) {
 	store := NewStore()
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_ = store.Enterprise()
+			_ = store.UseSeparateDatabase()
 		}
 	})
 }

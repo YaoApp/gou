@@ -66,9 +66,9 @@ func TestCreateGraph(t *testing.T) {
 			StoreType:   "neo4j",
 			DatabaseURL: config.URL,
 			DriverConfig: map[string]interface{}{
-				"username":   config.User,
-				"password":   config.Password,
-				"enterprise": true,
+				"username":              config.User,
+				"password":              config.Password,
+				"use_separate_database": true,
 			},
 		}
 
@@ -171,9 +171,9 @@ func TestDropGraph(t *testing.T) {
 			StoreType:   "neo4j",
 			DatabaseURL: config.URL,
 			DriverConfig: map[string]interface{}{
-				"username":   config.User,
-				"password":   config.Password,
-				"enterprise": true,
+				"username":              config.User,
+				"password":              config.Password,
+				"use_separate_database": true,
 			},
 		}
 
@@ -206,9 +206,9 @@ func TestDropGraph(t *testing.T) {
 			StoreType:   "neo4j",
 			DatabaseURL: config.URL,
 			DriverConfig: map[string]interface{}{
-				"username":   config.User,
-				"password":   config.Password,
-				"enterprise": true,
+				"username":              config.User,
+				"password":              config.Password,
+				"use_separate_database": true,
 			},
 		}
 
@@ -264,9 +264,9 @@ func TestGraphExists(t *testing.T) {
 			StoreType:   "neo4j",
 			DatabaseURL: config.URL,
 			DriverConfig: map[string]interface{}{
-				"username":   config.User,
-				"password":   config.Password,
-				"enterprise": true,
+				"username":              config.User,
+				"password":              config.Password,
+				"use_separate_database": true,
 			},
 		}
 
@@ -322,9 +322,9 @@ func TestListGraphs(t *testing.T) {
 			StoreType:   "neo4j",
 			DatabaseURL: config.URL,
 			DriverConfig: map[string]interface{}{
-				"username":   config.User,
-				"password":   config.Password,
-				"enterprise": true,
+				"username":              config.User,
+				"password":              config.Password,
+				"use_separate_database": true,
 			},
 		}
 
@@ -369,7 +369,7 @@ func TestDescribeGraph(t *testing.T) {
 		assert.NoError(t, err)
 		assert.GreaterOrEqual(t, stats.TotalNodes, int64(0))
 		assert.GreaterOrEqual(t, stats.TotalRelationships, int64(0))
-		assert.Equal(t, "community", stats.ExtraStats["database_type"])
+		assert.Equal(t, "label_based", stats.ExtraStats["storage_type"])
 
 		// Clean up
 		store.DropGraph(ctx, "testdescribe")
@@ -388,9 +388,9 @@ func TestDescribeGraph(t *testing.T) {
 			StoreType:   "neo4j",
 			DatabaseURL: config.URL,
 			DriverConfig: map[string]interface{}{
-				"username":   config.User,
-				"password":   config.Password,
-				"enterprise": true,
+				"username":              config.User,
+				"password":              config.Password,
+				"use_separate_database": true,
 			},
 		}
 
@@ -402,7 +402,7 @@ func TestDescribeGraph(t *testing.T) {
 		assert.NoError(t, err)
 		assert.GreaterOrEqual(t, stats.TotalNodes, int64(0))
 		assert.GreaterOrEqual(t, stats.TotalRelationships, int64(0))
-		assert.Equal(t, "enterprise", stats.ExtraStats["database_type"])
+		assert.Equal(t, "separate_database", stats.ExtraStats["storage_type"])
 	})
 }
 
@@ -421,9 +421,17 @@ func TestHelperFunctions(t *testing.T) {
 	})
 
 	t.Run("GetGraphLabel", func(t *testing.T) {
+		// Test with default prefix
 		store := NewStore()
 		label := store.GetGraphLabel("test_graph")
-		assert.Equal(t, "Graph_test_graph", label)
+		assert.Equal(t, "__Graph_test_graph", label)
+
+		// Test with custom prefix from config
+		store.config.DriverConfig = map[string]interface{}{
+			"graph_label_prefix": "MyApp_",
+		}
+		label = store.GetGraphLabel("test_graph")
+		assert.Equal(t, "MyApp_test_graph", label)
 	})
 
 	t.Run("GetGraphDatabase", func(t *testing.T) {
@@ -432,10 +440,39 @@ func TestHelperFunctions(t *testing.T) {
 		db := store.GetGraphDatabase("test_graph")
 		assert.Equal(t, DefaultDatabase, db)
 
-		// Enterprise edition
-		store.SetEnterprise(true)
+		// Separate database mode
+		store.SetUseSeparateDatabase(true)
 		db = store.GetGraphDatabase("test_graph")
 		assert.Equal(t, "test_graph", db)
+	})
+
+	t.Run("ConfigurablePrefixes", func(t *testing.T) {
+		store := NewStore()
+
+		// Test default prefixes
+		assert.Equal(t, DefaultGraphLabelPrefix, store.getGraphLabelPrefix())
+		assert.Equal(t, DefaultGraphNamespaceProperty, store.getGraphNamespaceProperty())
+
+		// Test custom prefixes from config
+		store.config.DriverConfig = map[string]interface{}{
+			"graph_label_prefix":       "CustomApp_",
+			"graph_namespace_property": "__custom_namespace",
+		}
+		assert.Equal(t, "CustomApp_", store.getGraphLabelPrefix())
+		assert.Equal(t, "__custom_namespace", store.getGraphNamespaceProperty())
+
+		// Test empty prefixes should use defaults
+		store.config.DriverConfig = map[string]interface{}{
+			"graph_label_prefix":       "",
+			"graph_namespace_property": "",
+		}
+		assert.Equal(t, DefaultGraphLabelPrefix, store.getGraphLabelPrefix())
+		assert.Equal(t, DefaultGraphNamespaceProperty, store.getGraphNamespaceProperty())
+
+		// Test nil config should use defaults
+		store.config.DriverConfig = nil
+		assert.Equal(t, DefaultGraphLabelPrefix, store.getGraphLabelPrefix())
+		assert.Equal(t, DefaultGraphNamespaceProperty, store.getGraphNamespaceProperty())
 	})
 }
 
@@ -850,4 +887,55 @@ func TestGraphGoroutineLeakDetection(t *testing.T) {
 			t.Errorf("Too many application goroutine leaks in graph operations: %d (threshold: 3)", len(appLeaked))
 		}
 	}
+}
+
+func TestCustomPrefixIntegration(t *testing.T) {
+	config := getTestConfig()
+	if config == nil {
+		t.Skip("NEO4J_TEST_URL environment variable not set")
+	}
+
+	store := NewStore()
+	ctx := context.Background()
+
+	// Configure with custom prefixes
+	storeConfig := types.GraphStoreConfig{
+		StoreType:   "neo4j",
+		DatabaseURL: config.URL,
+		DriverConfig: map[string]interface{}{
+			"username":                 config.User,
+			"password":                 config.Password,
+			"graph_label_prefix":       "TestApp_",
+			"graph_namespace_property": "__test_namespace",
+		},
+	}
+
+	connectWithRetry(ctx, t, store, storeConfig)
+	defer store.Close()
+
+	// Test that custom prefixes are used
+	assert.Equal(t, "TestApp_", store.getGraphLabelPrefix())
+	assert.Equal(t, "__test_namespace", store.getGraphNamespaceProperty())
+
+	// Test graph operations with custom prefixes
+	graphName := "custom_prefix_test"
+
+	// Create graph
+	err := store.CreateGraph(ctx, graphName, nil)
+	assert.NoError(t, err)
+
+	// Verify GetGraphLabel uses custom prefix
+	expectedLabel := "TestApp_" + graphName
+	actualLabel := store.GetGraphLabel(graphName)
+	assert.Equal(t, expectedLabel, actualLabel)
+
+	// Test describe graph to ensure custom prefixes work in statistics
+	stats, err := store.DescribeGraph(ctx, graphName)
+	assert.NoError(t, err)
+	assert.Equal(t, "label_based", stats.ExtraStats["storage_type"])
+	assert.Equal(t, expectedLabel, stats.ExtraStats["__graph_label"])
+
+	// Clean up
+	err = store.DropGraph(ctx, graphName)
+	assert.NoError(t, err)
 }
