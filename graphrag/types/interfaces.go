@@ -96,148 +96,46 @@ type Extraction interface {
 // ExtractionProgress defines the callback function for progress reporting with flexible payload
 type ExtractionProgress func(status ExtractionStatus, payload ExtractionPayload)
 
-// ===== NOT IMPLEMENTED =====
-
-// VectorStoreFactory represents a factory for creating vector stores
-type VectorStoreFactory interface {
-	// Create vector stores with configuration
-	CreateVectorStore(ctx context.Context, storeType string, config VectorStoreConfig) (VectorStore, error)
-
-	// Create specific vector store types
-	CreateQdrantStore(ctx context.Context, config VectorStoreConfig) (VectorStore, error)
-	CreateMilvusStore(ctx context.Context, config VectorStoreConfig) (VectorStore, error)
-	CreateWeaviateStore(ctx context.Context, config VectorStoreConfig) (VectorStore, error)
-	CreateChromaStore(ctx context.Context, config VectorStoreConfig) (VectorStore, error)
-
-	// Utility methods
-	GetSupportedStores() []string
-	ValidateConfig(storeType string, config VectorStoreConfig) error
-}
-
-// ===== High-Level Application Interfaces =====
-
-// VectorStoreRetriever combines VectorStore and EmbeddingFunction for easy text-based operations
-// This is the application layer that handles text-to-vector conversion + vector search
-type VectorStoreRetriever interface {
-	// Text-based search operations (internally converts text to vectors)
-	SearchSimilarByText(ctx context.Context, collectionName, query string, opts *SearchOptions) (*SearchResult, error)
-	SearchMMRByText(ctx context.Context, collectionName, query string, opts *MMRSearchOptions) (*SearchResult, error)
-	SearchWithScoreThresholdByText(ctx context.Context, collectionName, query string, opts *ScoreThresholdOptions) (*SearchResult, error)
-	SearchHybridByText(ctx context.Context, collectionName, queryText string, opts *HybridSearchOptions) (*SearchResult, error)
-
-	// Document operations with automatic embedding
-	AddTexts(ctx context.Context, collectionName string, texts []string, metadatas []map[string]interface{}) ([]string, error)
-	AddDocumentsWithEmbedding(ctx context.Context, collectionName string, docs []*Document) ([]string, error)
-
-	// Direct vector operations (bypass embedding)
-	GetVectorStore() VectorStore
-	GetEmbeddingFunction() Embedding
-}
-
 // ===== Graph Database Interfaces =====
 
-// GraphStore is an interface for graph database operations, supporting Kuzu and Neo4j
+// GraphStore defines the interface for graph storage and retrieval
+// Similar to VectorStore design - focused on core operations with flexible data structures
 type GraphStore interface {
-	// Connection and Transaction Management
-	Connect(ctx context.Context, config map[string]interface{}) error
+	// Connection Management
+	Connect(ctx context.Context, config GraphStoreConfig) error
 	Disconnect(ctx context.Context) error
-	BeginTx(ctx context.Context) (GraphTransaction, error)
 	IsConnected() bool
+	Close() error
 
-	// Schema Operations
-	GetSchema(ctx context.Context) (*GraphSchema, error)
-	CreateIndex(ctx context.Context, label string, properties []string, indexType string) error
-	DropIndex(ctx context.Context, label string, properties []string) error
-	CreateConstraint(ctx context.Context, constraint SchemaConstraint) error
-	DropConstraint(ctx context.Context, constraint SchemaConstraint) error
+	// Graph Management (similar to Collection Management in VectorStore)
+	CreateGraph(ctx context.Context, graphName string, config *GraphConfig) error
+	DropGraph(ctx context.Context, graphName string) error
+	GraphExists(ctx context.Context, graphName string) (bool, error)
+	ListGraphs(ctx context.Context) ([]string, error)
+	DescribeGraph(ctx context.Context, graphName string) (*GraphStats, error)
 
-	// Node Operations
-	CreateNode(ctx context.Context, node Node) (*Node, error)
-	CreateNodes(ctx context.Context, nodes []Node) ([]Node, error)
-	GetNode(ctx context.Context, id string) (*Node, error)
-	GetNodesByLabel(ctx context.Context, label string, properties map[string]interface{}) ([]Node, error)
-	UpdateNode(ctx context.Context, id string, properties map[string]interface{}) error
-	DeleteNode(ctx context.Context, id string) error
+	// Node Operations (core functionality)
+	AddNodes(ctx context.Context, opts *AddNodesOptions) ([]string, error) // Upsert option handles updates
+	GetNodes(ctx context.Context, opts *GetNodesOptions) ([]*GraphNode, error)
+	DeleteNodes(ctx context.Context, opts *DeleteNodesOptions) error
 
 	// Relationship Operations
-	CreateRelationship(ctx context.Context, rel Relationship) (*Relationship, error)
-	CreateRelationships(ctx context.Context, rels []Relationship) ([]Relationship, error)
-	GetRelationship(ctx context.Context, id string) (*Relationship, error)
-	GetRelationships(ctx context.Context, nodeID string, direction string, relTypes []string) ([]Relationship, error)
-	UpdateRelationship(ctx context.Context, id string, properties map[string]interface{}) error
-	DeleteRelationship(ctx context.Context, id string) error
+	AddRelationships(ctx context.Context, opts *AddRelationshipsOptions) ([]string, error) // Upsert option handles updates
+	GetRelationships(ctx context.Context, opts *GetRelationshipsOptions) ([]*GraphRelationship, error)
+	DeleteRelationships(ctx context.Context, opts *DeleteRelationshipsOptions) error
 
-	// Query Operations
-	ExecuteQuery(ctx context.Context, query string, parameters map[string]interface{}) (*GraphResult, error)
-	ExecuteReadQuery(ctx context.Context, query string, parameters map[string]interface{}) (*GraphResult, error)
-	ExecuteWriteQuery(ctx context.Context, query string, parameters map[string]interface{}) (*GraphResult, error)
+	// Query Operations (flexible query interface)
 
-	// Graph Traversal
-	Traverse(ctx context.Context, startNodeIDs []string, opts GraphTraversalOptions) (*GraphResult, error)
-	FindPaths(ctx context.Context, startNodeID, endNodeID string, opts GraphTraversalOptions) ([]Path, error)
-	FindShortestPath(ctx context.Context, startNodeID, endNodeID string, maxDepth int) (*Path, error)
+	// Schema Operations (optional - for databases that support schema)
+	GetSchema(ctx context.Context, graphName string) (*DynamicGraphSchema, error)
+	CreateIndex(ctx context.Context, opts *CreateIndexOptions) error
+	DropIndex(ctx context.Context, opts *DropIndexOptions) error
 
-	// Graph Analytics
-	RunCommunityDetection(ctx context.Context, opts CommunityDetectionOptions) ([]Community, error)
-	ComputeNodeMetrics(ctx context.Context, nodeIDs []string, opts GraphAnalyticsOptions) ([]NodeMetrics, error)
-	GetNeighborhood(ctx context.Context, nodeID string, depth int) (*GraphResult, error)
+	// Statistics and Maintenance
+	GetStats(ctx context.Context, graphName string) (*GraphStats, error)
+	Optimize(ctx context.Context, graphName string) error
 
-	// Knowledge Graph Operations for GraphRAG
-	ExtractEntities(ctx context.Context, text string, entityTypes []string) ([]Node, error)
-	ExtractRelationships(ctx context.Context, text string, entities []Node) ([]Relationship, error)
-	AddKnowledgeTriples(ctx context.Context, subject, predicate, object string, properties map[string]interface{}) error
-	QueryKnowledge(ctx context.Context, query string, opts *GraphQueryOptions) (*GraphResult, error)
-
-	// Vector Integration (for hybrid GraphRAG)
-	AddNodeEmbedding(ctx context.Context, nodeID string, embedding []float64) error
-	FindSimilarNodes(ctx context.Context, embedding []float64, k int, threshold float64) ([]Node, error)
-	HybridSearch(ctx context.Context, textQuery string, embedding []float64, opts *GraphQueryOptions) (*GraphResult, error)
-
-	// Batch Operations
-	ExecuteBatch(ctx context.Context, operations []GraphOperation) error
-
-	// Utility Operations
-	GetStats(ctx context.Context) (map[string]interface{}, error)
-	ExportGraph(ctx context.Context, format string) ([]byte, error)
-	ImportGraph(ctx context.Context, data []byte, format string) error
-}
-
-// GraphTransaction represents a graph database transaction
-type GraphTransaction interface {
-	Commit(ctx context.Context) error
-	Rollback(ctx context.Context) error
-	ExecuteQuery(ctx context.Context, query string, parameters map[string]interface{}) (*GraphResult, error)
-	CreateNode(ctx context.Context, node Node) (*Node, error)
-	CreateRelationship(ctx context.Context, rel Relationship) (*Relationship, error)
-}
-
-// GraphRetriever represents a graph-based retriever for RAG
-type GraphRetriever interface {
-	// Vector-based graph retrieval
-	VectorGraphSearch(ctx context.Context, query string, k int) (*GraphResult, error)
-
-	// Text-to-Cypher/GQL retrieval
-	Text2GraphQuery(ctx context.Context, naturalLanguageQuery string) (string, error)
-	ExecuteGeneratedQuery(ctx context.Context, query string) (*GraphResult, error)
-
-	// Community-based retrieval (Global search)
-	CommunitySearch(ctx context.Context, query string, level int) ([]Community, error)
-
-	// Local graph exploration
-	LocalGraphSearch(ctx context.Context, startEntities []string, query string, depth int) (*GraphResult, error)
-
-	// Hybrid retrieval combining vector and graph
-	HybridGraphRetrieval(ctx context.Context, query string, vectorK int, graphDepth int) (*GraphResult, error)
-}
-
-// GraphStoreFactory represents a factory for creating graph stores
-type GraphStoreFactory interface {
-	// CreateKuzuStore creates a Kuzu graph store
-	CreateKuzuStore(ctx context.Context, dbPath string, config map[string]interface{}) (GraphStore, error)
-
-	// CreateNeo4jStore creates a Neo4j graph store
-	CreateNeo4jStore(ctx context.Context, uri, username, password string, config map[string]interface{}) (GraphStore, error)
-
-	// CreateFromConfig creates a graph store from configuration
-	CreateFromConfig(ctx context.Context, config map[string]interface{}) (GraphStore, error)
+	// Backup and Restore
+	Backup(ctx context.Context, writer io.Writer, opts *GraphBackupOptions) error
+	Restore(ctx context.Context, reader io.Reader, opts *GraphRestoreOptions) error
 }
