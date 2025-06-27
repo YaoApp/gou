@@ -82,6 +82,7 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/kaptinlin/jsonrepair v0.1.1
+	github.com/neo4j/neo4j-go-driver/v5 v5.28.1
 	github.com/qdrant/go-client v1.14.0
 	github.com/sergi/go-diff v1.3.1
 	golang.org/x/image v0.27.0
