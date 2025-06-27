@@ -9,11 +9,12 @@ import (
 
 // Store implements the GraphStore interface for Neo4j
 type Store struct {
-	config     types.GraphStoreConfig
-	driver     neo4j.DriverWithContext
-	connected  bool
-	enterprise bool // Whether this is Neo4j Enterprise Edition
-	mu         sync.RWMutex
+	config              types.GraphStoreConfig
+	driver              neo4j.DriverWithContext
+	connected           bool
+	useSeparateDatabase bool // Whether to use separate databases for each graph (requires Enterprise Edition)
+	isEnterpriseEdition bool // Whether the connected Neo4j instance is Enterprise Edition
+	mu                  sync.RWMutex
 }
 
 // NewStore creates a new Neo4j graph store instance
@@ -35,16 +36,30 @@ func (s *Store) GetConfig() types.GraphStoreConfig {
 	return s.config
 }
 
-// Enterprise returns whether this is Neo4j Enterprise Edition
-func (s *Store) Enterprise() bool {
+// UseSeparateDatabase returns whether to use separate databases for each graph
+func (s *Store) UseSeparateDatabase() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.enterprise
+	return s.useSeparateDatabase
 }
 
-// SetEnterprise sets the enterprise flag
-func (s *Store) SetEnterprise(enterprise bool) {
+// SetUseSeparateDatabase sets the separate database flag
+func (s *Store) SetUseSeparateDatabase(useSeparateDatabase bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.enterprise = enterprise
+	s.useSeparateDatabase = useSeparateDatabase
+}
+
+// IsEnterpriseEdition returns whether the connected Neo4j instance is Enterprise Edition
+func (s *Store) IsEnterpriseEdition() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.isEnterpriseEdition
+}
+
+// SetIsEnterpriseEdition sets the enterprise edition flag
+func (s *Store) SetIsEnterpriseEdition(isEnterprise bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.isEnterpriseEdition = isEnterprise
 }

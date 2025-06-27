@@ -12,10 +12,12 @@ import (
 const (
 	// DefaultDatabase is the default database name for community edition
 	DefaultDatabase = "neo4j"
-	// GraphLabelPrefix is the prefix for graph labels in community edition
-	GraphLabelPrefix = "Graph_"
-	// GraphNamespaceProperty is the property name for graph namespace
-	GraphNamespaceProperty = "graph_namespace"
+	// DefaultGraphLabelPrefix is the default prefix for graph labels in label-based mode
+	// Using double underscore to avoid conflicts with user-defined labels
+	DefaultGraphLabelPrefix = "__Graph_"
+	// DefaultGraphNamespaceProperty is the default property name for graph namespace
+	// Using double underscore to avoid conflicts with user-defined properties
+	DefaultGraphNamespaceProperty = "__graph_namespace"
 )
 
 // CreateGraph creates a new graph (database for enterprise, namespace/label for community)
@@ -36,12 +38,12 @@ func (s *Store) CreateGraph(ctx context.Context, graphName string, _ *types.Grap
 		return fmt.Errorf("invalid graph name: %s (only alphanumeric and underscore allowed)", graphName)
 	}
 
-	if s.enterprise {
-		// Enterprise edition: create a separate database
-		return s.createEnterpriseGraph(ctx, graphName)
+	if s.useSeparateDatabase {
+		// Use separate database for each graph (requires Enterprise Edition)
+		return s.createSeparateDatabaseGraph(ctx, graphName)
 	}
-	// Community edition: use namespace or labels
-	return s.createCommunityGraph(ctx, graphName)
+	// Use labels/namespaces in default database
+	return s.createLabelBasedGraph(ctx, graphName)
 }
 
 // DropGraph drops a graph
@@ -57,12 +59,12 @@ func (s *Store) DropGraph(ctx context.Context, graphName string) error {
 		return fmt.Errorf("graph name cannot be empty")
 	}
 
-	if s.enterprise {
-		// Enterprise edition: drop the database
-		return s.dropEnterpriseGraph(ctx, graphName)
+	if s.useSeparateDatabase {
+		// Drop the separate database
+		return s.dropSeparateDatabaseGraph(ctx, graphName)
 	}
-	// Community edition: remove all nodes and relationships with the graph namespace/label
-	return s.dropCommunityGraph(ctx, graphName)
+	// Remove all nodes and relationships with the graph label/namespace
+	return s.dropLabelBasedGraph(ctx, graphName)
 }
 
 // GraphExists checks if a graph exists
@@ -78,12 +80,12 @@ func (s *Store) GraphExists(ctx context.Context, graphName string) (bool, error)
 		return false, fmt.Errorf("graph name cannot be empty")
 	}
 
-	if s.enterprise {
-		// Enterprise edition: check if database exists
-		return s.enterpriseGraphExists(ctx, graphName)
+	if s.useSeparateDatabase {
+		// Check if separate database exists
+		return s.separateDatabaseGraphExists(ctx, graphName)
 	}
-	// Community edition: check if any nodes exist with the graph namespace/label
-	return s.communityGraphExists(ctx, graphName)
+	// Check if any nodes exist with the graph label/namespace
+	return s.labelBasedGraphExists(ctx, graphName)
 }
 
 // ListGraphs returns a list of available graphs
@@ -95,12 +97,12 @@ func (s *Store) ListGraphs(ctx context.Context) ([]string, error) {
 		return nil, fmt.Errorf("store is not connected")
 	}
 
-	if s.enterprise {
-		// Enterprise edition: list databases
-		return s.listEnterpriseGraphs(ctx)
+	if s.useSeparateDatabase {
+		// List separate databases
+		return s.listSeparateDatabaseGraphs(ctx)
 	}
-	// Community edition: list unique graph namespaces/labels
-	return s.listCommunityGraphs(ctx)
+	// List unique graph labels/namespaces
+	return s.listLabelBasedGraphs(ctx)
 }
 
 // DescribeGraph returns statistics about a graph
@@ -116,17 +118,17 @@ func (s *Store) DescribeGraph(ctx context.Context, graphName string) (*types.Gra
 		return nil, fmt.Errorf("graph name cannot be empty")
 	}
 
-	if s.enterprise {
-		// Enterprise edition: get database statistics
-		return s.describeEnterpriseGraph(ctx, graphName)
+	if s.useSeparateDatabase {
+		// Get separate database statistics
+		return s.describeSeparateDatabaseGraph(ctx, graphName)
 	}
-	// Community edition: get statistics for nodes/relationships with the graph namespace/label
-	return s.describeCommunityGraph(ctx, graphName)
+	// Get statistics for nodes/relationships with the graph label/namespace
+	return s.describeLabelBasedGraph(ctx, graphName)
 }
 
-// Enterprise edition implementations
+// Separate database implementations (requires Enterprise Edition)
 
-func (s *Store) createEnterpriseGraph(ctx context.Context, graphName string) error {
+func (s *Store) createSeparateDatabaseGraph(ctx context.Context, graphName string) error {
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "system", // Use system database for administrative operations
 	})
@@ -146,7 +148,7 @@ func (s *Store) createEnterpriseGraph(ctx context.Context, graphName string) err
 	return nil
 }
 
-func (s *Store) dropEnterpriseGraph(ctx context.Context, graphName string) error {
+func (s *Store) dropSeparateDatabaseGraph(ctx context.Context, graphName string) error {
 	// Don't allow dropping the default database
 	if graphName == DefaultDatabase {
 		return fmt.Errorf("cannot drop default database '%s'", DefaultDatabase)
@@ -170,7 +172,7 @@ func (s *Store) dropEnterpriseGraph(ctx context.Context, graphName string) error
 	return nil
 }
 
-func (s *Store) enterpriseGraphExists(ctx context.Context, graphName string) (bool, error) {
+func (s *Store) separateDatabaseGraphExists(ctx context.Context, graphName string) (bool, error) {
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "system",
 	})
@@ -187,7 +189,7 @@ func (s *Store) enterpriseGraphExists(ctx context.Context, graphName string) (bo
 	return result.Next(ctx), nil
 }
 
-func (s *Store) listEnterpriseGraphs(ctx context.Context) ([]string, error) {
+func (s *Store) listSeparateDatabaseGraphs(ctx context.Context) ([]string, error) {
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: "system",
 	})
@@ -216,7 +218,7 @@ func (s *Store) listEnterpriseGraphs(ctx context.Context) ([]string, error) {
 	return graphs, nil
 }
 
-func (s *Store) describeEnterpriseGraph(ctx context.Context, graphName string) (*types.GraphStats, error) {
+func (s *Store) describeSeparateDatabaseGraph(ctx context.Context, graphName string) (*types.GraphStats, error) {
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: graphName,
 	})
@@ -256,17 +258,17 @@ func (s *Store) describeEnterpriseGraph(ctx context.Context, graphName string) (
 		TotalNodes:         nodeCount,
 		TotalRelationships: relCount,
 		ExtraStats: map[string]interface{}{
-			"database_type": "enterprise",
+			"storage_type":  "separate_database",
 			"database_name": graphName,
 		},
 	}, nil
 }
 
-// Community edition implementations
+// Label-based implementations (works with Community and Enterprise Edition)
 
-func (s *Store) createCommunityGraph(ctx context.Context, graphName string) error {
-	// For community edition, we don't need to create anything explicitly
-	// The graph namespace/label will be used when adding nodes/relationships
+func (s *Store) createLabelBasedGraph(ctx context.Context, graphName string) error {
+	// For label-based storage, we don't need to create anything explicitly
+	// The graph label will be used when adding nodes/relationships
 	// Just verify we can connect to the default database
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: DefaultDatabase,
@@ -275,9 +277,9 @@ func (s *Store) createCommunityGraph(ctx context.Context, graphName string) erro
 
 	// Create a constraint to ensure graph namespace uniqueness if it doesn't exist
 	constraintQuery := fmt.Sprintf(
-		"CREATE CONSTRAINT graph_namespace_unique IF NOT EXISTS FOR (n:%s) REQUIRE n.%s IS UNIQUE",
-		GraphLabelPrefix+graphName,
-		GraphNamespaceProperty,
+		"CREATE CONSTRAINT __graph_namespace_unique IF NOT EXISTS FOR (n:%s) REQUIRE n.%s IS UNIQUE",
+		s.getGraphLabelPrefix()+graphName,
+		s.getGraphNamespaceProperty(),
 	)
 
 	_, err := session.Run(ctx, constraintQuery, nil)
@@ -289,13 +291,13 @@ func (s *Store) createCommunityGraph(ctx context.Context, graphName string) erro
 	return nil
 }
 
-func (s *Store) dropCommunityGraph(ctx context.Context, graphName string) error {
+func (s *Store) dropLabelBasedGraph(ctx context.Context, graphName string) error {
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: DefaultDatabase,
 	})
 	defer session.Close(ctx)
 
-	graphLabel := GraphLabelPrefix + graphName
+	graphLabel := s.getGraphLabelPrefix() + graphName
 
 	// Delete all relationships first
 	relQuery := fmt.Sprintf("MATCH (n:%s)-[r]-() DELETE r", graphLabel)
@@ -312,19 +314,19 @@ func (s *Store) dropCommunityGraph(ctx context.Context, graphName string) error 
 	}
 
 	// Drop constraint if exists
-	constraintQuery := "DROP CONSTRAINT graph_namespace_unique IF EXISTS"
+	constraintQuery := "DROP CONSTRAINT __graph_namespace_unique IF EXISTS"
 	_, _ = session.Run(ctx, constraintQuery, nil) // Ignore errors
 
 	return nil
 }
 
-func (s *Store) communityGraphExists(ctx context.Context, graphName string) (bool, error) {
+func (s *Store) labelBasedGraphExists(ctx context.Context, graphName string) (bool, error) {
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: DefaultDatabase,
 	})
 	defer session.Close(ctx)
 
-	graphLabel := GraphLabelPrefix + graphName
+	graphLabel := s.getGraphLabelPrefix() + graphName
 	query := fmt.Sprintf("MATCH (n:%s) RETURN count(n) > 0 as exists LIMIT 1", graphLabel)
 
 	result, err := session.Run(ctx, query, nil)
@@ -343,7 +345,7 @@ func (s *Store) communityGraphExists(ctx context.Context, graphName string) (boo
 	return false, nil
 }
 
-func (s *Store) listCommunityGraphs(ctx context.Context) ([]string, error) {
+func (s *Store) listLabelBasedGraphs(ctx context.Context) ([]string, error) {
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: DefaultDatabase,
 	})
@@ -352,7 +354,7 @@ func (s *Store) listCommunityGraphs(ctx context.Context) ([]string, error) {
 	// Get all labels that start with our graph prefix
 	query := "CALL db.labels() YIELD label WHERE label STARTS WITH $prefix RETURN label"
 	result, err := session.Run(ctx, query, map[string]interface{}{
-		"prefix": GraphLabelPrefix,
+		"prefix": s.getGraphLabelPrefix(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list graph labels: %w", err)
@@ -364,7 +366,7 @@ func (s *Store) listCommunityGraphs(ctx context.Context) ([]string, error) {
 		if label, ok := record.Get("label"); ok {
 			if labelStr, ok := label.(string); ok {
 				// Remove the prefix to get the graph name
-				graphName := strings.TrimPrefix(labelStr, GraphLabelPrefix)
+				graphName := strings.TrimPrefix(labelStr, s.getGraphLabelPrefix())
 				if graphName != labelStr { // Ensure it actually had the prefix
 					graphs = append(graphs, graphName)
 				}
@@ -379,13 +381,13 @@ func (s *Store) listCommunityGraphs(ctx context.Context) ([]string, error) {
 	return graphs, nil
 }
 
-func (s *Store) describeCommunityGraph(ctx context.Context, graphName string) (*types.GraphStats, error) {
+func (s *Store) describeLabelBasedGraph(ctx context.Context, graphName string) (*types.GraphStats, error) {
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
 		DatabaseName: DefaultDatabase,
 	})
 	defer session.Close(ctx)
 
-	graphLabel := GraphLabelPrefix + graphName
+	graphLabel := s.getGraphLabelPrefix() + graphName
 
 	// Get node count
 	nodeQuery := fmt.Sprintf("MATCH (n:%s) RETURN count(n) as nodeCount", graphLabel)
@@ -423,9 +425,9 @@ func (s *Store) describeCommunityGraph(ctx context.Context, graphName string) (*
 		TotalNodes:         nodeCount,
 		TotalRelationships: relCount,
 		ExtraStats: map[string]interface{}{
-			"database_type": "community",
+			"storage_type":  "label_based",
 			"database_name": DefaultDatabase,
-			"graph_label":   graphLabel,
+			"__graph_label": graphLabel,
 			"namespace":     graphName,
 		},
 	}, nil
@@ -450,13 +452,33 @@ func isValidGraphName(name string) bool {
 
 // GetGraphLabel returns the label used for a graph in community edition
 func (s *Store) GetGraphLabel(graphName string) string {
-	return GraphLabelPrefix + graphName
+	return s.getGraphLabelPrefix() + graphName
 }
 
 // GetGraphDatabase returns the database name for a graph
 func (s *Store) GetGraphDatabase(graphName string) string {
-	if s.enterprise {
+	if s.useSeparateDatabase {
 		return graphName
 	}
 	return DefaultDatabase
+}
+
+// getGraphLabelPrefix returns the graph label prefix from config or default
+func (s *Store) getGraphLabelPrefix() string {
+	if s.config.DriverConfig != nil {
+		if prefix, ok := s.config.DriverConfig["graph_label_prefix"].(string); ok && prefix != "" {
+			return prefix
+		}
+	}
+	return DefaultGraphLabelPrefix
+}
+
+// getGraphNamespaceProperty returns the graph namespace property from config or default
+func (s *Store) getGraphNamespaceProperty() string {
+	if s.config.DriverConfig != nil {
+		if prop, ok := s.config.DriverConfig["graph_namespace_property"].(string); ok && prop != "" {
+			return prop
+		}
+	}
+	return DefaultGraphNamespaceProperty
 }

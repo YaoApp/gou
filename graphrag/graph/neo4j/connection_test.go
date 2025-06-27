@@ -223,9 +223,9 @@ func TestDisconnect(t *testing.T) {
 			t.Error("Config should be cleared after Disconnect")
 		}
 
-		// Verify enterprise flag is reset
-		if store.Enterprise() {
-			t.Error("Enterprise flag should be reset after Disconnect")
+		// Verify separate database flag is reset
+		if store.UseSeparateDatabase() {
+			t.Error("Separate database flag should be reset after Disconnect")
 		}
 	})
 
@@ -335,13 +335,13 @@ func TestEnterpriseFlag(t *testing.T) {
 			enterprise: false,
 		},
 		{
-			name:       "ExplicitCommunity",
-			config:     map[string]interface{}{"username": testConfig.User, "password": testConfig.Password, "enterprise": false},
+			name:       "ExplicitLabelBased",
+			config:     map[string]interface{}{"username": testConfig.User, "password": testConfig.Password, "use_separate_database": false},
 			enterprise: false,
 		},
 		{
-			name:       "ExplicitEnterprise",
-			config:     map[string]interface{}{"username": testConfig.User, "password": testConfig.Password, "enterprise": true},
+			name:       "ExplicitSeparateDatabase",
+			config:     map[string]interface{}{"username": testConfig.User, "password": testConfig.Password, "use_separate_database": true},
 			enterprise: true,
 		},
 		{
@@ -376,8 +376,8 @@ func TestEnterpriseFlag(t *testing.T) {
 				t.Skipf("Connect failed (Neo4j server might not be running or wrong credentials): %v", err)
 			}
 
-			if store.Enterprise() != tc.enterprise {
-				t.Errorf("Expected enterprise flag %v, got %v", tc.enterprise, store.Enterprise())
+			if store.UseSeparateDatabase() != tc.enterprise {
+				t.Errorf("Expected use_separate_database flag %v, got %v", tc.enterprise, store.UseSeparateDatabase())
 			}
 
 			store.Close()
@@ -408,9 +408,9 @@ func TestEnterpriseDetection(t *testing.T) {
 
 		connectWithRetry(ctx, t, store, storeConfig)
 
-		// Should default to community edition
-		if store.Enterprise() {
-			t.Error("Should default to community edition when enterprise flag not set")
+		// Should default to label-based storage
+		if store.UseSeparateDatabase() {
+			t.Error("Should default to label-based storage when use_separate_database flag not set")
 		}
 
 		store.Close()
@@ -429,21 +429,146 @@ func TestEnterpriseDetection(t *testing.T) {
 			StoreType:   "neo4j",
 			DatabaseURL: config.URL,
 			DriverConfig: map[string]interface{}{
-				"username":   config.User,
-				"password":   config.Password,
-				"enterprise": true, // Explicitly set enterprise flag
+				"username":              config.User,
+				"password":              config.Password,
+				"use_separate_database": true, // Explicitly set separate database flag
 			},
 		}
 
 		connectWithRetry(ctx, t, store, storeConfig)
 
-		// Should be enterprise edition
-		if !store.Enterprise() {
-			t.Error("Should be enterprise edition when enterprise flag is true")
+		// Should use separate database storage
+		if !store.UseSeparateDatabase() {
+			t.Error("Should use separate database storage when use_separate_database flag is true")
 		}
 
 		store.Close()
 	})
+}
+
+// TestConfigurationValidation tests configuration validation
+func TestConfigurationValidation(t *testing.T) {
+	t.Run("SeparateDatabaseRequiresEnterprise", func(t *testing.T) {
+		config := getTestConfig()
+		if config == nil {
+			t.Skip("NEO4J_TEST_URL environment variable not set")
+		}
+
+		store := NewStore()
+		ctx := context.Background()
+
+		// Try to use separate database with community edition
+		storeConfig := types.GraphStoreConfig{
+			StoreType:   "neo4j",
+			DatabaseURL: config.URL,
+			DriverConfig: map[string]interface{}{
+				"username":              config.User,
+				"password":              config.Password,
+				"use_separate_database": true, // Request separate database
+			},
+		}
+
+		err := store.Connect(ctx, storeConfig)
+
+		// Check the actual detected edition
+		if err == nil {
+			defer store.Close()
+			if store.IsEnterpriseEdition() {
+				t.Skip("Test environment is actually Enterprise Edition, cannot test community validation")
+			} else {
+				t.Error("Connect should fail when requesting separate database with community edition")
+			}
+		} else {
+			expectedError := "separate database storage requires Neo4j Enterprise Edition"
+			if !contains(err.Error(), expectedError) {
+				t.Errorf("Expected error to contain '%s', got: %s", expectedError, err.Error())
+			} else {
+				t.Logf("Correctly rejected separate database request for community edition: %s", err.Error())
+			}
+		}
+	})
+
+	t.Run("LabelBasedWorksWithCommunity", func(t *testing.T) {
+		config := getTestConfig()
+		if config == nil {
+			t.Skip("NEO4J_TEST_URL environment variable not set")
+		}
+
+		store := NewStore()
+		ctx := context.Background()
+
+		// Use label-based storage with community edition (should work)
+		storeConfig := types.GraphStoreConfig{
+			StoreType:   "neo4j",
+			DatabaseURL: config.URL,
+			DriverConfig: map[string]interface{}{
+				"username":              config.User,
+				"password":              config.Password,
+				"use_separate_database": false, // Use label-based storage
+			},
+		}
+
+		err := store.Connect(ctx, storeConfig)
+		if err != nil {
+			t.Skipf("Connect failed (Neo4j server might not be running): %v", err)
+		}
+		defer store.Close()
+
+		// Should work fine
+		if !store.IsConnected() {
+			t.Error("Should be connected when using label-based storage")
+		}
+
+		if store.UseSeparateDatabase() {
+			t.Error("Should not use separate database when explicitly set to false")
+		}
+
+		t.Logf("Successfully connected with label-based storage. Edition: %v",
+			map[bool]string{true: "Enterprise", false: "Community"}[store.IsEnterpriseEdition()])
+	})
+
+	t.Run("SeparateDatabaseWorksWithEnterprise", func(t *testing.T) {
+		config := getEnterpriseTestConfig()
+		if config == nil {
+			t.Skip("NEO4J_TEST_ENTERPRISE_URL environment variable not set")
+		}
+
+		store := NewStore()
+		ctx := context.Background()
+
+		// Use separate database with enterprise edition (should work)
+		storeConfig := types.GraphStoreConfig{
+			StoreType:   "neo4j",
+			DatabaseURL: config.URL,
+			DriverConfig: map[string]interface{}{
+				"username":              config.User,
+				"password":              config.Password,
+				"use_separate_database": true, // Use separate database
+			},
+		}
+
+		err := store.Connect(ctx, storeConfig)
+		if err != nil {
+			t.Skipf("Connect failed (Neo4j Enterprise server might not be running): %v", err)
+		}
+		defer store.Close()
+
+		// Should work fine
+		if !store.IsConnected() {
+			t.Error("Should be connected when using separate database with enterprise edition")
+		}
+
+		if !store.UseSeparateDatabase() {
+			t.Error("Should use separate database when explicitly set to true with enterprise edition")
+		}
+
+		if !store.IsEnterpriseEdition() {
+			t.Error("Should detect enterprise edition")
+		}
+
+		t.Logf("Successfully connected with separate database storage on Enterprise Edition")
+	})
+
 }
 
 // ===== Stress Tests =====
