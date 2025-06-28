@@ -520,3 +520,67 @@ func CreateTestNodes(count int) []*types.GraphNode {
 
 	return nodes
 }
+
+// CreateTestRelationships creates a set of test relationships for unit testing
+func CreateTestRelationships(count int) []*types.GraphRelationship {
+	relationships := make([]*types.GraphRelationship, count)
+
+	for i := 0; i < count; i++ {
+		rel := &types.GraphRelationship{
+			ID:        fmt.Sprintf("test_rel_%d", i),
+			Type:      "RELATED_TO",
+			StartNode: fmt.Sprintf("test_node_%d", i),
+			EndNode:   fmt.Sprintf("test_node_%d", (i+1)%count), // Create circular relationships
+			Properties: map[string]interface{}{
+				"name":     fmt.Sprintf("Test Relationship %d", i),
+				"type":     "test",
+				"index":    i,
+				"source":   "test",
+				"strength": float64(i) / float64(count),
+			},
+			Description: fmt.Sprintf("Test relationship number %d", i),
+			Confidence:  0.8,
+			Weight:      float64(i) / float64(count),
+			CreatedAt:   time.Now(),
+			Version:     1,
+		}
+		relationships[i] = rel
+	}
+
+	return relationships
+}
+
+// CreateTestRelationshipsWithNodes creates test relationships with specific start and end nodes
+func CreateTestRelationshipsWithNodes(startNodes, endNodes []string, relType string) []*types.GraphRelationship {
+	if len(startNodes) == 0 || len(endNodes) == 0 {
+		return []*types.GraphRelationship{}
+	}
+
+	var relationships []*types.GraphRelationship
+	for i, startNode := range startNodes {
+		for j, endNode := range endNodes {
+			if startNode != endNode { // Avoid self-loops
+				rel := &types.GraphRelationship{
+					ID:        fmt.Sprintf("%s_%s_%s_%d_%d", startNode, relType, endNode, i, j),
+					Type:      relType,
+					StartNode: startNode,
+					EndNode:   endNode,
+					Properties: map[string]interface{}{
+						"name":      fmt.Sprintf("Relationship from %s to %s", startNode, endNode),
+						"start_idx": i,
+						"end_idx":   j,
+						"created":   "test",
+					},
+					Description: fmt.Sprintf("Test relationship from %s to %s", startNode, endNode),
+					Confidence:  0.9,
+					Weight:      0.5,
+					CreatedAt:   time.Now(),
+					Version:     1,
+				}
+				relationships = append(relationships, rel)
+			}
+		}
+	}
+
+	return relationships
+}
