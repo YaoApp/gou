@@ -2,10 +2,17 @@ package neo4j
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/yaoapp/gou/graphrag/types"
 )
 
 // GoroutineInfo represents information about a goroutine
@@ -287,4 +294,229 @@ func runStressTest(config StressTestConfig, operation TestOperation) StressTestR
 		SuccessRate:     successRate,
 		Duration:        time.Since(start),
 	}
+}
+
+// TestGraphData represents test graph data structure
+type TestGraphData struct {
+	Entities           []TestEntity       `json:"entities"`
+	Relationships      []TestRelationship `json:"relationships"`
+	File               string             `json:"file"`
+	FullPath           string             `json:"full_path"`
+	GeneratedAt        string             `json:"generated_at"`
+	Model              string             `json:"model"`
+	TextLength         int                `json:"text_length"`
+	TotalEntities      int                `json:"total_entities"`
+	TotalRelationships int                `json:"total_relationships"`
+	Usage              TestUsage          `json:"usage"`
+}
+
+// TestEntity represents an entity in test data
+type TestEntity struct {
+	ID               string                 `json:"id"`
+	Name             string                 `json:"name"`
+	Type             string                 `json:"type"`
+	Labels           []string               `json:"labels"`
+	Properties       map[string]interface{} `json:"properties"`
+	Description      string                 `json:"description"`
+	Confidence       float64                `json:"confidence"`
+	ExtractionMethod string                 `json:"extraction_method"`
+	CreatedAt        int64                  `json:"created_at"`
+	Version          int                    `json:"version"`
+	Status           string                 `json:"status"`
+}
+
+// TestRelationship represents a relationship in test data
+type TestRelationship struct {
+	Type             string                 `json:"type"`
+	StartNode        string                 `json:"start_node"`
+	EndNode          string                 `json:"end_node"`
+	Properties       map[string]interface{} `json:"properties"`
+	Description      string                 `json:"description"`
+	Confidence       float64                `json:"confidence"`
+	Weight           float64                `json:"weight"`
+	ExtractionMethod string                 `json:"extraction_method"`
+	CreatedAt        int64                  `json:"created_at"`
+	Version          int                    `json:"version"`
+	Status           string                 `json:"status"`
+}
+
+// TestUsage represents usage statistics in test data
+type TestUsage struct {
+	TotalTokens  int `json:"total_tokens"`
+	PromptTokens int `json:"prompt_tokens"`
+	TotalTexts   int `json:"total_texts"`
+}
+
+// LoadTestGraphDataFromDir loads all graph test data files from a directory
+func LoadTestGraphDataFromDir(dirPath string) ([]*TestGraphData, error) {
+	var allData []*TestGraphData
+
+	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Only process .graph.json files
+		if !strings.HasSuffix(d.Name(), ".graph.json") {
+			return nil
+		}
+
+		data, err := LoadTestGraphDataFromFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to load %s: %w", path, err)
+		}
+
+		allData = append(allData, data)
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk directory %s: %w", dirPath, err)
+	}
+
+	return allData, nil
+}
+
+// LoadTestGraphDataFromFile loads graph test data from a single file
+func LoadTestGraphDataFromFile(filePath string) (*TestGraphData, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
+	}
+
+	var data TestGraphData
+	err = json.Unmarshal(content, &data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON from %s: %w", filePath, err)
+	}
+
+	return &data, nil
+}
+
+// ConvertTestEntitiesToGraphNodes converts test entities to GraphNode format
+func ConvertTestEntitiesToGraphNodes(entities []TestEntity) []*types.GraphNode {
+	nodes := make([]*types.GraphNode, len(entities))
+
+	for i, entity := range entities {
+		node := &types.GraphNode{
+			ID:          entity.ID,
+			Labels:      entity.Labels,
+			Properties:  entity.Properties,
+			EntityType:  entity.Type,
+			Description: entity.Description,
+			Confidence:  entity.Confidence,
+			CreatedAt:   time.Unix(entity.CreatedAt, 0),
+			Version:     entity.Version,
+		}
+
+		if node.Properties == nil {
+			node.Properties = make(map[string]interface{})
+		}
+
+		// Add entity name as a property if not already present
+		if _, exists := node.Properties["name"]; !exists && entity.Name != "" {
+			node.Properties["name"] = entity.Name
+		}
+
+		nodes[i] = node
+	}
+
+	return nodes
+}
+
+// ConvertTestRelationshipsToGraphRelationships converts test relationships to GraphRelationship format
+func ConvertTestRelationshipsToGraphRelationships(relationships []TestRelationship) []*types.GraphRelationship {
+	rels := make([]*types.GraphRelationship, len(relationships))
+
+	for i, rel := range relationships {
+		graphRel := &types.GraphRelationship{
+			ID:          fmt.Sprintf("%s_%s_%s", rel.StartNode, rel.Type, rel.EndNode),
+			Type:        rel.Type,
+			StartNode:   rel.StartNode,
+			EndNode:     rel.EndNode,
+			Properties:  rel.Properties,
+			Description: rel.Description,
+			Confidence:  rel.Confidence,
+			Weight:      rel.Weight,
+			CreatedAt:   time.Unix(rel.CreatedAt, 0),
+			Version:     rel.Version,
+		}
+
+		if graphRel.Properties == nil {
+			graphRel.Properties = make(map[string]interface{})
+		}
+
+		rels[i] = graphRel
+	}
+
+	return rels
+}
+
+// LoadTestDataset loads test dataset for the specified language and returns nodes and relationships
+func LoadTestDataset(language string) ([]*types.GraphNode, []*types.GraphRelationship, error) {
+	var dirPath string
+	if language == "zh" {
+		dirPath = "/Users/max/Yao/gou/graphrag/tests/semantic-zh"
+	} else if language == "en" {
+		dirPath = "/Users/max/Yao/gou/graphrag/tests/semantic-en"
+	} else {
+		return nil, nil, fmt.Errorf("unsupported language: %s (supported: zh, en)", language)
+	}
+
+	// Check if directory exists
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		return nil, nil, fmt.Errorf("test data directory does not exist: %s", dirPath)
+	}
+
+	// Load all test data files
+	allData, err := LoadTestGraphDataFromDir(dirPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(allData) == 0 {
+		return nil, nil, fmt.Errorf("no test data files found in %s", dirPath)
+	}
+
+	// Aggregate all entities and relationships
+	var allEntities []TestEntity
+	var allRelationships []TestRelationship
+
+	for _, data := range allData {
+		allEntities = append(allEntities, data.Entities...)
+		allRelationships = append(allRelationships, data.Relationships...)
+	}
+
+	// Convert to GraphNode and GraphRelationship format
+	nodes := ConvertTestEntitiesToGraphNodes(allEntities)
+	relationships := ConvertTestRelationshipsToGraphRelationships(allRelationships)
+
+	return nodes, relationships, nil
+}
+
+// CreateTestNodes creates a set of test nodes for unit testing
+func CreateTestNodes(count int) []*types.GraphNode {
+	nodes := make([]*types.GraphNode, count)
+
+	for i := 0; i < count; i++ {
+		node := &types.GraphNode{
+			ID:     fmt.Sprintf("test_node_%d", i),
+			Labels: []string{"TestNode", "Entity"},
+			Properties: map[string]interface{}{
+				"name":    fmt.Sprintf("Test Node %d", i),
+				"type":    "test",
+				"index":   i,
+				"created": "test",
+			},
+			EntityType:  "test",
+			Description: fmt.Sprintf("Test node number %d", i),
+			Confidence:  0.9,
+			Importance:  float64(i) / float64(count),
+			CreatedAt:   time.Now(),
+			Version:     1,
+		}
+		nodes[i] = node
+	}
+
+	return nodes
 }
