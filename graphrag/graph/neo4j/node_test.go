@@ -1037,3 +1037,1113 @@ func cleanupTestStore(t *testing.T, store *Store) {
 func hasEnterpriseConnection() bool {
 	return os.Getenv("NEO4J_TEST_ENTERPRISE_URL") != ""
 }
+
+// ===== GetNodes Tests =====
+
+// TestGetNodes_Basic tests basic GetNodes functionality
+func TestGetNodes_Basic(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Create test graph
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	// Add some test nodes first
+	testNodes := CreateTestNodes(5)
+	addOpts := &types.AddNodesOptions{
+		GraphName: testGraphName,
+		Nodes:     testNodes,
+	}
+	nodeIDs, err := store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+	if len(nodeIDs) != 5 {
+		t.Fatalf("Expected 5 node IDs, got %d", len(nodeIDs))
+	}
+
+	// Test get all nodes
+	getOpts := &types.GetNodesOptions{
+		GraphName:         testGraphName,
+		IncludeProperties: true,
+		IncludeMetadata:   true,
+		Limit:             10,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("GetNodes failed: %v", err)
+	}
+	if len(nodes) != 5 {
+		t.Errorf("Expected 5 nodes, got %d", len(nodes))
+	}
+
+	// Verify node content
+	for i, node := range nodes {
+		if node.ID == "" {
+			t.Errorf("Node %d has empty ID", i)
+		}
+		if len(node.Labels) == 0 {
+			t.Errorf("Node %d has no labels", i)
+		}
+		if node.Properties == nil {
+			t.Errorf("Node %d has nil properties", i)
+		}
+	}
+}
+
+// TestGetNodes_ByIDs tests retrieving nodes by specific IDs
+func TestGetNodes_ByIDs(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Create test graph and add nodes
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	testNodes := CreateTestNodes(10)
+	addOpts := &types.AddNodesOptions{
+		GraphName: testGraphName,
+		Nodes:     testNodes,
+	}
+	nodeIDs, err := store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Get specific nodes by IDs
+	targetIDs := []string{nodeIDs[0], nodeIDs[2], nodeIDs[4]}
+	getOpts := &types.GetNodesOptions{
+		GraphName:         testGraphName,
+		IDs:               targetIDs,
+		IncludeProperties: true,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("GetNodes by IDs failed: %v", err)
+	}
+	if len(nodes) != 3 {
+		t.Errorf("Expected 3 nodes, got %d", len(nodes))
+	}
+
+	// Verify retrieved nodes match requested IDs
+	retrievedIDs := make(map[string]bool)
+	for _, node := range nodes {
+		retrievedIDs[node.ID] = true
+	}
+	for _, targetID := range targetIDs {
+		if !retrievedIDs[targetID] {
+			t.Errorf("Expected node ID %s not found in results", targetID)
+		}
+	}
+}
+
+// TestGetNodes_ByLabels tests retrieving nodes by labels
+func TestGetNodes_ByLabels(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Create test graph
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	// Create nodes with different labels
+	nodesA := []*types.GraphNode{
+		{ID: "a1", Labels: []string{"TypeA", "Entity"}, Properties: map[string]interface{}{"type": "A"}},
+		{ID: "a2", Labels: []string{"TypeA", "Entity"}, Properties: map[string]interface{}{"type": "A"}},
+	}
+	nodesB := []*types.GraphNode{
+		{ID: "b1", Labels: []string{"TypeB", "Entity"}, Properties: map[string]interface{}{"type": "B"}},
+		{ID: "b2", Labels: []string{"TypeB", "Entity"}, Properties: map[string]interface{}{"type": "B"}},
+	}
+
+	// Add nodes
+	allNodes := append(nodesA, nodesB...)
+	addOpts := &types.AddNodesOptions{
+		GraphName: testGraphName,
+		Nodes:     allNodes,
+	}
+	_, err = store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Get nodes with TypeA label
+	getOpts := &types.GetNodesOptions{
+		GraphName:         testGraphName,
+		Labels:            []string{"TypeA"},
+		IncludeProperties: true,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("GetNodes by labels failed: %v", err)
+	}
+	if len(nodes) != 2 {
+		t.Errorf("Expected 2 TypeA nodes, got %d", len(nodes))
+	}
+
+	// Verify all retrieved nodes have TypeA label
+	for _, node := range nodes {
+		hasTypeA := false
+		for _, label := range node.Labels {
+			if label == "TypeA" {
+				hasTypeA = true
+				break
+			}
+		}
+		if !hasTypeA {
+			t.Errorf("Node %s does not have TypeA label", node.ID)
+		}
+	}
+}
+
+// TestGetNodes_ByFilter tests retrieving nodes by property filters
+func TestGetNodes_ByFilter(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Create test graph and add nodes
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	// Create nodes with different properties
+	nodes := []*types.GraphNode{
+		{ID: "user1", Labels: []string{"User"}, Properties: map[string]interface{}{"status": "active", "age": 25}},
+		{ID: "user2", Labels: []string{"User"}, Properties: map[string]interface{}{"status": "active", "age": 30}},
+		{ID: "user3", Labels: []string{"User"}, Properties: map[string]interface{}{"status": "inactive", "age": 35}},
+	}
+
+	addOpts := &types.AddNodesOptions{
+		GraphName: testGraphName,
+		Nodes:     nodes,
+	}
+	_, err = store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Get active users
+	getOpts := &types.GetNodesOptions{
+		GraphName:         testGraphName,
+		Filter:            map[string]interface{}{"status": "active"},
+		IncludeProperties: true,
+	}
+	activeUsers, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("GetNodes by filter failed: %v", err)
+	}
+	if len(activeUsers) != 2 {
+		t.Errorf("Expected 2 active users, got %d", len(activeUsers))
+	}
+
+	// Verify all retrieved nodes have active status
+	for _, user := range activeUsers {
+		if status, ok := user.Properties["status"]; !ok || status != "active" {
+			t.Errorf("User %s does not have active status", user.ID)
+		}
+	}
+}
+
+// TestGetNodes_EmptyGraph tests retrieving from empty graph
+func TestGetNodes_EmptyGraph(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Create empty test graph
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	// Try to get nodes from empty graph
+	getOpts := &types.GetNodesOptions{
+		GraphName:         testGraphName,
+		IncludeProperties: true,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("GetNodes from empty graph failed: %v", err)
+	}
+	if len(nodes) != 0 {
+		t.Errorf("Expected 0 nodes from empty graph, got %d", len(nodes))
+	}
+}
+
+// TestGetNodes_NonExistentGraph tests retrieving from non-existent graph
+func TestGetNodes_NonExistentGraph(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Try to get nodes from non-existent graph
+	getOpts := &types.GetNodesOptions{
+		GraphName:         "non_existent_graph",
+		IncludeProperties: true,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("GetNodes from non-existent graph failed: %v", err)
+	}
+	if len(nodes) != 0 {
+		t.Errorf("Expected 0 nodes from non-existent graph, got %d", len(nodes))
+	}
+}
+
+// TestGetNodes_ErrorHandling tests error scenarios
+func TestGetNodes_ErrorHandling(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Test with nil options
+	_, err := store.GetNodes(ctx, nil)
+	if err == nil {
+		t.Error("Expected error for nil options")
+	}
+
+	// Test with empty graph name
+	opts := &types.GetNodesOptions{
+		GraphName: "",
+	}
+	_, err = store.GetNodes(ctx, opts)
+	if err == nil {
+		t.Error("Expected error for empty graph name")
+	}
+
+	// Test with invalid graph name
+	opts.GraphName = "invalid-graph-name!"
+	_, err = store.GetNodes(ctx, opts)
+	if err == nil {
+		t.Error("Expected error for invalid graph name")
+	}
+}
+
+// TestGetNodes_LabelBasedMode tests label-based storage mode
+func TestGetNodes_LabelBasedMode(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	// Force label-based mode
+	store.SetUseSeparateDatabase(false)
+	store.SetIsEnterpriseEdition(false)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Create test graph and add nodes
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	testNodes := CreateTestNodes(3)
+	addOpts := &types.AddNodesOptions{
+		GraphName: testGraphName,
+		Nodes:     testNodes,
+	}
+	_, err = store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Get nodes in label-based mode
+	getOpts := &types.GetNodesOptions{
+		GraphName:         testGraphName,
+		IncludeProperties: true,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("GetNodes in label-based mode failed: %v", err)
+	}
+	if len(nodes) != 3 {
+		t.Errorf("Expected 3 nodes in label-based mode, got %d", len(nodes))
+	}
+}
+
+// TestGetNodes_SeparateDatabaseMode tests separate database mode
+func TestGetNodes_SeparateDatabaseMode(t *testing.T) {
+	if !hasEnterpriseConnection() {
+		t.Skip("Skipping enterprise-only test: NEO4J_TEST_ENTERPRISE_URL not set")
+	}
+
+	store := setupEnterpriseTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	// Force separate database mode
+	store.SetUseSeparateDatabase(true)
+	store.SetIsEnterpriseEdition(true)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Use enterprise-compatible graph name
+	enterpriseGraphName := "testgetgraph"
+
+	// Create test graph and add nodes
+	err := store.CreateGraph(ctx, enterpriseGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, enterpriseGraphName)
+	}()
+
+	testNodes := CreateTestNodes(3)
+	addOpts := &types.AddNodesOptions{
+		GraphName: enterpriseGraphName,
+		Nodes:     testNodes,
+	}
+	_, err = store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Get nodes in separate database mode
+	getOpts := &types.GetNodesOptions{
+		GraphName:         enterpriseGraphName,
+		IncludeProperties: true,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("GetNodes in separate database mode failed: %v", err)
+	}
+	if len(nodes) != 3 {
+		t.Errorf("Expected 3 nodes in separate database mode, got %d", len(nodes))
+	}
+}
+
+// TestGetNodes_ConcurrentStress tests concurrent GetNodes operations
+func TestGetNodes_ConcurrentStress(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping stress test in short mode")
+	}
+
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*testTimeout)
+	defer cancel()
+
+	// Capture initial state for leak detection
+	beforeGoroutines := captureGoroutineState()
+	beforeMemory := captureMemoryStats()
+
+	// Create test graph and add nodes
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	// Add test data
+	testNodes := CreateTestNodes(50)
+	addOpts := &types.AddNodesOptions{
+		GraphName: testGraphName,
+		Nodes:     testNodes,
+	}
+	_, err = store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Stress test configuration
+	config := LightStressConfig()
+
+	// Run stress test
+	operation := func(ctx context.Context) error {
+		getOpts := &types.GetNodesOptions{
+			GraphName:         testGraphName,
+			IncludeProperties: true,
+			Limit:             20,
+		}
+		_, err := store.GetNodes(ctx, getOpts)
+		return err
+	}
+
+	result := runStressTest(config, operation)
+
+	// Check results
+	if result.SuccessRate < config.MinSuccessRate {
+		t.Errorf("GetNodes stress test success rate %.2f%% is below minimum %.2f%%",
+			result.SuccessRate, config.MinSuccessRate)
+	}
+
+	t.Logf("GetNodes stress test completed: %d operations, %.2f%% success rate, %d errors, duration: %v",
+		result.TotalOperations, result.SuccessRate, result.ErrorCount, result.Duration)
+
+	// Allow time for cleanup
+	time.Sleep(time.Second)
+
+	// Check for leaks
+	afterGoroutines := captureGoroutineState()
+	leaked, _ := analyzeGoroutineChanges(beforeGoroutines, afterGoroutines)
+
+	if len(leaked) > 0 {
+		for _, g := range leaked {
+			if !g.IsSystem {
+				t.Errorf("GetNodes goroutine leak detected: ID=%d, State=%s, Function=%s",
+					g.ID, g.State, g.Function)
+			}
+		}
+	}
+
+	afterMemory := captureMemoryStats()
+	memGrowth := calculateMemoryGrowth(beforeMemory, afterMemory)
+
+	// Allow for some memory growth, but not excessive
+	maxAllowedGrowth := int64(20 * 1024 * 1024) // 20MB
+	if memGrowth.HeapAllocGrowth > maxAllowedGrowth {
+		t.Errorf("GetNodes excessive memory growth detected: %d bytes heap allocation growth",
+			memGrowth.HeapAllocGrowth)
+	}
+
+	t.Logf("GetNodes memory growth: Heap=%d bytes, Total=%d bytes, GC cycles=%d",
+		memGrowth.HeapAllocGrowth, memGrowth.AllocGrowth, memGrowth.NumGCDiff)
+}
+
+// ===== DeleteNodes Tests =====
+
+// TestDeleteNodes_Basic tests basic DeleteNodes functionality
+func TestDeleteNodes_Basic(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Create test graph and add nodes
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	testNodes := CreateTestNodes(5)
+	addOpts := &types.AddNodesOptions{
+		GraphName: testGraphName,
+		Nodes:     testNodes,
+	}
+	nodeIDs, err := store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Verify nodes exist
+	getOpts := &types.GetNodesOptions{
+		GraphName: testGraphName,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("Failed to get nodes: %v", err)
+	}
+	if len(nodes) != 5 {
+		t.Fatalf("Expected 5 nodes before deletion, got %d", len(nodes))
+	}
+
+	// Delete specific nodes by IDs
+	deleteIDs := []string{nodeIDs[0], nodeIDs[2]}
+	delOpts := &types.DeleteNodesOptions{
+		GraphName: testGraphName,
+		IDs:       deleteIDs,
+	}
+	err = store.DeleteNodes(ctx, delOpts)
+	if err != nil {
+		t.Fatalf("DeleteNodes failed: %v", err)
+	}
+
+	// Verify nodes were deleted
+	nodes, err = store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("Failed to get nodes after deletion: %v", err)
+	}
+	if len(nodes) != 3 {
+		t.Errorf("Expected 3 nodes after deletion, got %d", len(nodes))
+	}
+
+	// Verify specific nodes were deleted
+	remainingIDs := make(map[string]bool)
+	for _, node := range nodes {
+		remainingIDs[node.ID] = true
+	}
+	for _, deletedID := range deleteIDs {
+		if remainingIDs[deletedID] {
+			t.Errorf("Node %s should have been deleted but still exists", deletedID)
+		}
+	}
+}
+
+// TestDeleteNodes_ByFilter tests deleting nodes by filter
+func TestDeleteNodes_ByFilter(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Create test graph and add nodes
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	// Create nodes with different properties
+	nodes := []*types.GraphNode{
+		{ID: "active1", Labels: []string{"User"}, Properties: map[string]interface{}{"status": "active"}},
+		{ID: "active2", Labels: []string{"User"}, Properties: map[string]interface{}{"status": "active"}},
+		{ID: "inactive1", Labels: []string{"User"}, Properties: map[string]interface{}{"status": "inactive"}},
+		{ID: "inactive2", Labels: []string{"User"}, Properties: map[string]interface{}{"status": "inactive"}},
+	}
+
+	addOpts := &types.AddNodesOptions{
+		GraphName: testGraphName,
+		Nodes:     nodes,
+	}
+	_, err = store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Delete inactive users by filter
+	delOpts := &types.DeleteNodesOptions{
+		GraphName: testGraphName,
+		Filter:    map[string]interface{}{"status": "inactive"},
+	}
+	err = store.DeleteNodes(ctx, delOpts)
+	if err != nil {
+		t.Fatalf("DeleteNodes by filter failed: %v", err)
+	}
+
+	// Verify only active users remain
+	getOpts := &types.GetNodesOptions{
+		GraphName:         testGraphName,
+		IncludeProperties: true,
+	}
+	remainingNodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("Failed to get remaining nodes: %v", err)
+	}
+	if len(remainingNodes) != 2 {
+		t.Errorf("Expected 2 remaining nodes, got %d", len(remainingNodes))
+	}
+
+	// Verify all remaining nodes are active
+	for _, node := range remainingNodes {
+		if status, ok := node.Properties["status"]; !ok || status != "active" {
+			t.Errorf("Remaining node %s should be active but has status %v", node.ID, status)
+		}
+	}
+}
+
+// TestDeleteNodes_DryRun tests dry run functionality
+func TestDeleteNodes_DryRun(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Create test graph and add nodes
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	testNodes := CreateTestNodes(5)
+	addOpts := &types.AddNodesOptions{
+		GraphName: testGraphName,
+		Nodes:     testNodes,
+	}
+	nodeIDs, err := store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Perform dry run
+	delOpts := &types.DeleteNodesOptions{
+		GraphName: testGraphName,
+		IDs:       []string{nodeIDs[0], nodeIDs[1]},
+		DryRun:    true,
+	}
+	err = store.DeleteNodes(ctx, delOpts)
+	if err == nil {
+		t.Error("Expected dry run to return an informational error")
+	}
+	if !strings.Contains(err.Error(), "dry run") {
+		t.Errorf("Expected dry run error message, got: %v", err)
+	}
+
+	// Verify no nodes were actually deleted
+	getOpts := &types.GetNodesOptions{
+		GraphName: testGraphName,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("Failed to get nodes after dry run: %v", err)
+	}
+	if len(nodes) != 5 {
+		t.Errorf("Expected 5 nodes after dry run (no actual deletion), got %d", len(nodes))
+	}
+}
+
+// TestDeleteNodes_ErrorHandling tests error scenarios
+func TestDeleteNodes_ErrorHandling(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Test with nil options
+	err := store.DeleteNodes(ctx, nil)
+	if err == nil {
+		t.Error("Expected error for nil options")
+	}
+
+	// Test with empty graph name
+	opts := &types.DeleteNodesOptions{
+		GraphName: "",
+	}
+	err = store.DeleteNodes(ctx, opts)
+	if err == nil {
+		t.Error("Expected error for empty graph name")
+	}
+
+	// Test with invalid graph name
+	opts.GraphName = "invalid-graph-name!"
+	err = store.DeleteNodes(ctx, opts)
+	if err == nil {
+		t.Error("Expected error for invalid graph name")
+	}
+
+	// Test without IDs or Filter (should prevent accidental deletion of all nodes)
+	// Note: This validation now happens before graph existence check
+	emptyOpts := &types.DeleteNodesOptions{
+		GraphName: testGraphName,
+		IDs:       nil,
+		Filter:    nil,
+	}
+	err = store.DeleteNodes(ctx, emptyOpts)
+	if err == nil {
+		t.Error("Expected error when neither IDs nor Filter is specified")
+	}
+}
+
+// TestDeleteNodes_LabelBasedMode tests deletion in label-based mode
+func TestDeleteNodes_LabelBasedMode(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	// Force label-based mode
+	store.SetUseSeparateDatabase(false)
+	store.SetIsEnterpriseEdition(false)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Create test graph and add/delete nodes
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	testNodes := CreateTestNodes(5)
+	addOpts := &types.AddNodesOptions{
+		GraphName: testGraphName,
+		Nodes:     testNodes,
+	}
+	nodeIDs, err := store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Delete nodes in label-based mode
+	delOpts := &types.DeleteNodesOptions{
+		GraphName: testGraphName,
+		IDs:       []string{nodeIDs[0], nodeIDs[1]},
+	}
+	err = store.DeleteNodes(ctx, delOpts)
+	if err != nil {
+		t.Fatalf("DeleteNodes in label-based mode failed: %v", err)
+	}
+
+	// Verify deletion
+	getOpts := &types.GetNodesOptions{
+		GraphName: testGraphName,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("Failed to get nodes after deletion: %v", err)
+	}
+	if len(nodes) != 3 {
+		t.Errorf("Expected 3 nodes after deletion in label-based mode, got %d", len(nodes))
+	}
+}
+
+// TestDeleteNodes_SeparateDatabaseMode tests deletion in separate database mode
+func TestDeleteNodes_SeparateDatabaseMode(t *testing.T) {
+	if !hasEnterpriseConnection() {
+		t.Skip("Skipping enterprise-only test: NEO4J_TEST_ENTERPRISE_URL not set")
+	}
+
+	store := setupEnterpriseTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	// Force separate database mode
+	store.SetUseSeparateDatabase(true)
+	store.SetIsEnterpriseEdition(true)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Use enterprise-compatible graph name
+	enterpriseGraphName := "testdelgraph"
+
+	// Create test graph and add/delete nodes
+	err := store.CreateGraph(ctx, enterpriseGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, enterpriseGraphName)
+	}()
+
+	testNodes := CreateTestNodes(5)
+	addOpts := &types.AddNodesOptions{
+		GraphName: enterpriseGraphName,
+		Nodes:     testNodes,
+	}
+	nodeIDs, err := store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Delete nodes in separate database mode
+	delOpts := &types.DeleteNodesOptions{
+		GraphName: enterpriseGraphName,
+		IDs:       []string{nodeIDs[0], nodeIDs[1]},
+	}
+	err = store.DeleteNodes(ctx, delOpts)
+	if err != nil {
+		t.Fatalf("DeleteNodes in separate database mode failed: %v", err)
+	}
+
+	// Verify deletion
+	getOpts := &types.GetNodesOptions{
+		GraphName: enterpriseGraphName,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("Failed to get nodes after deletion: %v", err)
+	}
+	if len(nodes) != 3 {
+		t.Errorf("Expected 3 nodes after deletion in separate database mode, got %d", len(nodes))
+	}
+}
+
+// TestDeleteNodes_ConcurrentStress tests concurrent DeleteNodes operations
+func TestDeleteNodes_ConcurrentStress(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping stress test in short mode")
+	}
+
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*testTimeout)
+	defer cancel()
+
+	// Capture initial state for leak detection
+	beforeGoroutines := captureGoroutineState()
+	beforeMemory := captureMemoryStats()
+
+	// Create test graph
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	// Stress test configuration
+	config := LightStressConfig()
+	config.NumWorkers = 5 // Reduce workers for deletion to avoid conflicts
+
+	// Run stress test
+	operation := func(ctx context.Context) error {
+		// Create unique nodes for each operation to avoid conflicts
+		testNodes := make([]*types.GraphNode, 3)
+		for i := 0; i < 3; i++ {
+			testNodes[i] = &types.GraphNode{
+				ID:     fmt.Sprintf("stress_del_%d_%d", time.Now().UnixNano(), i),
+				Labels: []string{"StressTest"},
+				Properties: map[string]interface{}{
+					"created": time.Now().Unix(),
+				},
+				CreatedAt: time.Now(),
+				Version:   1,
+			}
+		}
+
+		// Add nodes
+		addOpts := &types.AddNodesOptions{
+			GraphName: testGraphName,
+			Nodes:     testNodes,
+		}
+		nodeIDs, err := store.AddNodes(ctx, addOpts)
+		if err != nil {
+			return err
+		}
+
+		// Delete some nodes
+		if len(nodeIDs) > 1 {
+			delOpts := &types.DeleteNodesOptions{
+				GraphName: testGraphName,
+				IDs:       []string{nodeIDs[0]},
+			}
+			err = store.DeleteNodes(ctx, delOpts)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	result := runStressTest(config, operation)
+
+	// Check results
+	if result.SuccessRate < config.MinSuccessRate {
+		t.Errorf("DeleteNodes stress test success rate %.2f%% is below minimum %.2f%%",
+			result.SuccessRate, config.MinSuccessRate)
+	}
+
+	t.Logf("DeleteNodes stress test completed: %d operations, %.2f%% success rate, %d errors, duration: %v",
+		result.TotalOperations, result.SuccessRate, result.ErrorCount, result.Duration)
+
+	// Allow time for cleanup
+	time.Sleep(2 * time.Second)
+
+	// Check for leaks
+	afterGoroutines := captureGoroutineState()
+	leaked, _ := analyzeGoroutineChanges(beforeGoroutines, afterGoroutines)
+
+	if len(leaked) > 0 {
+		for _, g := range leaked {
+			if !g.IsSystem {
+				t.Errorf("DeleteNodes goroutine leak detected: ID=%d, State=%s, Function=%s",
+					g.ID, g.State, g.Function)
+			}
+		}
+	}
+
+	afterMemory := captureMemoryStats()
+	memGrowth := calculateMemoryGrowth(beforeMemory, afterMemory)
+
+	// Allow for some memory growth, but not excessive
+	maxAllowedGrowth := int64(30 * 1024 * 1024) // 30MB
+	if memGrowth.HeapAllocGrowth > maxAllowedGrowth {
+		t.Errorf("DeleteNodes excessive memory growth detected: %d bytes heap allocation growth",
+			memGrowth.HeapAllocGrowth)
+	}
+
+	t.Logf("DeleteNodes memory growth: Heap=%d bytes, Total=%d bytes, GC cycles=%d",
+		memGrowth.HeapAllocGrowth, memGrowth.AllocGrowth, memGrowth.NumGCDiff)
+}
+
+// TestGetDeleteNodes_RealData tests GetNodes and DeleteNodes with real test data
+func TestGetDeleteNodes_RealData(t *testing.T) {
+	store := setupTestStore(t)
+	defer cleanupTestStore(t, store)
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Create test graph
+	err := store.CreateGraph(ctx, testGraphName, nil)
+	if err != nil {
+		t.Fatalf("Failed to create test graph: %v", err)
+	}
+	defer func() {
+		_ = store.DropGraph(ctx, testGraphName)
+	}()
+
+	// Load Chinese test data
+	zhNodes, _, err := LoadTestDataset("zh")
+	if err != nil {
+		t.Skipf("Skipping real data test: %v", err)
+	}
+
+	if len(zhNodes) == 0 {
+		t.Skip("No Chinese test data available")
+	}
+
+	// Test with subset of real data
+	maxNodes := 15
+	if len(zhNodes) > maxNodes {
+		zhNodes = zhNodes[:maxNodes]
+	}
+
+	// Add real nodes
+	addOpts := &types.AddNodesOptions{
+		GraphName: testGraphName,
+		Nodes:     zhNodes,
+	}
+	nodeIDs, err := store.AddNodes(ctx, addOpts)
+	if err != nil {
+		t.Fatalf("Failed to add real test nodes: %v", err)
+	}
+
+	if len(nodeIDs) != len(zhNodes) {
+		t.Fatalf("Expected %d node IDs, got %d", len(zhNodes), len(nodeIDs))
+	}
+
+	// Test GetNodes with real data
+	getOpts := &types.GetNodesOptions{
+		GraphName:         testGraphName,
+		IncludeProperties: true,
+		IncludeMetadata:   true,
+	}
+	nodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("GetNodes with real data failed: %v", err)
+	}
+	if len(nodes) != len(zhNodes) {
+		t.Errorf("Expected %d nodes, got %d", len(zhNodes), len(nodes))
+	}
+
+	// Test filtering by entity type if available
+	if len(nodes) > 0 && nodes[0].EntityType != "" {
+		filterOpts := &types.GetNodesOptions{
+			GraphName: testGraphName,
+			Filter:    map[string]interface{}{"entity_type": nodes[0].EntityType},
+		}
+		filteredNodes, err := store.GetNodes(ctx, filterOpts)
+		if err != nil {
+			t.Fatalf("GetNodes with entity type filter failed: %v", err)
+		}
+		if len(filteredNodes) == 0 {
+			t.Error("Expected at least one node with entity type filter")
+		}
+	}
+
+	// Test DeleteNodes with half of the real data
+	deleteCount := len(nodeIDs) / 2
+	deleteIDs := nodeIDs[:deleteCount]
+
+	delOpts := &types.DeleteNodesOptions{
+		GraphName: testGraphName,
+		IDs:       deleteIDs,
+	}
+	err = store.DeleteNodes(ctx, delOpts)
+	if err != nil {
+		t.Fatalf("DeleteNodes with real data failed: %v", err)
+	}
+
+	// Verify deletion
+	remainingNodes, err := store.GetNodes(ctx, getOpts)
+	if err != nil {
+		t.Fatalf("GetNodes after deletion failed: %v", err)
+	}
+
+	expectedRemaining := len(nodeIDs) - deleteCount
+	if len(remainingNodes) != expectedRemaining {
+		t.Errorf("Expected %d remaining nodes, got %d", expectedRemaining, len(remainingNodes))
+	}
+
+	// Verify that deleted nodes are not in remaining nodes
+	remainingIDs := make(map[string]bool)
+	for _, node := range remainingNodes {
+		remainingIDs[node.ID] = true
+	}
+	for _, deletedID := range deleteIDs {
+		if remainingIDs[deletedID] {
+			t.Errorf("Deleted node %s should not exist in remaining nodes", deletedID)
+		}
+	}
+}
+
+// TestGetDeleteNodes_Disconnected tests behavior when store is disconnected
+func TestGetDeleteNodes_Disconnected(t *testing.T) {
+	store := NewStore()
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	// Test GetNodes when disconnected
+	getOpts := &types.GetNodesOptions{
+		GraphName: testGraphName,
+	}
+	_, err := store.GetNodes(ctx, getOpts)
+	if err == nil {
+		t.Error("Expected error when GetNodes called on disconnected store")
+	}
+
+	// Test DeleteNodes when disconnected
+	delOpts := &types.DeleteNodesOptions{
+		GraphName: testGraphName,
+		IDs:       []string{"test_id"},
+	}
+	err = store.DeleteNodes(ctx, delOpts)
+	if err == nil {
+		t.Error("Expected error when DeleteNodes called on disconnected store")
+	}
+}
