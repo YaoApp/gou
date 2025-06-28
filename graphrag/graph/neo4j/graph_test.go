@@ -110,7 +110,7 @@ func TestCreateGraph(t *testing.T) {
 		defer store.Close()
 
 		// Test invalid graph names
-		invalidNames := []string{"", "test-graph", "test.graph", "test graph", "test@graph"}
+		invalidNames := []string{"", "test.graph", "test space", "test@graph", "test#graph", "test!graph"}
 		for _, name := range invalidNames {
 			err := store.CreateGraph(ctx, name, nil)
 			assert.Error(t, err, "Should fail for invalid name: %s", name)
@@ -409,12 +409,12 @@ func TestDescribeGraph(t *testing.T) {
 // TestHelperFunctions tests helper functions
 func TestHelperFunctions(t *testing.T) {
 	t.Run("isValidGraphName", func(t *testing.T) {
-		validNames := []string{"test", "test_graph", "TestGraph", "test123", "Test_Graph_123"}
+		validNames := []string{"test", "test_graph", "TestGraph", "test123", "Test_Graph_123", "test-graph", "test-123", "Test-Graph-123"}
 		for _, name := range validNames {
 			assert.True(t, isValidGraphName(name), "Should be valid: %s", name)
 		}
 
-		invalidNames := []string{"", "test-graph", "test.graph", "test graph", "test@graph", "test#graph"}
+		invalidNames := []string{"", "test.graph", "test space", "test@graph", "test#graph", "test!graph", "test+graph", "test*graph"}
 		for _, name := range invalidNames {
 			assert.False(t, isValidGraphName(name), "Should be invalid: %s", name)
 		}

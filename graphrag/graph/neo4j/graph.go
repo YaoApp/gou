@@ -35,7 +35,7 @@ func (s *Store) CreateGraph(ctx context.Context, graphName string, _ *types.Grap
 
 	// Validate graph name (no special characters except underscore)
 	if !isValidGraphName(graphName) {
-		return fmt.Errorf("invalid graph name: %s (only alphanumeric and underscore allowed)", graphName)
+		return fmt.Errorf("invalid graph name: %s (only alphanumeric, underscore, and dash allowed)", graphName)
 	}
 
 	if s.useSeparateDatabase {
@@ -435,14 +435,14 @@ func (s *Store) describeLabelBasedGraph(ctx context.Context, graphName string) (
 
 // Helper functions
 
-// isValidGraphName checks if a graph name is valid (alphanumeric and underscore only)
+// isValidGraphName checks if a graph name is valid (alphanumeric, underscore, and dash only)
 func isValidGraphName(name string) bool {
 	if len(name) == 0 {
 		return false
 	}
 
 	for _, r := range name {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
 			return false
 		}
 	}
