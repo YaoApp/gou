@@ -1694,13 +1694,14 @@ type GraphSchemaStats struct {
 
 // CreateIndexOptions represents options for creating indexes
 type CreateIndexOptions struct {
-	GraphName  string                 `json:"graph_name"`
-	IndexType  string                 `json:"index_type"`       // "BTREE", "FULLTEXT", "VECTOR", etc.
-	Target     string                 `json:"target"`           // "NODE" or "RELATIONSHIP"
-	Labels     []string               `json:"labels,omitempty"` // Node labels or relationship types
-	Properties []string               `json:"properties"`       // Properties to index
-	Name       string                 `json:"name,omitempty"`   // Index name
-	Config     map[string]interface{} `json:"config,omitempty"` // Index-specific configuration
+	GraphName   string                 `json:"graph_name"`
+	IndexType   string                 `json:"index_type"`       // "BTREE", "FULLTEXT", "VECTOR", etc.
+	Target      string                 `json:"target"`           // "NODE" or "RELATIONSHIP"
+	Labels      []string               `json:"labels,omitempty"` // Node labels or relationship types
+	Properties  []string               `json:"properties"`       // Properties to index
+	Name        string                 `json:"name,omitempty"`   // Index name
+	Config      map[string]interface{} `json:"config,omitempty"` // Index-specific configuration
+	IfNotExists bool                   `json:"if_not_exists"`    // Don't error if index already exists
 }
 
 // DropIndexOptions represents options for dropping indexes
