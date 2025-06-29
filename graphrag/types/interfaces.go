@@ -125,6 +125,8 @@ type GraphStore interface {
 	DeleteRelationships(ctx context.Context, opts *DeleteRelationshipsOptions) error
 
 	// Query Operations (flexible query interface)
+	Query(ctx context.Context, opts *GraphQueryOptions) (*GraphResult, error)               // General-purpose graph query with Cypher, traversal, etc.
+	Communities(ctx context.Context, opts *CommunityDetectionOptions) ([]*Community, error) // Community detection and analysis
 
 	// Schema Operations (optional - for databases that support schema)
 	GetSchema(ctx context.Context, graphName string) (*DynamicGraphSchema, error)
