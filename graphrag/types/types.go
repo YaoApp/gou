@@ -991,9 +991,8 @@ type ExtractionPayload struct {
 
 // ExtractionOptions represents options for extraction
 type ExtractionOptions struct {
-	Use          Extraction   `json:"use"`           // Use the extraction method
-	Embedding    Embedding    `json:"embedding"`     // Embedding function to use for extraction
-	LLMOptimizer LLMOptimizer `json:"llm_optimizer"` // LLM optimizer for extraction, deduplication, optimization, etc. if not provided, will not be used
+	Use       Extraction `json:"use"`       // Use the extraction method
+	Embedding Embedding  `json:"embedding"` // Embedding function to use for extraction
 }
 
 // LLMOptimizer represents the LLM optimizer for extraction
