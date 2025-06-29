@@ -171,12 +171,15 @@ func (s *Store) createSeparateDatabaseIndex(ctx context.Context, opts *types.Cre
 		return fmt.Errorf("graph '%s' does not exist", opts.GraphName)
 	}
 
-	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: opts.GraphName,
-	})
-	defer session.Close(ctx)
+	// Use critical operation semaphore to serialize index creation and avoid deadlocks
+	return executeCriticalOperation(ctx, func() error {
+		session := s.driver.NewSession(ctx, neo4j.SessionConfig{
+			DatabaseName: opts.GraphName,
+		})
+		defer session.Close(ctx)
 
-	return s.executeCreateIndex(ctx, session, opts)
+		return s.executeCreateIndex(ctx, session, opts)
+	})
 }
 
 func (s *Store) dropSeparateDatabaseIndex(ctx context.Context, opts *types.DropIndexOptions) error {
@@ -192,12 +195,15 @@ func (s *Store) dropSeparateDatabaseIndex(ctx context.Context, opts *types.DropI
 		return fmt.Errorf("graph '%s' does not exist", opts.GraphName)
 	}
 
-	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: opts.GraphName,
-	})
-	defer session.Close(ctx)
+	// Use critical operation semaphore to serialize index drop and avoid deadlocks
+	return executeCriticalOperation(ctx, func() error {
+		session := s.driver.NewSession(ctx, neo4j.SessionConfig{
+			DatabaseName: opts.GraphName,
+		})
+		defer session.Close(ctx)
 
-	return s.executeDropIndex(ctx, session, opts)
+		return s.executeDropIndex(ctx, session, opts)
+	})
 }
 
 // Label-based implementations (Community Edition)
@@ -291,18 +297,21 @@ func (s *Store) createLabelBasedIndex(ctx context.Context, opts *types.CreateInd
 		return fmt.Errorf("graph '%s' does not exist", opts.GraphName)
 	}
 
-	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: DefaultDatabase,
+	// Use critical operation semaphore to serialize index creation and avoid deadlocks
+	return executeCriticalOperation(ctx, func() error {
+		session := s.driver.NewSession(ctx, neo4j.SessionConfig{
+			DatabaseName: DefaultDatabase,
+		})
+		defer session.Close(ctx)
+
+		// For label-based graphs, we need to prefix labels with graph-specific prefix
+		modifiedOpts := *opts
+		if opts.Target == "NODE" {
+			modifiedOpts.Labels = s.prefixLabelsWithGraph(opts.Labels, opts.GraphName)
+		}
+
+		return s.executeCreateIndex(ctx, session, &modifiedOpts)
 	})
-	defer session.Close(ctx)
-
-	// For label-based graphs, we need to prefix labels with graph-specific prefix
-	modifiedOpts := *opts
-	if opts.Target == "NODE" {
-		modifiedOpts.Labels = s.prefixLabelsWithGraph(opts.Labels, opts.GraphName)
-	}
-
-	return s.executeCreateIndex(ctx, session, &modifiedOpts)
 }
 
 func (s *Store) dropLabelBasedIndex(ctx context.Context, opts *types.DropIndexOptions) error {
@@ -318,12 +327,15 @@ func (s *Store) dropLabelBasedIndex(ctx context.Context, opts *types.DropIndexOp
 		return fmt.Errorf("graph '%s' does not exist", opts.GraphName)
 	}
 
-	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: DefaultDatabase,
-	})
-	defer session.Close(ctx)
+	// Use critical operation semaphore to serialize index drop and avoid deadlocks
+	return executeCriticalOperation(ctx, func() error {
+		session := s.driver.NewSession(ctx, neo4j.SessionConfig{
+			DatabaseName: DefaultDatabase,
+		})
+		defer session.Close(ctx)
 
-	return s.executeDropIndex(ctx, session, opts)
+		return s.executeDropIndex(ctx, session, opts)
+	})
 }
 
 // Helper methods for schema retrieval

@@ -1105,9 +1105,9 @@ func BenchmarkGetSchema(b *testing.B) {
 
 // BenchmarkCreateIndex benchmarks CreateIndex method
 func BenchmarkCreateIndex(b *testing.B) {
-	config := getTestConfig()
+	config := getEnterpriseTestConfig()
 	if config == nil {
-		b.Skip("NEO4J_TEST_URL environment variable not set")
+		b.Skip("NEO4J_TEST_ENTERPRISE_URL environment variable not set")
 	}
 
 	store := NewStore()
@@ -1125,18 +1125,48 @@ func BenchmarkCreateIndex(b *testing.B) {
 	connectWithRetryBench(ctx, b, store, storeConfig)
 	defer store.Close()
 
-	// Create test graph
-	graphName := "bench_index_graph"
-	err := store.CreateGraph(ctx, graphName, nil)
+	// Set to use separate database mode (Enterprise feature)
+	store.SetUseSeparateDatabase(true)
+
+	// Step 1: Delete all existing graphs
+	existingGraphs, err := store.ListGraphs(ctx)
+	if err == nil {
+		for _, graphName := range existingGraphs {
+			store.DropGraph(ctx, graphName) // Ignore errors
+		}
+	}
+
+	// Step 2: Create a single test graph using separate database mode
+	graphName := "bench-create-index-graph"
+	err = store.CreateGraph(ctx, graphName, nil)
 	if err != nil {
 		b.Fatalf("Failed to create test graph: %v", err)
 	}
 	defer store.DropGraph(ctx, graphName)
 
+	// Step 3: Add test data
+	testNodes := CreateTestNodes(20)
+	for _, node := range testNodes {
+		node.Labels = []string{"BenchLabel"}
+		if node.Properties == nil {
+			node.Properties = make(map[string]interface{})
+		}
+		node.Properties["name"] = fmt.Sprintf("bench_node_%s", node.ID)
+		node.Properties["category"] = "test"
+	}
+	_, err = store.AddNodes(ctx, &types.AddNodesOptions{
+		GraphName: graphName,
+		Nodes:     testNodes,
+	})
+	if err != nil {
+		b.Fatalf("Failed to add test nodes: %v", err)
+	}
+
 	b.ResetTimer()
 
+	// Step 4: Benchmark index creation
 	for i := 0; i < b.N; i++ {
-		indexName := fmt.Sprintf("bench_idx_%d", i)
+		indexName := fmt.Sprintf("benchCreateIdx%d%d", time.Now().UnixNano(), i)
 		createOpts := &types.CreateIndexOptions{
 			GraphName:  graphName,
 			Name:       indexName,
@@ -1147,26 +1177,24 @@ func BenchmarkCreateIndex(b *testing.B) {
 
 		err := store.CreateIndex(ctx, createOpts)
 		if err != nil {
-			b.Fatalf("CreateIndex failed: %v", err)
+			b.Fatalf("CreateIndex failed at iteration %d: %v", i, err)
 		}
 
-		// Clean up immediately to avoid index name conflicts
+		// Clean up immediately
 		dropOpts := &types.DropIndexOptions{
 			GraphName: graphName,
 			Name:      indexName,
+			IfExists:  true,
 		}
-		err = store.DropIndex(ctx, dropOpts)
-		if err != nil {
-			b.Fatalf("DropIndex failed: %v", err)
-		}
+		store.DropIndex(ctx, dropOpts) // Ignore cleanup errors
 	}
 }
 
 // BenchmarkDropIndex benchmarks DropIndex method
 func BenchmarkDropIndex(b *testing.B) {
-	config := getTestConfig()
+	config := getEnterpriseTestConfig()
 	if config == nil {
-		b.Skip("NEO4J_TEST_URL environment variable not set")
+		b.Skip("NEO4J_TEST_ENTERPRISE_URL environment variable not set")
 	}
 
 	store := NewStore()
@@ -1184,45 +1212,84 @@ func BenchmarkDropIndex(b *testing.B) {
 	connectWithRetryBench(ctx, b, store, storeConfig)
 	defer store.Close()
 
-	// Create test graph
-	graphName := "bench_drop_graph"
-	err := store.CreateGraph(ctx, graphName, nil)
+	// Set to use separate database mode (Enterprise feature)
+	store.SetUseSeparateDatabase(true)
+
+	// Step 1: Delete all existing graphs
+	existingGraphs, err := store.ListGraphs(ctx)
+	if err == nil {
+		for _, graphName := range existingGraphs {
+			store.DropGraph(ctx, graphName) // Ignore errors
+		}
+	}
+
+	// Step 2: Create a single test graph using separate database mode
+	graphName := "bench-drop-index-graph"
+	err = store.CreateGraph(ctx, graphName, nil)
 	if err != nil {
 		b.Fatalf("Failed to create test graph: %v", err)
 	}
 	defer store.DropGraph(ctx, graphName)
 
-	// Pre-create indexes for dropping
-	indexes := make([]string, b.N)
+	// Step 3: Add test data
+	testNodes := CreateTestNodes(20)
+	for _, node := range testNodes {
+		node.Labels = []string{"DropLabel"}
+		if node.Properties == nil {
+			node.Properties = make(map[string]interface{})
+		}
+		node.Properties["name"] = fmt.Sprintf("drop_node_%s", node.ID)
+		node.Properties["category"] = "test"
+	}
+	_, err = store.AddNodes(ctx, &types.AddNodesOptions{
+		GraphName: graphName,
+		Nodes:     testNodes,
+	})
+	if err != nil {
+		b.Fatalf("Failed to add test nodes: %v", err)
+	}
+
+	// Step 4: Pre-create all indexes that will be dropped (not measured)
+	uniqueTimestamp := time.Now().UnixNano()
+	indexNames := make([]string, b.N)
+
 	for i := 0; i < b.N; i++ {
-		indexName := fmt.Sprintf("bench_drop_idx_%d", i)
-		indexes[i] = indexName
+		// Use timestamp + iteration for guaranteed uniqueness
+		indexName := fmt.Sprintf("dropIdx%d%d", uniqueTimestamp, i)
+		indexNames[i] = indexName
 
 		createOpts := &types.CreateIndexOptions{
-			GraphName:  graphName,
-			Name:       indexName,
-			Target:     "NODE",
-			Labels:     []string{"DropLabel"},
-			Properties: []string{"name"},
+			GraphName:   graphName,
+			Name:        indexName,
+			Target:      "NODE",
+			Labels:      []string{"DropLabel"},
+			Properties:  []string{"name"},
+			IfNotExists: true,
 		}
 
 		err := store.CreateIndex(ctx, createOpts)
 		if err != nil {
-			b.Fatalf("Failed to create index for benchmark: %v", err)
+			b.Fatalf("Failed to create index %d during setup: %v", i, err)
 		}
 	}
 
+	// Wait for all indexes to be fully created
+	time.Sleep(time.Millisecond * 300)
+
+	// Step 5: Reset timer and measure drop operations
 	b.ResetTimer()
 
+	// Step 6: Benchmark index deletion
 	for i := 0; i < b.N; i++ {
 		dropOpts := &types.DropIndexOptions{
 			GraphName: graphName,
-			Name:      indexes[i],
+			Name:      indexNames[i],
+			IfExists:  true,
 		}
 
 		err := store.DropIndex(ctx, dropOpts)
 		if err != nil {
-			b.Fatalf("DropIndex failed: %v", err)
+			b.Fatalf("DropIndex failed at iteration %d: %v", i, err)
 		}
 	}
 }
