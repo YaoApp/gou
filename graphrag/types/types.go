@@ -1761,6 +1761,7 @@ type GraphBackupOptions struct {
 type GraphRestoreOptions struct {
 	GraphName   string                 `json:"graph_name"`
 	Format      string                 `json:"format,omitempty"` // "json", "gexf", "graphml", "cypher", etc.
+	Compress    bool                   `json:"compress"`         // whether to compress the backup file
 	Force       bool                   `json:"force"`            // Whether to overwrite existing data
 	CreateGraph bool                   `json:"create_graph"`     // Whether to create graph if it doesn't exist
 	ExtraParams map[string]interface{} `json:"extra_params,omitempty"`

@@ -238,6 +238,16 @@ func LightStressConfig() StressTestConfig {
 	}
 }
 
+// SeparateDBStressConfig returns a stress test configuration optimized for separate database mode
+func SeparateDBStressConfig() StressTestConfig {
+	return StressTestConfig{
+		NumWorkers:          1, // Single worker to avoid database limit
+		OperationsPerWorker: 3, // Fewer operations to stay within database limit
+		Timeout:             15 * time.Second,
+		MinSuccessRate:      80.0,
+	}
+}
+
 // StressTestResult represents the result of a stress test
 type StressTestResult struct {
 	TotalOperations int
