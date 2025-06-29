@@ -1123,10 +1123,32 @@ type SchemaIndex struct {
 
 // GraphQueryOptions represents options for graph queries
 type GraphQueryOptions struct {
-	Limit      int                    `json:"limit,omitempty"`
-	Skip       int                    `json:"skip,omitempty"`
+	GraphName string `json:"graph_name"` // Target graph name
+
+	// Query Type and Content
+	QueryType string `json:"query_type"`      // "cypher", "traversal", "path", "analytics", "custom"
+	Query     string `json:"query,omitempty"` // Query string (e.g., Cypher query)
+
+	// Traversal-specific options (when QueryType is "traversal")
+	TraversalOptions *GraphTraversalOptions `json:"traversal_options,omitempty"`
+
+	// Analytics-specific options (when QueryType is "analytics")
+	AnalyticsOptions *GraphAnalyticsOptions `json:"analytics_options,omitempty"`
+
+	// General query parameters
 	Parameters map[string]interface{} `json:"parameters,omitempty"` // Query parameters
-	Timeout    int                    `json:"timeout,omitempty"`    // Query timeout in seconds
+
+	// Result control
+	Limit      int      `json:"limit,omitempty"`
+	Skip       int      `json:"skip,omitempty"`
+	OrderBy    []string `json:"order_by,omitempty"`    // Fields to order by
+	ReturnType string   `json:"return_type,omitempty"` // "nodes", "relationships", "paths", "records", "all"
+
+	// Performance and safety
+	Timeout  int  `json:"timeout,omitempty"`   // Query timeout in seconds
+	ReadOnly bool `json:"read_only,omitempty"` // Whether this is a read-only query
+	Explain  bool `json:"explain,omitempty"`   // Whether to return query execution plan
+	Profile  bool `json:"profile,omitempty"`   // Whether to return detailed profiling info
 }
 
 // GraphTraversalOptions represents options for graph traversal
@@ -1143,6 +1165,7 @@ type GraphTraversalOptions struct {
 
 // CommunityDetectionOptions represents options for community detection
 type CommunityDetectionOptions struct {
+	GraphName  string                 `json:"graph_name"`           // Target graph name
 	Algorithm  string                 `json:"algorithm"`            // "leiden", "louvain", "label_propagation"
 	MaxLevels  int                    `json:"max_levels,omitempty"` // Maximum hierarchy levels
 	Resolution float64                `json:"resolution,omitempty"` // Resolution parameter
