@@ -16,6 +16,7 @@ import (
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/graphrag/chunking"
 	"github.com/yaoapp/gou/graphrag/embedding"
+	"github.com/yaoapp/gou/graphrag/extraction"
 	"github.com/yaoapp/gou/graphrag/extraction/openai"
 	"github.com/yaoapp/gou/graphrag/types"
 	"github.com/yaoapp/gou/graphrag/vector/qdrant"
@@ -37,6 +38,7 @@ func main() {
 		extractionModel  = flag.String("extraction-model", "gpt-4o-mini", "Extraction model for extraction method")
 		suffix           = flag.String("suffix", "", "Suffix for embedding/extraction files")
 		dimension        = flag.Int("dimension", 1536, "Embedding dimension for embedding method")
+		enableEmbedding  = flag.Bool("enable-embedding", false, "Enable embedding for extraction results (default false)")
 		clearCollections = flag.Bool("clear-collections", false, "Clear all collections from Qdrant")
 		help             = flag.Bool("help", false, "Show help message")
 	)
@@ -130,9 +132,12 @@ func main() {
 		fmt.Printf("Processing directory: %s\n", *dirPath)
 		fmt.Printf("Extraction model: %s\n", *extractionModel)
 		fmt.Printf("Concurrent: %d\n", *maxConcurrent)
+		if *enableEmbedding {
+			fmt.Printf("Embedding enabled: text-embedding-3-small (dimension: %d)\n", *dimension)
+		}
 
 		ctx := context.Background()
-		if err := runExtraction(ctx, *dirPath, *connector, *extractionModel, *maxConcurrent, *suffix); err != nil {
+		if err := runExtraction(ctx, *dirPath, *connector, *extractionModel, *maxConcurrent, *suffix, *enableEmbedding, *embeddingModel, *dimension); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: Extraction failed: %v\n", err)
 			os.Exit(1)
 		}
@@ -276,6 +281,7 @@ func printHelp() {
 	fmt.Println("  -embedding-model string Embedding model for embedding method (default text-embedding-3-small)")
 	fmt.Println("  -extraction-model string Extraction model for extraction method (default gpt-4o-mini)")
 	fmt.Println("  -dimension int        Embedding dimension for embedding method (default 1536)")
+	fmt.Println("  -enable-embedding     Enable embedding for extraction results using OpenAI text-embedding-3-small (default false)")
 	fmt.Println("  -suffix string        Suffix for embedding/extraction files (default json)")
 	fmt.Println("  -clear-collections    Clear all collections from Qdrant")
 	fmt.Println("  -help                 Show this help message")
@@ -432,6 +438,37 @@ func createFastEmbedConnector() (connector.Connector, error) {
 	conn, err := connector.New("fastembed", "fastembed", dslBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create FastEmbed connector: %w", err)
+	}
+
+	return conn, nil
+}
+
+func createEmbeddingConnector() (connector.Connector, error) {
+	// Get API key from environment
+	apiKey := os.Getenv("OPENAI_TEST_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("OPENAI_TEST_KEY environment variable is not set")
+	}
+
+	// Create connector DSL specifically for embedding
+	dsl := map[string]interface{}{
+		"name": "openai-embedding",
+		"type": "openai",
+		"options": map[string]interface{}{
+			"key":   apiKey,
+			"model": "text-embedding-3-small",
+		},
+	}
+
+	dslBytes, err := json.Marshal(dsl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal embedding connector DSL: %w", err)
+	}
+
+	// Create new connector
+	conn, err := connector.New("openai", "openai-embedding", dslBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OpenAI embedding connector: %w", err)
 	}
 
 	return conn, nil
@@ -999,7 +1036,7 @@ func runClearCollections(ctx context.Context) error {
 }
 
 // runExtraction processes all chunk files in a directory and generates knowledge graph extractions
-func runExtraction(ctx context.Context, dirPath, connectorType, model string, concurrent int, suffix string) error {
+func runExtraction(ctx context.Context, dirPath, connectorType, model string, concurrent int, suffix string, enableEmbedding bool, embeddingModel string, dimension int) error {
 	start := time.Now()
 
 	// Create connector
@@ -1135,6 +1172,60 @@ func runExtraction(ctx context.Context, dirPath, connectorType, model string, co
 		return fmt.Errorf("failed to extract entities and relationships: %w", err)
 	}
 
+	// Perform embedding if enabled
+	if enableEmbedding {
+		fmt.Printf("Embedding enabled: text-embedding-3-small (dimension: %d)\n", dimension)
+
+		// Create dedicated embedding connector
+		embeddingConnector, err := createEmbeddingConnector()
+		if err != nil {
+			return fmt.Errorf("failed to create embedding connector: %w", err)
+		}
+
+		// Create embedding instance with dedicated connector
+		embedder, err := embedding.NewOpenai(embedding.OpenaiOptions{
+			ConnectorName: "openai-embedding",
+			Model:         "text-embedding-3-small",
+			Dimension:     dimension,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create embedding instance: %w", err)
+		}
+		_ = embeddingConnector // Use the connector
+
+		// Create extraction instance with embedding
+		extractionInstance := &extraction.Extraction{
+			Options: types.ExtractionOptions{
+				Use:       extractor,
+				Embedding: embedder,
+			},
+		}
+
+		// Create embedding progress callback
+		embeddingProgressCallback := func(status types.EmbeddingStatus, payload types.EmbeddingPayload) {
+			switch status {
+			case types.EmbeddingStatusStarting:
+				color.Cyan("Starting embedding: %s\n", payload.Message)
+			case types.EmbeddingStatusProcessing:
+				color.Yellow("Embedding progress: %s (%d/%d)\n", payload.Message, payload.Current, payload.Total)
+			case types.EmbeddingStatusCompleted:
+				color.Green("Embedding completed: %s\n", payload.Message)
+			case types.EmbeddingStatusError:
+				color.Red("Embedding error: %s\n", payload.Message)
+			}
+		}
+
+		// Perform embedding on results
+		fmt.Println("Performing embedding on extraction results...")
+		err = extractionInstance.EmbeddingResults(ctx, extractionResults, embeddingProgressCallback)
+		if err != nil {
+			color.Red("Warning: Failed to embed extraction results: %v\n", err)
+			// Continue processing without failing the entire operation
+		} else {
+			color.Green("Embedding completed successfully\n")
+		}
+	}
+
 	// Save extraction results for each file (each result corresponds to its source file by index)
 	fmt.Println("Saving extraction result files...")
 	successCount := 0
@@ -1182,6 +1273,8 @@ func runExtraction(ctx context.Context, dirPath, connectorType, model string, co
 	totalEntities := 0
 	totalRelationships := 0
 	totalTokens := 0
+	embeddedEntities := 0
+	embeddedRelationships := 0
 	modelName := actualModel
 
 	for _, result := range extractionResults {
@@ -1191,6 +1284,18 @@ func runExtraction(ctx context.Context, dirPath, connectorType, model string, co
 			totalTokens += result.Usage.TotalTokens
 			if result.Model != "" {
 				modelName = result.Model
+			}
+
+			// Count embedded entities and relationships
+			for _, node := range result.Nodes {
+				if len(node.EmbeddingVector) > 0 {
+					embeddedEntities++
+				}
+			}
+			for _, rel := range result.Relationships {
+				if len(rel.EmbeddingVector) > 0 {
+					embeddedRelationships++
+				}
 			}
 		}
 	}
@@ -1206,6 +1311,27 @@ func runExtraction(ctx context.Context, dirPath, connectorType, model string, co
 	fmt.Printf("Total Relationships: %d\n", totalRelationships)
 	fmt.Printf("Total Tokens: %d\n", totalTokens)
 	fmt.Printf("Total Texts: %d\n", len(extractionResults))
+
+	// Display embedding statistics if enabled
+	if enableEmbedding {
+		fmt.Printf("Embedding Model: text-embedding-3-small\n")
+		fmt.Printf("Embedding Dimension: %d\n", dimension)
+
+		if totalEntities > 0 {
+			fmt.Printf("Embedded Entities: %d/%d (%.1f%%)\n", embeddedEntities, totalEntities,
+				float64(embeddedEntities)/float64(totalEntities)*100)
+		} else {
+			fmt.Printf("Embedded Entities: %d/%d (0.0%%)\n", embeddedEntities, totalEntities)
+		}
+
+		if totalRelationships > 0 {
+			fmt.Printf("Embedded Relationships: %d/%d (%.1f%%)\n", embeddedRelationships, totalRelationships,
+				float64(embeddedRelationships)/float64(totalRelationships)*100)
+		} else {
+			fmt.Printf("Embedded Relationships: %d/%d (0.0%%)\n", embeddedRelationships, totalRelationships)
+		}
+	}
+
 	fmt.Printf("Time Cost: %s\n", cost)
 	fmt.Printf("--------------------------------\n")
 
