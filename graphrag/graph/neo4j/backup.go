@@ -56,15 +56,22 @@ func (s *Store) Backup(ctx context.Context, writer io.Writer, opts *types.GraphB
 		format = strings.ToLower(opts.Format)
 	}
 
+	// Use critical operation semaphore to serialize data backup and avoid conflicts
 	var backupData []byte
-	switch format {
-	case "json":
-		backupData, err = s.backupToJSON(ctx, opts.GraphName, opts)
-	case "cypher":
-		backupData, err = s.backupToCypher(ctx, opts.GraphName, opts)
-	default:
-		return fmt.Errorf("unsupported backup format: %s", format)
-	}
+	err = executeCriticalOperation(ctx, func() error {
+		switch format {
+		case "json":
+			var backupErr error
+			backupData, backupErr = s.backupToJSON(ctx, opts.GraphName, opts)
+			return backupErr
+		case "cypher":
+			var backupErr error
+			backupData, backupErr = s.backupToCypher(ctx, opts.GraphName, opts)
+			return backupErr
+		default:
+			return fmt.Errorf("unsupported backup format: %s", format)
+		}
+	})
 
 	if err != nil {
 		return fmt.Errorf("failed to create backup: %w", err)
@@ -208,15 +215,18 @@ func (s *Store) Restore(ctx context.Context, reader io.Reader, opts *types.Graph
 		format = strings.ToLower(opts.Format)
 	}
 
-	// Restore based on format
-	switch format {
-	case "json":
-		return s.restoreFromJSON(ctx, opts.GraphName, backupData)
-	case "cypher":
-		return s.restoreFromCypher(ctx, opts.GraphName, backupData)
-	default:
-		return fmt.Errorf("unsupported restore format: %s", format)
-	}
+	// Use critical operation semaphore to serialize data restore and avoid conflicts
+	return executeCriticalOperation(ctx, func() error {
+		// Restore based on format
+		switch format {
+		case "json":
+			return s.restoreFromJSON(ctx, opts.GraphName, backupData)
+		case "cypher":
+			return s.restoreFromCypher(ctx, opts.GraphName, backupData)
+		default:
+			return fmt.Errorf("unsupported restore format: %s", format)
+		}
+	})
 }
 
 // backupToJSON creates a JSON backup of the graph

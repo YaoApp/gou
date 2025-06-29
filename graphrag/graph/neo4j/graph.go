@@ -129,23 +129,26 @@ func (s *Store) DescribeGraph(ctx context.Context, graphName string) (*types.Gra
 // Separate database implementations (requires Enterprise Edition)
 
 func (s *Store) createSeparateDatabaseGraph(ctx context.Context, graphName string) error {
-	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: "system", // Use system database for administrative operations
-	})
-	defer session.Close(ctx)
+	// Use critical operation semaphore to serialize database creation and avoid conflicts
+	return executeCriticalOperation(ctx, func() error {
+		session := s.driver.NewSession(ctx, neo4j.SessionConfig{
+			DatabaseName: "system", // Use system database for administrative operations
+		})
+		defer session.Close(ctx)
 
-	// Create database
-	query := fmt.Sprintf("CREATE DATABASE `%s`", graphName)
-	_, err := session.Run(ctx, query, nil)
-	if err != nil {
-		// Check if database already exists
-		if strings.Contains(err.Error(), "already exists") {
-			return fmt.Errorf("graph '%s' already exists", graphName)
+		// Create database
+		query := fmt.Sprintf("CREATE DATABASE `%s`", graphName)
+		_, err := session.Run(ctx, query, nil)
+		if err != nil {
+			// Check if database already exists
+			if strings.Contains(err.Error(), "already exists") {
+				return fmt.Errorf("graph '%s' already exists", graphName)
+			}
+			return fmt.Errorf("failed to create database '%s': %w", graphName, err)
 		}
-		return fmt.Errorf("failed to create database '%s': %w", graphName, err)
-	}
 
-	return nil
+		return nil
+	})
 }
 
 func (s *Store) dropSeparateDatabaseGraph(ctx context.Context, graphName string) error {
@@ -154,22 +157,25 @@ func (s *Store) dropSeparateDatabaseGraph(ctx context.Context, graphName string)
 		return fmt.Errorf("cannot drop default database '%s'", DefaultDatabase)
 	}
 
-	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: "system",
-	})
-	defer session.Close(ctx)
+	// Use critical operation semaphore to serialize database drop and avoid conflicts
+	return executeCriticalOperation(ctx, func() error {
+		session := s.driver.NewSession(ctx, neo4j.SessionConfig{
+			DatabaseName: "system",
+		})
+		defer session.Close(ctx)
 
-	// Drop database
-	query := fmt.Sprintf("DROP DATABASE `%s`", graphName)
-	_, err := session.Run(ctx, query, nil)
-	if err != nil {
-		if strings.Contains(err.Error(), "does not exist") {
-			return fmt.Errorf("graph '%s' does not exist", graphName)
+		// Drop database
+		query := fmt.Sprintf("DROP DATABASE `%s`", graphName)
+		_, err := session.Run(ctx, query, nil)
+		if err != nil {
+			if strings.Contains(err.Error(), "does not exist") {
+				return fmt.Errorf("graph '%s' does not exist", graphName)
+			}
+			return fmt.Errorf("failed to drop database '%s': %w", graphName, err)
 		}
-		return fmt.Errorf("failed to drop database '%s': %w", graphName, err)
-	}
 
-	return nil
+		return nil
+	})
 }
 
 func (s *Store) separateDatabaseGraphExists(ctx context.Context, graphName string) (bool, error) {
@@ -267,57 +273,63 @@ func (s *Store) describeSeparateDatabaseGraph(ctx context.Context, graphName str
 // Label-based implementations (works with Community and Enterprise Edition)
 
 func (s *Store) createLabelBasedGraph(ctx context.Context, graphName string) error {
-	// For label-based storage, we don't need to create anything explicitly
-	// The graph label will be used when adding nodes/relationships
-	// Just verify we can connect to the default database
-	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: DefaultDatabase,
+	// Use critical operation semaphore to serialize constraint creation and avoid conflicts
+	return executeCriticalOperation(ctx, func() error {
+		// For label-based storage, we don't need to create anything explicitly
+		// The graph label will be used when adding nodes/relationships
+		// Just verify we can connect to the default database
+		session := s.driver.NewSession(ctx, neo4j.SessionConfig{
+			DatabaseName: DefaultDatabase,
+		})
+		defer session.Close(ctx)
+
+		// Create a constraint to ensure graph namespace uniqueness if it doesn't exist
+		constraintQuery := fmt.Sprintf(
+			"CREATE CONSTRAINT __graph_namespace_unique IF NOT EXISTS FOR (n:%s) REQUIRE n.%s IS UNIQUE",
+			s.getGraphLabelPrefix()+graphName,
+			s.getGraphNamespaceProperty(),
+		)
+
+		_, err := session.Run(ctx, constraintQuery, nil)
+		if err != nil {
+			// Ignore constraint errors as they might already exist
+			// Just log and continue
+		}
+
+		return nil
 	})
-	defer session.Close(ctx)
-
-	// Create a constraint to ensure graph namespace uniqueness if it doesn't exist
-	constraintQuery := fmt.Sprintf(
-		"CREATE CONSTRAINT __graph_namespace_unique IF NOT EXISTS FOR (n:%s) REQUIRE n.%s IS UNIQUE",
-		s.getGraphLabelPrefix()+graphName,
-		s.getGraphNamespaceProperty(),
-	)
-
-	_, err := session.Run(ctx, constraintQuery, nil)
-	if err != nil {
-		// Ignore constraint errors as they might already exist
-		// Just log and continue
-	}
-
-	return nil
 }
 
 func (s *Store) dropLabelBasedGraph(ctx context.Context, graphName string) error {
-	session := s.driver.NewSession(ctx, neo4j.SessionConfig{
-		DatabaseName: DefaultDatabase,
+	// Use critical operation semaphore to serialize graph deletion and constraint drop
+	return executeCriticalOperation(ctx, func() error {
+		session := s.driver.NewSession(ctx, neo4j.SessionConfig{
+			DatabaseName: DefaultDatabase,
+		})
+		defer session.Close(ctx)
+
+		graphLabel := s.getGraphLabelPrefix() + graphName
+
+		// Delete all relationships first
+		relQuery := fmt.Sprintf("MATCH (n:%s)-[r]-() DELETE r", graphLabel)
+		_, err := session.Run(ctx, relQuery, nil)
+		if err != nil {
+			return fmt.Errorf("failed to delete relationships for graph '%s': %w", graphName, err)
+		}
+
+		// Delete all nodes
+		nodeQuery := fmt.Sprintf("MATCH (n:%s) DELETE n", graphLabel)
+		_, err = session.Run(ctx, nodeQuery, nil)
+		if err != nil {
+			return fmt.Errorf("failed to delete nodes for graph '%s': %w", graphName, err)
+		}
+
+		// Drop constraint if exists
+		constraintQuery := "DROP CONSTRAINT __graph_namespace_unique IF EXISTS"
+		_, _ = session.Run(ctx, constraintQuery, nil) // Ignore errors
+
+		return nil
 	})
-	defer session.Close(ctx)
-
-	graphLabel := s.getGraphLabelPrefix() + graphName
-
-	// Delete all relationships first
-	relQuery := fmt.Sprintf("MATCH (n:%s)-[r]-() DELETE r", graphLabel)
-	_, err := session.Run(ctx, relQuery, nil)
-	if err != nil {
-		return fmt.Errorf("failed to delete relationships for graph '%s': %w", graphName, err)
-	}
-
-	// Delete all nodes
-	nodeQuery := fmt.Sprintf("MATCH (n:%s) DELETE n", graphLabel)
-	_, err = session.Run(ctx, nodeQuery, nil)
-	if err != nil {
-		return fmt.Errorf("failed to delete nodes for graph '%s': %w", graphName, err)
-	}
-
-	// Drop constraint if exists
-	constraintQuery := "DROP CONSTRAINT __graph_namespace_unique IF EXISTS"
-	_, _ = session.Run(ctx, constraintQuery, nil) // Ignore errors
-
-	return nil
 }
 
 func (s *Store) labelBasedGraphExists(ctx context.Context, graphName string) (bool, error) {
