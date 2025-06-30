@@ -1766,3 +1766,165 @@ type GraphRestoreOptions struct {
 	CreateGraph bool                   `json:"create_graph"`     // Whether to create graph if it doesn't exist
 	ExtraParams map[string]interface{} `json:"extra_params,omitempty"`
 }
+
+// ==== GraphRag Types =====
+
+// ConverterStatus represents the status of the conversion
+type ConverterStatus string
+
+// ConverterStatus values
+const (
+	ConverterStatusSuccess ConverterStatus = "success"
+	ConverterStatusError   ConverterStatus = "error"
+	ConverterStatusPending ConverterStatus = "pending"
+)
+
+// SearchStatus represents the status of the search
+type SearchStatus string
+
+// SearchStatus values
+const (
+	SearchStatusSuccess SearchStatus = "success"
+	SearchStatusError   SearchStatus = "error"
+	SearchStatusPending SearchStatus = "pending"
+)
+
+// FetcherStatus represents the status of the fetcher
+type FetcherStatus string
+
+// FetcherStatus values
+const (
+	FetcherStatusSuccess FetcherStatus = "success"
+	FetcherStatusError   FetcherStatus = "error"
+	FetcherStatusPending FetcherStatus = "pending"
+)
+
+// FetcherPayload represents the payload of the fetcher
+type FetcherPayload struct {
+	Status   FetcherStatus `json:"status"`
+	Message  string        `json:"message"`
+	Progress float64       `json:"progress"`
+	Bytes    int64         `json:"bytes"`
+	URL      string        `json:"url"`
+}
+
+// ConverterPayload represents the payload of the conversion
+type ConverterPayload struct {
+	Status   ConverterStatus `json:"status"`
+	Message  string          `json:"message"`
+	Progress float64         `json:"progress"`
+}
+
+// SearchPayload represents the payload of the search
+type SearchPayload struct {
+	Status   SearchStatus `json:"status"`
+	Message  string       `json:"message"`
+	Progress float64      `json:"progress"`
+}
+
+// ChatMessage is a message in a chat
+type ChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// Options represents the options for GraphRag
+type Options struct {
+	// VectorStore is the vector store to use for storing and searching documents
+	VectorStore VectorStore
+
+	// GraphStore is the graph store to use for storing and searching relationships (Optional)
+	GraphStore GraphStore
+}
+
+// UpsertOptions represents the options for adding documents to the graph
+type UpsertOptions struct {
+	// Chunking is the chunking model to use for chunking documents
+	Chunking         Chunking
+	ChunkingOptions  *ChunkingOptions // Chunking options (Optional)
+	ChunkingProgress ChunkingProgress // Chunking progress callback (Optional)
+
+	// Embedding is the embedding model to use for embedding documents
+	Embedding         Embedding
+	EmbeddingProgress EmbeddingProgress // Embedding progress callback (Optional)
+
+	// Extraction is the extraction model to use for extracting documents (Optional)
+	Extraction         Extraction
+	ExtractionProgress ExtractionProgress // Extraction progress callback (Optional)
+
+	// ExtractionEmbedding is the embedding model to use for embedding extracted documents (Optional, default is the same as Embedding)
+	ExtractionEmbedding         Embedding
+	ExtractionEmbeddingProgress EmbeddingProgress // Extraction embedding progress callback (Optional)
+
+	// Fetcher is the fetcher to use for fetching documents from URLs (Optional)
+	Fetcher Fetcher
+
+	// Converter is the converter to use for converting documents to text (Optional)
+	Converter Converter
+
+	// Metadata is the metadata to use for the document (Optional)
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// QueryOptions represents the options for querying the graph
+type QueryOptions struct {
+	CollectionID string `json:"collection_id"`
+	DocumentID   string `json:"document_id"`
+
+	// Query is the query to use for searching documents
+	Query string `json:"query"` // Query or History at least one of them is required
+
+	// History is the history of messages to use for searching documents
+	History []ChatMessage `json:"history"` // History or Query at least one of them is required
+
+	// Filter is the filter to use for searching documents (Optional)
+	Filter map[string]interface{} `json:"filter,omitempty"`
+
+	// Embedding is the embedding model to use for embedding documents
+	Embedding         Embedding
+	EmbeddingProgress EmbeddingProgress // Embedding progress callback (Optional)
+
+	// Fetcher is the fetcher to use for fetching documents from URLs (Optional)
+	Fetcher Fetcher
+
+	// Converter is the converter to use for converting documents to text (Optional)
+	Converter Converter
+
+	// Reranker is the reranker to use for reranking documents (Optional)
+	Reranker Reranker
+
+	// Searcher is the searcher to use for searching documents (Optional)
+	Searcher Searcher
+}
+
+// Collection represents a collection of documents
+type Collection struct {
+	ID           string                 `json:"id"`
+	Metadata     map[string]interface{} `json:"metadata"`
+	VectorConfig *VectorStoreConfig     `json:"vector_config"`
+	GraphConfig  *GraphConfig           `json:"graph_config"`
+}
+
+// Segment represents a segment of a document
+type Segment struct {
+	CollectionID string                 `json:"collection_id"`
+	DocumentID   string                 `json:"document_id"`
+	ID           string                 `json:"id"`
+	Text         string                 `json:"text"`
+	Graph        string                 `json:"graph"`
+	Parents      []string               `json:"parents"`
+	Children     []string               `json:"children"`
+	Metadata     map[string]interface{} `json:"metadata"`
+	CreatedAt    time.Time              `json:"created_at"`
+	UpdatedAt    time.Time              `json:"updated_at"`
+	Version      int                    `json:"version"`
+	Weight       float64                `json:"weight"`
+	Score        float64                `json:"score"`
+	Vote         int                    `json:"vote"`
+}
+
+// SegmentText represents a segment of a document
+type SegmentText struct {
+	ID   string `json:"id,omitempty"`
+	Text string `json:"text"`
+}

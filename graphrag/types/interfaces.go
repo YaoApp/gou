@@ -59,10 +59,13 @@ type VectorStore interface {
 // Chunking represents a chunking function interface
 // This handles text-to-chunk conversion, separate from chunk storage
 type Chunking interface {
-	Chunk(ctx context.Context, text string, options *ChunkingOptions, callback func(chunk *Chunk) error) error
-	ChunkFile(ctx context.Context, file string, options *ChunkingOptions, callback func(chunk *Chunk) error) error
-	ChunkStream(ctx context.Context, stream io.ReadSeeker, options *ChunkingOptions, callback func(chunk *Chunk) error) error
+	Chunk(ctx context.Context, text string, options *ChunkingOptions, callback ChunkingProgress) error
+	ChunkFile(ctx context.Context, file string, options *ChunkingOptions, callback ChunkingProgress) error
+	ChunkStream(ctx context.Context, stream io.ReadSeeker, options *ChunkingOptions, callback ChunkingProgress) error
 }
+
+// ChunkingProgress defines the callback function for progress reporting with flexible payload
+type ChunkingProgress func(chunk *Chunk) error
 
 // ===== Embedding Interfaces =====
 
@@ -141,3 +144,77 @@ type GraphStore interface {
 	Backup(ctx context.Context, writer io.Writer, opts *GraphBackupOptions) error
 	Restore(ctx context.Context, reader io.Reader, opts *GraphRestoreOptions) error
 }
+
+// ===== GraphRag Interfaces =====
+
+// GraphRag defines the interface for GraphRag
+type GraphRag interface {
+	// Collection Management
+	CreateCollection(ctx context.Context, collection Collection) (string, error)
+	RemoveCollection(ctx context.Context, id string) (int, error)
+	CollectionExists(ctx context.Context, id string) (bool, error)
+	GetCollections(ctx context.Context) ([]Collection, error)
+
+	// Document Management
+	AddFile(ctx context.Context, file string, options *UpsertOptions) (string, error)
+	AddText(ctx context.Context, text string, options *UpsertOptions) (string, error)
+	AddURL(ctx context.Context, url string, options *UpsertOptions) (string, error)
+	AddStream(ctx context.Context, stream io.ReadSeeker, options *UpsertOptions) (string, error)
+	RemoveDocs(ctx context.Context, ids []string) (int, error)
+
+	// Segment Management
+	AddSegments(ctx context.Context, id string, segmentTexts []SegmentText, options *UpsertOptions) (int, error)
+	UpdateSegments(ctx context.Context, segmentTexts []SegmentText, options *UpsertOptions) (int, error)
+	RemoveSegments(ctx context.Context, segmentIDs []string) (int, error)
+	GetSegments(ctx context.Context, id string) ([]Segment, error)
+	GetSegment(ctx context.Context, segmentID string) (*Segment, error)
+
+	// Segment Voting and Scoring
+	VoteSegments(ctx context.Context, segmentIDs []string, vote int) (int, error)                                                            // Vote for segments
+	ScoreSegments(ctx context.Context, segmentIDs []string, score float64) (int, error)                                                      // Score for segments by arithmetic mean
+	SetWeight(ctx context.Context, segmentIDs []string, weight float64) (int, error)                                                         // Set weight for segments, 0.0 to 1.0
+	SetWeightByLLM(ctx context.Context, connector string, segmentIDs []string, prompt string, callback ...ChunkingProgress) (int, error)     // Set weight for segments based on LLM prompt
+	VoteSegmentsByLLM(ctx context.Context, connector string, segmentIDs []string, prompt string, callback ...ChunkingProgress) (int, error)  // Vote segments based on LLM prompt
+	ScoreSegmentsByLLM(ctx context.Context, connector string, segmentIDs []string, prompt string, callback ...ChunkingProgress) (int, error) // Score segments based on LLM prompt
+
+	// Search Management
+	Search(ctx context.Context, options *QueryOptions, callback ...SearchProgress) ([]Segment, error)                  // Search for segments
+	MultiSearch(ctx context.Context, options []QueryOptions, callback ...SearchProgress) (map[string][]Segment, error) // Multi-search for segments
+
+	// Backup and Restore
+	Backup(ctx context.Context, writer io.Writer, id string) error
+	Restore(ctx context.Context, reader io.Reader, id string) error
+}
+
+// Converter converts PDFs, Word documents, video, audio, etc. into plain text
+// and normalizes text encoding to UTF-8, providing progress via optional callbacks.
+type Converter interface {
+	Convert(ctx context.Context, file string, callback ...ConverterProgress) (string, error)
+	ConvertStream(ctx context.Context, stream io.ReadSeeker, callback ...ConverterProgress) (string, error)
+}
+
+// Searcher interface is used to search for chunks
+type Searcher interface {
+	Search(ctx context.Context, options *QueryOptions, callback ...SearchProgress) ([]Segment, error) // Search for segments
+	Name() string
+}
+
+// Reranker interface is used to rerank chunks
+type Reranker interface {
+	Rerank(ctx context.Context, segments []Segment) ([]Segment, error)
+	Name() string
+}
+
+// Fetcher interface is used to fetch URLs
+type Fetcher interface {
+	Fetch(ctx context.Context, url string, callback ...FetcherProgress) (string, error)
+}
+
+// ConverterProgress defines the callback function for progress reporting with flexible payload
+type ConverterProgress func(status ConverterStatus, payload ConverterPayload)
+
+// SearchProgress defines the callback function for progress reporting with flexible payload
+type SearchProgress func(status SearchStatus, payload SearchPayload)
+
+// FetcherProgress defines the callback function for progress reporting with flexible payload
+type FetcherProgress func(status FetcherStatus, payload FetcherPayload)
