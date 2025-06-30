@@ -1779,15 +1779,103 @@ const (
 	ConverterStatusPending ConverterStatus = "pending"
 )
 
-// SearchStatus represents the status of the search
-type SearchStatus string
+// SearcherStatus represents the status of the search
+type SearcherStatus string
 
 // SearchStatus values
 const (
-	SearchStatusSuccess SearchStatus = "success"
-	SearchStatusError   SearchStatus = "error"
-	SearchStatusPending SearchStatus = "pending"
+	SearchStatusSuccess SearcherStatus = "success"
+	SearchStatusError   SearcherStatus = "error"
+	SearchStatusPending SearcherStatus = "pending"
 )
+
+// SearcherType represents the type of the searcher
+type SearcherType string
+
+// SearcherType values
+const (
+	SearcherTypeVector SearcherType = "vector"
+	SearcherTypeGraph  SearcherType = "graph"
+	SearcherTypeHybrid SearcherType = "hybrid"
+)
+
+// ===== Reranker Types =====
+
+// RerankerStatus represents the status of the reranker
+type RerankerStatus string
+
+// RerankerStatus values
+const (
+	RerankerStatusSuccess RerankerStatus = "success"
+	RerankerStatusError   RerankerStatus = "error"
+	RerankerStatusPending RerankerStatus = "pending"
+)
+
+// RerankerPayload represents the payload of the reranker
+type RerankerPayload struct {
+	Status   RerankerStatus `json:"status"`
+	Message  string         `json:"message"`
+	Progress float64        `json:"progress"`
+}
+
+// ===== Scorer Types =====
+
+// ScoreStatus represents the status of the scorer
+type ScoreStatus string
+
+// ScoreStatus values
+const (
+	ScoreStatusSuccess ScoreStatus = "success"
+	ScoreStatusError   ScoreStatus = "error"
+	ScoreStatusPending ScoreStatus = "pending"
+)
+
+// ScorePayload represents the payload of the scorer
+type ScorePayload struct {
+	Status   ScoreStatus `json:"status"`
+	Message  string      `json:"message"`
+	Progress float64     `json:"progress"`
+}
+
+// ===== Weight Types =====
+
+// WeightStatus represents the status of the weight
+type WeightStatus string
+
+// WeightStatus values
+const (
+	WeightStatusSuccess WeightStatus = "success"
+	WeightStatusError   WeightStatus = "error"
+	WeightStatusPending WeightStatus = "pending"
+)
+
+// WeightPayload represents the payload of the weight
+type WeightPayload struct {
+	Status   WeightStatus `json:"status"`
+	Message  string       `json:"message"`
+	Progress float64      `json:"progress"`
+}
+
+// ===== Vote Types =====
+
+// VoteStatus represents the status of the vote
+type VoteStatus string
+
+// VoteStatus values
+const (
+	VoteStatusSuccess VoteStatus = "success"
+	VoteStatusError   VoteStatus = "error"
+	VoteStatusPending VoteStatus = "pending"
+)
+
+// VotePayload represents the payload of the vote
+type VotePayload struct {
+	Status   VoteStatus `json:"status"`
+	Message  string     `json:"message"`
+	Progress float64    `json:"progress"`
+}
+
+// ===== Fetcher Types =====
 
 // FetcherStatus represents the status of the fetcher
 type FetcherStatus string
@@ -1815,11 +1903,11 @@ type ConverterPayload struct {
 	Progress float64         `json:"progress"`
 }
 
-// SearchPayload represents the payload of the search
-type SearchPayload struct {
-	Status   SearchStatus `json:"status"`
-	Message  string       `json:"message"`
-	Progress float64      `json:"progress"`
+// SearcherPayload represents the payload of the search
+type SearcherPayload struct {
+	Status   SearcherStatus `json:"status"`
+	Message  string         `json:"message"`
+	Progress float64        `json:"progress"`
 }
 
 // ChatMessage is a message in a chat
@@ -1884,6 +1972,14 @@ type QueryOptions struct {
 	Embedding         Embedding
 	EmbeddingProgress EmbeddingProgress // Embedding progress callback (Optional)
 
+	// Extraction is the extraction model to use for extracting documents (Optional)
+	Extraction         Extraction
+	ExtractionProgress ExtractionProgress // Extraction progress callback (Optional)
+
+	// ExtractionEmbedding is the embedding model to use for embedding extracted documents (Optional, default is the same as Embedding)
+	ExtractionEmbedding         Embedding
+	ExtractionEmbeddingProgress EmbeddingProgress // Extraction embedding progress callback (Optional)
+
 	// Fetcher is the fetcher to use for fetching documents from URLs (Optional)
 	Fetcher Fetcher
 
@@ -1927,4 +2023,22 @@ type Segment struct {
 type SegmentText struct {
 	ID   string `json:"id,omitempty"`
 	Text string `json:"text"`
+}
+
+// SegmentVote represents a vote for a segment
+type SegmentVote struct {
+	ID   string `json:"id"`
+	Vote int    `json:"vote,omitempty"`
+}
+
+// SegmentScore represents a score for a segment
+type SegmentScore struct {
+	ID    string  `json:"id"`
+	Score float64 `json:"score,omitempty"`
+}
+
+// SegmentWeight represents a weight for a segment
+type SegmentWeight struct {
+	ID     string  `json:"id"`
+	Weight float64 `json:"weight,omitempty"`
 }

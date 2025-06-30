@@ -147,61 +147,67 @@ type GraphStore interface {
 
 // ===== GraphRag Interfaces =====
 
+// Logger interface is designed to wrap any existing logging system
+type Logger interface {
+	Infof(format string, args ...interface{})
+	Warnf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
+	Debugf(format string, args ...interface{})
+}
+
 // GraphRag defines the interface for GraphRag
 type GraphRag interface {
 	// Collection Management
-	CreateCollection(ctx context.Context, collection Collection) (string, error)
-	RemoveCollection(ctx context.Context, id string) (int, error)
-	CollectionExists(ctx context.Context, id string) (bool, error)
-	GetCollections(ctx context.Context) ([]Collection, error)
+	CreateCollection(ctx context.Context, collection Collection) (string, error) // Create a new collection
+	RemoveCollection(ctx context.Context, id string) (int, error)                // Remove a collection
+	CollectionExists(ctx context.Context, id string) (bool, error)               // Check if a collection exists
+	GetCollections(ctx context.Context) ([]Collection, error)                    // Get all collections
 
 	// Document Management
-	AddFile(ctx context.Context, file string, options *UpsertOptions) (string, error)
-	AddText(ctx context.Context, text string, options *UpsertOptions) (string, error)
-	AddURL(ctx context.Context, url string, options *UpsertOptions) (string, error)
-	AddStream(ctx context.Context, stream io.ReadSeeker, options *UpsertOptions) (string, error)
-	RemoveDocs(ctx context.Context, ids []string) (int, error)
+	AddFile(ctx context.Context, file string, options *UpsertOptions) (string, error)            // Add a file to a collection
+	AddText(ctx context.Context, text string, options *UpsertOptions) (string, error)            // Add a text to a collection
+	AddURL(ctx context.Context, url string, options *UpsertOptions) (string, error)              // Add a URL to a collection
+	AddStream(ctx context.Context, stream io.ReadSeeker, options *UpsertOptions) (string, error) // Add a stream to a collection
+	RemoveDocs(ctx context.Context, ids []string) (int, error)                                   // Remove documents by IDs
 
 	// Segment Management
-	AddSegments(ctx context.Context, id string, segmentTexts []SegmentText, options *UpsertOptions) (int, error)
-	UpdateSegments(ctx context.Context, segmentTexts []SegmentText, options *UpsertOptions) (int, error)
-	RemoveSegments(ctx context.Context, segmentIDs []string) (int, error)
-	GetSegments(ctx context.Context, id string) ([]Segment, error)
-	GetSegment(ctx context.Context, segmentID string) (*Segment, error)
+	AddSegments(ctx context.Context, id string, segmentTexts []SegmentText, options *UpsertOptions) (int, error) // Add segments to a collection manually
+	UpdateSegments(ctx context.Context, segmentTexts []SegmentText, options *UpsertOptions) (int, error)         // Update segments manually
+	RemoveSegments(ctx context.Context, segmentIDs []string) (int, error)                                        // Remove segments by IDs
+	GetSegments(ctx context.Context, id string) ([]Segment, error)                                               // Get all segments of a collection
+	GetSegment(ctx context.Context, segmentID string) (*Segment, error)                                          // Get a single segment by ID
 
-	// Segment Voting and Scoring
-	VoteSegments(ctx context.Context, segmentIDs []string, vote int) (int, error)                                                            // Vote for segments
-	ScoreSegments(ctx context.Context, segmentIDs []string, score float64) (int, error)                                                      // Score for segments by arithmetic mean
-	SetWeight(ctx context.Context, segmentIDs []string, weight float64) (int, error)                                                         // Set weight for segments, 0.0 to 1.0
-	SetWeightByLLM(ctx context.Context, connector string, segmentIDs []string, prompt string, callback ...ChunkingProgress) (int, error)     // Set weight for segments based on LLM prompt
-	VoteSegmentsByLLM(ctx context.Context, connector string, segmentIDs []string, prompt string, callback ...ChunkingProgress) (int, error)  // Vote segments based on LLM prompt
-	ScoreSegmentsByLLM(ctx context.Context, connector string, segmentIDs []string, prompt string, callback ...ChunkingProgress) (int, error) // Score segments based on LLM prompt
+	// Segment Voting, Scoring, Weighting
+	Vote(ctx context.Context, segments []SegmentVote, callback ...VoteProgress) ([]SegmentVote, error)         // Vote for segments
+	Score(ctx context.Context, segments []SegmentScore, callback ...ScoreProgress) ([]SegmentScore, error)     // Score for segments
+	Weight(ctx context.Context, segments []SegmentWeight, callback ...WeightProgress) ([]SegmentWeight, error) // Weight for segments
 
 	// Search Management
-	Search(ctx context.Context, options *QueryOptions, callback ...SearchProgress) ([]Segment, error)                  // Search for segments
-	MultiSearch(ctx context.Context, options []QueryOptions, callback ...SearchProgress) (map[string][]Segment, error) // Multi-search for segments
+	Search(ctx context.Context, options *QueryOptions, callback ...SearcherProgress) ([]Segment, error)                  // Search for segments
+	MultiSearch(ctx context.Context, options []QueryOptions, callback ...SearcherProgress) (map[string][]Segment, error) // Multi-search for segments
 
-	// Backup and Restore
-	Backup(ctx context.Context, writer io.Writer, id string) error
-	Restore(ctx context.Context, reader io.Reader, id string) error
+	// Collection Backup and Restore
+	Backup(ctx context.Context, writer io.Writer, id string) error  // Backup a collection
+	Restore(ctx context.Context, reader io.Reader, id string) error // Restore a collection
 }
 
 // Converter converts PDFs, Word documents, video, audio, etc. into plain text
 // and normalizes text encoding to UTF-8, providing progress via optional callbacks.
 type Converter interface {
-	Convert(ctx context.Context, file string, callback ...ConverterProgress) (string, error)
-	ConvertStream(ctx context.Context, stream io.ReadSeeker, callback ...ConverterProgress) (string, error)
+	Convert(ctx context.Context, file string, callback ...ConverterProgress) (string, error)                // Convert a file to plain text
+	ConvertStream(ctx context.Context, stream io.ReadSeeker, callback ...ConverterProgress) (string, error) // Convert a stream to plain text
 }
 
 // Searcher interface is used to search for chunks
 type Searcher interface {
-	Search(ctx context.Context, options *QueryOptions, callback ...SearchProgress) ([]Segment, error) // Search for segments
-	Name() string
+	Search(ctx context.Context, options *QueryOptions, callback ...SearcherProgress) ([]Segment, error) // Search for segments
+	Type() SearcherType                                                                                 // Vector, Graph, Hybrid
+	Name() string                                                                                       // Name of the searcher
 }
 
 // Reranker interface is used to rerank chunks
 type Reranker interface {
-	Rerank(ctx context.Context, segments []Segment) ([]Segment, error)
+	Rerank(ctx context.Context, segments []Segment, callback ...RerankerProgress) ([]Segment, error)
 	Name() string
 }
 
@@ -210,11 +216,41 @@ type Fetcher interface {
 	Fetch(ctx context.Context, url string, callback ...FetcherProgress) (string, error)
 }
 
+// Score interface is used to score segments
+type Score interface {
+	Score(ctx context.Context, segments []SegmentScore, callback ...ScoreProgress) ([]SegmentScore, error)
+	Name() string
+}
+
+// Weight interface is used to weight segments
+type Weight interface {
+	Weight(ctx context.Context, segments []SegmentWeight) ([]SegmentWeight, error)
+	Name() string
+}
+
+// Voter interface is used to vote segments
+type Voter interface {
+	Vote(ctx context.Context, segments []SegmentVote) ([]SegmentVote, error)
+	Name() string
+}
+
 // ConverterProgress defines the callback function for progress reporting with flexible payload
 type ConverterProgress func(status ConverterStatus, payload ConverterPayload)
 
-// SearchProgress defines the callback function for progress reporting with flexible payload
-type SearchProgress func(status SearchStatus, payload SearchPayload)
+// SearcherProgress defines the callback function for progress reporting with flexible payload
+type SearcherProgress func(status SearcherStatus, payload SearcherPayload)
 
 // FetcherProgress defines the callback function for progress reporting with flexible payload
 type FetcherProgress func(status FetcherStatus, payload FetcherPayload)
+
+// RerankerProgress defines the callback function for progress reporting with flexible payload
+type RerankerProgress func(status RerankerStatus, payload RerankerPayload)
+
+// ScoreProgress defines the callback function for progress reporting with flexible payload
+type ScoreProgress func(status ScoreStatus, payload ScorePayload)
+
+// WeightProgress defines the callback function for progress reporting with flexible payload
+type WeightProgress func(status WeightStatus, payload WeightPayload)
+
+// VoteProgress defines the callback function for progress reporting with flexible payload
+type VoteProgress func(status VoteStatus, payload VotePayload)
