@@ -4,19 +4,21 @@ The Store package provides a unified interface for key-value storage with suppor
 
 ## Features
 
-- **Unified Interface**: Consistent API across LRU cache, Redis, and MongoDB implementations
+- **Unified Interface**: Consistent API across LRU cache, Redis, MongoDB, and Badger implementations
 - **Complete API**: 25+ methods covering key-value and list operations
 - **MongoDB-style API**: Familiar operations for developers using MongoDB
 - **List Operations**: Full support for array/list data structures
 - **Pagination Support**: Built-in pagination with `ArrayPage` and `ArraySlice`
 - **Thread Safety**: Full concurrency support with comprehensive stress testing
 - **Type Safety**: Strongly typed interface with Go generics support
+- **Embedded Storage**: Badger support for applications requiring local persistence
 
 ## Supported Backends
 
 - **LRU Cache**: In-memory cache with LRU eviction
 - **Redis**: Distributed cache using Redis lists
 - **MongoDB**: Document-based storage using MongoDB arrays
+- **Badger**: Embedded key-value database with persistent storage
 
 ## Complete API Reference
 
@@ -427,6 +429,16 @@ fmt.Printf("Unique tags: %v\n", tags) // Output: [go database cache]
 - Native support for array operations
 - Persistent and scalable
 
+### Badger Implementation
+
+- Embedded key-value database with no external dependencies
+- JSON serialization for List operations
+- File-based persistent storage
+- **Thread-safe operations** with read-write mutex protection
+- Automatic directory creation for database path
+- High-performance LSM-tree based storage engine
+- Configurable database path (relative to application root)
+
 ## Configuration
 
 ### LRU Cache
@@ -449,6 +461,19 @@ store, err := store.New(redisConnector, store.Option{})
 store, err := store.New(mongoConnector, store.Option{})
 ```
 
+### Badger
+
+```go
+// Default path (relative to application root)
+store, err := store.New(nil, store.Option{"driver": "badger", "path": "badger/db"})
+
+// Absolute path
+store, err := store.New(nil, store.Option{"driver": "badger", "path": "/var/lib/myapp/badger"})
+
+// Current directory relative path
+store, err := store.New(nil, store.Option{"driver": "badger", "path": "./data/badger"})
+```
+
 ## Testing
 
 Run the comprehensive test suite:
@@ -467,11 +492,13 @@ go test ./store -v -run TestLRU
 go test ./store -v -run TestLRUConcurrency
 go test ./store -v -run TestRedisConcurrency
 go test ./store -v -run TestMongoConcurrency
+go test ./store -v -run TestBadgerConcurrency
 
 # Run benchmarks
 go test ./store -bench=BenchmarkLRU -v
 go test ./store -bench=BenchmarkRedis -v
 go test ./store -bench=BenchmarkMongo -v
+go test ./store -bench=BenchmarkBadger -v
 ```
 
 The test suite covers:
@@ -510,6 +537,15 @@ All store implementations are designed to be **thread-safe** and support concurr
 - All array operations use MongoDB's atomic update operators
 - Document-level locking ensures consistency
 - Aggregation pipelines are atomic and isolated
+
+### Badger
+
+- Uses `sync.RWMutex` for reader-writer lock protection
+- Read operations use read locks for better concurrency
+- Write operations use exclusive write locks
+- JSON serialization ensures data consistency
+- Embedded database eliminates network-related concurrency issues
+- Persistent storage with crash recovery
 
 ### Stress Testing
 
@@ -581,6 +617,15 @@ if err != nil {
 - **O(1)** for indexed operations
 - **O(N)** for array operations
 - Supports complex aggregation queries
+
+### Badger
+
+- **Best for**: Embedded applications, single-node deployments
+- **O(log N)** for most operations (LSM-tree based)
+- **O(N)** for list operations (JSON serialization)
+- No network latency, embedded storage
+- Persistent across application restarts
+- Suitable for applications requiring local data persistence
 
 ## Migration Guide
 
