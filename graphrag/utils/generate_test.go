@@ -1,39 +1,160 @@
 package utils
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 )
 
-func TestGenCollectionIDs(t *testing.T) {
+func TestValidateName(t *testing.T) {
 	tests := []struct {
 		name        string
-		vectorName  string
-		expectEmpty bool
+		inputName   string
+		expectError bool
+		errorMsg    string
 	}{
 		{
-			name:       "Normal vector name",
-			vectorName: "user_documents",
+			name:      "Valid name with dashes",
+			inputName: "user-documents",
 		},
 		{
-			name:       "Name with spaces",
-			vectorName: "User Documents",
+			name:        "Name with spaces - should fail",
+			inputName:   "User Documents",
+			expectError: true,
+			errorMsg:    "invalid collection name format",
 		},
 		{
-			name:       "Empty name",
-			vectorName: "",
+			name:        "Empty name - should fail",
+			inputName:   "",
+			expectError: true,
+			errorMsg:    "collection name cannot be empty",
 		},
 		{
-			name:       "Name with special characters",
-			vectorName: "test-collection@123",
+			name:        "Name with special characters - should fail",
+			inputName:   "test-collection@123",
+			expectError: true,
+			errorMsg:    "invalid collection name format",
+		},
+		{
+			name:      "Valid name with numbers",
+			inputName: "collection123",
+		},
+		{
+			name:        "Name with underscore - should fail",
+			inputName:   "test_collection",
+			expectError: true,
+			errorMsg:    "invalid collection name format",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GenCollectionIDs(tt.vectorName)
+			err := ValidateName(tt.inputName)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+					return
+				}
+				if !strings.Contains(err.Error(), tt.errorMsg) {
+					t.Errorf("Expected error message to contain '%s', got: %s", tt.errorMsg, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestGenCollectionID(t *testing.T) {
+	prefixes := []string{"collection", "user", "doc", "test"}
+	ids := make(map[string]bool)
+
+	for _, prefix := range prefixes {
+		for i := 0; i < 5; i++ {
+			id := GenCollectionID(prefix)
+
+			// Check that ID starts with prefix
+			if !strings.HasPrefix(id, prefix) {
+				t.Errorf("ID should start with prefix '%s', got: %s", prefix, id)
+			}
+
+			// Check uniqueness
+			if ids[id] {
+				t.Errorf("Duplicate ID generated: %s", id)
+			}
+			ids[id] = true
+
+			t.Logf("Generated ID for prefix '%s': %s", prefix, id)
+		}
+	}
+}
+
+func TestGetCollectionIDs(t *testing.T) {
+	tests := []struct {
+		name        string
+		inputName   string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:      "Valid name with dashes",
+			inputName: "user-documents",
+		},
+		{
+			name:        "Name with spaces - should fail",
+			inputName:   "User Documents",
+			expectError: true,
+			errorMsg:    "invalid collection name format",
+		},
+		{
+			name:        "Empty name - should fail",
+			inputName:   "",
+			expectError: true,
+			errorMsg:    "collection name cannot be empty",
+		},
+		{
+			name:        "Name with special characters - should fail",
+			inputName:   "test-collection@123",
+			expectError: true,
+			errorMsg:    "invalid collection name format",
+		},
+		{
+			name:      "Valid name with numbers",
+			inputName: "Test-Collection-123",
+		},
+		{
+			name:        "Name with underscore - should fail",
+			inputName:   "test_collection",
+			expectError: true,
+			errorMsg:    "invalid collection name format",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := GetCollectionIDs(tt.inputName)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+					return
+				}
+				if !strings.Contains(err.Error(), tt.errorMsg) {
+					t.Errorf("Expected error message to contain '%s', got: %s", tt.errorMsg, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
 
 			// Check that all IDs are generated
 			if result.Vector == "" {
@@ -44,18 +165,6 @@ func TestGenCollectionIDs(t *testing.T) {
 			}
 			if result.Store == "" {
 				t.Error("Store should not be empty")
-			}
-
-			// Check that Graph uses Vector as prefix
-			if !strings.HasPrefix(result.Graph, result.Vector) {
-				t.Errorf("Graph should use Vector as prefix, got Vector: %s, Graph: %s",
-					result.Vector, result.Graph)
-			}
-
-			// Check that Store uses Vector as prefix
-			if !strings.HasPrefix(result.Store, result.Vector) {
-				t.Errorf("Store should use Vector as prefix, got Vector: %s, Store: %s",
-					result.Vector, result.Store)
 			}
 
 			// Check that Vector contains "vector"
@@ -71,6 +180,21 @@ func TestGenCollectionIDs(t *testing.T) {
 			// Check that Store contains "store"
 			if !strings.Contains(result.Store, "store") {
 				t.Errorf("Store should contain 'store', got: %s", result.Store)
+			}
+
+			// Check format: name_suffix
+			expectedVector := fmt.Sprintf("%s_vector", strings.ToLower(strings.TrimSpace(tt.inputName)))
+			expectedGraph := fmt.Sprintf("%s_graph", strings.ToLower(strings.TrimSpace(tt.inputName)))
+			expectedStore := fmt.Sprintf("%s_store", strings.ToLower(strings.TrimSpace(tt.inputName)))
+
+			if result.Vector != expectedVector {
+				t.Errorf("Expected Vector: %s, got: %s", expectedVector, result.Vector)
+			}
+			if result.Graph != expectedGraph {
+				t.Errorf("Expected Graph: %s, got: %s", expectedGraph, result.Graph)
+			}
+			if result.Store != expectedStore {
+				t.Errorf("Expected Store: %s, got: %s", expectedStore, result.Store)
 			}
 
 			t.Logf("Generated Vector: %s", result.Vector)
@@ -277,26 +401,28 @@ func TestIsValidUUID(t *testing.T) {
 	}
 }
 
-func TestCollectionIDsUniqueness(t *testing.T) {
-	// Generate multiple collection IDs with same name to ensure timestamp uniqueness
-	vectorName := "test_collection"
-	ids := make(map[string]bool)
+func TestGetCollectionIDsUniqueness(t *testing.T) {
+	// Test that GetCollectionIDs with same name produces consistent results
+	vectorName := "test-collection"
 
-	for i := 0; i < 10; i++ {
-		result := GenCollectionIDs(vectorName)
+	result1, err1 := GetCollectionIDs(vectorName)
+	if err1 != nil {
+		t.Fatalf("Unexpected error: %v", err1)
+	}
 
-		if ids[result.Vector] {
-			t.Errorf("Duplicate Vector generated: %s", result.Vector)
-		}
-		if ids[result.Graph] {
-			t.Errorf("Duplicate Graph generated: %s", result.Graph)
-		}
-		if ids[result.Store] {
-			t.Errorf("Duplicate Store generated: %s", result.Store)
-		}
+	result2, err2 := GetCollectionIDs(vectorName)
+	if err2 != nil {
+		t.Fatalf("Unexpected error: %v", err2)
+	}
 
-		ids[result.Vector] = true
-		ids[result.Graph] = true
-		ids[result.Store] = true
+	// Should produce same results for same input
+	if result1.Vector != result2.Vector {
+		t.Errorf("GetCollectionIDs should be deterministic for Vector, got: %s vs %s", result1.Vector, result2.Vector)
+	}
+	if result1.Graph != result2.Graph {
+		t.Errorf("GetCollectionIDs should be deterministic for Graph, got: %s vs %s", result1.Graph, result2.Graph)
+	}
+	if result1.Store != result2.Store {
+		t.Errorf("GetCollectionIDs should be deterministic for Store, got: %s vs %s", result1.Store, result2.Store)
 	}
 }

@@ -3,48 +3,13 @@ package utils
 import (
 	"crypto/rand"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/yaoapp/gou/graphrag/types"
 )
-
-// GenCollectionIDs generates meaningful collection IDs for vector, graph, and KV store databases
-// vectorName: base name for the vector collection
-// Returns CollectionIDs with Vector, Graph, and Store (Graph and Store use Vector as prefix)
-func GenCollectionIDs(vectorName string) types.CollectionIDs {
-	// Clean and normalize the vector name
-	vectorName = strings.TrimSpace(vectorName)
-	if vectorName == "" {
-		vectorName = "default"
-	}
-
-	// Generate timestamp with nanoseconds for better uniqueness
-	timestamp := time.Now().UnixNano()
-
-	// Add random component for extra uniqueness
-	randomBytes := make([]byte, 2)
-	rand.Read(randomBytes)
-
-	// Create meaningful vector ID with both timestamp and random component
-	vectorID := fmt.Sprintf("%s_vector_%d_%x",
-		strings.ToLower(strings.ReplaceAll(vectorName, " ", "_")),
-		timestamp,
-		randomBytes)
-
-	// Create graph ID using vector ID as prefix
-	graphID := fmt.Sprintf("%s_graph", vectorID)
-
-	// Create store ID using vector ID as prefix
-	storeID := fmt.Sprintf("%s_store", vectorID)
-
-	return types.CollectionIDs{
-		Vector: vectorID,
-		Graph:  graphID,
-		Store:  storeID,
-	}
-}
 
 // GenDocID generates a UUID for document identification
 func GenDocID() string {
@@ -98,4 +63,41 @@ func BatchGenChunkIDs(count int) []string {
 func IsValidUUID(id string) bool {
 	_, err := uuid.Parse(id)
 	return err == nil
+}
+
+// ValidateName validates collection name format
+// Only allows a-z, A-Z, 0-9, and dash characters
+func ValidateName(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("collection name cannot be empty")
+	}
+
+	validNamePattern := regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
+	if !validNamePattern.MatchString(name) {
+		return fmt.Errorf("invalid collection name format: '%s', only letters, numbers, and dashes are allowed", name)
+	}
+
+	return nil
+}
+
+// GenCollectionID generates a unique collection ID with prefix + timestamp
+func GenCollectionID(prefix string) string {
+	timestamp := time.Now().UnixNano()
+	return fmt.Sprintf("%s%d", prefix, timestamp)
+}
+
+// GetCollectionIDs generates simple collection IDs: name_vector, name_graph, name_store
+func GetCollectionIDs(name string) (types.CollectionIDs, error) {
+	if err := ValidateName(name); err != nil {
+		return types.CollectionIDs{}, err
+	}
+
+	cleanName := strings.ToLower(name)
+
+	return types.CollectionIDs{
+		Vector: fmt.Sprintf("%s_vector", cleanName),
+		Graph:  fmt.Sprintf("%s_graph", cleanName),
+		Store:  fmt.Sprintf("%s_store", cleanName),
+	}, nil
 }
