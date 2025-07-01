@@ -1367,6 +1367,15 @@ type SearchEngineStats struct {
 	DocumentCount    int64    `json:"document_count"`    // Total number of documents
 }
 
+// ===== ID Generation Types =====
+
+// CollectionIDs represents the collection identifiers for vector, graph, and KV store databases
+type CollectionIDs struct {
+	Vector string `json:"vector"` // Vector database collection ID
+	Graph  string `json:"graph"`  // Graph database collection ID (uses Vector as prefix)
+	Store  string `json:"store"`  // KV store database collection ID (uses Vector as prefix)
+}
+
 // ===== Embedding Result Types =====
 
 // EmbeddingUsage represents usage statistics for embedding operations
