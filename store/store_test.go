@@ -40,6 +40,13 @@ func TestMongo(t *testing.T) {
 	testList(t, mongo)
 }
 
+func TestBadger(t *testing.T) {
+	badger := newBadgerStore(t)
+	testBasic(t, badger)
+	testMulti(t, badger)
+	testList(t, badger)
+}
+
 func TestLRUConcurrency(t *testing.T) {
 	lru := newStore(t, nil)
 	testConcurrency(t, lru)
@@ -59,6 +66,13 @@ func TestMongoConcurrency(t *testing.T) {
 	testConcurrency(t, mongo)
 	testMemoryLeak(t, mongo)
 	testGoroutineLeak(t, mongo)
+}
+
+func TestBadgerConcurrency(t *testing.T) {
+	badger := newBadgerStore(t)
+	testConcurrency(t, badger)
+	testMemoryLeak(t, badger)
+	testGoroutineLeak(t, badger)
 }
 
 func testBasic(t *testing.T, kv Store) {
@@ -179,15 +193,34 @@ func newStore(t *testing.T, c connector.Connector) Store {
 	return store
 }
 
+func newBadgerStore(t *testing.T) Store {
+	// Create a temporary directory for testing
+	tempDir := filepath.Join(os.TempDir(), fmt.Sprintf("badger_test_%d", time.Now().UnixNano()))
+
+	// Create badger store with path option - like LRU with size
+	store, err := New(nil, Option{"path": tempDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Schedule cleanup
+	t.Cleanup(func() {
+		os.RemoveAll(tempDir)
+	})
+
+	return store
+}
+
 func getConnector(t *testing.T, name string) connector.Connector {
 	return connector.Connectors[name]
 }
 
 func prepareStores(t *testing.T) {
 	stores := map[string]string{
-		"cache": filepath.Join("stores", "cache.lru.yao"),
-		"share": filepath.Join("stores", "share.redis.yao"),
-		"data":  filepath.Join("stores", "data.mongo.yao"),
+		"cache":  filepath.Join("stores", "cache.lru.yao"),
+		"share":  filepath.Join("stores", "share.redis.yao"),
+		"data":   filepath.Join("stores", "data.mongo.yao"),
+		"badger": filepath.Join("stores", "local.badger.yao"),
 	}
 	for id, file := range stores {
 		_, err := Load(file, id)
