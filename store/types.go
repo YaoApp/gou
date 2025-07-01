@@ -17,6 +17,19 @@ type Store interface {
 	SetMulti(values map[string]interface{}, ttl time.Duration)
 	DelMulti(keys []string)
 	GetSetMulti(keys []string, ttl time.Duration, getValue func(key string) (interface{}, error)) map[string]interface{}
+
+	// List operations - MongoDB-style API
+	Push(key string, values ...interface{}) error
+	Pop(key string, position int) (interface{}, error) // position: 1=last, -1=first
+	Pull(key string, value interface{}) error
+	PullAll(key string, values []interface{}) error
+	AddToSet(key string, values ...interface{}) error
+	ArrayLen(key string) int
+	ArrayGet(key string, index int) (interface{}, error)
+	ArraySet(key string, index int, value interface{}) error
+	ArraySlice(key string, skip, limit int) ([]interface{}, error)
+	ArrayPage(key string, page, pageSize int) ([]interface{}, error)
+	ArrayAll(key string) ([]interface{}, error)
 }
 
 // Instance the kv-store setting

@@ -195,3 +195,231 @@ func (store *Store) GetSetMulti(keys []string, ttl time.Duration, getValue func(
 	}
 	return values
 }
+
+// Push adds values to the end of a list using MongoDB $push operator
+func (store *Store) Push(key string, values ...interface{}) error {
+	filter := bson.D{{Key: "key", Value: key}}
+	update := bson.D{{Key: "$push", Value: bson.D{{Key: "value", Value: bson.D{{Key: "$each", Value: values}}}}}}
+	opts := options.Update().SetUpsert(true)
+
+	_, err := store.Collection.UpdateOne(context.TODO(), filter, update, opts)
+	if err != nil {
+		log.Error("Store mongo Push %s: %s", key, err.Error())
+		return err
+	}
+	return nil
+}
+
+// Pop removes and returns an element from a list using MongoDB $pop operator
+func (store *Store) Pop(key string, position int) (interface{}, error) {
+	// First get the value to return
+	var result bson.M
+	err := store.Collection.FindOne(context.TODO(), bson.D{{Key: "key", Value: key}}).Decode(&result)
+	if err != nil {
+		return nil, fmt.Errorf("key not found")
+	}
+
+	value, has := result["value"]
+	if !has {
+		return nil, fmt.Errorf("key not found")
+	}
+
+	list, ok := value.(bson.A)
+	if !ok {
+		return nil, fmt.Errorf("key is not a list")
+	}
+
+	if len(list) == 0 {
+		return nil, fmt.Errorf("list is empty")
+	}
+
+	var popValue interface{}
+	var popDirection int
+	if position == 1 { // pop from end
+		popValue = list[len(list)-1]
+		popDirection = 1
+	} else { // pop from beginning
+		popValue = list[0]
+		popDirection = -1
+	}
+
+	// Use MongoDB $pop operator
+	filter := bson.D{{Key: "key", Value: key}}
+	update := bson.D{{Key: "$pop", Value: bson.D{{Key: "value", Value: popDirection}}}}
+
+	_, err = store.Collection.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		log.Error("Store mongo Pop %s: %s", key, err.Error())
+		return nil, err
+	}
+
+	return popValue, nil
+}
+
+// Pull removes all occurrences of a value from a list using MongoDB $pull operator
+func (store *Store) Pull(key string, value interface{}) error {
+	filter := bson.D{{Key: "key", Value: key}}
+	update := bson.D{{Key: "$pull", Value: bson.D{{Key: "value", Value: value}}}}
+
+	_, err := store.Collection.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		log.Error("Store mongo Pull %s: %s", key, err.Error())
+		return err
+	}
+	return nil
+}
+
+// PullAll removes all occurrences of multiple values from a list using MongoDB $pullAll operator
+func (store *Store) PullAll(key string, values []interface{}) error {
+	filter := bson.D{{Key: "key", Value: key}}
+	update := bson.D{{Key: "$pullAll", Value: bson.D{{Key: "value", Value: values}}}}
+
+	_, err := store.Collection.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		log.Error("Store mongo PullAll %s: %s", key, err.Error())
+		return err
+	}
+	return nil
+}
+
+// AddToSet adds values to a list only if they don't already exist using MongoDB $addToSet operator
+func (store *Store) AddToSet(key string, values ...interface{}) error {
+	filter := bson.D{{Key: "key", Value: key}}
+	update := bson.D{{Key: "$addToSet", Value: bson.D{{Key: "value", Value: bson.D{{Key: "$each", Value: values}}}}}}
+	opts := options.Update().SetUpsert(true)
+
+	_, err := store.Collection.UpdateOne(context.TODO(), filter, update, opts)
+	if err != nil {
+		log.Error("Store mongo AddToSet %s: %s", key, err.Error())
+		return err
+	}
+	return nil
+}
+
+// ArrayLen returns the length of a list
+func (store *Store) ArrayLen(key string) int {
+	pipeline := bson.A{
+		bson.D{{Key: "$match", Value: bson.D{{Key: "key", Value: key}}}},
+		bson.D{{Key: "$project", Value: bson.D{{Key: "length", Value: bson.D{{Key: "$size", Value: "$value"}}}}}},
+	}
+
+	cursor, err := store.Collection.Aggregate(context.TODO(), pipeline)
+	if err != nil {
+		log.Error("Store mongo ArrayLen %s: %s", key, err.Error())
+		return 0
+	}
+	defer cursor.Close(context.TODO())
+
+	var result struct {
+		Length int `bson:"length"`
+	}
+	if cursor.Next(context.TODO()) {
+		if err := cursor.Decode(&result); err != nil {
+			log.Error("Store mongo ArrayLen decode %s: %s", key, err.Error())
+			return 0
+		}
+		return result.Length
+	}
+
+	return 0
+}
+
+// ArrayGet returns an element at the specified index
+func (store *Store) ArrayGet(key string, index int) (interface{}, error) {
+	pipeline := bson.A{
+		bson.D{{Key: "$match", Value: bson.D{{Key: "key", Value: key}}}},
+		bson.D{{Key: "$project", Value: bson.D{{Key: "element", Value: bson.D{{Key: "$arrayElemAt", Value: bson.A{"$value", index}}}}}}},
+	}
+
+	cursor, err := store.Collection.Aggregate(context.TODO(), pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.TODO())
+
+	var result struct {
+		Element interface{} `bson:"element"`
+	}
+	if cursor.Next(context.TODO()) {
+		if err := cursor.Decode(&result); err != nil {
+			return nil, err
+		}
+		return result.Element, nil
+	}
+
+	return nil, fmt.Errorf("index out of range")
+}
+
+// ArraySet sets an element at the specified index
+func (store *Store) ArraySet(key string, index int, value interface{}) error {
+	filter := bson.D{{Key: "key", Value: key}}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: fmt.Sprintf("value.%d", index), Value: value}}}}
+
+	_, err := store.Collection.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		log.Error("Store mongo ArraySet %s[%d]: %s", key, index, err.Error())
+		return err
+	}
+	return nil
+}
+
+// ArraySlice returns a slice of the list using MongoDB $slice operator
+func (store *Store) ArraySlice(key string, skip, limit int) ([]interface{}, error) {
+	pipeline := bson.A{
+		bson.D{{Key: "$match", Value: bson.D{{Key: "key", Value: key}}}},
+		bson.D{{Key: "$project", Value: bson.D{{Key: "slice", Value: bson.D{{Key: "$slice", Value: bson.A{"$value", skip, limit}}}}}}},
+	}
+
+	cursor, err := store.Collection.Aggregate(context.TODO(), pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.TODO())
+
+	var result struct {
+		Slice []interface{} `bson:"slice"`
+	}
+	if cursor.Next(context.TODO()) {
+		if err := cursor.Decode(&result); err != nil {
+			return nil, err
+		}
+		return result.Slice, nil
+	}
+
+	return []interface{}{}, nil
+}
+
+// ArrayPage returns a page of the list
+func (store *Store) ArrayPage(key string, page, pageSize int) ([]interface{}, error) {
+	if page < 1 || pageSize < 1 {
+		return []interface{}{}, nil
+	}
+
+	skip := (page - 1) * pageSize
+	return store.ArraySlice(key, skip, pageSize)
+}
+
+// ArrayAll returns all elements in the list
+func (store *Store) ArrayAll(key string) ([]interface{}, error) {
+	var result bson.M
+	err := store.Collection.FindOne(context.TODO(), bson.D{{Key: "key", Value: key}}).Decode(&result)
+	if err != nil {
+		if strings.Contains(err.Error(), "no documents in result") {
+			return []interface{}{}, nil
+		}
+		return nil, err
+	}
+
+	value, has := result["value"]
+	if !has {
+		return []interface{}{}, nil
+	}
+
+	if list, ok := value.(bson.A); ok {
+		interfaceList := make([]interface{}, len(list))
+		copy(interfaceList, list)
+		return interfaceList, nil
+	}
+
+	return nil, fmt.Errorf("key is not a list")
+}
