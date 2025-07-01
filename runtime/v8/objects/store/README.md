@@ -1,6 +1,6 @@
 # Store JavaScript API Documentation
 
-The Store JavaScript API provides a unified interface for key-value storage with MongoDB-style list operations in Yao applications. This API supports LRU cache, Redis, and MongoDB backends through a consistent JavaScript interface.
+The Store JavaScript API provides a unified interface for key-value storage with MongoDB-style list operations in Yao applications. This API supports LRU cache, Redis, MongoDB, and Badger backends through a consistent JavaScript interface.
 
 ## Table of Contents
 
@@ -38,6 +38,16 @@ interface YaoStore {
   Keys(): string[];
   Len(): number;
   Clear(): void;
+
+  // Batch Operations
+  SetMulti(values: { [key: string]: any }, ttl?: number): void;
+  GetMulti(keys: string[]): { [key: string]: any };
+  DelMulti(keys: string[]): void;
+  GetSetMulti(
+    keys: string[],
+    getValue: (key: string) => any,
+    ttl?: number
+  ): { [key: string]: any };
 
   // List Operations
   Push(key: string, ...values: any[]): void;
@@ -149,6 +159,55 @@ Remove all keys from the store.
 
 ```typescript
 store.Clear();
+```
+
+### Batch Operations
+
+#### SetMulti(values, ttl?)
+
+Set multiple key-value pairs at once.
+
+```typescript
+const values = {
+  "user:123": { name: "John", age: 30 },
+  "user:456": { name: "Jane", age: 25 },
+  "config:theme": "dark",
+};
+store.SetMulti(values, 3600); // Set all with 1 hour TTL
+```
+
+#### GetMulti(keys)
+
+Get multiple values at once.
+
+```typescript
+const keys = ["user:123", "user:456", "config:theme"];
+const values = store.GetMulti(keys);
+console.log(values); // { "user:123": {...}, "user:456": {...}, "config:theme": "dark" }
+```
+
+#### DelMulti(keys)
+
+Delete multiple keys at once.
+
+```typescript
+const keys = ["user:123", "user:456", "temp:data"];
+store.DelMulti(keys);
+```
+
+#### GetSetMulti(keys, getValue, ttl?)
+
+Get multiple values or set them if they don't exist.
+
+```typescript
+const keys = ["user:123", "user:456"];
+const values = store.GetSetMulti(
+  keys,
+  (key: string) => {
+    return fetchUserFromDatabase(key);
+  },
+  3600
+);
 ```
 
 ### List Operations
@@ -561,5 +620,6 @@ function getPaginatedResults(key: string, page: number, pageSize: number = 20) {
 - **LRU Cache**: Fastest for frequent access, limited by memory
 - **Redis**: Good for distributed applications, network latency considerations
 - **MongoDB**: Best for complex queries and very large datasets
+- **Badger**: Embedded storage for single-node applications, persistent across restarts
 
 Choose the appropriate backend based on your application's requirements and configure the store accordingly in your Yao application.
