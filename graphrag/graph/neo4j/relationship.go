@@ -56,7 +56,7 @@ func (s *Store) AddRelationships(ctx context.Context, opts *types.AddRelationshi
 		return nil, fmt.Errorf("failed to check graph existence: %w", err)
 	}
 	if !exists {
-		err = s.CreateGraph(ctx, opts.GraphName, nil)
+		err = s.CreateGraph(ctx, opts.GraphName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create graph: %w", err)
 		}

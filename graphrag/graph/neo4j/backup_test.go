@@ -182,7 +182,7 @@ func setupTestGraph(t *testing.T, env *TestEnvironment) {
 	ctx := context.Background()
 
 	// Create graph
-	err := env.Store.CreateGraph(ctx, env.GraphName, nil)
+	err := env.Store.CreateGraph(ctx, env.GraphName)
 	if err != nil {
 		t.Fatalf("failed to create test graph: %v", err)
 	}

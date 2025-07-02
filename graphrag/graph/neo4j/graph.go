@@ -21,7 +21,7 @@ const (
 )
 
 // CreateGraph creates a new graph (database for enterprise, namespace/label for community)
-func (s *Store) CreateGraph(ctx context.Context, graphName string, _ *types.GraphConfig) error {
+func (s *Store) CreateGraph(ctx context.Context, graphName string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

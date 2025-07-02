@@ -57,7 +57,7 @@ func (s *Store) AddNodes(ctx context.Context, opts *types.AddNodesOptions) ([]st
 	}
 	if !exists {
 		// CreateGraph will handle its own locking
-		err = s.CreateGraph(ctx, opts.GraphName, nil)
+		err = s.CreateGraph(ctx, opts.GraphName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create graph: %w", err)
 		}

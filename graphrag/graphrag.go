@@ -14,6 +14,7 @@ type GraphRag struct {
 	Graph  types.GraphStore
 	Store  store.Store
 	Logger types.Logger
+	System string // System Collection name for internal metadata
 }
 
 // Config is the configuration for the GraphRag instance
@@ -22,6 +23,7 @@ type Config struct {
 	Vector types.VectorStore // Vector Store for Embedding, Search, Rerank
 	Graph  types.GraphStore  // Graph Store for GraphRAG
 	Store  store.Store       // For Collection Metadata, Vote, Score, Weight history etc.
+	System string            // System Collection name for internal metadata
 }
 
 // New creates a new GraphRag instance
@@ -37,12 +39,19 @@ func New(config *Config) (*GraphRag, error) {
 		config.Logger = log.StandardLogger()
 	}
 
+	// Set default system collection name
+	system := config.System
+	if system == "" {
+		system = "__graphrag_system"
+	}
+
 	// Create GraphRag instance
 	return &GraphRag{
 		Vector: config.Vector,
 		Graph:  config.Graph,
 		Store:  config.Store,
 		Logger: config.Logger,
+		System: system,
 	}, nil
 }
 
@@ -61,5 +70,11 @@ func (g *GraphRag) WithStore(store store.Store) *GraphRag {
 // WithLogger sets the logger for the GraphRag instance
 func (g *GraphRag) WithLogger(logger types.Logger) *GraphRag {
 	g.Logger = logger
+	return g
+}
+
+// WithSystem sets the system collection name for the GraphRag instance
+func (g *GraphRag) WithSystem(system string) *GraphRag {
+	g.System = system
 	return g
 }

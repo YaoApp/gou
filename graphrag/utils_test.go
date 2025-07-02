@@ -23,6 +23,8 @@ func GetTestConfigs() map[string]*Config {
 		"vector":              {Vector: vectorStore},
 		"vector+graph":        {Graph: graphStore, Vector: vectorStore},
 		"vector+graph+logger": {Graph: graphStore, Vector: vectorStore, Logger: logger},
+		"vector+system":       {Vector: vectorStore, System: "test_system"},
+		"complete":            {Graph: graphStore, Vector: vectorStore, Logger: logger, System: "custom_system"},
 		"invalid":             {},
 	}
 }

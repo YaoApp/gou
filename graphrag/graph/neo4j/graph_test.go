@@ -41,7 +41,7 @@ func TestCreateGraph(t *testing.T) {
 		defer store.Close()
 
 		// Test creating a graph
-		err := store.CreateGraph(ctx, "test_graph", nil)
+		err := store.CreateGraph(ctx, "test_graph")
 		assert.NoError(t, err)
 
 		// Verify graph exists
@@ -76,7 +76,7 @@ func TestCreateGraph(t *testing.T) {
 		defer store.Close()
 
 		// Test creating a graph (database)
-		err := store.CreateGraph(ctx, "testenterprise", nil)
+		err := store.CreateGraph(ctx, "testenterprise")
 		assert.NoError(t, err)
 
 		// Verify graph exists
@@ -112,7 +112,7 @@ func TestCreateGraph(t *testing.T) {
 		// Test invalid graph names
 		invalidNames := []string{"", "test.graph", "test space", "test@graph", "test#graph", "test!graph"}
 		for _, name := range invalidNames {
-			err := store.CreateGraph(ctx, name, nil)
+			err := store.CreateGraph(ctx, name)
 			assert.Error(t, err, "Should fail for invalid name: %s", name)
 		}
 	})
@@ -121,7 +121,7 @@ func TestCreateGraph(t *testing.T) {
 		store := NewStore()
 		ctx := context.Background()
 
-		err := store.CreateGraph(ctx, "test_graph", nil)
+		err := store.CreateGraph(ctx, "test_graph")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not connected")
 	})
@@ -151,7 +151,7 @@ func TestDropGraph(t *testing.T) {
 		defer store.Close()
 
 		// Create and drop a graph
-		err := store.CreateGraph(ctx, "testdropgraph", nil)
+		err := store.CreateGraph(ctx, "testdropgraph")
 		assert.NoError(t, err)
 
 		err = store.DropGraph(ctx, "testdropgraph")
@@ -181,7 +181,7 @@ func TestDropGraph(t *testing.T) {
 		defer store.Close()
 
 		// Create and drop a graph
-		err := store.CreateGraph(ctx, "testdrop", nil)
+		err := store.CreateGraph(ctx, "testdrop")
 		assert.NoError(t, err)
 
 		err = store.DropGraph(ctx, "testdrop")
@@ -362,7 +362,7 @@ func TestDescribeGraph(t *testing.T) {
 		defer store.Close()
 
 		// Create a graph and describe it
-		err := store.CreateGraph(ctx, "testdescribe", nil)
+		err := store.CreateGraph(ctx, "testdescribe")
 		assert.NoError(t, err)
 
 		stats, err := store.DescribeGraph(ctx, "testdescribe")
@@ -520,7 +520,7 @@ func TestStressGraphOperations(t *testing.T) {
 		graphName := fmt.Sprintf("stress_test_%d", time.Now().UnixNano())
 
 		// Create graph
-		err = store.CreateGraph(ctx, graphName, nil)
+		err = store.CreateGraph(ctx, graphName)
 		if err != nil {
 			return err
 		}
@@ -642,7 +642,7 @@ func TestConcurrentGraphOperations(t *testing.T) {
 					graphName := fmt.Sprintf("concurrent_test_%d_%d", workerID, j)
 
 					// Create graph
-					err = store.CreateGraph(ctx, graphName, nil)
+					err = store.CreateGraph(ctx, graphName)
 					if err != nil {
 						errors <- fmt.Errorf("worker %d, op %d: CreateGraph failed: %w", workerID, j, err)
 						return
@@ -760,7 +760,7 @@ func TestGraphMemoryLeakDetection(t *testing.T) {
 			graphName := fmt.Sprintf("memory_test_%d", i)
 
 			// Full graph lifecycle
-			err = store.CreateGraph(ctx, graphName, nil)
+			err = store.CreateGraph(ctx, graphName)
 			assert.NoError(t, err)
 
 			_, err = store.GraphExists(ctx, graphName)
@@ -844,7 +844,7 @@ func TestGraphGoroutineLeakDetection(t *testing.T) {
 			graphName := fmt.Sprintf("goroutine_test_%d", i)
 
 			// Full graph lifecycle
-			store.CreateGraph(ctx, graphName, nil)
+			store.CreateGraph(ctx, graphName)
 			store.GraphExists(ctx, graphName)
 			store.ListGraphs(ctx)
 			store.DescribeGraph(ctx, graphName)
@@ -921,7 +921,7 @@ func TestCustomPrefixIntegration(t *testing.T) {
 	graphName := "custom_prefix_test"
 
 	// Create graph
-	err := store.CreateGraph(ctx, graphName, nil)
+	err := store.CreateGraph(ctx, graphName)
 	assert.NoError(t, err)
 
 	// Verify GetGraphLabel uses custom prefix
