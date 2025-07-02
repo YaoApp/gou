@@ -29,7 +29,7 @@ func TestAddNodes_Basic(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestAddNodes_BatchSize(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestAddNodes_Upsert(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestAddNodes_WithTimeout(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestAddNodes_LabelBasedMode(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -245,7 +245,7 @@ func TestAddNodes_SeparateDatabaseMode(t *testing.T) {
 	enterpriseGraphName := "testnodesgraph"
 
 	// Create test graph
-	err := store.CreateGraph(ctx, enterpriseGraphName, nil)
+	err := store.CreateGraph(ctx, enterpriseGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -277,7 +277,7 @@ func TestAddNodes_RealData(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -308,7 +308,7 @@ func TestAddNodes_RealData(t *testing.T) {
 	}
 
 	// Create graph for Chinese data
-	err = store.CreateGraph(ctx, testGraphName+"_zh", nil)
+	err = store.CreateGraph(ctx, testGraphName+"_zh")
 	if err != nil {
 		t.Fatalf("Failed to create Chinese test graph: %v", err)
 	}
@@ -339,7 +339,7 @@ func TestAddNodes_RealData(t *testing.T) {
 		}
 
 		// Create graph for English data
-		err = store.CreateGraph(ctx, testGraphName+"_en", nil)
+		err = store.CreateGraph(ctx, testGraphName+"_en")
 		if err != nil {
 			t.Fatalf("Failed to create English test graph: %v", err)
 		}
@@ -375,7 +375,7 @@ func TestAddNodes_ConcurrentStress(t *testing.T) {
 	beforeMemory := captureMemoryStats()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -490,7 +490,7 @@ func TestAddNodes_ErrorHandling(t *testing.T) {
 		},
 	}
 
-	err = store.CreateGraph(ctx, testGraphName, nil)
+	err = store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -539,7 +539,7 @@ func TestAddNodes_HighConcurrency(t *testing.T) {
 	beforeMemory := captureMemoryStats()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -718,7 +718,7 @@ func TestAddNodes_MemoryLeakDetection(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -851,7 +851,7 @@ func TestAddNodes_GoroutineLeakDetection(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1049,7 +1049,7 @@ func TestGetNodes_Basic(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1109,7 +1109,7 @@ func TestGetNodes_ByIDs(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add nodes
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1163,7 +1163,7 @@ func TestGetNodes_ByLabels(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1230,7 +1230,7 @@ func TestGetNodes_ByFilter(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add nodes
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1285,7 +1285,7 @@ func TestGetNodes_EmptyGraph(t *testing.T) {
 	defer cancel()
 
 	// Create empty test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1373,7 +1373,7 @@ func TestGetNodes_LabelBasedMode(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add nodes
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1425,7 +1425,7 @@ func TestGetNodes_SeparateDatabaseMode(t *testing.T) {
 	enterpriseGraphName := "testgetgraph"
 
 	// Create test graph and add nodes
-	err := store.CreateGraph(ctx, enterpriseGraphName, nil)
+	err := store.CreateGraph(ctx, enterpriseGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1474,7 +1474,7 @@ func TestGetNodes_ConcurrentStress(t *testing.T) {
 	beforeMemory := captureMemoryStats()
 
 	// Create test graph and add nodes
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1559,7 +1559,7 @@ func TestDeleteNodes_Basic(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add nodes
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1630,7 +1630,7 @@ func TestDeleteNodes_ByFilter(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add nodes
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1695,7 +1695,7 @@ func TestDeleteNodes_DryRun(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add nodes
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1796,7 +1796,7 @@ func TestDeleteNodes_LabelBasedMode(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add/delete nodes
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1857,7 +1857,7 @@ func TestDeleteNodes_SeparateDatabaseMode(t *testing.T) {
 	enterpriseGraphName := "testdelgraph"
 
 	// Create test graph and add/delete nodes
-	err := store.CreateGraph(ctx, enterpriseGraphName, nil)
+	err := store.CreateGraph(ctx, enterpriseGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1915,7 +1915,7 @@ func TestDeleteNodes_ConcurrentStress(t *testing.T) {
 	beforeMemory := captureMemoryStats()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -2018,7 +2018,7 @@ func TestGetDeleteNodes_RealData(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testGraphName, nil)
+	err := store.CreateGraph(ctx, testGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}

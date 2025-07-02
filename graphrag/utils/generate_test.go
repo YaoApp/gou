@@ -426,3 +426,220 @@ func TestGetCollectionIDsUniqueness(t *testing.T) {
 		t.Errorf("GetCollectionIDs should be deterministic for Store, got: %s vs %s", result1.Store, result2.Store)
 	}
 }
+
+func TestExtractCollectionIDFromVectorName(t *testing.T) {
+	tests := []struct {
+		name        string
+		vectorName  string
+		expected    string
+		description string
+	}{
+		{
+			name:        "Valid vector name with suffix",
+			vectorName:  "user-docs_vector",
+			expected:    "user-docs",
+			description: "Should extract collection ID from valid vector name",
+		},
+		{
+			name:        "Vector name without suffix",
+			vectorName:  "user-docs",
+			expected:    "",
+			description: "Should return empty string if no _vector suffix (strict mode)",
+		},
+		{
+			name:        "Complex collection name",
+			vectorName:  "my-test-collection-123_vector",
+			expected:    "my-test-collection-123",
+			description: "Should handle complex collection names",
+		},
+		{
+			name:        "Empty string",
+			vectorName:  "",
+			expected:    "",
+			description: "Should handle empty string",
+		},
+		{
+			name:        "Only suffix",
+			vectorName:  "_vector",
+			expected:    "",
+			description: "Should handle edge case of only suffix",
+		},
+		{
+			name:        "Whitespace handling",
+			vectorName:  "  test-collection_vector  ",
+			expected:    "test-collection",
+			description: "Should trim whitespace and extract correctly",
+		},
+		{
+			name:        "Multiple vector suffixes",
+			vectorName:  "test_vector_vector",
+			expected:    "test_vector",
+			description: "Should only remove the last _vector suffix",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ExtractCollectionIDFromVectorName(tt.vectorName)
+			if result != tt.expected {
+				t.Errorf("ExtractCollectionIDFromVectorName(%q) = %q, expected %q. %s",
+					tt.vectorName, result, tt.expected, tt.description)
+			}
+		})
+	}
+}
+
+func TestExtractCollectionIDFromGraphName(t *testing.T) {
+	tests := []struct {
+		name        string
+		graphName   string
+		expected    string
+		description string
+	}{
+		{
+			name:        "Valid graph name with suffix",
+			graphName:   "user-docs_graph",
+			expected:    "user-docs",
+			description: "Should extract collection ID from valid graph name",
+		},
+		{
+			name:        "Graph name without suffix",
+			graphName:   "user-docs",
+			expected:    "",
+			description: "Should return empty string if no _graph suffix (strict mode)",
+		},
+		{
+			name:        "Complex collection name",
+			graphName:   "my-test-collection-123_graph",
+			expected:    "my-test-collection-123",
+			description: "Should handle complex collection names",
+		},
+		{
+			name:        "Empty string",
+			graphName:   "",
+			expected:    "",
+			description: "Should handle empty string",
+		},
+		{
+			name:        "Only suffix",
+			graphName:   "_graph",
+			expected:    "",
+			description: "Should handle edge case of only suffix",
+		},
+		{
+			name:        "Whitespace handling",
+			graphName:   "  test-collection_graph  ",
+			expected:    "test-collection",
+			description: "Should trim whitespace and extract correctly",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ExtractCollectionIDFromGraphName(tt.graphName)
+			if result != tt.expected {
+				t.Errorf("ExtractCollectionIDFromGraphName(%q) = %q, expected %q. %s",
+					tt.graphName, result, tt.expected, tt.description)
+			}
+		})
+	}
+}
+
+func TestExtractCollectionIDFromStoreName(t *testing.T) {
+	tests := []struct {
+		name        string
+		storeName   string
+		expected    string
+		description string
+	}{
+		{
+			name:        "Valid store name with suffix",
+			storeName:   "user-docs_store",
+			expected:    "user-docs",
+			description: "Should extract collection ID from valid store name",
+		},
+		{
+			name:        "Store name without suffix",
+			storeName:   "user-docs",
+			expected:    "",
+			description: "Should return empty string if no _store suffix (strict mode)",
+		},
+		{
+			name:        "Complex collection name",
+			storeName:   "my-test-collection-123_store",
+			expected:    "my-test-collection-123",
+			description: "Should handle complex collection names",
+		},
+		{
+			name:        "Empty string",
+			storeName:   "",
+			expected:    "",
+			description: "Should handle empty string",
+		},
+		{
+			name:        "Only suffix",
+			storeName:   "_store",
+			expected:    "",
+			description: "Should handle edge case of only suffix",
+		},
+		{
+			name:        "Whitespace handling",
+			storeName:   "  test-collection_store  ",
+			expected:    "test-collection",
+			description: "Should trim whitespace and extract correctly",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ExtractCollectionIDFromStoreName(tt.storeName)
+			if result != tt.expected {
+				t.Errorf("ExtractCollectionIDFromStoreName(%q) = %q, expected %q. %s",
+					tt.storeName, result, tt.expected, tt.description)
+			}
+		})
+	}
+}
+
+func TestRoundTripCollectionIDs(t *testing.T) {
+	// Test that GetCollectionIDs and Extract functions are proper inverses
+	testNames := []string{
+		"user-docs",
+		"my-test-collection",
+		"simple",
+		"complex-name-with-dashes-123",
+		"TEST-MIXED-CASE", // This will be converted to lowercase
+	}
+
+	for _, originalName := range testNames {
+		t.Run(fmt.Sprintf("RoundTrip_%s", originalName), func(t *testing.T) {
+			// Generate collection IDs
+			ids, err := GetCollectionIDs(originalName)
+			if err != nil {
+				t.Fatalf("GetCollectionIDs failed for %s: %v", originalName, err)
+			}
+
+			// Extract back the collection IDs
+			extractedFromVector := ExtractCollectionIDFromVectorName(ids.Vector)
+			extractedFromGraph := ExtractCollectionIDFromGraphName(ids.Graph)
+			extractedFromStore := ExtractCollectionIDFromStoreName(ids.Store)
+
+			// GetCollectionIDs converts to lowercase, so we need to compare with lowercase
+			expectedName := strings.ToLower(originalName)
+
+			// All extractions should give us back the original collection name
+			if extractedFromVector != expectedName {
+				t.Errorf("Vector round-trip failed: %s -> %s -> %s", originalName, ids.Vector, extractedFromVector)
+			}
+			if extractedFromGraph != expectedName {
+				t.Errorf("Graph round-trip failed: %s -> %s -> %s", originalName, ids.Graph, extractedFromGraph)
+			}
+			if extractedFromStore != expectedName {
+				t.Errorf("Store round-trip failed: %s -> %s -> %s", originalName, ids.Store, extractedFromStore)
+			}
+
+			t.Logf("Round-trip success for '%s': Vector=%s, Graph=%s, Store=%s",
+				originalName, ids.Vector, ids.Graph, ids.Store)
+		})
+	}
+}

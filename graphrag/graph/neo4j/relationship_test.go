@@ -29,7 +29,7 @@ func TestAddRelationships_Basic(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add some nodes first
-	err := store.CreateGraph(ctx, testRelGraphName, nil)
+	err := store.CreateGraph(ctx, testRelGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestGetRelationships_Basic(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testRelGraphName, nil)
+	err := store.CreateGraph(ctx, testRelGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestDeleteRelationships_Basic(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add relationships
-	err := store.CreateGraph(ctx, testRelGraphName, nil)
+	err := store.CreateGraph(ctx, testRelGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestAddRelationships_LabelBasedMode(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add relationships
-	err := store.CreateGraph(ctx, testRelGraphName, nil)
+	err := store.CreateGraph(ctx, testRelGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -249,7 +249,7 @@ func TestAddRelationships_SeparateDatabaseMode(t *testing.T) {
 	enterpriseGraphName := "testrelsgraph"
 
 	// Create test graph and add relationships
-	err := store.CreateGraph(ctx, enterpriseGraphName, nil)
+	err := store.CreateGraph(ctx, enterpriseGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -292,7 +292,7 @@ func TestAddRelationships_ConcurrentStress(t *testing.T) {
 	}()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testRelGraphName, nil)
+	err := store.CreateGraph(ctx, testRelGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -408,7 +408,7 @@ func TestGetRelationships_ConcurrentStress(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add relationships
-	err := store.CreateGraph(ctx, testRelGraphName, nil)
+	err := store.CreateGraph(ctx, testRelGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}

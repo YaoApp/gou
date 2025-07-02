@@ -187,7 +187,7 @@ func (s *Store) Restore(ctx context.Context, reader io.Reader, opts *types.Graph
 
 	// Create graph if it doesn't exist and createGraph is enabled
 	if !exists && opts.CreateGraph {
-		if err := s.CreateGraph(ctx, opts.GraphName, nil); err != nil {
+		if err := s.CreateGraph(ctx, opts.GraphName); err != nil {
 			return fmt.Errorf("failed to create graph: %w", err)
 		}
 		// Wait for database to become available (separate database mode)
@@ -200,7 +200,7 @@ func (s *Store) Restore(ctx context.Context, reader io.Reader, opts *types.Graph
 			return fmt.Errorf("failed to drop existing graph: %w", err)
 		}
 		// Recreate the graph
-		if err := s.CreateGraph(ctx, opts.GraphName, nil); err != nil {
+		if err := s.CreateGraph(ctx, opts.GraphName); err != nil {
 			return fmt.Errorf("failed to recreate graph: %w", err)
 		}
 		// Wait for database to become available (separate database mode)

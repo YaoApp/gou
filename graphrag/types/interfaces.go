@@ -111,7 +111,7 @@ type GraphStore interface {
 	Close() error
 
 	// Graph Management (similar to Collection Management in VectorStore)
-	CreateGraph(ctx context.Context, graphName string, config *GraphConfig) error
+	CreateGraph(ctx context.Context, graphName string) error
 	DropGraph(ctx context.Context, graphName string) error
 	GraphExists(ctx context.Context, graphName string) (bool, error)
 	ListGraphs(ctx context.Context) ([]string, error)
@@ -158,10 +158,10 @@ type Logger interface {
 // GraphRag defines the interface for GraphRag
 type GraphRag interface {
 	// Collection Management
-	CreateCollection(ctx context.Context, collection Collection) (string, error) // Create a new collection
-	RemoveCollection(ctx context.Context, id string) (int, error)                // Remove a collection
-	CollectionExists(ctx context.Context, id string) (bool, error)               // Check if a collection exists
-	GetCollections(ctx context.Context) ([]Collection, error)                    // Get all collections
+	CreateCollection(ctx context.Context, collection Collection) (string, error)             // Create a new collection
+	RemoveCollection(ctx context.Context, id string) (bool, error)                           // Remove a collection
+	CollectionExists(ctx context.Context, id string) (bool, error)                           // Check if a collection exists
+	GetCollections(ctx context.Context, filter map[string]interface{}) ([]Collection, error) // Get collections with optional metadata filtering
 
 	// Document Management
 	AddFile(ctx context.Context, file string, options *UpsertOptions) (string, error)            // Add a file to a collection

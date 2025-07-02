@@ -27,7 +27,7 @@ func TestQuery_BasicCypher(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestQuery_BasicTraversal(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -225,7 +225,7 @@ func TestQuery_LabelBasedMode(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -286,7 +286,7 @@ func TestQuery_SeparateDatabaseMode(t *testing.T) {
 	enterpriseGraphName := "testquerygraph"
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, enterpriseGraphName, nil)
+	err := store.CreateGraph(ctx, enterpriseGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -355,7 +355,7 @@ func TestQuery_BasicPath(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -423,7 +423,7 @@ func TestQuery_BasicAnalytics(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -489,7 +489,7 @@ func TestQuery_BasicCustom(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -550,7 +550,7 @@ func TestQuery_ConcurrentStress(t *testing.T) {
 	beforeMemory := captureMemoryStats()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -701,7 +701,7 @@ func TestQuery_MemoryLeakDetection(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -793,7 +793,7 @@ func TestQuery_RealData(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -931,7 +931,7 @@ func TestCommunities_BasicLeiden(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1055,7 +1055,7 @@ func TestCommunities_BasicLouvain(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1128,7 +1128,7 @@ func TestCommunities_BasicLabelPropagation(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1204,7 +1204,7 @@ func TestCommunities_LabelBasedMode(t *testing.T) {
 	defer cancel()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1277,7 +1277,7 @@ func TestCommunities_SeparateDatabaseMode(t *testing.T) {
 	enterpriseGraphName := "testcommgraph"
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, enterpriseGraphName, nil)
+	err := store.CreateGraph(ctx, enterpriseGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1347,7 +1347,7 @@ func TestCommunities_ConcurrentStress(t *testing.T) {
 	beforeMemory := captureMemoryStats()
 
 	// Create test graph and add test data
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1449,7 +1449,7 @@ func TestCommunities_RealData(t *testing.T) {
 	defer cancel()
 
 	// Create test graph
-	err := store.CreateGraph(ctx, testQueryGraphName, nil)
+	err := store.CreateGraph(ctx, testQueryGraphName)
 	if err != nil {
 		t.Fatalf("Failed to create test graph: %v", err)
 	}

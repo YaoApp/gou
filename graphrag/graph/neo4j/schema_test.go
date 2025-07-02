@@ -42,7 +42,7 @@ func TestGetSchema(t *testing.T) {
 
 		// Create test graph and add some nodes/relationships
 		graphName := "test_schema_graph"
-		err := store.CreateGraph(ctx, graphName, nil)
+		err := store.CreateGraph(ctx, graphName)
 		assert.NoError(t, err)
 		defer store.DropGraph(ctx, graphName)
 
@@ -114,7 +114,7 @@ func TestGetSchema(t *testing.T) {
 
 		// Create test graph
 		graphName := "testschemaent"
-		err := store.CreateGraph(ctx, graphName, nil)
+		err := store.CreateGraph(ctx, graphName)
 		assert.NoError(t, err)
 		defer store.DropGraph(ctx, graphName)
 
@@ -226,7 +226,7 @@ func TestCreateIndex(t *testing.T) {
 
 		// Create test graph
 		graphName := "test_index_graph"
-		err := store.CreateGraph(ctx, graphName, nil)
+		err := store.CreateGraph(ctx, graphName)
 		assert.NoError(t, err)
 		defer store.DropGraph(ctx, graphName)
 
@@ -317,7 +317,7 @@ func TestCreateIndex(t *testing.T) {
 
 		// Create test graph
 		graphName := "testindexent"
-		err := store.CreateGraph(ctx, graphName, nil)
+		err := store.CreateGraph(ctx, graphName)
 		assert.NoError(t, err)
 		defer store.DropGraph(ctx, graphName)
 
@@ -475,7 +475,7 @@ func TestDropIndex(t *testing.T) {
 
 		// Create test graph
 		graphName := "test_drop_index_graph"
-		err := store.CreateGraph(ctx, graphName, nil)
+		err := store.CreateGraph(ctx, graphName)
 		assert.NoError(t, err)
 		defer store.DropGraph(ctx, graphName)
 
@@ -541,7 +541,7 @@ func TestDropIndex(t *testing.T) {
 
 		// Create test graph
 		graphName := "testdropidxent"
-		err := store.CreateGraph(ctx, graphName, nil)
+		err := store.CreateGraph(ctx, graphName)
 		assert.NoError(t, err)
 		defer store.DropGraph(ctx, graphName)
 
@@ -693,7 +693,7 @@ func TestStressSchemaOperations(t *testing.T) {
 
 	// Create test graph
 	graphName := "stress_schema_graph"
-	err := store.CreateGraph(ctx, graphName, nil)
+	err := store.CreateGraph(ctx, graphName)
 	assert.NoError(t, err)
 	defer store.DropGraph(ctx, graphName)
 
@@ -824,7 +824,7 @@ func TestSchemaMemoryLeakDetection(t *testing.T) {
 
 	// Create test graph
 	graphName := "memory_test_schema"
-	err := store.CreateGraph(ctx, graphName, nil)
+	err := store.CreateGraph(ctx, graphName)
 	assert.NoError(t, err)
 	defer store.DropGraph(ctx, graphName)
 
@@ -919,7 +919,7 @@ func TestSchemaGoroutineLeakDetection(t *testing.T) {
 
 		// Create test graph
 		graphName := "goroutine_test_schema"
-		err := store.CreateGraph(ctx, graphName, nil)
+		err := store.CreateGraph(ctx, graphName)
 		assert.NoError(t, err)
 		defer store.DropGraph(ctx, graphName)
 
@@ -1077,7 +1077,7 @@ func BenchmarkGetSchema(b *testing.B) {
 
 	// Create test graph with data
 	graphName := "bench_schema_graph"
-	err := store.CreateGraph(ctx, graphName, nil)
+	err := store.CreateGraph(ctx, graphName)
 	if err != nil {
 		b.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1138,7 +1138,7 @@ func BenchmarkCreateIndex(b *testing.B) {
 
 	// Step 2: Create a single test graph using separate database mode
 	graphName := "bench-create-index-graph"
-	err = store.CreateGraph(ctx, graphName, nil)
+	err = store.CreateGraph(ctx, graphName)
 	if err != nil {
 		b.Fatalf("Failed to create test graph: %v", err)
 	}
@@ -1225,7 +1225,7 @@ func BenchmarkDropIndex(b *testing.B) {
 
 	// Step 2: Create a single test graph using separate database mode
 	graphName := "bench-drop-index-graph"
-	err = store.CreateGraph(ctx, graphName, nil)
+	err = store.CreateGraph(ctx, graphName)
 	if err != nil {
 		b.Fatalf("Failed to create test graph: %v", err)
 	}

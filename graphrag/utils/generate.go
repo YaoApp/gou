@@ -101,3 +101,58 @@ func GetCollectionIDs(name string) (types.CollectionIDs, error) {
 		Store:  fmt.Sprintf("%s_store", cleanName),
 	}, nil
 }
+
+// ExtractCollectionIDFromVectorName extracts the original collection ID from a vector collection name
+// This is the reverse operation of GetCollectionIDs
+func ExtractCollectionIDFromVectorName(vectorName string) string {
+	vectorName = strings.TrimSpace(vectorName)
+	if vectorName == "" {
+		return ""
+	}
+
+	// Check if the vector name ends with "_vector"
+	vectorSuffix := "_vector"
+	if strings.HasSuffix(vectorName, vectorSuffix) {
+		// Remove the "_vector" suffix to get the original collection ID
+		return strings.TrimSuffix(vectorName, vectorSuffix)
+	}
+
+	// If it doesn't follow the expected pattern, return empty string (strict mode)
+	return ""
+}
+
+// ExtractCollectionIDFromGraphName extracts the original collection ID from a graph collection name
+func ExtractCollectionIDFromGraphName(graphName string) string {
+	graphName = strings.TrimSpace(graphName)
+	if graphName == "" {
+		return ""
+	}
+
+	// Check if the graph name ends with "_graph"
+	graphSuffix := "_graph"
+	if strings.HasSuffix(graphName, graphSuffix) {
+		// Remove the "_graph" suffix to get the original collection ID
+		return strings.TrimSuffix(graphName, graphSuffix)
+	}
+
+	// If it doesn't follow the expected pattern, return empty string (strict mode)
+	return ""
+}
+
+// ExtractCollectionIDFromStoreName extracts the original collection ID from a store collection name
+func ExtractCollectionIDFromStoreName(storeName string) string {
+	storeName = strings.TrimSpace(storeName)
+	if storeName == "" {
+		return ""
+	}
+
+	// Check if the store name ends with "_store"
+	storeSuffix := "_store"
+	if strings.HasSuffix(storeName, storeSuffix) {
+		// Remove the "_store" suffix to get the original collection ID
+		return strings.TrimSuffix(storeName, storeSuffix)
+	}
+
+	// If it doesn't follow the expected pattern, return empty string (strict mode)
+	return ""
+}

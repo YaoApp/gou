@@ -18,21 +18,37 @@ func TestNew(t *testing.T) {
 		config      *Config
 		wantErr     bool
 		errContains string
+		wantSystem  string
 	}{
 		{
-			name:    "valid config with vector only",
-			config:  configs["vector"],
-			wantErr: false,
+			name:       "valid config with vector only",
+			config:     configs["vector"],
+			wantErr:    false,
+			wantSystem: "__graphrag_system", // default value
 		},
 		{
-			name:    "valid config with vector and graph",
-			config:  configs["vector+graph"],
-			wantErr: false,
+			name:       "valid config with vector and graph",
+			config:     configs["vector+graph"],
+			wantErr:    false,
+			wantSystem: "__graphrag_system", // default value
 		},
 		{
-			name:    "valid config with all components",
-			config:  configs["vector+graph+logger"],
-			wantErr: false,
+			name:       "valid config with all components",
+			config:     configs["vector+graph+logger"],
+			wantErr:    false,
+			wantSystem: "__graphrag_system", // default value
+		},
+		{
+			name:       "valid config with custom system",
+			config:     configs["vector+system"],
+			wantErr:    false,
+			wantSystem: "test_system",
+		},
+		{
+			name:       "complete config",
+			config:     configs["complete"],
+			wantErr:    false,
+			wantSystem: "custom_system",
 		},
 		{
 			name:        "invalid config without vector",
@@ -81,6 +97,11 @@ func TestNew(t *testing.T) {
 			// Verify logger is set (should have default if not provided)
 			if graphRag.Logger == nil {
 				t.Error("New() GraphRag.Logger is nil")
+			}
+
+			// Verify system collection name is set correctly
+			if graphRag.System != tt.wantSystem {
+				t.Errorf("New() GraphRag.System = %v, want %v", graphRag.System, tt.wantSystem)
 			}
 
 			// Verify optional components
@@ -159,6 +180,27 @@ func TestGraphRag_WithLogger(t *testing.T) {
 	}
 }
 
+func TestGraphRag_WithSystem(t *testing.T) {
+	config := GetTestConfigs()["vector"]
+	graphRag, err := New(config)
+	if err != nil {
+		t.Fatalf("Failed to create GraphRag instance: %v", err)
+	}
+
+	systemName := "custom_system_collection"
+	result := graphRag.WithSystem(systemName)
+
+	// Should return the same instance
+	if result != graphRag {
+		t.Error("WithSystem() should return the same GraphRag instance")
+	}
+
+	// Should set the system collection name
+	if graphRag.System != systemName {
+		t.Errorf("WithSystem() failed to set system collection name, got %v, want %v", graphRag.System, systemName)
+	}
+}
+
 func TestGraphRag_FluentInterface(t *testing.T) {
 	config := GetTestConfigs()["vector"]
 	graphRag, err := New(config)
@@ -168,9 +210,10 @@ func TestGraphRag_FluentInterface(t *testing.T) {
 
 	graphStore := neo4j.NewStore()
 	logger := log.StandardLogger()
+	systemName := "fluent_system"
 
 	// Test fluent interface chaining
-	result := graphRag.WithGraph(graphStore).WithStore(nil).WithLogger(logger)
+	result := graphRag.WithGraph(graphStore).WithStore(nil).WithLogger(logger).WithSystem(systemName)
 
 	// Should return the same instance
 	if result != graphRag {
@@ -187,6 +230,9 @@ func TestGraphRag_FluentInterface(t *testing.T) {
 	if graphRag.Logger != logger {
 		t.Error("Logger not set correctly in fluent interface")
 	}
+	if graphRag.System != systemName {
+		t.Errorf("System name not set correctly in fluent interface, got %v, want %v", graphRag.System, systemName)
+	}
 }
 
 func TestConfig_Validation(t *testing.T) {
@@ -201,7 +247,7 @@ func TestConfig_Validation(t *testing.T) {
 	}{
 		{
 			name:   "complete config",
-			config: &Config{Vector: vectorStore, Graph: graphStore, Store: nil, Logger: logger},
+			config: &Config{Vector: vectorStore, Graph: graphStore, Store: nil, Logger: logger, System: "test_system"},
 			valid:  true,
 		},
 		{
@@ -210,8 +256,13 @@ func TestConfig_Validation(t *testing.T) {
 			valid:  true,
 		},
 		{
+			name:   "config with custom system name",
+			config: &Config{Vector: vectorStore, System: "custom_system"},
+			valid:  true,
+		},
+		{
 			name:   "config without vector",
-			config: &Config{Graph: graphStore, Store: nil, Logger: logger},
+			config: &Config{Graph: graphStore, Store: nil, Logger: logger, System: "test_system"},
 			valid:  false,
 		},
 		{

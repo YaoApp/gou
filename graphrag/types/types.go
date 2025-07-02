@@ -2004,10 +2004,10 @@ type QueryOptions struct {
 
 // Collection represents a collection of documents
 type Collection struct {
-	ID           string                 `json:"id"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	VectorConfig *VectorStoreConfig     `json:"vector_config"`
-	GraphConfig  *GraphConfig           `json:"graph_config"`
+	ID               string                 `json:"id"`
+	Metadata         map[string]interface{} `json:"metadata"`
+	VectorConfig     *VectorStoreConfig     `json:"vector_config"`
+	GraphStoreConfig *GraphStoreConfig      `json:"graph_store_config"`
 }
 
 // Segment represents a segment of a document
