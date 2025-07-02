@@ -194,8 +194,8 @@ type GraphRag interface {
 // Converter converts PDFs, Word documents, video, audio, etc. into plain text
 // and normalizes text encoding to UTF-8, providing progress via optional callbacks.
 type Converter interface {
-	Convert(ctx context.Context, file string, callback ...ConverterProgress) (string, error)                // Convert a file to plain text
-	ConvertStream(ctx context.Context, stream io.ReadSeeker, callback ...ConverterProgress) (string, error) // Convert a stream to plain text
+	Convert(ctx context.Context, file string, callback ...ConverterProgress) (*ConvertResult, error)                // Convert a file to plain text with metadata
+	ConvertStream(ctx context.Context, stream io.ReadSeeker, callback ...ConverterProgress) (*ConvertResult, error) // Convert a stream to plain text with metadata
 }
 
 // Searcher interface is used to search for chunks

@@ -1788,6 +1788,12 @@ const (
 	ConverterStatusPending ConverterStatus = "pending"
 )
 
+// ConvertResult represents the result of a document conversion operation
+type ConvertResult struct {
+	Text     string                 `json:"text"`     // Converted text content
+	Metadata map[string]interface{} `json:"metadata"` // Additional metadata from conversion (page mappings, structure info, etc.)
+}
+
 // SearcherStatus represents the status of the search
 type SearcherStatus string
 
