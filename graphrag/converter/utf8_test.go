@@ -926,8 +926,8 @@ func TestUTF8_All_Internal_Methods_Coverage(t *testing.T) {
 	testCases := [][]byte{
 		[]byte("Hello"),
 		[]byte("你好"),
-		[]byte{0xFF, 0xFE, 0xFD}, // Invalid UTF-8
-		[]byte{},                 // Empty
+		{0xFF, 0xFE, 0xFD}, // Invalid UTF-8
+		{},                 // Empty
 	}
 
 	for i, testCase := range testCases {
@@ -951,8 +951,8 @@ func TestUTF8_All_Internal_Methods_Coverage(t *testing.T) {
 	// Test chunkToUTF8 with edge cases
 	chunkTestCases := [][]byte{
 		[]byte("Normal text"),
-		[]byte{0xC0, 0x80}, // Invalid UTF-8 sequence
-		[]byte{},           // Empty
+		{0xC0, 0x80}, // Invalid UTF-8 sequence
+		{},           // Empty
 	}
 
 	for i, testCase := range chunkTestCases {
