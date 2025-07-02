@@ -1,0 +1,18 @@
+UTF-8 with BOM Test File
+这是一个包含BOM的UTF-8测试文件。
+
+BOM (Byte Order Mark) 测试：
+该文件开头包含UTF-8 BOM标记 (EF BB BF)
+
+内容测试：
+- 英文：Hello World!
+- 中文：你好世界！
+- 日文：こんにちは
+- 韩文：안녕하세요
+
+转换器应该能够：
+1. 检测到BOM标记
+2. 正确移除BOM
+3. 正常处理UTF-8内容
+
+测试完成。 

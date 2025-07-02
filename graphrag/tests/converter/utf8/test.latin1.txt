@@ -1,0 +1,25 @@
+Hello World!
+This is a Latin1/ISO-8859-1 encoded test file.
+
+Basic ASCII characters:
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+abcdefghijklmnopqrstuvwxyz
+0123456789
+!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~
+
+Extended Latin1 characters (128-255):
+àáâãäåæçèéêëìíîï
+ğñòóôõöøùúûüışÿ
+ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏ
+ĞÑÒÓÔÕÖØÙÚÛÜİŞ
+
+Currency and symbols:
+£¤¥¦§¨©ª«¬®¯°±²³
+´µ¶·¸¹º»¼½¾¿
+
+French: café, naïve, résumé
+German: Müller, Größe, weiß
+Spanish: niño, señor, corazón
+
+Note: This file should be Latin1 encoded in real environment
+but may display as UTF-8 in development environment 
