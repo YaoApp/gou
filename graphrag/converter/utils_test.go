@@ -696,3 +696,168 @@ func (tpc *TestProgressCallback) Reset() {
 	tpc.Calls = tpc.Calls[:0]
 	tpc.LastCall = nil
 }
+
+// ==== Vision-Specific Test Utils ====
+
+// VisionTestImageInfo represents test image metadata
+type VisionTestImageInfo struct {
+	Width        int
+	Height       int
+	Format       string
+	FileSize     int64
+	ExpectedMIME string
+	HasAnimation bool
+	ColorDepth   int
+}
+
+// VisionTestStats collects statistics during vision testing
+type VisionTestStats struct {
+	TotalFiles      int
+	SuccessfulFiles int
+	FailedFiles     int
+	TotalSize       int64
+	ProcessedSize   int64
+	AverageProgress float64
+	ProcessingTime  time.Duration
+}
+
+// NewVisionTestStats creates a new vision test statistics collector
+func NewVisionTestStats() *VisionTestStats {
+	return &VisionTestStats{}
+}
+
+// RecordFileResult records the result of processing a file
+func (vts *VisionTestStats) RecordFileResult(fileSize int64, success bool, progressCalls int, duration time.Duration) {
+	vts.TotalFiles++
+	vts.TotalSize += fileSize
+	vts.ProcessingTime += duration
+
+	if success {
+		vts.SuccessfulFiles++
+		vts.ProcessedSize += fileSize
+	} else {
+		vts.FailedFiles++
+	}
+
+	// Update average progress (simplified calculation)
+	vts.AverageProgress = float64(vts.SuccessfulFiles) / float64(vts.TotalFiles)
+}
+
+// GetSummary returns a summary string of the test statistics
+func (vts *VisionTestStats) GetSummary() string {
+	successRate := float64(vts.SuccessfulFiles) / float64(vts.TotalFiles) * 100
+	return fmt.Sprintf("Vision Test Summary: %d files, %.1f%% success, %d bytes processed, %v total time",
+		vts.TotalFiles, successRate, vts.ProcessedSize, vts.ProcessingTime)
+}
+
+// validateVisionResult validates that a vision conversion result is reasonable
+func validateVisionResult(result string, minLength int, expectedKeywords []string) error {
+	if len(result) < minLength {
+		return fmt.Errorf("result too short: %d characters (minimum %d)", len(result), minLength)
+	}
+
+	resultLower := strings.ToLower(result)
+
+	// Check for basic description keywords
+	basicKeywords := []string{"image", "photo", "picture", "shows", "contains", "depicts"}
+	hasBasicKeyword := false
+	for _, keyword := range basicKeywords {
+		if strings.Contains(resultLower, keyword) {
+			hasBasicKeyword = true
+			break
+		}
+	}
+
+	if !hasBasicKeyword {
+		return fmt.Errorf("result lacks basic image description keywords")
+	}
+
+	// Check for expected keywords if provided
+	if len(expectedKeywords) > 0 {
+		foundKeywords := 0
+		for _, keyword := range expectedKeywords {
+			if strings.Contains(resultLower, strings.ToLower(keyword)) {
+				foundKeywords++
+			}
+		}
+
+		if foundKeywords == 0 {
+			return fmt.Errorf("result lacks any expected keywords: %v", expectedKeywords)
+		}
+	}
+
+	return nil
+}
+
+// runVisionStressTest runs a specialized stress test for vision operations
+func runVisionStressTest(t *testing.T, config StressTestConfig, imageFiles []string, visionOperation func(string) error) *VisionTestStats {
+	t.Helper()
+
+	stats := NewVisionTestStats()
+	start := time.Now()
+
+	errorsChan := make(chan error, config.NumWorkers*config.OperationsPerWorker)
+	done := make(chan bool, config.NumWorkers)
+
+	// Start workers
+	for i := 0; i < config.NumWorkers; i++ {
+		go func(workerID int) {
+			defer func() { done <- true }()
+
+			for j := 0; j < config.OperationsPerWorker; j++ {
+				// Pick a file for this operation
+				fileIndex := (workerID*config.OperationsPerWorker + j) % len(imageFiles)
+				imageFile := imageFiles[fileIndex]
+
+				operationStart := time.Now()
+				err := visionOperation(imageFile)
+				operationDuration := time.Since(operationStart)
+
+				// Get file size
+				var fileSize int64
+				if fileInfo, statErr := os.Stat(imageFile); statErr == nil {
+					fileSize = fileInfo.Size()
+				}
+
+				// Record result
+				stats.RecordFileResult(fileSize, err == nil, 1, operationDuration)
+
+				if err != nil {
+					errorsChan <- err
+				}
+			}
+		}(i)
+	}
+
+	// Wait for all workers to complete
+	for i := 0; i < config.NumWorkers; i++ {
+		<-done
+	}
+	close(errorsChan)
+
+	// Collect errors
+	var errors []error
+	for err := range errorsChan {
+		errors = append(errors, err)
+	}
+
+	totalTime := time.Since(start)
+
+	t.Logf("Vision stress test completed: %s, %d errors in %v",
+		stats.GetSummary(), len(errors), totalTime)
+
+	// Log some errors if any
+	if len(errors) > 0 && len(errors) <= 5 {
+		for i, err := range errors {
+			t.Logf("  Error %d: %v", i+1, err)
+		}
+	} else if len(errors) > 5 {
+		t.Logf("  First 3 errors:")
+		for i := 0; i < 3; i++ {
+			t.Logf("    Error %d: %v", i+1, errors[i])
+		}
+		t.Logf("  ... and %d more errors", len(errors)-3)
+	}
+
+	return stats
+}
