@@ -1,0 +1,15 @@
+Large File Test - 大文件测试
+这是一个用于测试大文件处理和gzip压缩的测试文件。
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+中文段落测试：
+在这个数字化时代，计算机科学和信息技术发展迅速。人工智能、机器学习、大数据分析等技术正在改变我们的生活方式。从智能手机到自动驾驶汽车，从语音助手到推荐系统，技术的进步让我们的生活更加便利和高效。
+
+日本語のテスト：
+コンピューターサイエンスの分野では、アルゴリズムとデータ構造が基本的な概念です。プログラミング言語を学習し、ソフトウェア開発のスキルを向上させることは、現代社会において非常に重要です。
+
+Korean Test - 한국어 테스트：
+컴퓨터과학은 현대 사회의 핵심 분야 중 하나입니다. 프로그래밍, 데이터베이스, 네트워크, 보안 등 다양한 영역이 포함되어 있으며, 지속적인 학습과 연구가 필요합니다.
+
+Repeated Content for Size (重复内容以增加文件大小)： 
