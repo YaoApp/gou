@@ -81,20 +81,21 @@ func NewVision(option VisionOption) (*Vision, error) {
 }
 
 // Convert converts a file to plain text by calling ConvertStream
-func (v *Vision) Convert(ctx context.Context, file string, callback ...types.ConverterProgress) (string, error) {
-	v.reportProgress(types.ConverterStatusPending, "Opening image file", 0.0, callback...)
+func (v *Vision) Convert(ctx context.Context, file string, callback ...types.ConverterProgress) (*types.ConvertResult, error) {
+	v.reportProgress(types.ConverterStatusPending, "Opening file", 0.0, callback...)
 
+	// Open the file
 	f, err := os.Open(file)
 	if err != nil {
 		v.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to open file: %v", err), 0.0, callback...)
-		return "", fmt.Errorf("failed to open file %s: %w", file, err)
+		return nil, fmt.Errorf("failed to open file %s: %w", file, err)
 	}
 	defer f.Close()
 
-	v.reportProgress(types.ConverterStatusPending, "Processing image stream", 0.1, callback...)
+	// Use ConvertStream to process the file
 	result, err := v.ConvertStream(ctx, f, callback...)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	v.reportProgress(types.ConverterStatusSuccess, "File conversion completed", 1.0, callback...)
@@ -102,7 +103,7 @@ func (v *Vision) Convert(ctx context.Context, file string, callback ...types.Con
 }
 
 // ConvertStream converts an image stream to text description using vision AI
-func (v *Vision) ConvertStream(ctx context.Context, stream io.ReadSeeker, callback ...types.ConverterProgress) (string, error) {
+func (v *Vision) ConvertStream(ctx context.Context, stream io.ReadSeeker, callback ...types.ConverterProgress) (*types.ConvertResult, error) {
 	v.reportProgress(types.ConverterStatusPending, "Starting image processing", 0.0, callback...)
 
 	// Check if gzipped
@@ -112,14 +113,14 @@ func (v *Vision) ConvertStream(ctx context.Context, stream io.ReadSeeker, callba
 	n, err := stream.Read(peekBuffer)
 	if err != nil && err != io.EOF {
 		v.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to peek stream: %v", err), 0.0, callback...)
-		return "", fmt.Errorf("failed to peek stream: %w", err)
+		return nil, fmt.Errorf("failed to peek stream: %w", err)
 	}
 
 	// Reset stream position
 	_, err = stream.Seek(0, io.SeekStart)
 	if err != nil {
 		v.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to reset stream: %v", err), 0.0, callback...)
-		return "", fmt.Errorf("failed to reset stream: %w", err)
+		return nil, fmt.Errorf("failed to reset stream: %w", err)
 	}
 
 	// Check for gzip magic bytes (0x1f, 0x8b)
@@ -129,7 +130,7 @@ func (v *Vision) ConvertStream(ctx context.Context, stream io.ReadSeeker, callba
 		gzReader, err := gzip.NewReader(stream)
 		if err != nil {
 			v.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to create gzip reader: %v", err), 0.0, callback...)
-			return "", fmt.Errorf("failed to create gzip reader: %w", err)
+			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
 		}
 		defer gzReader.Close()
 		reader = gzReader
@@ -141,7 +142,7 @@ func (v *Vision) ConvertStream(ctx context.Context, stream io.ReadSeeker, callba
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		v.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to read stream: %v", err), 0.0, callback...)
-		return "", fmt.Errorf("failed to read stream: %w", err)
+		return nil, fmt.Errorf("failed to read stream: %w", err)
 	}
 
 	v.reportProgress(types.ConverterStatusPending, "Validating image format", 0.2, callback...)
@@ -150,7 +151,7 @@ func (v *Vision) ConvertStream(ctx context.Context, stream io.ReadSeeker, callba
 	processedData, contentType, err := v.validateAndProcessImage(data)
 	if err != nil {
 		v.reportProgress(types.ConverterStatusError, fmt.Sprintf("Image validation failed: %v", err), 0.0, callback...)
-		return "", err
+		return nil, err
 	}
 
 	v.reportProgress(types.ConverterStatusPending, "Compressing image", 0.4, callback...)
@@ -159,7 +160,7 @@ func (v *Vision) ConvertStream(ctx context.Context, stream io.ReadSeeker, callba
 	compressedData, err := v.compressImage(processedData, contentType)
 	if err != nil {
 		v.reportProgress(types.ConverterStatusError, fmt.Sprintf("Image compression failed: %v", err), 0.0, callback...)
-		return "", err
+		return nil, err
 	}
 
 	v.reportProgress(types.ConverterStatusPending, "Converting to base64", 0.6, callback...)
@@ -167,16 +168,16 @@ func (v *Vision) ConvertStream(ctx context.Context, stream io.ReadSeeker, callba
 	// Convert to base64
 	base64Data := base64.StdEncoding.EncodeToString(compressedData)
 
-	v.reportProgress(types.ConverterStatusPending, "Sending to LLM", 0.8, callback...)
+	v.reportProgress(types.ConverterStatusPending, "Processing with LLM", 0.8, callback...)
 
-	// Send to LLM using StreamLLM
+	// Process with LLM
 	result, err := v.processWithLLM(ctx, base64Data, contentType, callback...)
 	if err != nil {
 		v.reportProgress(types.ConverterStatusError, fmt.Sprintf("LLM processing failed: %v", err), 0.0, callback...)
-		return "", err
+		return nil, err
 	}
 
-	v.reportProgress(types.ConverterStatusSuccess, "Image conversion completed", 1.0, callback...)
+	v.reportProgress(types.ConverterStatusSuccess, "Vision conversion completed", 1.0, callback...)
 	return result, nil
 }
 
@@ -282,7 +283,7 @@ func (v *Vision) compressImage(data []byte, contentType string) ([]byte, error) 
 }
 
 // processWithLLM sends the base64 image to LLM and returns the description
-func (v *Vision) processWithLLM(ctx context.Context, base64Data, contentType string, callback ...types.ConverterProgress) (string, error) {
+func (v *Vision) processWithLLM(ctx context.Context, base64Data, contentType string, callback ...types.ConverterProgress) (*types.ConvertResult, error) {
 	// Get model from Vision settings or connector
 	model := v.Model
 	if model == "" {
@@ -355,16 +356,29 @@ func (v *Vision) processWithLLM(ctx context.Context, base64Data, contentType str
 	// Make streaming request
 	err := utils.StreamLLM(ctx, v.Connector, "chat/completions", payload, streamCallback)
 	if err != nil {
-		return "", fmt.Errorf("streaming request failed: %w", err)
+		return nil, fmt.Errorf("streaming request failed: %w", err)
 	}
 
 	// Get the accumulated text description
 	description := strings.TrimSpace(resultContent.String())
 	if description == "" {
-		return "", errors.New("no description received from LLM")
+		return nil, errors.New("no description received from LLM")
 	}
 
-	return description, nil
+	// Create metadata with vision-specific information
+	metadata := map[string]interface{}{
+		"source_type":        "vision",
+		"content_type":       contentType,
+		"model":              model,
+		"language":           v.Language,
+		"compress_size":      v.CompressSize,
+		"description_length": len(description),
+	}
+
+	return &types.ConvertResult{
+		Text:     description,
+		Metadata: metadata,
+	}, nil
 }
 
 // extractContentFromStreamChunk extracts content from SSE streaming chunk

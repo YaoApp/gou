@@ -58,16 +58,26 @@ func TestUTF8_Convert_TextFiles(t *testing.T) {
 				t.Fatalf("Convert failed for %s: %v", testFile.Description, err)
 			}
 
-			if result == "" && testFile.Name != "test.empty.txt" {
-				t.Errorf("Convert returned empty result for %s", testFile.Description)
+			if result == nil {
+				t.Errorf("Convert returned nil result for %s", testFile.Description)
+				return
+			}
+
+			if result.Text == "" && testFile.Name != "test.empty.txt" {
+				t.Errorf("Convert returned empty text for %s", testFile.Description)
 			}
 
 			// Basic UTF-8 validation
-			if !isValidUTF8(result) {
-				t.Errorf("Result is not valid UTF-8 for %s", testFile.Description)
+			if !isValidUTF8(result.Text) {
+				t.Errorf("Result text is not valid UTF-8 for %s", testFile.Description)
 			}
 
-			t.Logf("%s: Converted %d bytes successfully", testFile.Description, len(result))
+			// Check metadata
+			if result.Metadata == nil {
+				t.Errorf("Convert returned nil metadata for %s", testFile.Description)
+			}
+
+			t.Logf("%s: Converted %d bytes successfully with metadata: %v", testFile.Description, len(result.Text), result.Metadata)
 		})
 	}
 }
@@ -92,16 +102,21 @@ func TestUTF8_Convert_GzipFiles(t *testing.T) {
 				t.Fatalf("Convert failed for %s: %v", testFile.Description, err)
 			}
 
-			if result == "" && !strings.Contains(testFile.Name, "empty") {
-				t.Errorf("Convert returned empty result for %s", testFile.Description)
+			if result == nil {
+				t.Errorf("Convert returned nil result for %s", testFile.Description)
+				return
+			}
+
+			if result.Text == "" && !strings.Contains(testFile.Name, "empty") {
+				t.Errorf("Convert returned empty text for %s", testFile.Description)
 			}
 
 			// Basic UTF-8 validation
-			if !isValidUTF8(result) {
-				t.Errorf("Result is not valid UTF-8 for %s", testFile.Description)
+			if !isValidUTF8(result.Text) {
+				t.Errorf("Result text is not valid UTF-8 for %s", testFile.Description)
 			}
 
-			t.Logf("%s: Converted %d bytes successfully", testFile.Description, len(result))
+			t.Logf("%s: Converted %d bytes successfully with metadata: %v", testFile.Description, len(result.Text), result.Metadata)
 		})
 	}
 }
@@ -120,8 +135,12 @@ func TestUTF8_Convert_BinaryFiles(t *testing.T) {
 			}
 
 			if err == nil {
+				var resultLen int
+				if result != nil {
+					resultLen = len(result.Text)
+				}
 				t.Errorf("Expected error for binary file %s, but conversion succeeded with result length %d",
-					testFile.Description, len(result))
+					testFile.Description, resultLen)
 			} else {
 				// Check that error message indicates binary content
 				if !strings.Contains(err.Error(), "binary") {
@@ -163,15 +182,19 @@ func TestUTF8_ConvertStream_WithSeeker(t *testing.T) {
 		t.Fatalf("ConvertStream failed: %v", err)
 	}
 
-	if result == "" {
-		t.Error("ConvertStream returned empty result")
+	if result == nil {
+		t.Fatal("ConvertStream returned nil result")
 	}
 
-	if !isValidUTF8(result) {
-		t.Error("Result is not valid UTF-8")
+	if result.Text == "" {
+		t.Error("ConvertStream returned empty text")
 	}
 
-	t.Logf("ConvertStream converted %d bytes successfully", len(result))
+	if !isValidUTF8(result.Text) {
+		t.Error("Result text is not valid UTF-8")
+	}
+
+	t.Logf("ConvertStream converted %d bytes successfully with metadata: %v", len(result.Text), result.Metadata)
 }
 
 func TestUTF8_ConvertStream_WithGzip(t *testing.T) {
@@ -191,15 +214,19 @@ func TestUTF8_ConvertStream_WithGzip(t *testing.T) {
 		t.Fatalf("ConvertStream failed for gzip: %v", err)
 	}
 
-	if result == "" {
+	if result == nil {
+		t.Error("ConvertStream returned nil result for gzip")
+	}
+
+	if result.Text == "" {
 		t.Error("ConvertStream returned empty result for gzip")
 	}
 
-	if !isValidUTF8(result) {
-		t.Error("Result is not valid UTF-8 for gzip")
+	if !isValidUTF8(result.Text) {
+		t.Error("Result text is not valid UTF-8 for gzip")
 	}
 
-	t.Logf("ConvertStream (gzip) converted %d bytes successfully", len(result))
+	t.Logf("ConvertStream (gzip) converted %d bytes successfully with metadata: %v", len(result.Text), result.Metadata)
 }
 
 // ==== Progress Callback Tests ====
@@ -216,7 +243,11 @@ func TestUTF8_Convert_WithProgressCallback(t *testing.T) {
 		t.Fatalf("Convert with callback failed: %v", err)
 	}
 
-	if result == "" {
+	if result == nil {
+		t.Error("Convert returned nil result")
+	}
+
+	if result.Text == "" {
 		t.Error("Convert returned empty result")
 	}
 
@@ -268,8 +299,8 @@ func TestUTF8_ConvertStream_EmptyStream(t *testing.T) {
 		t.Fatalf("ConvertStream failed for empty file: %v", err)
 	}
 
-	if strings.TrimSpace(result) != "" {
-		t.Errorf("Expected empty result for empty file, got: %q", result)
+	if strings.TrimSpace(result.Text) != "" {
+		t.Errorf("Expected empty result for empty file, got: %q", result.Text)
 	}
 
 	t.Log("Empty file handled correctly")
@@ -465,7 +496,7 @@ func TestUTF8_BOMHandling(t *testing.T) {
 
 	// Check that BOM is removed (UTF-8 BOM is EF BB BF which becomes \uFEFF in UTF-8 string)
 	// The BOM character in UTF-8 string representation is at the beginning
-	if strings.HasPrefix(result, "\uFEFF") {
+	if strings.HasPrefix(result.Text, "\uFEFF") {
 		t.Error("BOM was not removed from result")
 	}
 
@@ -508,7 +539,11 @@ func TestUTF8_fastReadUTF8(t *testing.T) {
 		t.Fatalf("fastReadUTF8 failed: %v", err)
 	}
 
-	if result == "" {
+	if result == nil {
+		t.Error("fastReadUTF8 returned nil result")
+	}
+
+	if result.Text == "" {
 		t.Error("fastReadUTF8 returned empty result")
 	}
 
@@ -669,7 +704,11 @@ func TestUTF8_ConvertStream_WithProgressCallback(t *testing.T) {
 		t.Fatalf("ConvertStream with callback failed: %v", err)
 	}
 
-	if result == "" {
+	if result == nil {
+		t.Error("ConvertStream returned nil result")
+	}
+
+	if result.Text == "" {
 		t.Error("ConvertStream returned empty result")
 	}
 
@@ -759,7 +798,11 @@ func TestUTF8_FastPath_Detection(t *testing.T) {
 		t.Fatalf("Convert failed: %v", err)
 	}
 
-	if result == "" {
+	if result == nil {
+		t.Error("Convert returned nil result")
+	}
+
+	if result.Text == "" {
 		t.Error("Convert returned empty result")
 	}
 

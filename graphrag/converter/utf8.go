@@ -27,19 +27,19 @@ func NewUTF8() *UTF8 {
 }
 
 // Convert converts a file to UTF-8 plain text with progress callbacks
-func (c *UTF8) Convert(ctx context.Context, file string, callback ...types.ConverterProgress) (string, error) {
+func (c *UTF8) Convert(ctx context.Context, file string, callback ...types.ConverterProgress) (*types.ConvertResult, error) {
 	c.reportProgress(types.ConverterStatusPending, "Opening file", 0.0, callback...)
 
 	f, err := os.Open(file)
 	if err != nil {
 		c.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to open file: %v", err), 0.0, callback...)
-		return "", fmt.Errorf("failed to open file %s: %w", file, err)
+		return nil, fmt.Errorf("failed to open file %s: %w", file, err)
 	}
 	defer f.Close()
 
 	result, err := c.ConvertStream(ctx, f, callback...)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	c.reportProgress(types.ConverterStatusSuccess, "File conversion completed", 1.0, callback...)
@@ -47,7 +47,7 @@ func (c *UTF8) Convert(ctx context.Context, file string, callback ...types.Conve
 }
 
 // ConvertStream converts a stream to UTF-8 plain text with gzip support using streaming
-func (c *UTF8) ConvertStream(ctx context.Context, stream io.ReadSeeker, callback ...types.ConverterProgress) (string, error) {
+func (c *UTF8) ConvertStream(ctx context.Context, stream io.ReadSeeker, callback ...types.ConverterProgress) (*types.ConvertResult, error) {
 	c.reportProgress(types.ConverterStatusPending, "Starting conversion", 0.0, callback...)
 
 	// Check if gzipped
@@ -57,17 +57,17 @@ func (c *UTF8) ConvertStream(ctx context.Context, stream io.ReadSeeker, callback
 	n, err := io.ReadFull(stream, peekBuffer)
 	if err != nil && err != io.ErrUnexpectedEOF {
 		if err == io.EOF {
-			return "", fmt.Errorf("empty stream")
+			return nil, fmt.Errorf("empty stream")
 		}
 		c.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to read stream: %v", err), 0.0, callback...)
-		return "", fmt.Errorf("failed to read stream: %w", err)
+		return nil, fmt.Errorf("failed to read stream: %w", err)
 	}
 
 	// Reset to beginning
 	_, err = stream.Seek(0, io.SeekStart)
 	if err != nil {
 		c.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to reset stream: %v", err), 0.0, callback...)
-		return "", fmt.Errorf("failed to reset stream: %w", err)
+		return nil, fmt.Errorf("failed to reset stream: %w", err)
 	}
 
 	// Check gzip magic number (0x1f, 0x8b)
@@ -76,7 +76,7 @@ func (c *UTF8) ConvertStream(ctx context.Context, stream io.ReadSeeker, callback
 		gzipReader, err := gzip.NewReader(stream)
 		if err != nil {
 			c.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to create gzip reader: %v", err), 0.0, callback...)
-			return "", fmt.Errorf("failed to create gzip reader: %w", err)
+			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
 		}
 		defer gzipReader.Close()
 		reader = gzipReader
@@ -96,7 +96,7 @@ func (c *UTF8) ConvertStream(ctx context.Context, stream io.ReadSeeker, callback
 		_, err = stream.Seek(0, io.SeekStart)
 		if err != nil {
 			c.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to reset stream: %v", err), 0.0, callback...)
-			return "", fmt.Errorf("failed to reset stream: %w", err)
+			return nil, fmt.Errorf("failed to reset stream: %w", err)
 		}
 	}
 
@@ -106,11 +106,22 @@ func (c *UTF8) ConvertStream(ctx context.Context, stream io.ReadSeeker, callback
 	text, err := c.streamToUTF8(ctx, reader, callback...)
 	if err != nil {
 		c.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to process stream: %v", err), 0.0, callback...)
-		return "", fmt.Errorf("failed to process stream: %w", err)
+		return nil, fmt.Errorf("failed to process stream: %w", err)
 	}
 
 	c.reportProgress(types.ConverterStatusSuccess, "Conversion completed", 1.0, callback...)
-	return text, nil
+
+	// Create metadata with basic information
+	metadata := map[string]interface{}{
+		"encoding":    "utf-8",
+		"gzipped":     isGzipped,
+		"text_length": len(text),
+	}
+
+	return &types.ConvertResult{
+		Text:     text,
+		Metadata: metadata,
+	}, nil
 }
 
 // streamToUTF8 processes the stream in chunks to save memory
@@ -299,13 +310,13 @@ func (c *UTF8) quickTextCheck(stream io.ReadSeeker) (isUTF8 bool, isText bool) {
 }
 
 // fastReadUTF8 reads UTF-8 content directly with minimal processing
-func (c *UTF8) fastReadUTF8(ctx context.Context, stream io.ReadSeeker, callback ...types.ConverterProgress) (string, error) {
+func (c *UTF8) fastReadUTF8(ctx context.Context, stream io.ReadSeeker, callback ...types.ConverterProgress) (*types.ConvertResult, error) {
 	c.reportProgress(types.ConverterStatusPending, "Reading UTF-8 content", 0.5, callback...)
 
 	// Reset to beginning
 	_, err := stream.Seek(0, io.SeekStart)
 	if err != nil {
-		return "", fmt.Errorf("failed to reset stream: %w", err)
+		return nil, fmt.Errorf("failed to reset stream: %w", err)
 	}
 
 	var result strings.Builder
@@ -314,7 +325,7 @@ func (c *UTF8) fastReadUTF8(ctx context.Context, stream io.ReadSeeker, callback 
 	for {
 		select {
 		case <-ctx.Done():
-			return "", ctx.Err()
+			return nil, ctx.Err()
 		default:
 		}
 
@@ -335,17 +346,28 @@ func (c *UTF8) fastReadUTF8(ctx context.Context, stream io.ReadSeeker, callback 
 			break
 		}
 		if err != nil {
-			return "", fmt.Errorf("failed to read stream: %w", err)
+			return nil, fmt.Errorf("failed to read stream: %w", err)
 		}
 	}
 
 	text := result.String()
 	if text == "" {
-		return "", fmt.Errorf("no content to convert")
+		return nil, fmt.Errorf("no content to convert")
 	}
 
 	c.reportProgress(types.ConverterStatusSuccess, "Fast UTF-8 read completed", 1.0, callback...)
-	return text, nil
+
+	// Create metadata for fast path
+	metadata := map[string]interface{}{
+		"encoding":    "utf-8",
+		"fast_path":   true,
+		"text_length": len(text),
+	}
+
+	return &types.ConvertResult{
+		Text:     text,
+		Metadata: metadata,
+	}, nil
 }
 
 // isTextContent checks if the data appears to be text (not binary)
