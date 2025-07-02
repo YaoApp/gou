@@ -78,6 +78,7 @@ require (
 )
 
 require (
+	github.com/dgraph-io/badger/v4 v4.7.0
 	github.com/evanw/esbuild v0.25.4
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible
 	github.com/google/uuid v1.6.0
@@ -93,7 +94,6 @@ require (
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
-	github.com/dgraph-io/badger/v4 v4.7.0 // indirect
 	github.com/dgraph-io/ristretto/v2 v2.2.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect

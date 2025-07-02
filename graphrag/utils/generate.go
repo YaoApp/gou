@@ -11,9 +11,9 @@ import (
 	"github.com/yaoapp/gou/graphrag/types"
 )
 
-// GenDocID generates a UUID for document identification
+// GenDocID generates a UUID for document identification (without dashes)
 func GenDocID() string {
-	return uuid.New().String()
+	return strings.ReplaceAll(uuid.New().String(), "-", "")
 }
 
 // GenChunkID generates a UUID for chunk identification
@@ -66,16 +66,16 @@ func IsValidUUID(id string) bool {
 }
 
 // ValidateName validates collection name format
-// Only allows a-z, A-Z, 0-9, and dash characters
+// Only allows a-z, A-Z, 0-9, and underscore characters
 func ValidateName(name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return fmt.Errorf("collection name cannot be empty")
 	}
 
-	validNamePattern := regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
+	validNamePattern := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 	if !validNamePattern.MatchString(name) {
-		return fmt.Errorf("invalid collection name format: '%s', only letters, numbers, and dashes are allowed", name)
+		return fmt.Errorf("invalid collection name format: '%s', only letters, numbers, and underscores are allowed", name)
 	}
 
 	return nil

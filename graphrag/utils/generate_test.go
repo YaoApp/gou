@@ -16,8 +16,10 @@ func TestValidateName(t *testing.T) {
 		errorMsg    string
 	}{
 		{
-			name:      "Valid name with dashes",
-			inputName: "user-documents",
+			name:        "Name with dashes - should fail",
+			inputName:   "user-documents",
+			expectError: true,
+			errorMsg:    "invalid collection name format",
 		},
 		{
 			name:        "Name with spaces - should fail",
@@ -42,10 +44,16 @@ func TestValidateName(t *testing.T) {
 			inputName: "collection123",
 		},
 		{
-			name:        "Name with underscore - should fail",
-			inputName:   "test_collection",
-			expectError: true,
-			errorMsg:    "invalid collection name format",
+			name:      "Valid name with underscore",
+			inputName: "test_collection",
+		},
+		{
+			name:      "Valid name with underscores and numbers",
+			inputName: "user_documents_123",
+		},
+		{
+			name:      "Valid simple name",
+			inputName: "documents",
 		},
 	}
 
@@ -103,8 +111,10 @@ func TestGetCollectionIDs(t *testing.T) {
 		errorMsg    string
 	}{
 		{
-			name:      "Valid name with dashes",
-			inputName: "user-documents",
+			name:        "Name with dashes - should fail",
+			inputName:   "user-documents",
+			expectError: true,
+			errorMsg:    "invalid collection name format",
 		},
 		{
 			name:        "Name with spaces - should fail",
@@ -125,14 +135,22 @@ func TestGetCollectionIDs(t *testing.T) {
 			errorMsg:    "invalid collection name format",
 		},
 		{
-			name:      "Valid name with numbers",
-			inputName: "Test-Collection-123",
-		},
-		{
-			name:        "Name with underscore - should fail",
-			inputName:   "test_collection",
+			name:        "Name with dashes and numbers - should fail",
+			inputName:   "Test-Collection-123",
 			expectError: true,
 			errorMsg:    "invalid collection name format",
+		},
+		{
+			name:      "Valid name with underscore",
+			inputName: "test_collection",
+		},
+		{
+			name:      "Valid name with underscores and numbers",
+			inputName: "Test_Collection_123",
+		},
+		{
+			name:      "Valid simple name",
+			inputName: "documents",
 		},
 	}
 
@@ -403,7 +421,7 @@ func TestIsValidUUID(t *testing.T) {
 
 func TestGetCollectionIDsUniqueness(t *testing.T) {
 	// Test that GetCollectionIDs with same name produces consistent results
-	vectorName := "test-collection"
+	vectorName := "test_collection"
 
 	result1, err1 := GetCollectionIDs(vectorName)
 	if err1 != nil {
@@ -436,20 +454,20 @@ func TestExtractCollectionIDFromVectorName(t *testing.T) {
 	}{
 		{
 			name:        "Valid vector name with suffix",
-			vectorName:  "user-docs_vector",
-			expected:    "user-docs",
+			vectorName:  "user_docs_vector",
+			expected:    "user_docs",
 			description: "Should extract collection ID from valid vector name",
 		},
 		{
 			name:        "Vector name without suffix",
-			vectorName:  "user-docs",
+			vectorName:  "user_docs",
 			expected:    "",
 			description: "Should return empty string if no _vector suffix (strict mode)",
 		},
 		{
 			name:        "Complex collection name",
-			vectorName:  "my-test-collection-123_vector",
-			expected:    "my-test-collection-123",
+			vectorName:  "my_test_collection_123_vector",
+			expected:    "my_test_collection_123",
 			description: "Should handle complex collection names",
 		},
 		{
@@ -466,8 +484,8 @@ func TestExtractCollectionIDFromVectorName(t *testing.T) {
 		},
 		{
 			name:        "Whitespace handling",
-			vectorName:  "  test-collection_vector  ",
-			expected:    "test-collection",
+			vectorName:  "  test_collection_vector  ",
+			expected:    "test_collection",
 			description: "Should trim whitespace and extract correctly",
 		},
 		{
@@ -498,20 +516,20 @@ func TestExtractCollectionIDFromGraphName(t *testing.T) {
 	}{
 		{
 			name:        "Valid graph name with suffix",
-			graphName:   "user-docs_graph",
-			expected:    "user-docs",
+			graphName:   "user_docs_graph",
+			expected:    "user_docs",
 			description: "Should extract collection ID from valid graph name",
 		},
 		{
 			name:        "Graph name without suffix",
-			graphName:   "user-docs",
+			graphName:   "user_docs",
 			expected:    "",
 			description: "Should return empty string if no _graph suffix (strict mode)",
 		},
 		{
 			name:        "Complex collection name",
-			graphName:   "my-test-collection-123_graph",
-			expected:    "my-test-collection-123",
+			graphName:   "my_test_collection_123_graph",
+			expected:    "my_test_collection_123",
 			description: "Should handle complex collection names",
 		},
 		{
@@ -528,8 +546,8 @@ func TestExtractCollectionIDFromGraphName(t *testing.T) {
 		},
 		{
 			name:        "Whitespace handling",
-			graphName:   "  test-collection_graph  ",
-			expected:    "test-collection",
+			graphName:   "  test_collection_graph  ",
+			expected:    "test_collection",
 			description: "Should trim whitespace and extract correctly",
 		},
 	}
@@ -554,20 +572,20 @@ func TestExtractCollectionIDFromStoreName(t *testing.T) {
 	}{
 		{
 			name:        "Valid store name with suffix",
-			storeName:   "user-docs_store",
-			expected:    "user-docs",
+			storeName:   "user_docs_store",
+			expected:    "user_docs",
 			description: "Should extract collection ID from valid store name",
 		},
 		{
 			name:        "Store name without suffix",
-			storeName:   "user-docs",
+			storeName:   "user_docs",
 			expected:    "",
 			description: "Should return empty string if no _store suffix (strict mode)",
 		},
 		{
 			name:        "Complex collection name",
-			storeName:   "my-test-collection-123_store",
-			expected:    "my-test-collection-123",
+			storeName:   "my_test_collection_123_store",
+			expected:    "my_test_collection_123",
 			description: "Should handle complex collection names",
 		},
 		{
@@ -584,8 +602,8 @@ func TestExtractCollectionIDFromStoreName(t *testing.T) {
 		},
 		{
 			name:        "Whitespace handling",
-			storeName:   "  test-collection_store  ",
-			expected:    "test-collection",
+			storeName:   "  test_collection_store  ",
+			expected:    "test_collection",
 			description: "Should trim whitespace and extract correctly",
 		},
 	}
@@ -604,11 +622,11 @@ func TestExtractCollectionIDFromStoreName(t *testing.T) {
 func TestRoundTripCollectionIDs(t *testing.T) {
 	// Test that GetCollectionIDs and Extract functions are proper inverses
 	testNames := []string{
-		"user-docs",
-		"my-test-collection",
+		"user_docs",
+		"my_test_collection",
 		"simple",
-		"complex-name-with-dashes-123",
-		"TEST-MIXED-CASE", // This will be converted to lowercase
+		"complex_name_with_underscores_123",
+		"TEST_MIXED_CASE", // This will be converted to lowercase
 	}
 
 	for _, originalName := range testNames {
