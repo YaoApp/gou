@@ -17,7 +17,7 @@ func TestSerializeCollection(t *testing.T) {
 		{
 			name: "Valid basic collection",
 			collection: Collection{
-				ID: "test-collection",
+				ID: "test_collection",
 				Metadata: map[string]interface{}{
 					"type":      "document",
 					"category":  "research",
@@ -31,7 +31,7 @@ func TestSerializeCollection(t *testing.T) {
 		{
 			name: "Collection with nil metadata",
 			collection: Collection{
-				ID:       "test-nil-metadata",
+				ID:       "test_nil_metadata",
 				Metadata: nil,
 			},
 			expectError: false,
@@ -40,7 +40,7 @@ func TestSerializeCollection(t *testing.T) {
 		{
 			name: "Collection with empty metadata",
 			collection: Collection{
-				ID:       "test-empty-metadata",
+				ID:       "test_empty_metadata",
 				Metadata: map[string]interface{}{},
 			},
 			expectError: false,
@@ -49,7 +49,7 @@ func TestSerializeCollection(t *testing.T) {
 		{
 			name: "Collection with complex metadata",
 			collection: Collection{
-				ID: "complex-collection",
+				ID: "complex_collection",
 				Metadata: map[string]interface{}{
 					"nested": map[string]interface{}{
 						"level1": map[string]interface{}{
@@ -79,7 +79,7 @@ func TestSerializeCollection(t *testing.T) {
 		{
 			name: "Collection with unserializable metadata (function)",
 			collection: Collection{
-				ID: "error-collection",
+				ID: "error_collection",
 				Metadata: map[string]interface{}{
 					"function": func() {},
 				},
@@ -90,7 +90,7 @@ func TestSerializeCollection(t *testing.T) {
 		{
 			name: "Collection with unserializable metadata (channel)",
 			collection: Collection{
-				ID: "error-collection-channel",
+				ID: "error_collection_channel",
 				Metadata: map[string]interface{}{
 					"channel": make(chan int),
 				},
@@ -146,9 +146,9 @@ func TestDeserializeCollection(t *testing.T) {
 	}{
 		{
 			name:        "Valid JSON with basic data",
-			jsonData:    `{"id":"test-collection","metadata":{"type":"document","count":5}}`,
+			jsonData:    `{"id":"test_collection","metadata":{"type":"document","count":5}}`,
 			expectError: false,
-			expectedID:  "test-collection",
+			expectedID:  "test_collection",
 			description: "Should deserialize valid JSON successfully",
 		},
 		{
