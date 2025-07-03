@@ -183,12 +183,13 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
 
-      - uses: FedericoCarboni/setup-ffmpeg@v3
-        id: setup-ffmpeg
-        with:
-          ffmpeg-version: release
-          architecture: x64
-          github-token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+      - name: Install FFmpeg 7.x
+        run: |
+          wget https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz
+          tar -xf ffmpeg-git-amd64-static.tar.xz
+          sudo cp ffmpeg-git-*-amd64-static/ffmpeg /usr/local/bin/
+          sudo cp ffmpeg-git-*-amd64-static/ffprobe /usr/local/bin/
+          sudo chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
 
       - name: Test FFmpeg
         run: ffmpeg -version
