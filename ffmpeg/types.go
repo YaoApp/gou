@@ -77,6 +77,42 @@ type BatchJob struct {
 	Error   string      `json:"error"`   // Error message if job failed
 }
 
+// ChunkOptions contains all the options for audio/video chunking operations.
+// It specifies input file, output directory, and chunking parameters.
+type ChunkOptions struct {
+	Input                  string            `json:"input"`                    // Input file path
+	OutputDir              string            `json:"output_dir"`               // Output directory for chunks
+	OutputPrefix           string            `json:"output_prefix"`            // Prefix for output chunk files
+	ChunkDuration          float64           `json:"chunk_duration"`           // Chunk duration in seconds
+	SilenceThreshold       float64           `json:"silence_threshold"`        // Silence threshold in dB (e.g., -40)
+	SilenceMinLength       float64           `json:"silence_min_length"`       // Minimum silence length in seconds to trigger a split
+	Format                 string            `json:"format"`                   // Output format (wav, mp3, mp4, etc.)
+	OverlapDuration        float64           `json:"overlap_duration"`         // Overlap between chunks in seconds
+	EnableSilenceDetection bool              `json:"enable_silence_detection"` // Whether to use silence detection for chunking
+	MaxChunkSize           int64             `json:"max_chunk_size"`           // Maximum chunk size in bytes (0 means no limit)
+	Options                map[string]string `json:"options"`                  // Additional FFmpeg command line options
+	OnProgress             ProgressCallback  `json:"-"`                        // Progress callback function
+}
+
+// ChunkInfo contains information about a generated chunk
+type ChunkInfo struct {
+	Index     int     `json:"index"`      // Chunk index (0-based)
+	StartTime float64 `json:"start_time"` // Start time in seconds
+	EndTime   float64 `json:"end_time"`   // End time in seconds
+	Duration  float64 `json:"duration"`   // Duration in seconds
+	FilePath  string  `json:"file_path"`  // Path to the chunk file
+	FileSize  int64   `json:"file_size"`  // File size in bytes
+	IsSilence bool    `json:"is_silence"` // Whether this chunk was created due to silence detection
+}
+
+// ChunkResult contains the results of a chunking operation
+type ChunkResult struct {
+	Chunks      []ChunkInfo `json:"chunks"`       // List of generated chunks
+	TotalChunks int         `json:"total_chunks"` // Total number of chunks created
+	TotalSize   int64       `json:"total_size"`   // Total size of all chunks in bytes
+	OutputDir   string      `json:"output_dir"`   // Output directory path
+}
+
 // SystemInfo contains information about the system and available FFmpeg tools.
 // It provides details about the operating system, FFmpeg versions, and hardware capabilities.
 type SystemInfo struct {
@@ -97,6 +133,10 @@ type FFmpeg interface {
 	// Single operations
 	Convert(ctx context.Context, options ConvertOptions) error // Convert a single media file
 	Extract(ctx context.Context, options ExtractOptions) error // Extract content from a single media file
+
+	// Chunking operations
+	ChunkAudio(ctx context.Context, options ChunkOptions) (*ChunkResult, error) // Chunk audio file with silence detection
+	ChunkVideo(ctx context.Context, options ChunkOptions) (*ChunkResult, error) // Chunk video file with silence detection
 
 	// Batch operations
 	ConvertBatch(ctx context.Context, jobs []ConvertOptions) error // Convert multiple media files

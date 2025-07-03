@@ -3,8 +3,11 @@ package ffmpeg
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -431,10 +434,308 @@ func (f *DarwinFFmpeg) executeCommand(ctx context.Context, args []string, onProg
 		// This would involve parsing FFmpeg's progress output
 	}
 
-	// Execute command
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("ffmpeg execution failed: %v", err)
+	// Execute command and capture output
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("ffmpeg execution failed: %v\nOutput: %s", err, string(output))
 	}
 
 	return nil
+}
+
+// ChunkAudio chunks audio file with optional silence detection
+func (f *DarwinFFmpeg) ChunkAudio(ctx context.Context, options ChunkOptions) (*ChunkResult, error) {
+	if f.GetActiveProcesses() >= f.config.MaxProcesses {
+		return nil, fmt.Errorf("maximum processes (%d) reached", f.config.MaxProcesses)
+	}
+
+	return f.performChunking(ctx, options, "audio")
+}
+
+// ChunkVideo chunks video file with optional silence detection
+func (f *DarwinFFmpeg) ChunkVideo(ctx context.Context, options ChunkOptions) (*ChunkResult, error) {
+	if f.GetActiveProcesses() >= f.config.MaxProcesses {
+		return nil, fmt.Errorf("maximum processes (%d) reached", f.config.MaxProcesses)
+	}
+
+	return f.performChunking(ctx, options, "video")
+}
+
+// performChunking performs the actual chunking operation for both audio and video
+func (f *DarwinFFmpeg) performChunking(ctx context.Context, options ChunkOptions, mediaType string) (*ChunkResult, error) {
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(options.OutputDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create output directory: %v", err)
+	}
+
+	// Get media duration first
+	duration, err := f.getMediaDuration(options.Input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get media duration: %v", err)
+	}
+
+	var chunks []ChunkInfo
+	var totalSize int64
+
+	if options.EnableSilenceDetection && mediaType == "audio" {
+		// Use silence detection for chunking
+		chunks, err = f.chunkWithSilenceDetection(ctx, options, duration)
+	} else {
+		// Use fixed duration chunking
+		chunks, err = f.chunkWithFixedDuration(ctx, options, duration, mediaType)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate total size
+	for i, chunk := range chunks {
+		if stat, err := os.Stat(chunk.FilePath); err == nil {
+			chunks[i].FileSize = stat.Size()
+			totalSize += chunks[i].FileSize
+		}
+	}
+
+	return &ChunkResult{
+		Chunks:      chunks,
+		TotalChunks: len(chunks),
+		TotalSize:   totalSize,
+		OutputDir:   options.OutputDir,
+	}, nil
+}
+
+// chunkWithFixedDuration creates chunks with fixed duration
+func (f *DarwinFFmpeg) chunkWithFixedDuration(ctx context.Context, options ChunkOptions, totalDuration float64, mediaType string) ([]ChunkInfo, error) {
+	var chunks []ChunkInfo
+	chunkIndex := 0
+
+	for startTime := 0.0; startTime < totalDuration; startTime += options.ChunkDuration {
+		endTime := startTime + options.ChunkDuration
+		if endTime > totalDuration {
+			endTime = totalDuration
+		}
+
+		// Add overlap if specified
+		actualEndTime := endTime
+		if options.OverlapDuration > 0 && endTime < totalDuration {
+			actualEndTime = endTime + options.OverlapDuration
+			if actualEndTime > totalDuration {
+				actualEndTime = totalDuration
+			}
+		}
+
+		chunkFilename := fmt.Sprintf("%s_%04d.%s", options.OutputPrefix, chunkIndex, options.Format)
+		chunkPath := filepath.Join(options.OutputDir, chunkFilename)
+
+		// Build FFmpeg command for this chunk
+		args := f.buildChunkArgs(options, startTime, actualEndTime, chunkPath, mediaType)
+
+		if err := f.executeCommand(ctx, args, options.OnProgress); err != nil {
+			return nil, fmt.Errorf("failed to create chunk %d: %v", chunkIndex, err)
+		}
+
+		chunk := ChunkInfo{
+			Index:     chunkIndex,
+			StartTime: startTime,
+			EndTime:   endTime,
+			Duration:  endTime - startTime,
+			FilePath:  chunkPath,
+			IsSilence: false,
+		}
+
+		chunks = append(chunks, chunk)
+		chunkIndex++
+	}
+
+	return chunks, nil
+}
+
+// chunkWithSilenceDetection creates chunks based on silence detection
+func (f *DarwinFFmpeg) chunkWithSilenceDetection(ctx context.Context, options ChunkOptions, totalDuration float64) ([]ChunkInfo, error) {
+	// First, detect silence periods
+	silencePeriods, err := f.detectSilencePeriods(ctx, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to detect silence periods: %v", err)
+	}
+
+	var chunks []ChunkInfo
+	chunkIndex := 0
+	lastEndTime := 0.0
+
+	for _, period := range silencePeriods {
+		// Create chunk before silence if there's content
+		if period.Start > lastEndTime && period.Start-lastEndTime >= 0.5 { // Minimum 0.5s chunk
+			chunkFilename := fmt.Sprintf("%s_%04d.%s", options.OutputPrefix, chunkIndex, options.Format)
+			chunkPath := filepath.Join(options.OutputDir, chunkFilename)
+
+			args := f.buildChunkArgs(options, lastEndTime, period.Start, chunkPath, "audio")
+
+			if err := f.executeCommand(ctx, args, options.OnProgress); err != nil {
+				return nil, fmt.Errorf("failed to create chunk %d: %v", chunkIndex, err)
+			}
+
+			chunk := ChunkInfo{
+				Index:     chunkIndex,
+				StartTime: lastEndTime,
+				EndTime:   period.Start,
+				Duration:  period.Start - lastEndTime,
+				FilePath:  chunkPath,
+				IsSilence: false,
+			}
+
+			chunks = append(chunks, chunk)
+			chunkIndex++
+		}
+
+		lastEndTime = period.End
+	}
+
+	// Create final chunk if there's remaining content
+	if lastEndTime < totalDuration && totalDuration-lastEndTime >= 0.5 {
+		chunkFilename := fmt.Sprintf("%s_%04d.%s", options.OutputPrefix, chunkIndex, options.Format)
+		chunkPath := filepath.Join(options.OutputDir, chunkFilename)
+
+		args := f.buildChunkArgs(options, lastEndTime, totalDuration, chunkPath, "audio")
+
+		if err := f.executeCommand(ctx, args, options.OnProgress); err != nil {
+			return nil, fmt.Errorf("failed to create final chunk %d: %v", chunkIndex, err)
+		}
+
+		chunk := ChunkInfo{
+			Index:     chunkIndex,
+			StartTime: lastEndTime,
+			EndTime:   totalDuration,
+			Duration:  totalDuration - lastEndTime,
+			FilePath:  chunkPath,
+			IsSilence: false,
+		}
+
+		chunks = append(chunks, chunk)
+	}
+
+	return chunks, nil
+}
+
+// detectSilencePeriods detects silence periods in audio
+func (f *DarwinFFmpeg) detectSilencePeriods(ctx context.Context, options ChunkOptions) ([]SilencePeriod, error) {
+	// Use FFmpeg silencedetect filter to find silence
+	args := []string{
+		"-i", options.Input,
+		"-af", fmt.Sprintf("silencedetect=noise=%fdB:d=%f", options.SilenceThreshold, options.SilenceMinLength),
+		"-f", "null",
+		"-",
+	}
+
+	cmd := exec.CommandContext(ctx, f.config.FFmpegPath, args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("silence detection failed: %v", err)
+	}
+
+	// Parse silence periods from output
+	return f.parseSilencePeriods(string(output)), nil
+}
+
+// parseSilencePeriods parses silence periods from FFmpeg output
+func (f *DarwinFFmpeg) parseSilencePeriods(output string) []SilencePeriod {
+	var periods []SilencePeriod
+	lines := strings.Split(output, "\n")
+
+	var currentStart float64 = -1
+
+	for _, line := range lines {
+		if strings.Contains(line, "silence_start:") {
+			// Extract start time
+			parts := strings.Split(line, "silence_start:")
+			if len(parts) > 1 {
+				timeStr := strings.TrimSpace(parts[1])
+				if start, err := strconv.ParseFloat(timeStr, 64); err == nil {
+					currentStart = start
+				}
+			}
+		} else if strings.Contains(line, "silence_end:") && currentStart >= 0 {
+			// Extract end time
+			parts := strings.Split(line, "silence_end:")
+			if len(parts) > 1 {
+				timeStr := strings.TrimSpace(strings.Split(parts[1], " ")[0])
+				if end, err := strconv.ParseFloat(timeStr, 64); err == nil {
+					periods = append(periods, SilencePeriod{
+						Start: currentStart,
+						End:   end,
+					})
+					currentStart = -1
+				}
+			}
+		}
+	}
+
+	return periods
+}
+
+// getMediaDuration gets the duration of a media file
+func (f *DarwinFFmpeg) getMediaDuration(inputFile string) (float64, error) {
+	cmd := exec.Command(f.config.FFprobePath,
+		"-v", "quiet",
+		"-show_entries", "format=duration",
+		"-of", "csv=p=0",
+		inputFile)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+
+	durationStr := strings.TrimSpace(string(output))
+	duration, err := strconv.ParseFloat(durationStr, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse duration: %v", err)
+	}
+
+	return duration, nil
+}
+
+// buildChunkArgs builds FFmpeg arguments for creating a chunk
+func (f *DarwinFFmpeg) buildChunkArgs(options ChunkOptions, startTime, endTime float64, outputPath, mediaType string) []string {
+	args := []string{
+		"-ss", fmt.Sprintf("%.3f", startTime),
+		"-i", options.Input,
+		"-t", fmt.Sprintf("%.3f", endTime-startTime),
+		"-threads", fmt.Sprintf("%d", f.config.MaxThreads),
+	}
+
+	// Add GPU acceleration if enabled
+	if f.config.EnableGPU {
+		// Use VideoToolbox for macOS hardware acceleration
+		if runtime.GOARCH == "arm64" {
+			// Apple Silicon
+			args = append(args, "-hwaccel", "videotoolbox")
+		} else {
+			// Intel Mac
+			args = append(args, "-hwaccel", "auto")
+		}
+	}
+
+	// Media type specific options
+	if mediaType == "audio" {
+		args = append(args, "-vn") // no video
+	}
+
+	// Add format if specified
+	if options.Format != "" {
+		args = append(args, "-f", options.Format)
+	}
+
+	// Add custom options
+	for key, value := range options.Options {
+		args = append(args, key, value)
+	}
+
+	// Avoid re-encoding when possible
+	if mediaType == "audio" && options.Format == "wav" {
+		args = append(args, "-acodec", "pcm_s16le")
+	}
+
+	args = append(args, outputPath)
+	return args
 }
