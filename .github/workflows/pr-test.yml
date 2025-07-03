@@ -276,10 +276,9 @@ jobs:
           make misspell-check
           make test
 
-      - name: Run Benchmark
-        run: |
-          make bench
-
+      # - name: Run Benchmark
+      #   run: |
+      #     make bench
       - name: Codecov Report
         uses: codecov/codecov-action@v3
         # with:

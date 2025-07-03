@@ -2,6 +2,7 @@ package ffmpeg
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -300,6 +301,24 @@ func TestWindowsImplementation(t *testing.T) {
 	if config.MaxProcesses != 0 {
 		t.Fatalf("Expected 0 MaxProcesses for Windows implementation, got: %d", config.MaxProcesses)
 	}
+
+	// Test ChunkAudio
+	_, err = windows.ChunkAudio(ctx, ChunkOptions{})
+	if err == nil {
+		t.Fatal("Expected error for Windows ChunkAudio, got nil")
+	}
+	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
+		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
+	}
+
+	// Test ChunkVideo
+	_, err = windows.ChunkVideo(ctx, ChunkOptions{})
+	if err == nil {
+		t.Fatal("Expected error for Windows ChunkVideo, got nil")
+	}
+	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
+		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
+	}
 }
 
 // ==== Type Tests ====
@@ -405,6 +424,125 @@ func TestConfig_Fields(t *testing.T) {
 	}
 	if config.GPUIndex != 1 {
 		t.Errorf("GPUIndex field not set correctly: expected %v, got %v", 1, config.GPUIndex)
+	}
+}
+
+func TestChunkOptions_Fields(t *testing.T) {
+	options := ChunkOptions{
+		Input:                  "/path/to/input.wav",
+		OutputDir:              "/tmp/chunks",
+		OutputPrefix:           "chunk",
+		ChunkDuration:          30.0,
+		SilenceThreshold:       -40.0,
+		SilenceMinLength:       1.0,
+		Format:                 "wav",
+		OverlapDuration:        0.5,
+		EnableSilenceDetection: true,
+		MaxChunkSize:           1024 * 1024,
+		Options:                map[string]string{"-ar": "44100"},
+	}
+
+	if options.Input != "/path/to/input.wav" {
+		t.Errorf("Input field not set correctly: expected %v, got %v", "/path/to/input.wav", options.Input)
+	}
+	if options.OutputDir != "/tmp/chunks" {
+		t.Errorf("OutputDir field not set correctly: expected %v, got %v", "/tmp/chunks", options.OutputDir)
+	}
+	if options.OutputPrefix != "chunk" {
+		t.Errorf("OutputPrefix field not set correctly: expected %v, got %v", "chunk", options.OutputPrefix)
+	}
+	if options.ChunkDuration != 30.0 {
+		t.Errorf("ChunkDuration field not set correctly: expected %v, got %v", 30.0, options.ChunkDuration)
+	}
+	if options.SilenceThreshold != -40.0 {
+		t.Errorf("SilenceThreshold field not set correctly: expected %v, got %v", -40.0, options.SilenceThreshold)
+	}
+	if options.SilenceMinLength != 1.0 {
+		t.Errorf("SilenceMinLength field not set correctly: expected %v, got %v", 1.0, options.SilenceMinLength)
+	}
+	if options.Format != "wav" {
+		t.Errorf("Format field not set correctly: expected %v, got %v", "wav", options.Format)
+	}
+	if options.OverlapDuration != 0.5 {
+		t.Errorf("OverlapDuration field not set correctly: expected %v, got %v", 0.5, options.OverlapDuration)
+	}
+	if !options.EnableSilenceDetection {
+		t.Errorf("EnableSilenceDetection field not set correctly: expected %v, got %v", true, options.EnableSilenceDetection)
+	}
+	if options.MaxChunkSize != 1024*1024 {
+		t.Errorf("MaxChunkSize field not set correctly: expected %v, got %v", 1024*1024, options.MaxChunkSize)
+	}
+	if options.Options["-ar"] != "44100" {
+		t.Errorf("Options field not set correctly: expected %v, got %v", "44100", options.Options["-ar"])
+	}
+}
+
+func TestChunkInfo_Fields(t *testing.T) {
+	info := ChunkInfo{
+		Index:     5,
+		StartTime: 150.5,
+		EndTime:   180.5,
+		Duration:  30.0,
+		FilePath:  "/tmp/chunk_0005.wav",
+		FileSize:  1024000,
+		IsSilence: false,
+	}
+
+	if info.Index != 5 {
+		t.Errorf("Index field not set correctly: expected %v, got %v", 5, info.Index)
+	}
+	if info.StartTime != 150.5 {
+		t.Errorf("StartTime field not set correctly: expected %v, got %v", 150.5, info.StartTime)
+	}
+	if info.EndTime != 180.5 {
+		t.Errorf("EndTime field not set correctly: expected %v, got %v", 180.5, info.EndTime)
+	}
+	if info.Duration != 30.0 {
+		t.Errorf("Duration field not set correctly: expected %v, got %v", 30.0, info.Duration)
+	}
+	if info.FilePath != "/tmp/chunk_0005.wav" {
+		t.Errorf("FilePath field not set correctly: expected %v, got %v", "/tmp/chunk_0005.wav", info.FilePath)
+	}
+	if info.FileSize != 1024000 {
+		t.Errorf("FileSize field not set correctly: expected %v, got %v", 1024000, info.FileSize)
+	}
+	if info.IsSilence {
+		t.Errorf("IsSilence field not set correctly: expected %v, got %v", false, info.IsSilence)
+	}
+}
+
+func TestChunkResult_Fields(t *testing.T) {
+	chunks := []ChunkInfo{
+		{Index: 0, StartTime: 0.0, EndTime: 30.0, Duration: 30.0, FilePath: "/tmp/chunk_0000.wav", FileSize: 1024000},
+		{Index: 1, StartTime: 30.0, EndTime: 60.0, Duration: 30.0, FilePath: "/tmp/chunk_0001.wav", FileSize: 1024000},
+	}
+
+	result := ChunkResult{
+		Chunks:      chunks,
+		TotalChunks: 2,
+		TotalSize:   2048000,
+		OutputDir:   "/tmp/chunks",
+	}
+
+	if len(result.Chunks) != 2 {
+		t.Errorf("Chunks field length not correct: expected %v, got %v", 2, len(result.Chunks))
+	}
+	if result.TotalChunks != 2 {
+		t.Errorf("TotalChunks field not set correctly: expected %v, got %v", 2, result.TotalChunks)
+	}
+	if result.TotalSize != 2048000 {
+		t.Errorf("TotalSize field not set correctly: expected %v, got %v", 2048000, result.TotalSize)
+	}
+	if result.OutputDir != "/tmp/chunks" {
+		t.Errorf("OutputDir field not set correctly: expected %v, got %v", "/tmp/chunks", result.OutputDir)
+	}
+
+	// Test individual chunk
+	if result.Chunks[0].Index != 0 {
+		t.Errorf("First chunk index not correct: expected %v, got %v", 0, result.Chunks[0].Index)
+	}
+	if result.Chunks[1].EndTime != 60.0 {
+		t.Errorf("Second chunk end time not correct: expected %v, got %v", 60.0, result.Chunks[1].EndTime)
 	}
 }
 
@@ -804,6 +942,23 @@ func TestLinuxDarwinImplementation_ErrorHandling(t *testing.T) {
 		Type:   "audio",
 		Format: "wav",
 	}})
+
+	// Test chunking operations without initialization
+	_, _ = ffmpeg.ChunkAudio(ctx, ChunkOptions{
+		Input:         "test.wav",
+		OutputDir:     "/tmp/chunks",
+		OutputPrefix:  "chunk",
+		ChunkDuration: 30.0,
+		Format:        "wav",
+	})
+
+	_, _ = ffmpeg.ChunkVideo(ctx, ChunkOptions{
+		Input:         "test.mp4",
+		OutputDir:     "/tmp/chunks",
+		OutputPrefix:  "chunk",
+		ChunkDuration: 30.0,
+		Format:        "mp4",
+	})
 }
 
 func TestLinuxDarwinImplementation_ConfigDefaults(t *testing.T) {
@@ -1199,6 +1354,550 @@ func BenchmarkJobManagement(b *testing.B) {
 		err = ffmpeg.CancelJob(jobID)
 		if err != nil {
 			b.Fatalf("CancelJob failed: %v", err)
+		}
+	}
+}
+
+func TestLinuxDarwinImplementation_ChunkingOperations(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping Linux/Darwin tests on Windows")
+	}
+
+	ffmpeg := NewFFmpeg()
+
+	// Test chunking operations without initialization
+	_, _ = ffmpeg.ChunkAudio(context.Background(), ChunkOptions{
+		Input:         "test.wav",
+		OutputDir:     "/tmp/chunks",
+		OutputPrefix:  "chunk",
+		ChunkDuration: 30.0,
+		Format:        "wav",
+	})
+
+	_, _ = ffmpeg.ChunkVideo(context.Background(), ChunkOptions{
+		Input:         "test.mp4",
+		OutputDir:     "/tmp/chunks",
+		OutputPrefix:  "chunk",
+		ChunkDuration: 30.0,
+		Format:        "mp4",
+	})
+}
+
+// ==== Chunking Integration Tests ====
+
+func TestIntegration_ChunkAudio_BasicFunctionality(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping integration tests on Windows")
+	}
+
+	ffmpeg := NewFFmpeg()
+
+	// Get current working directory for test files
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+
+	config := Config{
+		MaxProcesses: 2,
+		MaxThreads:   4,
+		WorkDir:      wd,
+	}
+
+	err = ffmpeg.Init(config)
+	if err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+	defer ffmpeg.Close()
+
+	ctx := context.Background()
+	testFile := "tests/english_speech_test.wav"
+
+	// Create temporary output directory
+	outputDir := filepath.Join(os.TempDir(), "ffmpeg_chunk_test_audio")
+	defer os.RemoveAll(outputDir)
+
+	// Test basic audio chunking
+	options := ChunkOptions{
+		Input:                  testFile,
+		OutputDir:              outputDir,
+		OutputPrefix:           "audio_chunk",
+		ChunkDuration:          10.0, // 10 seconds per chunk
+		Format:                 "wav",
+		EnableSilenceDetection: false,
+	}
+
+	result, err := ffmpeg.ChunkAudio(ctx, options)
+	if err != nil {
+		if strings.Contains(err.Error(), "no such file or directory") {
+			t.Skipf("Test file %s not found, skipping test", testFile)
+		}
+		t.Fatalf("ChunkAudio failed: %v", err)
+	}
+
+	// Verify results
+	if result == nil {
+		t.Fatal("ChunkAudio returned nil result")
+	}
+
+	if result.TotalChunks == 0 {
+		t.Fatal("ChunkAudio created no chunks")
+	}
+
+	if result.OutputDir != outputDir {
+		t.Errorf("Expected output dir %s, got %s", outputDir, result.OutputDir)
+	}
+
+	t.Logf("Created %d audio chunks, total size: %d bytes", result.TotalChunks, result.TotalSize)
+
+	// Verify chunk files exist
+	for _, chunk := range result.Chunks {
+		if _, err := os.Stat(chunk.FilePath); os.IsNotExist(err) {
+			t.Errorf("Chunk file does not exist: %s", chunk.FilePath)
+		}
+
+		if chunk.Duration <= 0 {
+			t.Errorf("Invalid chunk duration: %f", chunk.Duration)
+		}
+
+		if chunk.StartTime < 0 {
+			t.Errorf("Invalid chunk start time: %f", chunk.StartTime)
+		}
+
+		if chunk.EndTime <= chunk.StartTime {
+			t.Errorf("Invalid chunk timing: start=%f, end=%f", chunk.StartTime, chunk.EndTime)
+		}
+	}
+}
+
+func TestIntegration_ChunkAudio_WithSilenceDetection(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping integration tests on Windows")
+	}
+
+	ffmpeg := NewFFmpeg()
+
+	// Get current working directory for test files
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+
+	config := Config{
+		MaxProcesses: 2,
+		MaxThreads:   4,
+		WorkDir:      wd,
+	}
+
+	err = ffmpeg.Init(config)
+	if err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+	defer ffmpeg.Close()
+
+	ctx := context.Background()
+	testFile := "tests/chinese_speech_test.wav"
+
+	// Create temporary output directory
+	outputDir := filepath.Join(os.TempDir(), "ffmpeg_chunk_test_silence")
+	defer os.RemoveAll(outputDir)
+
+	// Test audio chunking with silence detection
+	options := ChunkOptions{
+		Input:                  testFile,
+		OutputDir:              outputDir,
+		OutputPrefix:           "silence_chunk",
+		ChunkDuration:          5.0,   // 5 seconds per chunk
+		SilenceThreshold:       -40.0, // -40dB
+		SilenceMinLength:       0.5,   // 0.5 seconds minimum silence
+		Format:                 "wav",
+		EnableSilenceDetection: true,
+	}
+
+	result, err := ffmpeg.ChunkAudio(ctx, options)
+	if err != nil {
+		if strings.Contains(err.Error(), "no such file or directory") {
+			t.Skipf("Test file %s not found, skipping test", testFile)
+		}
+		t.Fatalf("ChunkAudio with silence detection failed: %v", err)
+	}
+
+	// Verify results
+	if result == nil {
+		t.Fatal("ChunkAudio returned nil result")
+	}
+
+	t.Logf("Created %d audio chunks with silence detection, total size: %d bytes", result.TotalChunks, result.TotalSize)
+
+	// Verify chunk files exist and are valid
+	for _, chunk := range result.Chunks {
+		if _, err := os.Stat(chunk.FilePath); os.IsNotExist(err) {
+			t.Errorf("Chunk file does not exist: %s", chunk.FilePath)
+		}
+
+		// Chunks should be at least 0.5 seconds (minimum chunk size)
+		if chunk.Duration < 0.5 {
+			t.Errorf("Chunk too short: %f seconds", chunk.Duration)
+		}
+	}
+}
+
+func TestIntegration_ChunkVideo_BasicFunctionality(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping integration tests on Windows")
+	}
+
+	ffmpeg := NewFFmpeg()
+
+	// Get current working directory for test files
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+
+	config := Config{
+		MaxProcesses: 2,
+		MaxThreads:   4,
+		WorkDir:      wd,
+	}
+
+	err = ffmpeg.Init(config)
+	if err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+	defer ffmpeg.Close()
+
+	ctx := context.Background()
+	testFile := "tests/sample_small.mp4"
+
+	// Create temporary output directory
+	outputDir := filepath.Join(os.TempDir(), "ffmpeg_chunk_test_video")
+	defer os.RemoveAll(outputDir)
+
+	// Test basic video chunking
+	options := ChunkOptions{
+		Input:                  testFile,
+		OutputDir:              outputDir,
+		OutputPrefix:           "video_chunk",
+		ChunkDuration:          15.0, // 15 seconds per chunk
+		Format:                 "mp4",
+		EnableSilenceDetection: false,
+	}
+
+	result, err := ffmpeg.ChunkVideo(ctx, options)
+	if err != nil {
+		if strings.Contains(err.Error(), "no such file or directory") {
+			t.Skipf("Test file %s not found, skipping test", testFile)
+		}
+		t.Fatalf("ChunkVideo failed: %v", err)
+	}
+
+	// Verify results
+	if result == nil {
+		t.Fatal("ChunkVideo returned nil result")
+	}
+
+	if result.TotalChunks == 0 {
+		t.Fatal("ChunkVideo created no chunks")
+	}
+
+	t.Logf("Created %d video chunks, total size: %d bytes", result.TotalChunks, result.TotalSize)
+
+	// Verify chunk files exist
+	for _, chunk := range result.Chunks {
+		if _, err := os.Stat(chunk.FilePath); os.IsNotExist(err) {
+			t.Errorf("Chunk file does not exist: %s", chunk.FilePath)
+		}
+
+		if chunk.FileSize == 0 {
+			t.Errorf("Chunk file is empty: %s", chunk.FilePath)
+		}
+	}
+}
+
+func TestIntegration_ChunkVideo_WithAudio(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping integration tests on Windows")
+	}
+
+	ffmpeg := NewFFmpeg()
+
+	// Get current working directory for test files
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+
+	config := Config{
+		MaxProcesses: 2,
+		MaxThreads:   4,
+		WorkDir:      wd,
+	}
+
+	err = ffmpeg.Init(config)
+	if err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+	defer ffmpeg.Close()
+
+	ctx := context.Background()
+	testFile := "tests/english_speech_video.mp4"
+
+	// Create temporary output directory
+	outputDir := filepath.Join(os.TempDir(), "ffmpeg_chunk_test_video_audio")
+	defer os.RemoveAll(outputDir)
+
+	// Test video chunking with audio track
+	options := ChunkOptions{
+		Input:                  testFile,
+		OutputDir:              outputDir,
+		OutputPrefix:           "video_audio_chunk",
+		ChunkDuration:          20.0, // 20 seconds per chunk
+		Format:                 "mp4",
+		EnableSilenceDetection: false,
+	}
+
+	result, err := ffmpeg.ChunkVideo(ctx, options)
+	if err != nil {
+		if strings.Contains(err.Error(), "no such file or directory") {
+			t.Skipf("Test file %s not found, skipping test", testFile)
+		}
+		t.Fatalf("ChunkVideo with audio failed: %v", err)
+	}
+
+	// Verify results
+	if result == nil {
+		t.Fatal("ChunkVideo returned nil result")
+	}
+
+	t.Logf("Created %d video chunks with audio, total size: %d bytes", result.TotalChunks, result.TotalSize)
+
+	// Verify chunk files exist and have reasonable size
+	for _, chunk := range result.Chunks {
+		if _, err := os.Stat(chunk.FilePath); os.IsNotExist(err) {
+			t.Errorf("Chunk file does not exist: %s", chunk.FilePath)
+		}
+
+		// Video chunks should be larger than audio-only chunks
+		if chunk.FileSize < 1000 { // At least 1KB
+			t.Errorf("Video chunk suspiciously small: %d bytes", chunk.FileSize)
+		}
+	}
+}
+
+func TestIntegration_ChunkAudio_ErrorHandling(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping integration tests on Windows")
+	}
+
+	ffmpeg := NewFFmpeg()
+
+	config := Config{
+		MaxProcesses: 1,
+		MaxThreads:   2,
+	}
+
+	err := ffmpeg.Init(config)
+	if err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+	defer ffmpeg.Close()
+
+	ctx := context.Background()
+
+	// Test with non-existent file
+	options := ChunkOptions{
+		Input:         "/nonexistent/audio.wav",
+		OutputDir:     "/tmp/chunks",
+		OutputPrefix:  "chunk",
+		ChunkDuration: 10.0,
+		Format:        "wav",
+	}
+
+	_, err = ffmpeg.ChunkAudio(ctx, options)
+	if err == nil {
+		t.Fatal("Expected error for non-existent input file, but got nil")
+	}
+
+	// Test with invalid output directory
+	options = ChunkOptions{
+		Input:         "tests/english_speech_test.wav",
+		OutputDir:     "/nonexistent/readonly/directory",
+		OutputPrefix:  "chunk",
+		ChunkDuration: 10.0,
+		Format:        "wav",
+	}
+
+	_, err = ffmpeg.ChunkAudio(ctx, options)
+	if err == nil {
+		t.Fatal("Expected error for invalid output directory, but got nil")
+	}
+
+	// Test with zero chunk duration
+	outputDir := filepath.Join(os.TempDir(), "ffmpeg_chunk_test_error")
+	defer os.RemoveAll(outputDir)
+
+	options = ChunkOptions{
+		Input:         "tests/english_speech_test.wav",
+		OutputDir:     outputDir,
+		OutputPrefix:  "chunk",
+		ChunkDuration: 0.0, // Invalid duration
+		Format:        "wav",
+	}
+
+	_, err = ffmpeg.ChunkAudio(ctx, options)
+	if err == nil {
+		t.Fatal("Expected error for zero chunk duration, but got nil")
+	}
+}
+
+func TestIntegration_ChunkMultipleFormats(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping integration tests on Windows")
+	}
+
+	ffmpeg := NewFFmpeg()
+
+	// Get current working directory for test files
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+
+	config := Config{
+		MaxProcesses: 2,
+		MaxThreads:   4,
+		WorkDir:      wd,
+	}
+
+	err = ffmpeg.Init(config)
+	if err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+	defer ffmpeg.Close()
+
+	ctx := context.Background()
+
+	// Test different audio formats
+	testCases := []struct {
+		name     string
+		file     string
+		format   string
+		duration float64
+	}{
+		{"WAV Format", "tests/chinese_speech_test.wav", "wav", 8.0},
+		{"MP3 Format", "tests/english_speech_test.mp3", "wav", 8.0}, // Convert MP3 to WAV chunks
+		{"OGG Format", "tests/chinese_short.ogg", "wav", 5.0},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			outputDir := filepath.Join(os.TempDir(), fmt.Sprintf("ffmpeg_chunk_test_%s", strings.ToLower(strings.ReplaceAll(tc.name, " ", "_"))))
+			defer os.RemoveAll(outputDir)
+
+			options := ChunkOptions{
+				Input:                  tc.file,
+				OutputDir:              outputDir,
+				OutputPrefix:           "chunk",
+				ChunkDuration:          tc.duration,
+				Format:                 tc.format,
+				EnableSilenceDetection: false,
+			}
+
+			result, err := ffmpeg.ChunkAudio(ctx, options)
+			if err != nil {
+				if strings.Contains(err.Error(), "no such file or directory") {
+					t.Skipf("Test file %s not found, skipping test", tc.file)
+				}
+				t.Fatalf("ChunkAudio failed for %s: %v", tc.name, err)
+			}
+
+			if result == nil || result.TotalChunks == 0 {
+				t.Fatalf("No chunks created for %s", tc.name)
+			}
+
+			t.Logf("%s: Created %d chunks", tc.name, result.TotalChunks)
+		})
+	}
+}
+
+func BenchmarkChunkOptions_Creation(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		options := ChunkOptions{
+			Input:                  "tests/english_speech_test.wav",
+			OutputDir:              "/tmp/chunks",
+			OutputPrefix:           "chunk",
+			ChunkDuration:          30.0,
+			SilenceThreshold:       -40.0,
+			SilenceMinLength:       1.0,
+			Format:                 "wav",
+			OverlapDuration:        0.5,
+			EnableSilenceDetection: true,
+			MaxChunkSize:           1024 * 1024,
+			Options:                map[string]string{"-ar": "44100", "-ac": "2"},
+		}
+
+		// Use the options to prevent compiler optimization
+		if options.ChunkDuration != 30.0 {
+			b.Fatal("Unexpected chunk duration")
+		}
+	}
+}
+
+func BenchmarkChunkInfo_Processing(b *testing.B) {
+	chunks := make([]ChunkInfo, 100)
+	for i := 0; i < 100; i++ {
+		chunks[i] = ChunkInfo{
+			Index:     i,
+			StartTime: float64(i * 30),
+			EndTime:   float64((i + 1) * 30),
+			Duration:  30.0,
+			FilePath:  fmt.Sprintf("/tmp/chunk_%04d.wav", i),
+			FileSize:  1024000,
+			IsSilence: i%10 == 0, // Every 10th chunk is silence
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		totalDuration := 0.0
+		totalSize := int64(0)
+		silentChunks := 0
+
+		for _, chunk := range chunks {
+			totalDuration += chunk.Duration
+			totalSize += chunk.FileSize
+			if chunk.IsSilence {
+				silentChunks++
+			}
+		}
+
+		// Use the results to prevent compiler optimization
+		if totalDuration != 3000.0 || totalSize != 102400000 || silentChunks != 10 {
+			b.Fatal("Unexpected calculation results")
+		}
+	}
+}
+
+func BenchmarkChunkResult_Creation(b *testing.B) {
+	chunks := []ChunkInfo{
+		{Index: 0, StartTime: 0.0, EndTime: 30.0, Duration: 30.0, FilePath: "/tmp/chunk_0000.wav", FileSize: 1024000},
+		{Index: 1, StartTime: 30.0, EndTime: 60.0, Duration: 30.0, FilePath: "/tmp/chunk_0001.wav", FileSize: 1024000},
+		{Index: 2, StartTime: 60.0, EndTime: 90.0, Duration: 30.0, FilePath: "/tmp/chunk_0002.wav", FileSize: 1024000},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result := ChunkResult{
+			Chunks:      chunks,
+			TotalChunks: len(chunks),
+			TotalSize:   int64(len(chunks)) * 1024000,
+			OutputDir:   "/tmp/chunks",
+		}
+
+		// Use the result to prevent compiler optimization
+		if result.TotalChunks != 3 {
+			b.Fatal("Unexpected total chunks")
 		}
 	}
 }

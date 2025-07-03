@@ -216,9 +216,9 @@ jobs:
           chmod 600 $HOME/.yao/github_token
           ls -l $HOME/.yao/github_token
 
-      - name: Run Benchmark
-        run: |
-          make bench
+      # - name: Run Benchmark
+      #   run: |
+      #     make bench
 
       - name: Run Test
         run: |

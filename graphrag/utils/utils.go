@@ -73,6 +73,53 @@ func PostLLM(ctx context.Context, conn connector.Connector, endpoint string, pay
 	return resp.Data, nil
 }
 
+// PostLLMFile sends a POST request to LLM API with file upload using multipart/form-data
+func PostLLMFile(ctx context.Context, conn connector.Connector, endpoint string, filePath string, formData map[string]interface{}) (interface{}, error) {
+	setting := conn.Setting()
+
+	// Get host from connector settings
+	host, ok := setting["host"].(string)
+	if !ok || host == "" {
+		return nil, fmt.Errorf("no host found in connector settings")
+	}
+
+	// endpoint not start with /, then add /
+	if !strings.HasPrefix(endpoint, "/") {
+		endpoint = "/" + endpoint
+	}
+
+	// Host is api.openai.com & endpoint not has /v1, then add /v1
+	if host == "https://api.openai.com" && !strings.HasPrefix(endpoint, "/v1") {
+		endpoint = "/v1" + endpoint
+	}
+
+	// Build full URL
+	url := fmt.Sprintf("%s/%s", strings.TrimSuffix(host, "/"), strings.TrimPrefix(endpoint, "/"))
+
+	// Get API key
+	apiKey, ok := setting["key"].(string)
+	if !ok || apiKey == "" {
+		return nil, fmt.Errorf("API key is not set")
+	}
+
+	// Make HTTP request with file upload
+	r := http.New(url)
+	r.SetHeader("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	r.SetHeader("Content-Type", "multipart/form-data")
+	r.WithContext(ctx)
+
+	// Add file to request
+	r.AddFile("file", filePath)
+
+	// Send POST request with form data
+	resp := r.Post(formData)
+	if resp.Status != 200 {
+		return nil, fmt.Errorf("request failed with status: %d, data: %v", resp.Status, resp.Data)
+	}
+
+	return resp.Data, nil
+}
+
 // StreamLLM sends a streaming request to LLM service with real-time callback
 func StreamLLM(ctx context.Context, conn connector.Connector, endpoint string, payload map[string]interface{}, callback func(data []byte) error) error {
 	// Get connector settings

@@ -100,3 +100,15 @@ func (f *WindowsFFmpeg) KillAllProcesses() error {
 func (f *WindowsFFmpeg) Close() error {
 	return fmt.Errorf("Windows implementation not yet supported")
 }
+
+// ChunkAudio chunks audio file with optional silence detection
+// Currently returns an error as Windows implementation is not yet supported.
+func (f *WindowsFFmpeg) ChunkAudio(ctx context.Context, options ChunkOptions) (*ChunkResult, error) {
+	return nil, fmt.Errorf("Windows implementation not yet supported")
+}
+
+// ChunkVideo chunks video file with optional silence detection
+// Currently returns an error as Windows implementation is not yet supported.
+func (f *WindowsFFmpeg) ChunkVideo(ctx context.Context, options ChunkOptions) (*ChunkResult, error) {
+	return nil, fmt.Errorf("Windows implementation not yet supported")
+}
