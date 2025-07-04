@@ -45,8 +45,8 @@ type Media struct {
 	RefID    string `json:"ref_id"`   // Reference ID
 }
 
-// IParser interface for Office document parsing
-type IParser interface {
+// FileParser interface for Office document parsing
+type FileParser interface {
 	Parse(data []byte) (*ParseResult, error)
 	GetSupportedFormats() []string
 }
