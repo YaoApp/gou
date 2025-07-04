@@ -122,6 +122,18 @@ type SystemInfo struct {
 	FFprobe string   `json:"ffprobe_version"` // FFprobe version string
 }
 
+// MediaInfo contains information about a media file
+type MediaInfo struct {
+	Duration   float64 `json:"duration"`    // Duration in seconds
+	Width      int     `json:"width"`       // Video width in pixels
+	Height     int     `json:"height"`      // Video height in pixels
+	Bitrate    string  `json:"bitrate"`     // Bitrate
+	FrameRate  float64 `json:"frame_rate"`  // Frame rate (fps)
+	AudioCodec string  `json:"audio_codec"` // Audio codec
+	VideoCodec string  `json:"video_codec"` // Video codec
+	FileSize   int64   `json:"file_size"`   // File size in bytes
+}
+
 // FFmpeg defines the interface for all FFmpeg wrapper implementations.
 // It provides a unified API for media processing operations across different platforms.
 type FFmpeg interface {
@@ -129,6 +141,9 @@ type FFmpeg interface {
 	Init(config Config) error           // Initialize the FFmpeg wrapper with configuration
 	GetConfig() Config                  // Get the current configuration
 	GetSystemInfo() (SystemInfo, error) // Get system information and capabilities
+
+	// Media information
+	GetMediaInfo(ctx context.Context, inputFile string) (*MediaInfo, error) // Get media file information
 
 	// Single operations
 	Convert(ctx context.Context, options ConvertOptions) error // Convert a single media file

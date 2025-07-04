@@ -130,6 +130,145 @@ func (f *DarwinFFmpeg) GetSystemInfo() (SystemInfo, error) {
 	return info, nil
 }
 
+// GetMediaInfo gets comprehensive information about a media file
+func (f *DarwinFFmpeg) GetMediaInfo(ctx context.Context, inputFile string) (*MediaInfo, error) {
+	// Get basic file info
+	fileInfo, err := os.Stat(inputFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file info: %v", err)
+	}
+
+	info := &MediaInfo{
+		FileSize: fileInfo.Size(),
+	}
+
+	// Use ffprobe to get detailed media information
+	cmd := exec.CommandContext(ctx, f.config.FFprobePath,
+		"-v", "quiet",
+		"-print_format", "json",
+		"-show_format",
+		"-show_streams",
+		inputFile)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("ffprobe failed: %v", err)
+	}
+
+	// Parse the JSON output (simple parsing)
+	outputStr := string(output)
+
+	// Extract duration
+	if strings.Contains(outputStr, `"duration"`) {
+		lines := strings.Split(outputStr, "\n")
+		for _, line := range lines {
+			if strings.Contains(line, `"duration"`) && strings.Contains(line, `:`) {
+				parts := strings.Split(line, `"`)
+				if len(parts) >= 4 {
+					if duration, err := strconv.ParseFloat(strings.Trim(parts[3], ` ,"`), 64); err == nil {
+						info.Duration = duration
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// Extract video stream information
+	if strings.Contains(outputStr, `"codec_type": "video"`) {
+		lines := strings.Split(outputStr, "\n")
+		inVideoStream := false
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.Contains(line, `"codec_type": "video"`) {
+				inVideoStream = true
+				continue
+			}
+			if inVideoStream && strings.Contains(line, `}`) {
+				inVideoStream = false
+				continue
+			}
+			if inVideoStream {
+				if strings.Contains(line, `"width"`) {
+					parts := strings.Split(line, `:`)
+					if len(parts) >= 2 {
+						if width, err := strconv.Atoi(strings.Trim(parts[1], ` ,"`)); err == nil {
+							info.Width = width
+						}
+					}
+				} else if strings.Contains(line, `"height"`) {
+					parts := strings.Split(line, `:`)
+					if len(parts) >= 2 {
+						if height, err := strconv.Atoi(strings.Trim(parts[1], ` ,"`)); err == nil {
+							info.Height = height
+						}
+					}
+				} else if strings.Contains(line, `"codec_name"`) {
+					parts := strings.Split(line, `"`)
+					if len(parts) >= 4 {
+						info.VideoCodec = parts[3]
+					}
+				} else if strings.Contains(line, `"avg_frame_rate"`) {
+					parts := strings.Split(line, `"`)
+					if len(parts) >= 4 {
+						frameRateStr := parts[3]
+						if strings.Contains(frameRateStr, "/") {
+							frameParts := strings.Split(frameRateStr, "/")
+							if len(frameParts) == 2 {
+								if num, err1 := strconv.ParseFloat(frameParts[0], 64); err1 == nil {
+									if den, err2 := strconv.ParseFloat(frameParts[1], 64); err2 == nil && den != 0 {
+										info.FrameRate = num / den
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Extract audio stream information
+	if strings.Contains(outputStr, `"codec_type": "audio"`) {
+		lines := strings.Split(outputStr, "\n")
+		inAudioStream := false
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.Contains(line, `"codec_type": "audio"`) {
+				inAudioStream = true
+				continue
+			}
+			if inAudioStream && strings.Contains(line, `}`) {
+				inAudioStream = false
+				continue
+			}
+			if inAudioStream && strings.Contains(line, `"codec_name"`) {
+				parts := strings.Split(line, `"`)
+				if len(parts) >= 4 {
+					info.AudioCodec = parts[3]
+					break
+				}
+			}
+		}
+	}
+
+	// Extract bitrate from format section
+	if strings.Contains(outputStr, `"bit_rate"`) {
+		lines := strings.Split(outputStr, "\n")
+		for _, line := range lines {
+			if strings.Contains(line, `"bit_rate"`) {
+				parts := strings.Split(line, `"`)
+				if len(parts) >= 4 {
+					info.Bitrate = parts[3]
+					break
+				}
+			}
+		}
+	}
+
+	return info, nil
+}
+
 // Convert performs media file conversion using the specified options.
 // Supports VideoToolbox hardware acceleration on macOS with Apple Silicon and Intel Macs.
 func (f *DarwinFFmpeg) Convert(ctx context.Context, options ConvertOptions) error {

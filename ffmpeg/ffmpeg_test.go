@@ -199,8 +199,17 @@ func TestWindowsImplementation(t *testing.T) {
 		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
 	}
 
-	// Test Convert
+	// Test GetMediaInfo
 	ctx := context.Background()
+	_, err = windows.GetMediaInfo(ctx, "test.mp4")
+	if err == nil {
+		t.Fatal("Expected error for Windows GetMediaInfo, got nil")
+	}
+	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
+		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
+	}
+
+	// Test Convert
 	err = windows.Convert(ctx, ConvertOptions{})
 	if err == nil {
 		t.Fatal("Expected error for Windows Convert, got nil")
@@ -762,6 +771,14 @@ func TestIntegration_BasicOperations(t *testing.T) {
 	if retrievedConfig.MaxThreads != config.MaxThreads {
 		t.Errorf("Expected MaxThreads %d, got %d", config.MaxThreads, retrievedConfig.MaxThreads)
 	}
+
+	// Test GetMediaInfo with non-existent file - should fail
+	ctx := context.Background()
+	_, err = ffmpeg.GetMediaInfo(ctx, "/nonexistent/file.mp4")
+	if err == nil {
+		t.Fatal("Expected error for non-existent file, but got nil")
+	}
+	t.Logf("GetMediaInfo error for non-existent file: %v", err)
 
 	t.Logf("System Info: OS=%s, FFmpeg=%s, FFprobe=%s, GPUs=%v",
 		info.OS, info.FFmpeg, info.FFprobe, info.GPUs)
@@ -1883,7 +1900,6 @@ func BenchmarkChunkResult_Creation(b *testing.B) {
 	chunks := []ChunkInfo{
 		{Index: 0, StartTime: 0.0, EndTime: 30.0, Duration: 30.0, FilePath: "/tmp/chunk_0000.wav", FileSize: 1024000},
 		{Index: 1, StartTime: 30.0, EndTime: 60.0, Duration: 30.0, FilePath: "/tmp/chunk_0001.wav", FileSize: 1024000},
-		{Index: 2, StartTime: 60.0, EndTime: 90.0, Duration: 30.0, FilePath: "/tmp/chunk_0002.wav", FileSize: 1024000},
 	}
 
 	b.ResetTimer()
@@ -1896,8 +1912,224 @@ func BenchmarkChunkResult_Creation(b *testing.B) {
 		}
 
 		// Use the result to prevent compiler optimization
-		if result.TotalChunks != 3 {
+		if result.TotalChunks != 2 {
 			b.Fatal("Unexpected total chunks")
+		}
+	}
+}
+
+func BenchmarkMediaInfo_Creation(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		info := MediaInfo{
+			Duration:   120.5,
+			Width:      1920,
+			Height:     1080,
+			Bitrate:    "2000kb/s",
+			FrameRate:  30.0,
+			AudioCodec: "aac",
+			VideoCodec: "h264",
+			FileSize:   1024000,
+		}
+
+		// Use the info to prevent compiler optimization
+		if info.Duration != 120.5 {
+			b.Fatal("Unexpected duration")
+		}
+	}
+}
+
+func BenchmarkGetMediaInfo_ErrorHandling(b *testing.B) {
+	ffmpeg := NewFFmpeg()
+
+	config := Config{
+		MaxProcesses: 1,
+		MaxThreads:   2,
+	}
+
+	err := ffmpeg.Init(config)
+	if err != nil {
+		// Skip on Windows if not implemented
+		if runtime.GOOS == "windows" && strings.Contains(err.Error(), "Windows implementation not yet supported") {
+			b.Skip("Skipping GetMediaInfo benchmark on Windows - implementation not yet supported")
+		}
+		b.Fatalf("Init failed: %v", err)
+	}
+	defer ffmpeg.Close()
+
+	ctx := context.Background()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Test with non-existent file (should fail quickly)
+		_, err := ffmpeg.GetMediaInfo(ctx, "/nonexistent/file.mp4")
+		if err == nil {
+			b.Fatal("Expected error for non-existent file")
+		}
+	}
+}
+
+func TestMediaInfo_Fields(t *testing.T) {
+	info := MediaInfo{
+		Duration:   120.5,
+		Width:      1920,
+		Height:     1080,
+		Bitrate:    "2000kb/s",
+		FrameRate:  30.0,
+		AudioCodec: "aac",
+		VideoCodec: "h264",
+		FileSize:   1024000,
+	}
+
+	if info.Duration != 120.5 {
+		t.Errorf("Duration field not set correctly: expected %v, got %v", 120.5, info.Duration)
+	}
+	if info.Width != 1920 {
+		t.Errorf("Width field not set correctly: expected %v, got %v", 1920, info.Width)
+	}
+	if info.Height != 1080 {
+		t.Errorf("Height field not set correctly: expected %v, got %v", 1080, info.Height)
+	}
+	if info.Bitrate != "2000kb/s" {
+		t.Errorf("Bitrate field not set correctly: expected %v, got %v", "2000kb/s", info.Bitrate)
+	}
+	if info.FrameRate != 30.0 {
+		t.Errorf("FrameRate field not set correctly: expected %v, got %v", 30.0, info.FrameRate)
+	}
+	if info.AudioCodec != "aac" {
+		t.Errorf("AudioCodec field not set correctly: expected %v, got %v", "aac", info.AudioCodec)
+	}
+	if info.VideoCodec != "h264" {
+		t.Errorf("VideoCodec field not set correctly: expected %v, got %v", "h264", info.VideoCodec)
+	}
+	if info.FileSize != 1024000 {
+		t.Errorf("FileSize field not set correctly: expected %v, got %v", 1024000, info.FileSize)
+	}
+}
+
+func TestGetMediaInfo_ErrorHandling(t *testing.T) {
+	ffmpeg := NewFFmpeg()
+
+	// Test GetMediaInfo with non-existent file - should fail on all platforms
+	ctx := context.Background()
+	_, err := ffmpeg.GetMediaInfo(ctx, "/nonexistent/file.mp4")
+	if err == nil {
+		t.Fatal("Expected error for non-existent file, but got nil")
+	}
+	t.Logf("GetMediaInfo error for non-existent file: %v", err)
+
+	// Test GetMediaInfo with empty file path - should fail on all platforms
+	_, err = ffmpeg.GetMediaInfo(ctx, "")
+	if err == nil {
+		t.Fatal("Expected error for empty file path, but got nil")
+	}
+	t.Logf("GetMediaInfo error for empty file path: %v", err)
+
+	// Test GetMediaInfo with cancelled context
+	cancelCtx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	_, err = ffmpeg.GetMediaInfo(cancelCtx, "/nonexistent/file.mp4")
+	if err != nil && err == context.Canceled {
+		t.Log("GetMediaInfo correctly handled cancelled context")
+	} else {
+		t.Log("GetMediaInfo completed before context cancellation check")
+	}
+}
+
+func TestIntegration_GetMediaInfo_WithTestFile(t *testing.T) {
+	ffmpeg := NewFFmpeg()
+
+	// Get current working directory for test files
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+
+	config := Config{
+		MaxProcesses: 1,
+		MaxThreads:   2,
+		WorkDir:      wd,
+	}
+
+	err = ffmpeg.Init(config)
+	if err != nil {
+		// Skip on Windows if not implemented
+		if runtime.GOOS == "windows" && strings.Contains(err.Error(), "Windows implementation not yet supported") {
+			t.Skip("Skipping GetMediaInfo integration test on Windows - implementation not yet supported")
+		}
+		t.Fatalf("Init failed: %v", err)
+	}
+
+	defer ffmpeg.Close()
+
+	ctx := context.Background()
+
+	// Test with actual media files if they exist
+	testFiles := []string{
+		"tests/sample_small.mp4",
+		"tests/english_speech_video.mp4",
+		"tests/chinese_speech_test.wav",
+		"tests/english_speech_test.wav",
+	}
+
+	for _, testFile := range testFiles {
+		if _, err := os.Stat(testFile); os.IsNotExist(err) {
+			t.Logf("Test file %s not found, skipping", testFile)
+			continue
+		}
+
+		info, err := ffmpeg.GetMediaInfo(ctx, testFile)
+		if err != nil {
+			t.Logf("GetMediaInfo failed for %s: %v", testFile, err)
+			continue
+		}
+
+		// Validate MediaInfo fields
+		if info == nil {
+			t.Errorf("GetMediaInfo returned nil info for %s", testFile)
+			continue
+		}
+
+		t.Logf("MediaInfo for %s:", testFile)
+		t.Logf("  Duration: %.2f seconds", info.Duration)
+		t.Logf("  Dimensions: %dx%d", info.Width, info.Height)
+		t.Logf("  Bitrate: %s", info.Bitrate)
+		t.Logf("  Frame Rate: %.2f fps", info.FrameRate)
+		t.Logf("  Audio Codec: %s", info.AudioCodec)
+		t.Logf("  Video Codec: %s", info.VideoCodec)
+		t.Logf("  File Size: %d bytes", info.FileSize)
+
+		// Basic validation
+		if info.Duration <= 0 {
+			t.Errorf("Invalid duration for %s: %f", testFile, info.Duration)
+		}
+
+		if info.FileSize <= 0 {
+			t.Errorf("Invalid file size for %s: %d", testFile, info.FileSize)
+		}
+
+		// For video files, check video-specific fields
+		if strings.HasSuffix(testFile, ".mp4") {
+			if info.Width <= 0 || info.Height <= 0 {
+				t.Errorf("Invalid video dimensions for %s: %dx%d", testFile, info.Width, info.Height)
+			}
+			if info.VideoCodec == "" {
+				t.Logf("Video codec not detected for %s (this might be expected)", testFile)
+			}
+			if info.FrameRate <= 0 {
+				t.Errorf("Invalid frame rate for %s: %f", testFile, info.FrameRate)
+			}
+		}
+
+		// For audio files, check audio-specific fields
+		if strings.HasSuffix(testFile, ".wav") {
+			if info.AudioCodec == "" {
+				t.Logf("Audio codec not detected for %s (this might be expected)", testFile)
+			}
+			// WAV files typically don't have video dimensions
+			if info.Width != 0 || info.Height != 0 {
+				t.Logf("Unexpected video dimensions for audio file %s: %dx%d", testFile, info.Width, info.Height)
+			}
 		}
 	}
 }

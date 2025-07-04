@@ -35,6 +35,12 @@ func (f *WindowsFFmpeg) GetSystemInfo() (SystemInfo, error) {
 	return SystemInfo{OS: "windows"}, fmt.Errorf("Windows implementation not yet supported")
 }
 
+// GetMediaInfo gets comprehensive information about a media file.
+// Currently returns an error as Windows implementation is not yet supported.
+func (f *WindowsFFmpeg) GetMediaInfo(ctx context.Context, inputFile string) (*MediaInfo, error) {
+	return nil, fmt.Errorf("Windows implementation not yet supported")
+}
+
 // Convert performs media file conversion using the specified options.
 // Currently returns an error as Windows implementation is not yet supported.
 func (f *WindowsFFmpeg) Convert(ctx context.Context, options ConvertOptions) error {
