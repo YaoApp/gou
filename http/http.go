@@ -28,8 +28,8 @@ var (
 	poolMutex     sync.RWMutex
 )
 
-// getTransport returns a reusable HTTP transport for the given configuration
-func getTransport(isHTTPS bool, proxy string) *http.Transport {
+// GetTransport returns a reusable HTTP transport for the given configuration
+func GetTransport(isHTTPS bool, proxy string) *http.Transport {
 	key := fmt.Sprintf("https:%v;proxy:%s", isHTTPS, proxy)
 
 	poolMutex.RLock()
@@ -264,8 +264,8 @@ func (r *Request) Send(method string, data interface{}) *Response {
 
 	// Use transport pool to avoid race conditions and improve performance
 	isHTTPS := strings.HasPrefix(r.url, "https://")
-	proxy := getProxy(isHTTPS)
-	tr := getTransport(isHTTPS, proxy)
+	proxy := GetProxy(isHTTPS)
+	tr := GetTransport(isHTTPS, proxy)
 	client := &http.Client{Transport: tr}
 
 	// Set the request context
@@ -380,8 +380,8 @@ func (r *Request) Stream(ctx context.Context, method string, data interface{}, h
 
 	// Use transport pool to avoid race conditions and improve performance
 	isHTTPS := strings.HasPrefix(r.url, "https://")
-	proxy := getProxy(isHTTPS)
-	tr := getTransport(isHTTPS, proxy)
+	proxy := GetProxy(isHTTPS)
+	tr := GetTransport(isHTTPS, proxy)
 	client := &http.Client{Transport: tr}
 
 	resp, err := client.Do(req.WithContext(ctx))
@@ -587,7 +587,8 @@ func (r *Request) formBody() ([]byte, string, *Response) {
 	return body.Bytes(), writer.FormDataContentType(), nil
 }
 
-func getProxy(https bool) string {
+// GetProxy get the proxy
+func GetProxy(https bool) string {
 	if https {
 		proxy := os.Getenv("HTTPS_PROXY")
 		if proxy != "" {

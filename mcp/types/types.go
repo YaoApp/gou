@@ -6,8 +6,17 @@ import (
 	"time"
 )
 
-// Type the service type
-type Type string
+// TransportType the transport type
+type TransportType string
+
+const (
+	// TransportHTTP the HTTP transport
+	TransportHTTP TransportType = "http"
+	// TransportSSE the SSE transport
+	TransportSSE TransportType = "sse"
+	// TransportStdio the Stdio transport
+	TransportStdio TransportType = "stdio"
+)
 
 // Protocol version
 const (
@@ -21,7 +30,42 @@ const (
 	TypeNotification = "notification"
 )
 
-// JSON-RPC 2.0 message structure
+// ================================
+// DSLs Of the MCP Server and Client
+// ================================
+
+// ClientDSL the MCP Client DSL
+type ClientDSL struct {
+	ID        string        `json:"id,omitempty"`      // The ID of the MCP Client (required)
+	Name      string        `json:"name"`              // The name of the MCP Client (required)
+	Version   string        `json:"version,omitempty"` // The version of the MCP Client
+	Transport TransportType `json:"transport"`         // One of the TransportType (required)
+
+	// Display in the DUI (Development UI) platform
+	Label       string `json:"label,omitempty"`       // Label of the MCP Client
+	Description string `json:"description,omitempty"` // Description of the MCP Client
+
+	// Client capabilities configuration
+	EnableSampling    bool `json:"enable_sampling,omitempty"`    // Enable sampling capability
+	EnableRoots       bool `json:"enable_roots,omitempty"`       // Enable roots capability
+	RootsListChanged  bool `json:"roots_list_changed,omitempty"` // Whether to be notified of root changes
+	EnableElicitation bool `json:"enable_elicitation,omitempty"` // Enable elicitation capability
+
+	// For HTTP, SSE transport
+	URL                string `json:"url,omitempty"`                 // For HTTP、SSE transport
+	AuthorizationToken string `json:"authorization_token,omitempty"` // For HTTP、SSE transport
+
+	// For stdio transport
+	Command   string            `json:"command,omitempty"`   // for stdio transport
+	Arguments []string          `json:"arguments,omitempty"` // for stdio transport
+	Env       map[string]string `json:"env,omitempty"`       // for stdio transport
+
+	Timeout string `json:"timeout,omitempty"` // for HTTP、SSE transport (1s, 1m, 1h, 1d)
+}
+
+// ================================
+
+// Message JSON-RPC 2.0 message structure
 type Message struct {
 	JSONRPC string      `json:"jsonrpc"`
 	ID      interface{} `json:"id,omitempty"`
@@ -69,6 +113,12 @@ type ClientInfo struct {
 }
 
 type ServerInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+// Implementation describes the name and version of an MCP implementation
+type Implementation struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
 }
@@ -181,6 +231,20 @@ type ToolContent struct {
 	Text     string `json:"text,omitempty"`
 	Data     []byte `json:"data,omitempty"`
 	MimeType string `json:"mimeType,omitempty"`
+}
+
+// Batch tool call types
+type ToolCall struct {
+	Name      string      `json:"name"`
+	Arguments interface{} `json:"arguments,omitempty"`
+}
+
+type CallToolsBatchRequest struct {
+	Tools []ToolCall `json:"tools"`
+}
+
+type CallToolsBatchResponse struct {
+	Results []CallToolResponse `json:"results"`
 }
 
 // Prompt types
@@ -306,8 +370,20 @@ const (
 	StateDisconnected ConnectionState = "disconnected"
 	StateConnecting   ConnectionState = "connecting"
 	StateConnected    ConnectionState = "connected"
+	StateInitialized  ConnectionState = "initialized"
 	StateError        ConnectionState = "error"
 )
+
+// ConnectionOptions provides options for establishing connection
+type ConnectionOptions struct {
+	// Headers for HTTP/SSE transports (e.g., Mcp-Session-Id, Custom-Auth, etc.)
+	Headers map[string]string `json:"headers,omitempty"`
+	// Timeout for connection establishment
+	Timeout time.Duration `json:"timeout,omitempty"`
+	// Retry configuration
+	MaxRetries int           `json:"max_retries,omitempty"`
+	RetryDelay time.Duration `json:"retry_delay,omitempty"`
+}
 
 // Transport interface
 type Transport interface {

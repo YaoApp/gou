@@ -1092,7 +1092,7 @@ func TestTransportPoolPreciseLeaks(t *testing.T) {
 
 	for i := 0; i < 50; i++ {
 		config := configs[i%len(configs)]
-		transport := getTransport(config.isHTTPS, config.proxy)
+		transport := GetTransport(config.isHTTPS, config.proxy)
 		assert.NotNil(t, transport)
 
 		// Simulate using the transport
@@ -1262,7 +1262,7 @@ func TestTransportPoolMemoryUsage(t *testing.T) {
 			proxy = fmt.Sprintf("http://proxy%d.example.com:8080", i%10)
 		}
 
-		transport := getTransport(isHTTPS, proxy)
+		transport := GetTransport(isHTTPS, proxy)
 		assert.NotNil(t, transport)
 	}
 
@@ -1321,7 +1321,7 @@ func TestTransportPoolRaceConditions(t *testing.T) {
 					proxy = fmt.Sprintf("http://proxy%d.example.com:8080", (workerID+j)%5)
 				}
 
-				transport := getTransport(isHTTPS, proxy)
+				transport := GetTransport(isHTTPS, proxy)
 				assert.NotNil(t, transport)
 
 				// Simulate using the transport
@@ -1468,7 +1468,7 @@ func TestProxyConfiguration(t *testing.T) {
 			name:      "Invalid proxy URL",
 			isHTTPS:   false,
 			proxy:     "invalid://proxy/url",
-			shouldErr: false, // getTransport handles invalid URLs gracefully
+			shouldErr: false, // GetTransport handles invalid URLs gracefully
 		},
 		{
 			name:      "Empty proxy",
@@ -1486,7 +1486,7 @@ func TestProxyConfiguration(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			transport := getTransport(tc.isHTTPS, tc.proxy)
+			transport := GetTransport(tc.isHTTPS, tc.proxy)
 			assert.NotNil(t, transport, "Transport should not be nil")
 
 			// Verify HTTPS configuration
@@ -1598,9 +1598,9 @@ func TestEnvironmentProxyConfiguration(t *testing.T) {
 				os.Setenv(key, value)
 			}
 
-			// Test getProxy function
-			result := getProxy(tc.isHTTPS)
-			assert.Equal(t, tc.expectedResult, result, "getProxy should return expected proxy URL")
+			// Test GetProxy function
+			result := GetProxy(tc.isHTTPS)
+			assert.Equal(t, tc.expectedResult, result, "GetProxy should return expected proxy URL")
 		})
 	}
 }
@@ -1632,7 +1632,7 @@ func TestTransportPoolWithProxyVariations(t *testing.T) {
 
 	// Create transports for each configuration
 	for i, config := range proxyConfigs {
-		transport := getTransport(config.isHTTPS, config.proxy)
+		transport := GetTransport(config.isHTTPS, config.proxy)
 		transports[i] = transport
 		assert.NotNil(t, transport, "Transport should not be nil")
 
@@ -1643,7 +1643,7 @@ func TestTransportPoolWithProxyVariations(t *testing.T) {
 
 	// Verify transport reuse - requesting same config should return same transport
 	for i, config := range proxyConfigs {
-		transport := getTransport(config.isHTTPS, config.proxy)
+		transport := GetTransport(config.isHTTPS, config.proxy)
 		assert.Same(t, transports[i], transport, "Same configuration should return same transport instance")
 	}
 
@@ -1713,7 +1713,7 @@ func BenchmarkTransportPool(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			config := configs[b.N%len(configs)]
-			transport := getTransport(config.isHTTPS, config.proxy)
+			transport := GetTransport(config.isHTTPS, config.proxy)
 			if transport == nil {
 				b.Error("Transport should not be nil")
 			}
