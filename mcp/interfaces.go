@@ -10,13 +10,13 @@ import (
 // Client the MCP client interface
 type Client interface {
 	// Connection management
-	Connect(ctx context.Context, config types.Config) error
+	Connect(ctx context.Context, options ...types.ConnectionOptions) error
 	Disconnect(ctx context.Context) error
 	IsConnected() bool
 	State() types.ConnectionState
 
 	// Protocol initialization
-	Initialize(ctx context.Context, capabilities types.ClientCapabilities, clientInfo types.ClientInfo) (*types.InitializeResponse, error)
+	Initialize(ctx context.Context) (*types.InitializeResponse, error)
 	Initialized(ctx context.Context) error
 
 	// Resource operations
@@ -28,6 +28,7 @@ type Client interface {
 	// Tool operations
 	ListTools(ctx context.Context, cursor string) (*types.ListToolsResponse, error)
 	CallTool(ctx context.Context, name string, arguments interface{}) (*types.CallToolResponse, error)
+	CallToolsBatch(ctx context.Context, tools []types.ToolCall) (*types.CallToolsBatchResponse, error)
 
 	// Prompt operations
 	ListPrompts(ctx context.Context, cursor string) (*types.ListPromptsResponse, error)
