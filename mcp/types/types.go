@@ -1,0 +1,345 @@
+package types
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+)
+
+// Type the service type
+type Type string
+
+// Protocol version
+const (
+	ProtocolVersion = "2025-06-18"
+)
+
+// Message types
+const (
+	TypeRequest      = "request"
+	TypeResponse     = "response"
+	TypeNotification = "notification"
+)
+
+// JSON-RPC 2.0 message structure
+type Message struct {
+	JSONRPC string      `json:"jsonrpc"`
+	ID      interface{} `json:"id,omitempty"`
+	Method  string      `json:"method,omitempty"`
+	Params  interface{} `json:"params,omitempty"`
+	Result  interface{} `json:"result,omitempty"`
+	Error   *Error      `json:"error,omitempty"`
+}
+
+// Error represents a JSON-RPC error
+type Error struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+// Standard error codes
+const (
+	ErrorCodeParseError     = -32700
+	ErrorCodeInvalidRequest = -32600
+	ErrorCodeMethodNotFound = -32601
+	ErrorCodeInvalidParams  = -32602
+	ErrorCodeInternalError  = -32603
+)
+
+// Initialize request and response
+type InitializeRequest struct {
+	ProtocolVersion string                 `json:"protocolVersion"`
+	Capabilities    ClientCapabilities     `json:"capabilities"`
+	ClientInfo      ClientInfo             `json:"clientInfo"`
+	Meta            map[string]interface{} `json:"meta,omitempty"`
+}
+
+type InitializeResponse struct {
+	ProtocolVersion string                 `json:"protocolVersion"`
+	Capabilities    ServerCapabilities     `json:"capabilities"`
+	ServerInfo      ServerInfo             `json:"serverInfo"`
+	Meta            map[string]interface{} `json:"meta,omitempty"`
+}
+
+// Client and Server info
+type ClientInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+type ServerInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+// Capabilities
+type ClientCapabilities struct {
+	Sampling     *SamplingCapability    `json:"sampling,omitempty"`
+	Roots        *RootsCapability       `json:"roots,omitempty"`
+	Elicitation  *ElicitationCapability `json:"elicitation,omitempty"`
+	Experimental map[string]interface{} `json:"experimental,omitempty"`
+}
+
+type ServerCapabilities struct {
+	Resources    *ResourcesCapability   `json:"resources,omitempty"`
+	Tools        *ToolsCapability       `json:"tools,omitempty"`
+	Prompts      *PromptsCapability     `json:"prompts,omitempty"`
+	Logging      *LoggingCapability     `json:"logging,omitempty"`
+	Experimental map[string]interface{} `json:"experimental,omitempty"`
+}
+
+type SamplingCapability struct{}
+
+type RootsCapability struct {
+	ListChanged bool `json:"listChanged,omitempty"`
+}
+
+type ElicitationCapability struct{}
+
+type ResourcesCapability struct {
+	Subscribe   bool `json:"subscribe,omitempty"`
+	ListChanged bool `json:"listChanged,omitempty"`
+}
+
+type ToolsCapability struct {
+	ListChanged bool `json:"listChanged,omitempty"`
+}
+
+type PromptsCapability struct {
+	ListChanged bool `json:"listChanged,omitempty"`
+}
+
+type LoggingCapability struct{}
+
+// Resource types
+type Resource struct {
+	URI         string                 `json:"uri"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description,omitempty"`
+	MimeType    string                 `json:"mimeType,omitempty"`
+	Meta        map[string]interface{} `json:"meta,omitempty"`
+}
+
+type ResourceContent struct {
+	URI      string `json:"uri"`
+	MimeType string `json:"mimeType"`
+	Text     string `json:"text,omitempty"`
+	Blob     []byte `json:"blob,omitempty"`
+}
+
+type ListResourcesRequest struct {
+	Cursor string `json:"cursor,omitempty"`
+}
+
+type ListResourcesResponse struct {
+	Resources  []Resource `json:"resources"`
+	NextCursor string     `json:"nextCursor,omitempty"`
+}
+
+type ReadResourceRequest struct {
+	URI string `json:"uri"`
+}
+
+type ReadResourceResponse struct {
+	Contents []ResourceContent `json:"contents"`
+}
+
+type ResourceUpdatedNotification struct {
+	URI string `json:"uri"`
+}
+
+// Tool types
+type Tool struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description,omitempty"`
+	InputSchema json.RawMessage        `json:"inputSchema"`
+	Meta        map[string]interface{} `json:"meta,omitempty"`
+}
+
+type ListToolsRequest struct {
+	Cursor string `json:"cursor,omitempty"`
+}
+
+type ListToolsResponse struct {
+	Tools      []Tool `json:"tools"`
+	NextCursor string `json:"nextCursor,omitempty"`
+}
+
+type CallToolRequest struct {
+	Name      string      `json:"name"`
+	Arguments interface{} `json:"arguments,omitempty"`
+}
+
+type CallToolResponse struct {
+	Content []ToolContent `json:"content"`
+	IsError bool          `json:"isError,omitempty"`
+}
+
+type ToolContent struct {
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	Data     []byte `json:"data,omitempty"`
+	MimeType string `json:"mimeType,omitempty"`
+}
+
+// Prompt types
+type Prompt struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description,omitempty"`
+	Arguments   []PromptArgument       `json:"arguments,omitempty"`
+	Meta        map[string]interface{} `json:"meta,omitempty"`
+}
+
+type PromptArgument struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Required    bool   `json:"required,omitempty"`
+}
+
+type ListPromptsRequest struct {
+	Cursor string `json:"cursor,omitempty"`
+}
+
+type ListPromptsResponse struct {
+	Prompts    []Prompt `json:"prompts"`
+	NextCursor string   `json:"nextCursor,omitempty"`
+}
+
+type GetPromptRequest struct {
+	Name      string                 `json:"name"`
+	Arguments map[string]interface{} `json:"arguments,omitempty"`
+}
+
+type GetPromptResponse struct {
+	Description string          `json:"description,omitempty"`
+	Messages    []PromptMessage `json:"messages"`
+}
+
+type PromptMessage struct {
+	Role    string        `json:"role"`
+	Content PromptContent `json:"content"`
+}
+
+type PromptContent struct {
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	ImageURL string `json:"imageUrl,omitempty"`
+}
+
+// Sampling types
+type SamplingRequest struct {
+	Model          string                 `json:"model"`
+	Messages       []SamplingMessage      `json:"messages"`
+	SystemPrompt   string                 `json:"systemPrompt,omitempty"`
+	IncludeContext string                 `json:"includeContext,omitempty"`
+	Temperature    float64                `json:"temperature,omitempty"`
+	MaxTokens      int                    `json:"maxTokens,omitempty"`
+	StopSequences  []string               `json:"stopSequences,omitempty"`
+	Meta           map[string]interface{} `json:"meta,omitempty"`
+}
+
+type SamplingMessage struct {
+	Role    string          `json:"role"`
+	Content SamplingContent `json:"content"`
+}
+
+type SamplingContent struct {
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	ImageURL string `json:"imageUrl,omitempty"`
+}
+
+type SamplingResponse struct {
+	Model      string          `json:"model"`
+	Role       string          `json:"role"`
+	Content    SamplingContent `json:"content"`
+	StopReason string          `json:"stopReason,omitempty"`
+}
+
+// Progress types
+type Progress struct {
+	Token uint64 `json:"token"`
+	Total uint64 `json:"total,omitempty"`
+}
+
+type ProgressNotification struct {
+	Token    uint64 `json:"token"`
+	Progress uint64 `json:"progress"`
+	Total    uint64 `json:"total,omitempty"`
+}
+
+// Cancellation types
+type CancelRequest struct {
+	RequestID interface{} `json:"requestId"`
+}
+
+// Logging types
+type LogLevel string
+
+const (
+	LogLevelDebug     LogLevel = "debug"
+	LogLevelInfo      LogLevel = "info"
+	LogLevelNotice    LogLevel = "notice"
+	LogLevelWarning   LogLevel = "warning"
+	LogLevelError     LogLevel = "error"
+	LogLevelCritical  LogLevel = "critical"
+	LogLevelAlert     LogLevel = "alert"
+	LogLevelEmergency LogLevel = "emergency"
+)
+
+type LogMessage struct {
+	Level  LogLevel               `json:"level"`
+	Data   interface{}            `json:"data"`
+	Logger string                 `json:"logger,omitempty"`
+	Meta   map[string]interface{} `json:"meta,omitempty"`
+}
+
+type SetLogLevelRequest struct {
+	Level LogLevel `json:"level"`
+}
+
+// Connection state
+type ConnectionState string
+
+const (
+	StateDisconnected ConnectionState = "disconnected"
+	StateConnecting   ConnectionState = "connecting"
+	StateConnected    ConnectionState = "connected"
+	StateError        ConnectionState = "error"
+)
+
+// Transport interface
+type Transport interface {
+	Start(ctx context.Context) error
+	Stop() error
+	Send(message Message) error
+	Receive() (<-chan Message, error)
+	Close() error
+}
+
+// Configuration
+type Config struct {
+	ServerCommand []string               `json:"serverCommand,omitempty"`
+	ServerEnv     map[string]string      `json:"serverEnv,omitempty"`
+	InitOptions   map[string]interface{} `json:"initOptions,omitempty"`
+	Timeout       time.Duration          `json:"timeout,omitempty"`
+}
+
+// Handler function types
+type RequestHandler func(ctx context.Context, request Message) (interface{}, error)
+type NotificationHandler func(ctx context.Context, notification Message) error
+type ErrorHandler func(ctx context.Context, err error) error
+
+// Event types
+type Event struct {
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
+}
+
+const (
+	EventTypeConnected    = "connected"
+	EventTypeDisconnected = "disconnected"
+	EventTypeError        = "error"
+	EventTypeMessage      = "message"
+)
