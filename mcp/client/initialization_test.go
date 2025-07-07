@@ -14,63 +14,63 @@ func TestInitialize(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		setupClient func() *Client
+		setupClient func() (*Client, context.Context, context.CancelFunc)
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "Initialize without connection",
-			setupClient: func() *Client {
+			setupClient: func() (*Client, context.Context, context.CancelFunc) {
 				dsl := createStdioTestDSL()
 				client := &Client{DSL: dsl}
 				// Don't connect
-				return client
+				return client, nil, nil
 			},
 			expectError: true,
 			errorMsg:    "MCP client not connected",
 		},
 		{
 			name: "Initialize with stdio connection",
-			setupClient: func() *Client {
+			setupClient: func() (*Client, context.Context, context.CancelFunc) {
 				dsl := createStdioTestDSL()
 				client := &Client{DSL: dsl}
 				// Try to connect
 				ctx, cancel := createTestContext(10 * time.Second)
-				defer cancel()
 				client.Connect(ctx)
-				return client
+				return client, ctx, cancel
 			},
 			expectError: false, // May succeed or fail depending on test environment
 		},
 		{
 			name: "Initialize with HTTP connection",
-			setupClient: func() *Client {
+			setupClient: func() (*Client, context.Context, context.CancelFunc) {
 				if config.SkipHTTPTests {
-					return nil // Will be skipped
+					return nil, nil, nil // Will be skipped
 				}
 				dsl := createHTTPTestDSL(config)
 				client := &Client{DSL: dsl}
 				// Try to connect
 				ctx, cancel := createTestContext(10 * time.Second)
-				defer cancel()
 				client.Connect(ctx)
-				return client
+				return client, ctx, cancel
 			},
 			expectError: false,
 		},
 		{
 			name: "Initialize with SSE connection",
-			setupClient: func() *Client {
+			setupClient: func() (*Client, context.Context, context.CancelFunc) {
 				if config.SkipSSETests {
-					return nil // Will be skipped
+					return nil, nil, nil // Will be skipped
 				}
 				dsl := createSSETestDSL(config)
 				client := &Client{DSL: dsl}
 				// Try to connect
-				ctx, cancel := createTestContext(10 * time.Second)
-				defer cancel()
-				client.Connect(ctx)
-				return client
+				ctx, cancel := createTestContext(30 * time.Second)
+				if err := client.Connect(ctx); err != nil {
+					t.Errorf("Connection failed: %v", err)
+					return nil, nil, nil
+				}
+				return client, ctx, cancel
 			},
 			expectError: false,
 		},
@@ -78,17 +78,23 @@ func TestInitialize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := tt.setupClient()
+
+			client, ctx, _ := tt.setupClient()
 			if client == nil {
 				t.Skip("Test skipped - client setup returned nil")
 				return
 			}
-
-			ctx, cancel := createTestContext(30 * time.Second)
-			defer cancel()
+			if ctx == nil {
+				ctx, _ = createTestContext(30 * time.Second)
+			}
 
 			// Clean up after test
-			defer client.Disconnect(ctx)
+			defer func() {
+				client.Disconnect(ctx)
+				// if cancel != nil {
+				// 	cancel()
+				// }
+			}()
 
 			response, err := client.Initialize(ctx)
 
@@ -104,9 +110,9 @@ func TestInitialize(t *testing.T) {
 				return
 			}
 
-			// For non-error cases, initialization may succeed or fail depending on actual server
+			// For non-error cases, initialization should succeed
 			if err != nil {
-				logTestInfo(t, "Initialization failed (may be expected in test env): %v", err)
+				t.Errorf("Initialization failed unexpectedly: %v", err)
 				return
 			}
 
@@ -149,6 +155,7 @@ func TestInitialize(t *testing.T) {
 			if response.ServerInfo.Name == "" {
 				t.Errorf("Expected non-empty server name")
 			}
+
 		})
 	}
 }
@@ -177,7 +184,10 @@ func TestInitialized(t *testing.T) {
 				// Try to connect
 				ctx, cancel := createTestContext(5 * time.Second)
 				defer cancel()
-				client.Connect(ctx)
+				if err := client.Connect(ctx); err != nil {
+					t.Errorf("Connection failed: %v", err)
+					return nil
+				}
 				return client
 			},
 			expectError: false,
@@ -187,7 +197,7 @@ func TestInitialized(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.setupClient()
-			ctx, cancel := createTestContext(10 * time.Second)
+			ctx, cancel := createTestContext(2 * time.Second)
 			defer cancel()
 
 			// Clean up after test
@@ -505,7 +515,8 @@ func TestInitializeWithDifferentCapabilities(t *testing.T) {
 			dsl: &types.ClientDSL{
 				Name:           "Test Client",
 				Transport:      types.TransportStdio,
-				Command:        "echo",
+				Command:        "npx",
+				Arguments:      []string{"-y", "@modelcontextprotocol/server-everything"},
 				EnableSampling: true,
 				EnableRoots:    false,
 			},
@@ -515,7 +526,8 @@ func TestInitializeWithDifferentCapabilities(t *testing.T) {
 			dsl: &types.ClientDSL{
 				Name:             "Test Client",
 				Transport:        types.TransportStdio,
-				Command:          "echo",
+				Command:          "npx",
+				Arguments:        []string{"-y", "@modelcontextprotocol/server-everything"},
 				EnableSampling:   false,
 				EnableRoots:      true,
 				RootsListChanged: true,
@@ -526,7 +538,8 @@ func TestInitializeWithDifferentCapabilities(t *testing.T) {
 			dsl: &types.ClientDSL{
 				Name:              "Test Client",
 				Transport:         types.TransportStdio,
-				Command:           "echo",
+				Command:           "npx",
+				Arguments:         []string{"-y", "@modelcontextprotocol/server-everything"},
 				EnableSampling:    true,
 				EnableRoots:       true,
 				RootsListChanged:  true,
@@ -538,7 +551,7 @@ func TestInitializeWithDifferentCapabilities(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := &Client{DSL: tt.dsl}
-			ctx, cancel := createTestContext(10 * time.Second)
+			ctx, cancel := createTestContext(2 * time.Second)
 			defer cancel()
 
 			// Try to connect
@@ -610,7 +623,7 @@ func TestInitializationResultStorage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.setupClient()
-			ctx, cancel := createTestContext(10 * time.Second)
+			ctx, cancel := createTestContext(2 * time.Second)
 			defer cancel()
 
 			// Test initial state
@@ -657,6 +670,7 @@ func TestInitializationResultStorage(t *testing.T) {
 
 // TestInitializationResultClear tests clearing of initialization results on disconnect
 func TestInitializationResultClear(t *testing.T) {
+	config := getTestConfig()
 	tests := []struct {
 		name        string
 		setupClient func() *Client
@@ -665,7 +679,7 @@ func TestInitializationResultClear(t *testing.T) {
 		{
 			name: "Clear result on Disconnect",
 			setupClient: func() *Client {
-				dsl := createStdioTestDSL()
+				dsl := createHTTPTestDSL(config)
 				client := &Client{DSL: dsl}
 				return client
 			},
@@ -676,7 +690,7 @@ func TestInitializationResultClear(t *testing.T) {
 		{
 			name: "Clear result on Close",
 			setupClient: func() *Client {
-				dsl := createStdioTestDSL()
+				dsl := createSSETestDSL(config)
 				client := &Client{DSL: dsl}
 				return client
 			},
@@ -689,7 +703,7 @@ func TestInitializationResultClear(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.setupClient()
-			ctx, cancel := createTestContext(10 * time.Second)
+			ctx, cancel := createTestContext(20 * time.Second)
 			defer cancel()
 
 			// Try to connect and initialize
@@ -739,10 +753,11 @@ func TestInitializationResultClear(t *testing.T) {
 
 // TestClientStateTransitions tests state transitions with initialization
 func TestClientStateTransitions(t *testing.T) {
-	dsl := createStdioTestDSL()
+	config := getTestConfig()
+	dsl := createHTTPTestDSL(config)
 	client := &Client{DSL: dsl}
 
-	ctx, cancel := createTestContext(10 * time.Second)
+	ctx, cancel := createTestContext(20 * time.Second)
 	defer cancel()
 
 	// Test initial state

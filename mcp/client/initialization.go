@@ -21,7 +21,7 @@ func (c *Client) Initialize(ctx context.Context) (*types.InitializeResponse, err
 	// Create initialize request with proper mcp-go types
 	initRequest := mcp.InitializeRequest{
 		Params: mcp.InitializeParams{
-			ProtocolVersion: types.ProtocolVersion,
+			ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
 			Capabilities:    convertClientCapabilities(clientCaps),
 			ClientInfo: mcp.Implementation{
 				Name:    clientImpl.Name,

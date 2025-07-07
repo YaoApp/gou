@@ -10,8 +10,8 @@ import (
 
 // Client the MCP Client
 type Client struct {
-	DSL *types.ClientDSL
-	goclient.MCPClient
+	DSL        *types.ClientDSL
+	MCPClient  *goclient.Client
 	InitResult *types.InitializeResponse // Store the initialization result
 }
 
