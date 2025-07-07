@@ -141,7 +141,8 @@ func (c *Client) Disconnect(ctx context.Context) error {
 	}
 
 	err := c.MCPClient.Close()
-	c.MCPClient = nil // Clear the client reference
+	c.MCPClient = nil  // Clear the client reference
+	c.InitResult = nil // Clear the initialization result
 	return err
 }
 
@@ -154,6 +155,11 @@ func (c *Client) IsConnected() bool {
 func (c *Client) State() types.ConnectionState {
 	if c.MCPClient == nil {
 		return types.StateDisconnected
+	}
+
+	// Check if initialized
+	if c.InitResult != nil {
+		return types.StateInitialized
 	}
 
 	return types.StateConnected

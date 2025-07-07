@@ -24,5 +24,8 @@ func (c *Client) Close() error {
 		return fmt.Errorf("MCP client not initialized")
 	}
 
-	return c.MCPClient.Close()
+	err := c.MCPClient.Close()
+	c.MCPClient = nil  // Clear the client reference
+	c.InitResult = nil // Clear the initialization result
+	return err
 }
