@@ -115,8 +115,8 @@ func DialContext() func(ctx context.Context, network, addr string) (net.Conn, er
 			}
 		}
 
-		log.Error("DNS resolve fail: %v %s", ips, addr)
-		return nil, fmt.Errorf("DNS resolve fail: %v %s", ips, addr)
+		log.Error("Connection failed: %s %v %s", addr, ips, network)
+		return nil, fmt.Errorf("Connection failed: %s %v %s", addr, ips, network)
 	}
 }
 

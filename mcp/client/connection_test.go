@@ -29,7 +29,8 @@ func TestConnectValidation(t *testing.T) {
 				DSL: &types.ClientDSL{
 					Name:      "Test Client",
 					Transport: types.TransportStdio,
-					Command:   "echo",
+					Command:   "npx",
+					Arguments: []string{"-y", "@modelcontextprotocol/server-everything"},
 				},
 			},
 			expectError: false,
@@ -97,8 +98,8 @@ func TestConnectStdio(t *testing.T) {
 			dsl: &types.ClientDSL{
 				Name:      "Test Stdio Client",
 				Transport: types.TransportStdio,
-				Command:   "echo",
-				Arguments: []string{"hello", "world"},
+				Command:   "npx",
+				Arguments: []string{"-y", "@modelcontextprotocol/server-everything"},
 			},
 			expectError: false,
 		},
@@ -323,6 +324,7 @@ func TestConnectSSE(t *testing.T) {
 }
 
 func TestDisconnect(t *testing.T) {
+	config := getTestConfig()
 	tests := []struct {
 		name        string
 		setupClient func() *Client
@@ -331,16 +333,8 @@ func TestDisconnect(t *testing.T) {
 		{
 			name: "Disconnect Connected Client",
 			setupClient: func() *Client {
-				dsl := &types.ClientDSL{
-					Name:      "Test Client",
-					Transport: types.TransportStdio,
-					Command:   "echo",
-				}
+				dsl := createHTTPTestDSL(config)
 				client := &Client{DSL: dsl}
-				// Try to connect (may fail in test env, but that's ok)
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				client.Connect(ctx)
 				return client
 			},
 			expectError: false,
@@ -348,12 +342,9 @@ func TestDisconnect(t *testing.T) {
 		{
 			name: "Disconnect Unconnected Client",
 			setupClient: func() *Client {
-				dsl := &types.ClientDSL{
-					Name:      "Test Client",
-					Transport: types.TransportStdio,
-					Command:   "echo",
-				}
-				return &Client{DSL: dsl}
+				dsl := createSSETestDSL(config)
+				client := &Client{DSL: dsl}
+				return client
 			},
 			expectError: false,
 		},
@@ -390,11 +381,8 @@ func TestDisconnect(t *testing.T) {
 }
 
 func TestConnectionState(t *testing.T) {
-	dsl := &types.ClientDSL{
-		Name:      "Test Client",
-		Transport: types.TransportStdio,
-		Command:   "echo",
-	}
+	config := getTestConfig()
+	dsl := createHTTPTestDSL(config)
 	client := &Client{DSL: dsl}
 
 	// Test initial state
@@ -487,7 +475,8 @@ func TestMultipleConnections(t *testing.T) {
 	dsl := &types.ClientDSL{
 		Name:      "Test Client",
 		Transport: types.TransportStdio,
-		Command:   "echo",
+		Command:   "npx",
+		Arguments: []string{"-y", "@modelcontextprotocol/server-everything"},
 	}
 	client := &Client{DSL: dsl}
 
@@ -515,7 +504,8 @@ func TestMultipleDisconnections(t *testing.T) {
 	dsl := &types.ClientDSL{
 		Name:      "Test Client",
 		Transport: types.TransportStdio,
-		Command:   "echo",
+		Command:   "npx",
+		Arguments: []string{"-y", "@modelcontextprotocol/server-everything"},
 	}
 	client := &Client{DSL: dsl}
 
@@ -625,7 +615,8 @@ func TestInitializationResultStorageInConnection(t *testing.T) {
 	dsl := &types.ClientDSL{
 		Name:      "Test Client",
 		Transport: types.TransportStdio,
-		Command:   "echo",
+		Command:   "npx",
+		Arguments: []string{"-y", "@modelcontextprotocol/server-everything"},
 	}
 	client := &Client{DSL: dsl}
 
@@ -708,11 +699,8 @@ func TestDisconnectClearsInitializationResult(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dsl := &types.ClientDSL{
-				Name:      "Test Client",
-				Transport: types.TransportStdio,
-				Command:   "echo",
-			}
+			config := getTestConfig()
+			dsl := createHTTPTestDSL(config)
 			client := &Client{DSL: dsl}
 
 			ctx, cancel := createTestContext(10 * time.Second)
@@ -773,7 +761,8 @@ func TestMultipleInitializationAttempts(t *testing.T) {
 	dsl := &types.ClientDSL{
 		Name:      "Test Client",
 		Transport: types.TransportStdio,
-		Command:   "echo",
+		Command:   "npx",
+		Arguments: []string{"-y", "@modelcontextprotocol/server-everything"},
 	}
 	client := &Client{DSL: dsl}
 

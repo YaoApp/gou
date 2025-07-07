@@ -90,8 +90,8 @@ func createStdioTestDSL() *types.ClientDSL {
 		Transport:        types.TransportStdio,
 		Label:            "Stdio Test Client",
 		Description:      "MCP client for stdio testing",
-		Command:          "echo",
-		Arguments:        []string{"hello", "mcp"},
+		Command:          "npx",
+		Arguments:        []string{"-y", "@modelcontextprotocol/server-everything"},
 		EnableSampling:   true,
 		EnableRoots:      false,
 		RootsListChanged: false,
@@ -284,4 +284,11 @@ func maskToken(token string) string {
 		return "<not set>"
 	}
 	return "***"
+}
+
+// getTestResourceURI returns a test resource URI
+func getTestResourceURI(t *testing.T) string {
+	t.Helper()
+	// Return a generic test URI that should work with most MCP servers
+	return "test://example/resource"
 }
