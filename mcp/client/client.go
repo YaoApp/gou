@@ -12,6 +12,7 @@ import (
 type Client struct {
 	DSL *types.ClientDSL
 	goclient.MCPClient
+	InitResult *types.InitializeResponse // Store the initialization result
 }
 
 // New create a new MCP Client (without establishing connection)
@@ -41,8 +42,9 @@ func New(dsl *types.ClientDSL) (*Client, error) {
 
 	// Create client without establishing connection
 	client := &Client{
-		DSL:       dsl,
-		MCPClient: nil, // Will be created when Connect() is called
+		DSL:        dsl,
+		MCPClient:  nil, // Will be created when Connect() is called
+		InitResult: nil, // Will be set when Initialize() is called
 	}
 
 	return client, nil

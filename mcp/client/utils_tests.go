@@ -181,6 +181,31 @@ func assertClientState(t *testing.T, client *Client, expectedConnected bool, exp
 	if client.State() != expectedState {
 		t.Errorf("Expected State() = %v, got %v", expectedState, client.State())
 	}
+
+	// Additional checks for initialization state
+	switch expectedState {
+	case types.StateInitialized:
+		if !client.IsInitialized() {
+			t.Errorf("Expected IsInitialized() = true for state %v", expectedState)
+		}
+		if client.GetInitResult() == nil {
+			t.Errorf("Expected GetInitResult() to be non-nil for state %v", expectedState)
+		}
+	case types.StateConnected:
+		if client.IsInitialized() {
+			t.Errorf("Expected IsInitialized() = false for state %v", expectedState)
+		}
+		if client.GetInitResult() != nil {
+			t.Errorf("Expected GetInitResult() to be nil for state %v", expectedState)
+		}
+	case types.StateDisconnected:
+		if client.IsInitialized() {
+			t.Errorf("Expected IsInitialized() = false for state %v", expectedState)
+		}
+		if client.GetInitResult() != nil {
+			t.Errorf("Expected GetInitResult() to be nil for state %v", expectedState)
+		}
+	}
 }
 
 // logTestInfo logs test information for debugging

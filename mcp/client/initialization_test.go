@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -113,6 +114,28 @@ func TestInitialize(t *testing.T) {
 			if response == nil {
 				t.Errorf("Expected non-nil response")
 				return
+			}
+
+			// Test that the result is stored in the client
+			if client.GetInitResult() == nil {
+				t.Errorf("Expected initialization result to be stored in client")
+			}
+			if !client.IsInitialized() {
+				t.Errorf("Expected client to be initialized")
+			}
+			if client.State() != types.StateInitialized {
+				t.Errorf("Expected state to be initialized, got %v", client.State())
+			}
+
+			// Verify the stored result matches the returned response
+			storedResult := client.GetInitResult()
+			if storedResult.ProtocolVersion != response.ProtocolVersion {
+				t.Errorf("Stored result protocol version mismatch: got %s, expected %s",
+					storedResult.ProtocolVersion, response.ProtocolVersion)
+			}
+			if storedResult.ServerInfo.Name != response.ServerInfo.Name {
+				t.Errorf("Stored result server name mismatch: got %s, expected %s",
+					storedResult.ServerInfo.Name, response.ServerInfo.Name)
 			}
 
 			logTestInfo(t, "Initialization succeeded")
@@ -555,4 +578,273 @@ func containsString(s, substr string) bool {
 				}
 				return false
 			}()))
+}
+
+// TestInitializationResultStorage tests the storage and retrieval of initialization results
+func TestInitializationResultStorage(t *testing.T) {
+	tests := []struct {
+		name        string
+		setupClient func() *Client
+		expectError bool
+	}{
+		{
+			name: "Store and retrieve initialization result",
+			setupClient: func() *Client {
+				dsl := createStdioTestDSL()
+				client := &Client{DSL: dsl}
+				return client
+			},
+			expectError: false,
+		},
+		{
+			name: "Initialization result initially nil",
+			setupClient: func() *Client {
+				dsl := createStdioTestDSL()
+				client := &Client{DSL: dsl}
+				return client
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := tt.setupClient()
+			ctx, cancel := createTestContext(10 * time.Second)
+			defer cancel()
+
+			// Test initial state
+			if client.GetInitResult() != nil {
+				t.Errorf("Expected initial initialization result to be nil")
+			}
+			if client.IsInitialized() {
+				t.Errorf("Expected client to not be initialized initially")
+			}
+
+			// Try to connect
+			err := client.Connect(ctx)
+			if err != nil {
+				logTestInfo(t, "Connection failed (expected): %v", err)
+				return
+			}
+			defer client.Disconnect(ctx)
+
+			// Try to initialize
+			response, err := client.Initialize(ctx)
+			if err != nil {
+				logTestInfo(t, "Initialization failed (expected): %v", err)
+				return
+			}
+
+			// Test that result is stored
+			if client.GetInitResult() == nil {
+				t.Errorf("Expected initialization result to be stored")
+			}
+			if !client.IsInitialized() {
+				t.Errorf("Expected client to be initialized")
+			}
+
+			// Test that stored result matches response
+			storedResult := client.GetInitResult()
+			if storedResult != response {
+				t.Errorf("Stored result pointer should match returned response")
+			}
+
+			logTestInfo(t, "Initialization result stored successfully")
+		})
+	}
+}
+
+// TestInitializationResultClear tests clearing of initialization results on disconnect
+func TestInitializationResultClear(t *testing.T) {
+	tests := []struct {
+		name        string
+		setupClient func() *Client
+		disconnect  func(*Client, context.Context) error
+	}{
+		{
+			name: "Clear result on Disconnect",
+			setupClient: func() *Client {
+				dsl := createStdioTestDSL()
+				client := &Client{DSL: dsl}
+				return client
+			},
+			disconnect: func(c *Client, ctx context.Context) error {
+				return c.Disconnect(ctx)
+			},
+		},
+		{
+			name: "Clear result on Close",
+			setupClient: func() *Client {
+				dsl := createStdioTestDSL()
+				client := &Client{DSL: dsl}
+				return client
+			},
+			disconnect: func(c *Client, ctx context.Context) error {
+				return c.Close()
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := tt.setupClient()
+			ctx, cancel := createTestContext(10 * time.Second)
+			defer cancel()
+
+			// Try to connect and initialize
+			err := client.Connect(ctx)
+			if err != nil {
+				logTestInfo(t, "Connection failed (expected): %v", err)
+				return
+			}
+
+			_, err = client.Initialize(ctx)
+			if err != nil {
+				logTestInfo(t, "Initialization failed (expected): %v", err)
+				// Clean up
+				client.Disconnect(ctx)
+				return
+			}
+
+			// Verify initialization result is stored
+			if client.GetInitResult() == nil {
+				t.Errorf("Expected initialization result to be stored before disconnect")
+			}
+			if !client.IsInitialized() {
+				t.Errorf("Expected client to be initialized before disconnect")
+			}
+
+			// Test disconnection
+			err = tt.disconnect(client, ctx)
+			if err != nil {
+				t.Errorf("Disconnect failed: %v", err)
+			}
+
+			// Verify initialization result is cleared
+			if client.GetInitResult() != nil {
+				t.Errorf("Expected initialization result to be cleared after disconnect")
+			}
+			if client.IsInitialized() {
+				t.Errorf("Expected client to not be initialized after disconnect")
+			}
+			if client.State() != types.StateDisconnected {
+				t.Errorf("Expected state to be disconnected after disconnect, got %v", client.State())
+			}
+
+			logTestInfo(t, "Initialization result cleared successfully")
+		})
+	}
+}
+
+// TestClientStateTransitions tests state transitions with initialization
+func TestClientStateTransitions(t *testing.T) {
+	dsl := createStdioTestDSL()
+	client := &Client{DSL: dsl}
+
+	ctx, cancel := createTestContext(10 * time.Second)
+	defer cancel()
+
+	// Test initial state
+	if client.State() != types.StateDisconnected {
+		t.Errorf("Expected initial state to be disconnected, got %v", client.State())
+	}
+	if client.IsInitialized() {
+		t.Errorf("Expected client to not be initialized initially")
+	}
+
+	// Try to connect
+	err := client.Connect(ctx)
+	if err != nil {
+		logTestInfo(t, "Connection failed (expected): %v", err)
+		return
+	}
+	defer client.Disconnect(ctx)
+
+	// Test connected state
+	if client.State() != types.StateConnected {
+		t.Errorf("Expected state to be connected after connection, got %v", client.State())
+	}
+	if client.IsInitialized() {
+		t.Errorf("Expected client to not be initialized after connection")
+	}
+
+	// Try to initialize
+	_, err = client.Initialize(ctx)
+	if err != nil {
+		logTestInfo(t, "Initialization failed (expected): %v", err)
+		return
+	}
+
+	// Test initialized state
+	if client.State() != types.StateInitialized {
+		t.Errorf("Expected state to be initialized after initialization, got %v", client.State())
+	}
+	if !client.IsInitialized() {
+		t.Errorf("Expected client to be initialized after initialization")
+	}
+
+	// Test disconnect
+	err = client.Disconnect(ctx)
+	if err != nil {
+		t.Errorf("Disconnect failed: %v", err)
+	}
+
+	// Test disconnected state
+	if client.State() != types.StateDisconnected {
+		t.Errorf("Expected state to be disconnected after disconnect, got %v", client.State())
+	}
+	if client.IsInitialized() {
+		t.Errorf("Expected client to not be initialized after disconnect")
+	}
+
+	logTestInfo(t, "State transitions completed successfully")
+}
+
+// TestGetInitResultMethods tests the GetInitResult and IsInitialized methods
+func TestGetInitResultMethods(t *testing.T) {
+	dsl := createStdioTestDSL()
+	client := &Client{DSL: dsl}
+
+	// Test methods on uninitialized client
+	if client.GetInitResult() != nil {
+		t.Errorf("Expected GetInitResult to return nil for uninitialized client")
+	}
+	if client.IsInitialized() {
+		t.Errorf("Expected IsInitialized to return false for uninitialized client")
+	}
+
+	// Simulate initialization by setting InitResult directly
+	mockResult := &types.InitializeResponse{
+		ProtocolVersion: "test-protocol",
+		ServerInfo: types.ServerInfo{
+			Name:    "Test Server",
+			Version: "1.0.0",
+		},
+		Capabilities: types.ServerCapabilities{
+			Experimental: make(map[string]interface{}),
+		},
+	}
+	client.InitResult = mockResult
+
+	// Test methods on initialized client
+	if client.GetInitResult() != mockResult {
+		t.Errorf("Expected GetInitResult to return the stored result")
+	}
+	if !client.IsInitialized() {
+		t.Errorf("Expected IsInitialized to return true for initialized client")
+	}
+
+	// Clear result
+	client.InitResult = nil
+
+	// Test methods after clearing
+	if client.GetInitResult() != nil {
+		t.Errorf("Expected GetInitResult to return nil after clearing")
+	}
+	if client.IsInitialized() {
+		t.Errorf("Expected IsInitialized to return false after clearing")
+	}
+
+	logTestInfo(t, "GetInitResult and IsInitialized methods work correctly")
 }

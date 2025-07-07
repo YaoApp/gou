@@ -46,6 +46,9 @@ func (c *Client) Initialize(ctx context.Context) (*types.InitializeResponse, err
 		Capabilities: convertServerCapabilities(result.Capabilities),
 	}
 
+	// Store the initialization result in the client
+	c.InitResult = response
+
 	return response, nil
 }
 
@@ -123,4 +126,14 @@ func convertClientCapabilities(caps types.ClientCapabilities) mcp.ClientCapabili
 	}
 
 	return result
+}
+
+// GetInitResult returns the stored initialization result
+func (c *Client) GetInitResult() *types.InitializeResponse {
+	return c.InitResult
+}
+
+// IsInitialized checks if the client has been initialized
+func (c *Client) IsInitialized() bool {
+	return c.InitResult != nil
 }
