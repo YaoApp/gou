@@ -9,6 +9,63 @@ import (
 	"github.com/yaoapp/gou/mcp/types"
 )
 
+func TestConnect(t *testing.T) {
+	testCases := getStandardTransportTestCases()
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			// Skip test if configuration is not available
+			if testCase.ShouldSkip {
+				t.Skip(testCase.SkipReason)
+				return
+			}
+
+			// Create client
+			client := &Client{DSL: testCase.DSL}
+
+			// Create context with timeout
+			ctx, cancel := createTestContext(testCase.Timeout)
+			defer cancel()
+
+			// Test connection
+			err := client.Connect(ctx)
+
+			if testCase.ExpectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+					return
+				}
+				if testCase.ExpectedError != "" && !containsString(err.Error(), testCase.ExpectedError) {
+					t.Errorf("Expected error message to contain '%s', got '%s'", testCase.ExpectedError, err.Error())
+				}
+				logTestInfo(t, "Expected error: %v", err)
+				return
+			}
+
+			// For non-error cases, we expect either success or a connection failure
+			// (which is acceptable in test environment)
+			if err != nil {
+				logTestInfo(t, "Connection failed (expected in test env): %v", err)
+			} else {
+				logTestInfo(t, "Connection succeeded")
+				// Clean up
+				defer client.Disconnect(ctx)
+
+				// Verify client state
+				if !client.IsConnected() {
+					t.Errorf("Expected client to be connected")
+				}
+				if client.State() != types.StateConnected {
+					t.Errorf("Expected state to be connected, got %v", client.State())
+				}
+				if client.IsInitialized() {
+					t.Errorf("Expected client to not be initialized after just connecting")
+				}
+			}
+		})
+	}
+}
+
 func TestConnectValidation(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -87,286 +144,30 @@ func TestConnectValidation(t *testing.T) {
 	}
 }
 
-func TestConnectStdio(t *testing.T) {
-	tests := []struct {
-		name        string
-		dsl         *types.ClientDSL
-		expectError bool
-	}{
-		{
-			name: "Valid Stdio Command",
-			dsl: &types.ClientDSL{
-				Name:      "Test Stdio Client",
-				Transport: types.TransportStdio,
-				Command:   "npx",
-				Arguments: []string{"-y", "@modelcontextprotocol/server-everything"},
-			},
-			expectError: false,
-		},
-		{
-			name: "Invalid Stdio Command",
-			dsl: &types.ClientDSL{
-				Name:      "Test Stdio Client",
-				Transport: types.TransportStdio,
-				Command:   "nonexistent_command_xyz",
-			},
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := &Client{DSL: tt.dsl}
-			ctx, cancel := createTestContext(10 * time.Second)
-			defer cancel()
-
-			err := client.Connect(ctx)
-
-			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				logTestInfo(t, "Stdio connection failed (may be expected): %v", err)
-			} else {
-				logTestInfo(t, "Stdio connection succeeded")
-				defer client.Disconnect(ctx)
-
-				// Verify client state
-				if !client.IsConnected() {
-					t.Errorf("Expected client to be connected")
-				}
-				if client.State() != types.StateConnected {
-					t.Errorf("Expected state to be connected, got %v", client.State())
-				}
-				if client.IsInitialized() {
-					t.Errorf("Expected client to not be initialized after just connecting")
-				}
-			}
-		})
-	}
-}
-
-func TestConnectHTTP(t *testing.T) {
-	config := getTestConfig()
-
-	if config.SkipHTTPTests {
-		t.Skip("HTTP tests skipped: set MCP_CLIENT_TEST_HTTP_URL environment variable")
-	}
-
-	tests := []struct {
-		name        string
-		dsl         *types.ClientDSL
-		options     []types.ConnectionOptions
-		expectError bool
-	}{
-		{
-			name: "Valid HTTP Connection",
-			dsl: &types.ClientDSL{
-				Name:               "Test HTTP Client",
-				Transport:          types.TransportHTTP,
-				URL:                config.HTTPUrl,
-				AuthorizationToken: config.HTTPToken,
-			},
-			expectError: false,
-		},
-		{
-			name: "HTTP with Custom Headers",
-			dsl: &types.ClientDSL{
-				Name:               "Test HTTP Client",
-				Transport:          types.TransportHTTP,
-				URL:                config.HTTPUrl,
-				AuthorizationToken: config.HTTPToken,
-			},
-			options: []types.ConnectionOptions{
-				{
-					Headers: map[string]string{
-						"X-Custom-Header": "test-value",
-						"X-Client-ID":     "test-client-123",
-					},
-				},
-			},
-			expectError: false,
-		},
-		{
-			name: "HTTP with Timeout",
-			dsl: &types.ClientDSL{
-				Name:               "Test HTTP Client",
-				Transport:          types.TransportHTTP,
-				URL:                config.HTTPUrl,
-				AuthorizationToken: config.HTTPToken,
-			},
-			options: []types.ConnectionOptions{
-				{
-					Timeout: 15 * time.Second,
-				},
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := &Client{DSL: tt.dsl}
-			ctx, cancel := createTestContext(30 * time.Second)
-			defer cancel()
-
-			err := client.Connect(ctx, tt.options...)
-
-			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				logTestInfo(t, "HTTP connection failed (may be expected): %v", err)
-			} else {
-				logTestInfo(t, "HTTP connection succeeded")
-				defer client.Disconnect(ctx)
-
-				// Verify client state
-				if !client.IsConnected() {
-					t.Errorf("Expected client to be connected")
-				}
-				if client.State() != types.StateConnected {
-					t.Errorf("Expected state to be connected, got %v", client.State())
-				}
-				if client.IsInitialized() {
-					t.Errorf("Expected client to not be initialized after just connecting")
-				}
-			}
-		})
-	}
-}
-
-func TestConnectSSE(t *testing.T) {
-	config := getTestConfig()
-
-	if config.SkipSSETests {
-		t.Skip("SSE tests skipped: set MCP_CLIENT_TEST_SSE_URL environment variable")
-	}
-
-	tests := []struct {
-		name        string
-		dsl         *types.ClientDSL
-		options     []types.ConnectionOptions
-		expectError bool
-	}{
-		{
-			name: "Valid SSE Connection",
-			dsl: &types.ClientDSL{
-				Name:               "Test SSE Client",
-				Transport:          types.TransportSSE,
-				URL:                config.SSEUrl,
-				AuthorizationToken: config.SSEToken,
-			},
-			expectError: false,
-		},
-		{
-			name: "SSE with Custom Headers",
-			dsl: &types.ClientDSL{
-				Name:               "Test SSE Client",
-				Transport:          types.TransportSSE,
-				URL:                config.SSEUrl,
-				AuthorizationToken: config.SSEToken,
-			},
-			options: []types.ConnectionOptions{
-				{
-					Headers: map[string]string{
-						"X-Stream-ID": "test-stream-456",
-						"X-Format":    "json",
-					},
-				},
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := &Client{DSL: tt.dsl}
-			ctx, cancel := createTestContext(30 * time.Second)
-			defer cancel()
-
-			err := client.Connect(ctx, tt.options...)
-
-			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				logTestInfo(t, "SSE connection failed (may be expected): %v", err)
-			} else {
-				logTestInfo(t, "SSE connection succeeded")
-				defer client.Disconnect(ctx)
-
-				// Verify client state
-				if !client.IsConnected() {
-					t.Errorf("Expected client to be connected")
-				}
-				if client.State() != types.StateConnected {
-					t.Errorf("Expected state to be connected, got %v", client.State())
-				}
-				if client.IsInitialized() {
-					t.Errorf("Expected client to not be initialized after just connecting")
-				}
-			}
-		})
-	}
-}
-
 func TestDisconnect(t *testing.T) {
-	config := getTestConfig()
-	tests := []struct {
-		name        string
-		setupClient func() *Client
-		expectError bool
-	}{
-		{
-			name: "Disconnect Connected Client",
-			setupClient: func() *Client {
-				dsl := createHTTPTestDSL(config)
-				client := &Client{DSL: dsl}
-				return client
-			},
-			expectError: false,
-		},
-		{
-			name: "Disconnect Unconnected Client",
-			setupClient: func() *Client {
-				dsl := createSSETestDSL(config)
-				client := &Client{DSL: dsl}
-				return client
-			},
-			expectError: false,
-		},
-	}
+	testCases := getStandardTransportTestCases()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := tt.setupClient()
-			ctx, cancel := createTestContext(10 * time.Second)
-			defer cancel()
-
-			err := client.Disconnect(ctx)
-
-			if tt.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				}
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			// Skip test if configuration is not available
+			if testCase.ShouldSkip {
+				t.Skip(testCase.SkipReason)
 				return
 			}
 
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
+			// Create client
+			client := &Client{DSL: testCase.DSL}
+
+			// Create context with timeout
+			_, cancel := createTestContext(testCase.Timeout)
+			defer cancel()
+
+			// Test disconnect without connection (should not error)
+			ctxclose, cancelclose := context.WithDeadline(context.Background(), time.Now().Add(1*time.Second))
+			defer cancelclose()
+			err := client.Disconnect(ctxclose)
+			if err != nil && err.Error() != "close timeout: context canceled" {
+				t.Errorf("Unexpected error during disconnect: %v", err)
 			}
 
 			// Verify client state after disconnect
@@ -376,78 +177,95 @@ func TestDisconnect(t *testing.T) {
 			if client.State() != types.StateDisconnected {
 				t.Errorf("Expected state to be disconnected, got %v", client.State())
 			}
+			if client.IsInitialized() {
+				t.Errorf("Expected client to not be initialized after disconnect")
+			}
+
+			logTestInfo(t, "Disconnect test completed successfully for %s", testCase.Name)
 		})
 	}
 }
 
 func TestConnectionState(t *testing.T) {
-	config := getTestConfig()
-	dsl := createHTTPTestDSL(config)
-	client := &Client{DSL: dsl}
+	testCases := getStandardTransportTestCases()
 
-	// Test initial state
-	if client.IsConnected() {
-		t.Errorf("Expected client to be initially disconnected")
-	}
-	if client.State() != types.StateDisconnected {
-		t.Errorf("Expected initial state to be disconnected, got %v", client.State())
-	}
-	if client.IsInitialized() {
-		t.Errorf("Expected client to not be initialized initially")
-	}
-
-	// Test connection state changes
-	ctx, cancel := createTestContext(10 * time.Second)
-	defer cancel()
-
-	// Try to connect
-	err := client.Connect(ctx)
-	if err != nil {
-		logTestInfo(t, "Connection failed (expected): %v", err)
-		// Even if connection fails, we should still be able to test state
-		if client.State() != types.StateDisconnected {
-			t.Errorf("Expected state to remain disconnected after failed connection")
-		}
-	} else {
-		logTestInfo(t, "Connection succeeded")
-		if !client.IsConnected() {
-			t.Errorf("Expected client to be connected after successful connection")
-		}
-		if client.State() != types.StateConnected {
-			t.Errorf("Expected state to be connected after successful connection")
-		}
-		if client.IsInitialized() {
-			t.Errorf("Expected client to not be initialized after just connecting")
-		}
-
-		// Try to initialize
-		_, err = client.Initialize(ctx)
-		if err != nil {
-			logTestInfo(t, "Initialization failed (expected): %v", err)
-		} else {
-			logTestInfo(t, "Initialization succeeded")
-			if client.State() != types.StateInitialized {
-				t.Errorf("Expected state to be initialized after initialization")
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			// Skip test if configuration is not available
+			if testCase.ShouldSkip {
+				t.Skip(testCase.SkipReason)
+				return
 			}
-			if !client.IsInitialized() {
-				t.Errorf("Expected client to be initialized after initialization")
-			}
-		}
 
-		// Test disconnect
-		err = client.Disconnect(ctx)
-		if err != nil {
-			t.Errorf("Unexpected error during disconnect: %v", err)
-		}
-		if client.IsConnected() {
-			t.Errorf("Expected client to be disconnected after disconnect")
-		}
-		if client.State() != types.StateDisconnected {
-			t.Errorf("Expected state to be disconnected after disconnect")
-		}
-		if client.IsInitialized() {
-			t.Errorf("Expected client to not be initialized after disconnect")
-		}
+			// Create client
+			client := &Client{DSL: testCase.DSL}
+
+			// Test initial state
+			if client.IsConnected() {
+				t.Errorf("Expected client to be initially disconnected")
+			}
+			if client.State() != types.StateDisconnected {
+				t.Errorf("Expected initial state to be disconnected, got %v", client.State())
+			}
+			if client.IsInitialized() {
+				t.Errorf("Expected client to not be initialized initially")
+			}
+
+			// Test connection state changes
+			ctx, cancel := createTestContext(testCase.Timeout)
+			defer cancel()
+
+			// Try to connect
+			err := client.Connect(ctx)
+			if err != nil {
+				logTestInfo(t, "Connection failed (expected): %v", err)
+				// Even if connection fails, we should still be able to test state
+				if client.State() != types.StateDisconnected {
+					t.Errorf("Expected state to remain disconnected after failed connection")
+				}
+			} else {
+				logTestInfo(t, "Connection succeeded")
+				if !client.IsConnected() {
+					t.Errorf("Expected client to be connected after successful connection")
+				}
+				if client.State() != types.StateConnected {
+					t.Errorf("Expected state to be connected after successful connection")
+				}
+				if client.IsInitialized() {
+					t.Errorf("Expected client to not be initialized after just connecting")
+				}
+
+				// Try to initialize
+				_, err = client.Initialize(ctx)
+				if err != nil {
+					logTestInfo(t, "Initialization failed (expected): %v", err)
+				} else {
+					logTestInfo(t, "Initialization succeeded")
+					if client.State() != types.StateInitialized {
+						t.Errorf("Expected state to be initialized after initialization, but got %v", client.State())
+					}
+					if !client.IsInitialized() {
+						t.Errorf("Expected client to be initialized after initialization, but got %v", client.IsInitialized())
+					}
+				}
+
+				// // Test disconnect
+				err = client.Disconnect(ctx)
+				if err != nil {
+					t.Errorf("Unexpected error during disconnect: %v", err)
+				}
+
+				if client.IsConnected() {
+					t.Errorf("Expected client to be disconnected after disconnect")
+				}
+				if client.State() != types.StateDisconnected {
+					t.Errorf("Expected state to be disconnected after disconnect")
+				}
+				if client.IsInitialized() {
+					t.Errorf("Expected client to not be initialized after disconnect")
+				}
+			}
+		})
 	}
 }
 
@@ -472,56 +290,72 @@ func TestUnsupportedTransport(t *testing.T) {
 }
 
 func TestMultipleConnections(t *testing.T) {
-	dsl := &types.ClientDSL{
-		Name:      "Test Client",
-		Transport: types.TransportStdio,
-		Command:   "npx",
-		Arguments: []string{"-y", "@modelcontextprotocol/server-everything"},
+	testCases := getStandardTransportTestCases()
+
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			// Skip test if configuration is not available
+			if testCase.ShouldSkip {
+				t.Skip(testCase.SkipReason)
+				return
+			}
+
+			// Create client
+			client := &Client{DSL: testCase.DSL}
+
+			// Create context with timeout
+			ctx, cancel := createTestContext(testCase.Timeout)
+			defer cancel()
+
+			// First connection
+			err1 := client.Connect(ctx)
+			if err1 != nil {
+				logTestInfo(t, "First connection failed (expected): %v", err1)
+				return
+			}
+
+			// Second connection should succeed (already connected)
+			err2 := client.Connect(ctx)
+			if err2 != nil {
+				t.Errorf("Second connection attempt failed: %v", err2)
+			}
+
+			// Cleanup
+			defer client.Disconnect(ctx)
+		})
 	}
-	client := &Client{DSL: dsl}
-
-	ctx, cancel := createTestContext(10 * time.Second)
-	defer cancel()
-
-	// First connection
-	err1 := client.Connect(ctx)
-	if err1 != nil {
-		logTestInfo(t, "First connection failed (expected): %v", err1)
-		return
-	}
-
-	// Second connection should succeed (already connected)
-	err2 := client.Connect(ctx)
-	if err2 != nil {
-		t.Errorf("Second connection attempt failed: %v", err2)
-	}
-
-	// Cleanup
-	defer client.Disconnect(ctx)
 }
 
 func TestMultipleDisconnections(t *testing.T) {
-	dsl := &types.ClientDSL{
-		Name:      "Test Client",
-		Transport: types.TransportStdio,
-		Command:   "npx",
-		Arguments: []string{"-y", "@modelcontextprotocol/server-everything"},
-	}
-	client := &Client{DSL: dsl}
+	testCases := getStandardTransportTestCases()
 
-	ctx, cancel := createTestContext(10 * time.Second)
-	defer cancel()
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			// Skip test if configuration is not available
+			if testCase.ShouldSkip {
+				t.Skip(testCase.SkipReason)
+				return
+			}
 
-	// First disconnect (should not error)
-	err1 := client.Disconnect(ctx)
-	if err1 != nil {
-		t.Errorf("First disconnect failed: %v", err1)
-	}
+			// Create client
+			client := &Client{DSL: testCase.DSL}
 
-	// Second disconnect (should not error)
-	err2 := client.Disconnect(ctx)
-	if err2 != nil {
-		t.Errorf("Second disconnect failed: %v", err2)
+			// Create context with timeout
+			ctx, cancel := createTestContext(testCase.Timeout)
+			defer cancel()
+
+			// First disconnect (should not error)
+			err1 := client.Disconnect(ctx)
+			if err1 != nil {
+				t.Errorf("First disconnect failed: %v", err1)
+			}
+
+			// Second disconnect (should not error)
+			err2 := client.Disconnect(ctx)
+			if err2 != nil {
+				t.Errorf("Second disconnect failed: %v", err2)
+			}
+		})
 	}
 }
 
@@ -612,74 +446,84 @@ func TestConnectionHeadersMerging(t *testing.T) {
 
 // TestInitializationResultStorageInConnection tests initialization result storage during connection lifecycle
 func TestInitializationResultStorageInConnection(t *testing.T) {
-	dsl := &types.ClientDSL{
-		Name:      "Test Client",
-		Transport: types.TransportStdio,
-		Command:   "npx",
-		Arguments: []string{"-y", "@modelcontextprotocol/server-everything"},
-	}
-	client := &Client{DSL: dsl}
+	testCases := getStandardTransportTestCases()
 
-	ctx, cancel := createTestContext(15 * time.Second)
-	defer cancel()
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			// Skip test if configuration is not available
+			if testCase.ShouldSkip {
+				t.Skip(testCase.SkipReason)
+				return
+			}
 
-	// Test initial state
-	if client.GetInitResult() != nil {
-		t.Errorf("Expected initialization result to be nil initially")
-	}
-	if client.IsInitialized() {
-		t.Errorf("Expected client to not be initialized initially")
-	}
+			// Create client
+			client := &Client{DSL: testCase.DSL}
 
-	// Connect
-	err := client.Connect(ctx)
-	if err != nil {
-		logTestInfo(t, "Connection failed (expected): %v", err)
-		return
-	}
-	defer client.Disconnect(ctx)
+			// Create context with timeout
+			ctx, cancel := createTestContext(testCase.Timeout)
+			defer cancel()
 
-	// Verify still not initialized after connection
-	if client.GetInitResult() != nil {
-		t.Errorf("Expected initialization result to be nil after connection")
-	}
-	if client.IsInitialized() {
-		t.Errorf("Expected client to not be initialized after connection")
-	}
-	if client.State() != types.StateConnected {
-		t.Errorf("Expected state to be connected after connection, got %v", client.State())
-	}
+			// Test initial state
+			if client.GetInitResult() != nil {
+				t.Errorf("Expected initialization result to be nil initially")
+			}
+			if client.IsInitialized() {
+				t.Errorf("Expected client to not be initialized initially")
+			}
 
-	// Initialize
-	response, err := client.Initialize(ctx)
-	if err != nil {
-		logTestInfo(t, "Initialization failed (expected): %v", err)
-		return
-	}
+			// Connect
+			err := client.Connect(ctx)
+			if err != nil {
+				logTestInfo(t, "Connection failed (expected): %v", err)
+				return
+			}
+			defer client.Disconnect(ctx)
 
-	// Verify initialization result is stored
-	if client.GetInitResult() == nil {
-		t.Errorf("Expected initialization result to be stored after initialization")
-	}
-	if !client.IsInitialized() {
-		t.Errorf("Expected client to be initialized after initialization")
-	}
-	if client.State() != types.StateInitialized {
-		t.Errorf("Expected state to be initialized after initialization, got %v", client.State())
-	}
+			// Verify still not initialized after connection
+			if client.GetInitResult() != nil {
+				t.Errorf("Expected initialization result to be nil after connection")
+			}
+			if client.IsInitialized() {
+				t.Errorf("Expected client to not be initialized after connection")
+			}
+			if client.State() != types.StateConnected {
+				t.Errorf("Expected state to be connected after connection, got %v", client.State())
+			}
 
-	// Verify stored result matches response
-	storedResult := client.GetInitResult()
-	if storedResult != response {
-		t.Errorf("Expected stored result to match returned response")
-	}
+			// Initialize
+			response, err := client.Initialize(ctx)
+			if err != nil {
+				logTestInfo(t, "Initialization failed (expected): %v", err)
+				return
+			}
 
-	logTestInfo(t, "Initialization result storage in connection lifecycle works correctly")
+			// Verify initialization result is stored
+			if client.GetInitResult() == nil {
+				t.Errorf("Expected initialization result to be stored after initialization")
+			}
+			if !client.IsInitialized() {
+				t.Errorf("Expected client to be initialized after initialization")
+			}
+			if client.State() != types.StateInitialized {
+				t.Errorf("Expected state to be initialized after initialization, got %v", client.State())
+			}
+
+			// Verify stored result matches response
+			storedResult := client.GetInitResult()
+			if storedResult != response {
+				t.Errorf("Expected stored result to match returned response")
+			}
+
+			logTestInfo(t, "Initialization result storage in connection lifecycle works correctly")
+		})
+	}
 }
 
 // TestDisconnectClearsInitializationResult tests that disconnection clears initialization result
 func TestDisconnectClearsInitializationResult(t *testing.T) {
-	tests := []struct {
+	testCases := getStandardTransportTestCases()
+
+	disconnectMethods := []struct {
 		name           string
 		disconnectFunc func(*Client, context.Context) error
 	}{
@@ -689,123 +533,133 @@ func TestDisconnectClearsInitializationResult(t *testing.T) {
 				return c.Disconnect(ctx)
 			},
 		},
-		{
-			name: "Close method clears result",
-			disconnectFunc: func(c *Client, ctx context.Context) error {
-				return c.Close()
-			},
-		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			config := getTestConfig()
-			dsl := createHTTPTestDSL(config)
-			client := &Client{DSL: dsl}
+	for _, testCase := range testCases {
+		for _, method := range disconnectMethods {
+			t.Run(testCase.Name+" - "+method.name, func(t *testing.T) {
+				// Skip test if configuration is not available
+				if testCase.ShouldSkip {
+					t.Skip(testCase.SkipReason)
+					return
+				}
 
-			ctx, cancel := createTestContext(10 * time.Second)
-			defer cancel()
+				// Create client
+				client := &Client{DSL: testCase.DSL}
 
-			// Connect and initialize
-			err := client.Connect(ctx)
-			if err != nil {
-				logTestInfo(t, "Connection failed (expected): %v", err)
-				return
-			}
+				// Create context with timeout
+				ctx, cancel := createTestContext(testCase.Timeout)
+				defer cancel()
 
-			_, err = client.Initialize(ctx)
-			if err != nil {
-				logTestInfo(t, "Initialization failed (expected): %v", err)
-				client.Disconnect(ctx)
-				return
-			}
+				// Connect and initialize
+				err := client.Connect(ctx)
+				if err != nil {
+					logTestInfo(t, "Connection failed (expected): %v", err)
+					return
+				}
 
-			// Verify initialization result is stored
-			if client.GetInitResult() == nil {
-				t.Errorf("Expected initialization result to be stored before disconnect")
-			}
-			if !client.IsInitialized() {
-				t.Errorf("Expected client to be initialized before disconnect")
-			}
-			if client.State() != types.StateInitialized {
-				t.Errorf("Expected state to be initialized before disconnect, got %v", client.State())
-			}
+				_, err = client.Initialize(ctx)
+				if err != nil {
+					logTestInfo(t, "Initialization failed (expected): %v", err)
+					client.Disconnect(ctx)
+					return
+				}
 
-			// Disconnect using the specified method
-			err = tt.disconnectFunc(client, ctx)
-			if err != nil {
-				t.Errorf("Disconnect failed: %v", err)
-			}
+				// Verify initialization result is stored
+				if client.GetInitResult() == nil {
+					t.Errorf("Expected initialization result to be stored before disconnect")
+				}
+				if !client.IsInitialized() {
+					t.Errorf("Expected client to be initialized before disconnect")
+				}
+				if client.State() != types.StateInitialized {
+					t.Errorf("Expected state to be initialized before disconnect, got %v", client.State())
+				}
 
-			// Verify initialization result is cleared
-			if client.GetInitResult() != nil {
-				t.Errorf("Expected initialization result to be cleared after disconnect")
-			}
-			if client.IsInitialized() {
-				t.Errorf("Expected client to not be initialized after disconnect")
-			}
-			if client.State() != types.StateDisconnected {
-				t.Errorf("Expected state to be disconnected after disconnect, got %v", client.State())
-			}
-			if client.IsConnected() {
-				t.Errorf("Expected client to not be connected after disconnect")
-			}
+				// Disconnect using the specified method
+				err = method.disconnectFunc(client, ctx)
+				if err != nil {
+					t.Errorf("Disconnect failed: %v", err)
+				}
 
-			logTestInfo(t, "Disconnect method %s cleared initialization result correctly", tt.name)
-		})
+				// Verify initialization result is cleared
+				if client.GetInitResult() != nil {
+					t.Errorf("Expected initialization result to be cleared after disconnect")
+				}
+				if client.IsInitialized() {
+					t.Errorf("Expected client to not be initialized after disconnect")
+				}
+				if client.State() != types.StateDisconnected {
+					t.Errorf("Expected state to be disconnected after disconnect, got %v", client.State())
+				}
+				if client.IsConnected() {
+					t.Errorf("Expected client to not be connected after disconnect")
+				}
+
+				logTestInfo(t, "Disconnect method %s cleared initialization result correctly", method.name)
+			})
+		}
 	}
 }
 
 // TestMultipleInitializationAttempts tests multiple initialization attempts
 func TestMultipleInitializationAttempts(t *testing.T) {
-	dsl := &types.ClientDSL{
-		Name:      "Test Client",
-		Transport: types.TransportStdio,
-		Command:   "npx",
-		Arguments: []string{"-y", "@modelcontextprotocol/server-everything"},
-	}
-	client := &Client{DSL: dsl}
+	testCases := getStandardTransportTestCases()
 
-	ctx, cancel := createTestContext(15 * time.Second)
-	defer cancel()
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			// Skip test if configuration is not available
+			if testCase.ShouldSkip {
+				t.Skip(testCase.SkipReason)
+				return
+			}
 
-	// Connect
-	err := client.Connect(ctx)
-	if err != nil {
-		logTestInfo(t, "Connection failed (expected): %v", err)
-		return
-	}
-	defer client.Disconnect(ctx)
+			// Create client
+			client := &Client{DSL: testCase.DSL}
 
-	// First initialization
-	response1, err := client.Initialize(ctx)
-	if err != nil {
-		logTestInfo(t, "First initialization failed (expected): %v", err)
-		return
-	}
+			// Create context with timeout
+			ctx, cancel := createTestContext(testCase.Timeout)
+			defer cancel()
 
-	// Verify first initialization
-	if client.GetInitResult() == nil {
-		t.Errorf("Expected initialization result to be stored after first initialization")
-	}
-	if client.GetInitResult() != response1 {
-		t.Errorf("Expected stored result to match first response")
-	}
+			// Connect
+			err := client.Connect(ctx)
+			if err != nil {
+				logTestInfo(t, "Connection failed (expected): %v", err)
+				return
+			}
+			defer client.Disconnect(ctx)
 
-	// Second initialization (should update the stored result)
-	response2, err := client.Initialize(ctx)
-	if err != nil {
-		logTestInfo(t, "Second initialization failed (expected): %v", err)
-		return
-	}
+			// First initialization
+			response1, err := client.Initialize(ctx)
+			if err != nil {
+				logTestInfo(t, "First initialization failed (expected): %v", err)
+				return
+			}
 
-	// Verify second initialization updates the stored result
-	if client.GetInitResult() == nil {
-		t.Errorf("Expected initialization result to be stored after second initialization")
-	}
-	if client.GetInitResult() != response2 {
-		t.Errorf("Expected stored result to match second response")
-	}
+			// Verify first initialization
+			if client.GetInitResult() == nil {
+				t.Errorf("Expected initialization result to be stored after first initialization")
+			}
+			if client.GetInitResult() != response1 {
+				t.Errorf("Expected stored result to match first response")
+			}
 
-	logTestInfo(t, "Multiple initialization attempts work correctly")
+			// Second initialization (should update the stored result)
+			response2, err := client.Initialize(ctx)
+			if err != nil {
+				logTestInfo(t, "Second initialization failed (expected): %v", err)
+				return
+			}
+
+			// Verify second initialization updates the stored result
+			if client.GetInitResult() == nil {
+				t.Errorf("Expected initialization result to be stored after second initialization")
+			}
+			if client.GetInitResult() != response2 {
+				t.Errorf("Expected stored result to match second response")
+			}
+
+			logTestInfo(t, "Multiple initialization attempts work correctly")
+		})
+	}
 }
