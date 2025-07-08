@@ -56,11 +56,10 @@ env:
   NEO4J_TEST_USER: "neo4j"
   NEO4J_TEST_PASS: "Yao2026Neo4j"
 
-  MCP_CLIENT_TEST_HTTP_URL: "http://localhost:3090/mcp"
+  MCP_CLIENT_TEST_HTTP_URL: "http://127.0.0.1:3022/mcp"
   MCP_CLIENT_TEST_HTTP_AUTHORIZATION_TOKEN: "Bearer 123456"
-  MCP_CLIENT_TEST_SSE_URL: "http://localhost:3090/sse"
+  MCP_CLIENT_TEST_SSE_URL: "http://127.0.0.1:3021/sse"
   MCP_CLIENT_TEST_SSE_AUTHORIZATION_TOKEN: "Bearer 123456"
-
 
 jobs:
   unit-test:
@@ -87,12 +86,11 @@ jobs:
         env:
           NEO4J_AUTH: neo4j/Yao2026Neo4j
 
-      fetcher-mcp:
-        image: ghcr.io/jae-jae/fetcher-mcp:latest
+      mcp-everything:
+        image: yaoapp/mcp-everything:latest
         ports:
-          - "3090:3000"
-        env:
-          NODE_ENV: production
+          - "3021:3021"
+          - "3022:3022"
 
     strategy:
       matrix:
