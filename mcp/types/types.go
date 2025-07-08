@@ -280,15 +280,52 @@ type GetPromptResponse struct {
 	Messages    []PromptMessage `json:"messages"`
 }
 
+// PromptRole represents the role of a prompt message
+type PromptRole string
+
+const (
+	PromptRoleUser      PromptRole = "user"
+	PromptRoleAssistant PromptRole = "assistant"
+)
+
 type PromptMessage struct {
-	Role    string        `json:"role"`
+	Role    PromptRole    `json:"role"`
 	Content PromptContent `json:"content"`
 }
 
+// PromptContentType represents the type of prompt content
+type PromptContentType string
+
+const (
+	PromptContentTypeText     PromptContentType = "text"
+	PromptContentTypeImage    PromptContentType = "image"
+	PromptContentTypeAudio    PromptContentType = "audio"
+	PromptContentTypeResource PromptContentType = "resource"
+)
+
 type PromptContent struct {
-	Type     string `json:"type"`
+	Type PromptContentType `json:"type"`
+
+	// Text content
+	Text string `json:"text,omitempty"`
+
+	// Image content
+	Data     string `json:"data,omitempty"`     // base64-encoded data for image/audio
+	MimeType string `json:"mimeType,omitempty"` // MIME type for image/audio
+
+	// Audio content (same fields as image)
+	// Data and MimeType are reused
+
+	// Resource content
+	Resource *EmbeddedResource `json:"resource,omitempty"`
+}
+
+// EmbeddedResource represents an embedded resource in prompt content
+type EmbeddedResource struct {
+	URI      string `json:"uri"`
+	MimeType string `json:"mimeType"`
 	Text     string `json:"text,omitempty"`
-	ImageURL string `json:"imageUrl,omitempty"`
+	Blob     string `json:"blob,omitempty"` // base64-encoded binary data
 }
 
 // Sampling types
