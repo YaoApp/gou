@@ -13,6 +13,14 @@ type Client struct {
 	DSL        *types.ClientDSL
 	MCPClient  *goclient.Client
 	InitResult *types.InitializeResponse // Store the initialization result
+
+	// Additional client state
+	currentLogLevel      types.LogLevel
+	progressTokens       map[uint64]*types.Progress
+	eventHandlers        map[string][]func(event types.Event)
+	notificationHandlers map[string][]types.NotificationHandler
+	errorHandlers        []types.ErrorHandler
+	nextProgressToken    uint64
 }
 
 // New create a new MCP Client (without establishing connection)
@@ -45,6 +53,14 @@ func New(dsl *types.ClientDSL) (*Client, error) {
 		DSL:        dsl,
 		MCPClient:  nil, // Will be created when Connect() is called
 		InitResult: nil, // Will be set when Initialize() is called
+
+		// Initialize additional fields
+		currentLogLevel:      types.LogLevelInfo,
+		progressTokens:       make(map[uint64]*types.Progress),
+		eventHandlers:        make(map[string][]func(event types.Event)),
+		notificationHandlers: make(map[string][]types.NotificationHandler),
+		errorHandlers:        []types.ErrorHandler{},
+		nextProgressToken:    1,
 	}
 
 	return client, nil
