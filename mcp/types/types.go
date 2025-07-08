@@ -226,11 +226,27 @@ type CallToolResponse struct {
 	IsError bool          `json:"isError,omitempty"`
 }
 
+// ToolContentType represents the type of tool content
+type ToolContentType string
+
+const (
+	ToolContentTypeText     ToolContentType = "text"
+	ToolContentTypeImage    ToolContentType = "image"
+	ToolContentTypeResource ToolContentType = "resource"
+)
+
 type ToolContent struct {
-	Type     string `json:"type"`
-	Text     string `json:"text,omitempty"`
-	Data     []byte `json:"data,omitempty"`
-	MimeType string `json:"mimeType,omitempty"`
+	Type ToolContentType `json:"type"`
+
+	// Text content
+	Text string `json:"text,omitempty"`
+
+	// Image content (base64 encoded)
+	Data     string `json:"data,omitempty"`     // base64-encoded image data
+	MimeType string `json:"mimeType,omitempty"` // MIME type for image
+
+	// Resource content
+	Resource *EmbeddedResource `json:"resource,omitempty"`
 }
 
 // Batch tool call types
