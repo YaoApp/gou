@@ -51,10 +51,6 @@ type Client interface {
 	OnEvent(eventType string, handler func(event types.Event))
 	OnNotification(method string, handler types.NotificationHandler)
 	OnError(handler types.ErrorHandler)
-
-	// Transport operations
-	Send(ctx context.Context, message types.Message) error
-	Close() error
 }
 
 // Server the MCP service interface

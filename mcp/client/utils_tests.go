@@ -292,3 +292,63 @@ func getTestResourceURI(t *testing.T) string {
 	// Return a generic test URI that should work with most MCP servers
 	return "test://example/resource"
 }
+
+// TransportTestCase represents a test case for a specific transport type
+type TransportTestCase struct {
+	Name          string
+	Transport     types.TransportType
+	DSL           *types.ClientDSL
+	ShouldSkip    bool
+	SkipReason    string
+	ExpectError   bool
+	ExpectedError string
+	Timeout       time.Duration
+}
+
+// getStandardTransportTestCases returns standard test cases for all transport types
+func getStandardTransportTestCases() []TransportTestCase {
+	config := getTestConfig()
+	return []TransportTestCase{
+		{
+			Name:        "HTTP Transport",
+			Transport:   types.TransportHTTP,
+			DSL:         createHTTPTestDSL(config),
+			ShouldSkip:  config.SkipHTTPTests,
+			SkipReason:  "HTTP test configuration not available",
+			ExpectError: false,
+			Timeout:     30 * time.Second,
+		},
+		{
+			Name:        "SSE Transport",
+			Transport:   types.TransportSSE,
+			DSL:         createSSETestDSL(config),
+			ShouldSkip:  config.SkipSSETests,
+			SkipReason:  "SSE test configuration not available",
+			ExpectError: false,
+			Timeout:     30 * time.Second,
+		},
+		{
+			Name:        "STDIO Transport",
+			Transport:   types.TransportStdio,
+			DSL:         createStdioTestDSL(),
+			ShouldSkip:  config.SkipStdioTests,
+			SkipReason:  "STDIO test configuration not available",
+			ExpectError: false,
+			Timeout:     30 * time.Second,
+		},
+	}
+}
+
+// Helper function to check if string contains substring
+func containsString(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(substr) > 0 && len(s) >= len(substr) &&
+			func() bool {
+				for i := 0; i <= len(s)-len(substr); i++ {
+					if s[i:i+len(substr)] == substr {
+						return true
+					}
+				}
+				return false
+			}()))
+}

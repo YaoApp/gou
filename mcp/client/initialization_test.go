@@ -3,108 +3,63 @@ package client
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/yaoapp/gou/mcp/types"
 )
 
 func TestInitialize(t *testing.T) {
-	config := getTestConfig()
+	testCases := getStandardTransportTestCases()
 
-	tests := []struct {
-		name        string
-		setupClient func() (*Client, context.Context, context.CancelFunc)
-		expectError bool
-		errorMsg    string
-	}{
-		{
-			name: "Initialize without connection",
-			setupClient: func() (*Client, context.Context, context.CancelFunc) {
-				dsl := createStdioTestDSL()
-				client := &Client{DSL: dsl}
-				// Don't connect
-				return client, nil, nil
-			},
-			expectError: true,
-			errorMsg:    "MCP client not connected",
-		},
-		{
-			name: "Initialize with stdio connection",
-			setupClient: func() (*Client, context.Context, context.CancelFunc) {
-				dsl := createStdioTestDSL()
-				client := &Client{DSL: dsl}
-				// Try to connect
-				ctx, cancel := createTestContext(10 * time.Second)
-				client.Connect(ctx)
-				return client, ctx, cancel
-			},
-			expectError: false, // May succeed or fail depending on test environment
-		},
-		{
-			name: "Initialize with HTTP connection",
-			setupClient: func() (*Client, context.Context, context.CancelFunc) {
-				if config.SkipHTTPTests {
-					return nil, nil, nil // Will be skipped
-				}
-				dsl := createHTTPTestDSL(config)
-				client := &Client{DSL: dsl}
-				// Try to connect
-				ctx, cancel := createTestContext(10 * time.Second)
-				client.Connect(ctx)
-				return client, ctx, cancel
-			},
-			expectError: false,
-		},
-		{
-			name: "Initialize with SSE connection",
-			setupClient: func() (*Client, context.Context, context.CancelFunc) {
-				if config.SkipSSETests {
-					return nil, nil, nil // Will be skipped
-				}
-				dsl := createSSETestDSL(config)
-				client := &Client{DSL: dsl}
-				// Try to connect
-				ctx, cancel := createTestContext(30 * time.Second)
-				if err := client.Connect(ctx); err != nil {
-					t.Errorf("Connection failed: %v", err)
-					return nil, nil, nil
-				}
-				return client, ctx, cancel
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			client, ctx, _ := tt.setupClient()
-			if client == nil {
-				t.Skip("Test skipped - client setup returned nil")
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			// Skip test if configuration is not available
+			if testCase.ShouldSkip {
+				t.Skip(testCase.SkipReason)
 				return
 			}
-			if ctx == nil {
-				ctx, _ = createTestContext(30 * time.Second)
-			}
+
+			// Create client
+			client := &Client{DSL: testCase.DSL}
+
+			// Create context with timeout
+			ctx, cancel := createTestContext(testCase.Timeout)
 
 			// Clean up after test
 			defer func() {
 				client.Disconnect(ctx)
-				// if cancel != nil {
-				// 	cancel()
-				// }
+				cancel()
 			}()
 
+			// Test initialize without connection first
+			_, err := client.Initialize(ctx)
+			if err == nil {
+				t.Errorf("Expected error when initializing without connection")
+				return
+			}
+			if !containsString(err.Error(), "MCP client not connected") {
+				t.Errorf("Expected error message to contain 'MCP client not connected', got '%s'", err.Error())
+			}
+			logTestInfo(t, "Initialize without connection failed as expected: %v", err)
+
+			// Try to connect
+			err = client.Connect(ctx)
+			if err != nil {
+				logTestInfo(t, "Connection failed (expected): %v", err)
+				return
+			}
+			logTestInfo(t, "Connection succeeded")
+
+			// Now test initialization
 			response, err := client.Initialize(ctx)
 
-			if tt.expectError {
+			if testCase.ExpectError {
 				if err == nil {
 					t.Errorf("Expected error but got none")
 					return
 				}
-				if tt.errorMsg != "" && !containsString(err.Error(), tt.errorMsg) {
-					t.Errorf("Expected error message to contain '%s', got '%s'", tt.errorMsg, err.Error())
+				if testCase.ExpectedError != "" && !containsString(err.Error(), testCase.ExpectedError) {
+					t.Errorf("Expected error message to contain '%s', got '%s'", testCase.ExpectedError, err.Error())
 				}
 				logTestInfo(t, "Expected error: %v", err)
 				return
@@ -155,63 +110,60 @@ func TestInitialize(t *testing.T) {
 			if response.ServerInfo.Name == "" {
 				t.Errorf("Expected non-empty server name")
 			}
-
 		})
 	}
 }
 
 func TestInitialized(t *testing.T) {
-	tests := []struct {
-		name        string
-		setupClient func() *Client
-		expectError bool
-		errorMsg    string
-	}{
-		{
-			name: "Initialized without connection",
-			setupClient: func() *Client {
-				dsl := createStdioTestDSL()
-				return &Client{DSL: dsl}
-			},
-			expectError: true,
-			errorMsg:    "MCP client not connected",
-		},
-		{
-			name: "Initialized with connection",
-			setupClient: func() *Client {
-				dsl := createStdioTestDSL()
-				client := &Client{DSL: dsl}
-				// Try to connect
-				ctx, cancel := createTestContext(5 * time.Second)
-				defer cancel()
-				if err := client.Connect(ctx); err != nil {
-					t.Errorf("Connection failed: %v", err)
-					return nil
-				}
-				return client
-			},
-			expectError: false,
-		},
-	}
+	testCases := getStandardTransportTestCases()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := tt.setupClient()
-			ctx, cancel := createTestContext(2 * time.Second)
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			// Skip test if configuration is not available
+			if testCase.ShouldSkip {
+				t.Skip(testCase.SkipReason)
+				return
+			}
+
+			// Create client
+			client := &Client{DSL: testCase.DSL}
+
+			// Create context with timeout
+			ctx, cancel := createTestContext(testCase.Timeout)
 			defer cancel()
 
 			// Clean up after test
 			defer client.Disconnect(ctx)
 
+			// Test initialized without connection first
 			err := client.Initialized(ctx)
+			if err == nil {
+				t.Errorf("Expected error when calling Initialized without connection")
+				return
+			}
+			if !containsString(err.Error(), "MCP client not connected") {
+				t.Errorf("Expected error message to contain 'MCP client not connected', got '%s'", err.Error())
+			}
+			logTestInfo(t, "Initialized without connection failed as expected: %v", err)
 
-			if tt.expectError {
+			// Try to connect
+			err = client.Connect(ctx)
+			if err != nil {
+				logTestInfo(t, "Connection failed (expected): %v", err)
+				return
+			}
+			logTestInfo(t, "Connection succeeded")
+
+			// Now test Initialized call
+			err = client.Initialized(ctx)
+
+			if testCase.ExpectError {
 				if err == nil {
 					t.Errorf("Expected error but got none")
 					return
 				}
-				if tt.errorMsg != "" && !containsString(err.Error(), tt.errorMsg) {
-					t.Errorf("Expected error message to contain '%s', got '%s'", tt.errorMsg, err.Error())
+				if testCase.ExpectedError != "" && !containsString(err.Error(), testCase.ExpectedError) {
+					t.Errorf("Expected error message to contain '%s', got '%s'", testCase.ExpectedError, err.Error())
 				}
 				logTestInfo(t, "Expected error: %v", err)
 				return
@@ -506,125 +458,110 @@ func TestConvertClientCapabilities(t *testing.T) {
 }
 
 func TestInitializeWithDifferentCapabilities(t *testing.T) {
-	tests := []struct {
-		name string
-		dsl  *types.ClientDSL
+	testCases := getStandardTransportTestCases()
+
+	capabilityTests := []struct {
+		name              string
+		enableSampling    bool
+		enableRoots       bool
+		rootsListChanged  bool
+		enableElicitation bool
 	}{
 		{
-			name: "Client with sampling only",
-			dsl: &types.ClientDSL{
-				Name:           "Test Client",
-				Transport:      types.TransportStdio,
-				Command:        "npx",
-				Arguments:      []string{"-y", "@modelcontextprotocol/server-everything"},
-				EnableSampling: true,
-				EnableRoots:    false,
-			},
+			name:              "Client with sampling only",
+			enableSampling:    true,
+			enableRoots:       false,
+			rootsListChanged:  false,
+			enableElicitation: false,
 		},
 		{
-			name: "Client with roots only",
-			dsl: &types.ClientDSL{
-				Name:             "Test Client",
-				Transport:        types.TransportStdio,
-				Command:          "npx",
-				Arguments:        []string{"-y", "@modelcontextprotocol/server-everything"},
-				EnableSampling:   false,
-				EnableRoots:      true,
-				RootsListChanged: true,
-			},
+			name:              "Client with roots only",
+			enableSampling:    false,
+			enableRoots:       true,
+			rootsListChanged:  true,
+			enableElicitation: false,
 		},
 		{
-			name: "Client with all capabilities",
-			dsl: &types.ClientDSL{
-				Name:              "Test Client",
-				Transport:         types.TransportStdio,
-				Command:           "npx",
-				Arguments:         []string{"-y", "@modelcontextprotocol/server-everything"},
-				EnableSampling:    true,
-				EnableRoots:       true,
-				RootsListChanged:  true,
-				EnableElicitation: true,
-			},
+			name:              "Client with all capabilities",
+			enableSampling:    true,
+			enableRoots:       true,
+			rootsListChanged:  true,
+			enableElicitation: true,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := &Client{DSL: tt.dsl}
-			ctx, cancel := createTestContext(2 * time.Second)
-			defer cancel()
-
-			// Try to connect
-			err := client.Connect(ctx)
-			if err != nil {
-				logTestInfo(t, "Connection failed (expected): %v", err)
-				return
-			}
-
-			defer client.Disconnect(ctx)
-
-			// Test client capabilities generation
-			clientCaps := tt.dsl.GetClientCapabilities()
-			logTestInfo(t, "Client capabilities: Sampling=%v, Roots=%v",
-				clientCaps.Sampling != nil, clientCaps.Roots != nil)
-
-			// Test initialization (may fail due to no actual server)
-			_, err = client.Initialize(ctx)
-			if err != nil {
-				logTestInfo(t, "Initialization failed (expected): %v", err)
-			} else {
-				logTestInfo(t, "Initialization succeeded")
-			}
-		})
-	}
-}
-
-// Helper function to check if string contains substring
-func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(substr) > 0 && len(s) >= len(substr) &&
-			func() bool {
-				for i := 0; i <= len(s)-len(substr); i++ {
-					if s[i:i+len(substr)] == substr {
-						return true
-					}
+	for _, testCase := range testCases {
+		for _, capTest := range capabilityTests {
+			t.Run(testCase.Name+" - "+capTest.name, func(t *testing.T) {
+				// Skip test if configuration is not available
+				if testCase.ShouldSkip {
+					t.Skip(testCase.SkipReason)
+					return
 				}
-				return false
-			}()))
+
+				// Create modified DSL with different capabilities
+				dsl := *testCase.DSL // Copy the DSL
+				dsl.EnableSampling = capTest.enableSampling
+				dsl.EnableRoots = capTest.enableRoots
+				dsl.RootsListChanged = capTest.rootsListChanged
+				dsl.EnableElicitation = capTest.enableElicitation
+
+				// Create client
+				client := &Client{DSL: &dsl}
+
+				// Create context with timeout
+				ctx, cancel := createTestContext(testCase.Timeout)
+				defer cancel()
+
+				// Clean up after test
+				defer client.Disconnect(ctx)
+
+				// Try to connect
+				err := client.Connect(ctx)
+				if err != nil {
+					logTestInfo(t, "Connection failed (expected): %v", err)
+					return
+				}
+				logTestInfo(t, "Connection succeeded")
+
+				// Test client capabilities generation
+				clientCaps := dsl.GetClientCapabilities()
+				logTestInfo(t, "Client capabilities: Sampling=%v, Roots=%v",
+					clientCaps.Sampling != nil, clientCaps.Roots != nil)
+
+				// Test initialization (may fail due to no actual server)
+				_, err = client.Initialize(ctx)
+				if err != nil {
+					logTestInfo(t, "Initialization failed (expected): %v", err)
+				} else {
+					logTestInfo(t, "Initialization succeeded")
+				}
+			})
+		}
+	}
 }
 
 // TestInitializationResultStorage tests the storage and retrieval of initialization results
 func TestInitializationResultStorage(t *testing.T) {
-	tests := []struct {
-		name        string
-		setupClient func() *Client
-		expectError bool
-	}{
-		{
-			name: "Store and retrieve initialization result",
-			setupClient: func() *Client {
-				dsl := createStdioTestDSL()
-				client := &Client{DSL: dsl}
-				return client
-			},
-			expectError: false,
-		},
-		{
-			name: "Initialization result initially nil",
-			setupClient: func() *Client {
-				dsl := createStdioTestDSL()
-				client := &Client{DSL: dsl}
-				return client
-			},
-			expectError: false,
-		},
-	}
+	testCases := getStandardTransportTestCases()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := tt.setupClient()
-			ctx, cancel := createTestContext(2 * time.Second)
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			// Skip test if configuration is not available
+			if testCase.ShouldSkip {
+				t.Skip(testCase.SkipReason)
+				return
+			}
+
+			// Create client
+			client := &Client{DSL: testCase.DSL}
+
+			// Create context with timeout
+			ctx, cancel := createTestContext(testCase.Timeout)
 			defer cancel()
+
+			// Clean up after test
+			defer client.Disconnect(ctx)
 
 			// Test initial state
 			if client.GetInitResult() != nil {
@@ -640,7 +577,7 @@ func TestInitializationResultStorage(t *testing.T) {
 				logTestInfo(t, "Connection failed (expected): %v", err)
 				return
 			}
-			defer client.Disconnect(ctx)
+			logTestInfo(t, "Connection succeeded")
 
 			// Try to initialize
 			response, err := client.Initialize(ctx)
@@ -670,150 +607,163 @@ func TestInitializationResultStorage(t *testing.T) {
 
 // TestInitializationResultClear tests clearing of initialization results on disconnect
 func TestInitializationResultClear(t *testing.T) {
-	config := getTestConfig()
-	tests := []struct {
-		name        string
-		setupClient func() *Client
-		disconnect  func(*Client, context.Context) error
+	testCases := getStandardTransportTestCases()
+
+	disconnectMethods := []struct {
+		name           string
+		disconnectFunc func(*Client, context.Context) error
 	}{
 		{
-			name: "Clear result on Disconnect",
-			setupClient: func() *Client {
-				dsl := createHTTPTestDSL(config)
-				client := &Client{DSL: dsl}
-				return client
-			},
-			disconnect: func(c *Client, ctx context.Context) error {
+			name: "Disconnect method clears result",
+			disconnectFunc: func(c *Client, ctx context.Context) error {
 				return c.Disconnect(ctx)
-			},
-		},
-		{
-			name: "Clear result on Close",
-			setupClient: func() *Client {
-				dsl := createSSETestDSL(config)
-				client := &Client{DSL: dsl}
-				return client
-			},
-			disconnect: func(c *Client, ctx context.Context) error {
-				return c.Close()
 			},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := tt.setupClient()
-			ctx, cancel := createTestContext(20 * time.Second)
-			defer cancel()
+	for _, testCase := range testCases {
+		for _, method := range disconnectMethods {
+			t.Run(testCase.Name+" - "+method.name, func(t *testing.T) {
+				// Skip test if configuration is not available
+				if testCase.ShouldSkip {
+					t.Skip(testCase.SkipReason)
+					return
+				}
 
-			// Try to connect and initialize
-			err := client.Connect(ctx)
-			if err != nil {
-				logTestInfo(t, "Connection failed (expected): %v", err)
-				return
-			}
+				// Create client
+				client := &Client{DSL: testCase.DSL}
 
-			_, err = client.Initialize(ctx)
-			if err != nil {
-				logTestInfo(t, "Initialization failed (expected): %v", err)
-				// Clean up
-				client.Disconnect(ctx)
-				return
-			}
+				// Create context with timeout
+				ctx, cancel := createTestContext(testCase.Timeout)
+				defer cancel()
 
-			// Verify initialization result is stored
-			if client.GetInitResult() == nil {
-				t.Errorf("Expected initialization result to be stored before disconnect")
-			}
-			if !client.IsInitialized() {
-				t.Errorf("Expected client to be initialized before disconnect")
-			}
+				// Try to connect and initialize
+				err := client.Connect(ctx)
+				if err != nil {
+					logTestInfo(t, "Connection failed (expected): %v", err)
+					return
+				}
+				logTestInfo(t, "Connection succeeded")
 
-			// Test disconnection
-			err = tt.disconnect(client, ctx)
-			if err != nil {
-				t.Errorf("Disconnect failed: %v", err)
-			}
+				_, err = client.Initialize(ctx)
+				if err != nil {
+					logTestInfo(t, "Initialization failed (expected): %v", err)
+					// Clean up
+					client.Disconnect(ctx)
+					return
+				}
+				logTestInfo(t, "Initialization succeeded")
 
-			// Verify initialization result is cleared
-			if client.GetInitResult() != nil {
-				t.Errorf("Expected initialization result to be cleared after disconnect")
-			}
-			if client.IsInitialized() {
-				t.Errorf("Expected client to not be initialized after disconnect")
-			}
-			if client.State() != types.StateDisconnected {
-				t.Errorf("Expected state to be disconnected after disconnect, got %v", client.State())
-			}
+				// Verify initialization result is stored
+				if client.GetInitResult() == nil {
+					t.Errorf("Expected initialization result to be stored before disconnect")
+				}
+				if !client.IsInitialized() {
+					t.Errorf("Expected client to be initialized before disconnect")
+				}
 
-			logTestInfo(t, "Initialization result cleared successfully")
-		})
+				// Test disconnection
+				err = method.disconnectFunc(client, ctx)
+				if err != nil {
+					t.Errorf("Disconnect failed: %v", err)
+				}
+
+				// Verify initialization result is cleared
+				if client.GetInitResult() != nil {
+					t.Errorf("Expected initialization result to be cleared after disconnect")
+				}
+				if client.IsInitialized() {
+					t.Errorf("Expected client to not be initialized after disconnect")
+				}
+				if client.State() != types.StateDisconnected {
+					t.Errorf("Expected state to be disconnected after disconnect, got %v", client.State())
+				}
+
+				logTestInfo(t, "Initialization result cleared successfully")
+			})
+		}
 	}
 }
 
 // TestClientStateTransitions tests state transitions with initialization
 func TestClientStateTransitions(t *testing.T) {
-	config := getTestConfig()
-	dsl := createHTTPTestDSL(config)
-	client := &Client{DSL: dsl}
+	testCases := getStandardTransportTestCases()
 
-	ctx, cancel := createTestContext(20 * time.Second)
-	defer cancel()
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			// Skip test if configuration is not available
+			if testCase.ShouldSkip {
+				t.Skip(testCase.SkipReason)
+				return
+			}
 
-	// Test initial state
-	if client.State() != types.StateDisconnected {
-		t.Errorf("Expected initial state to be disconnected, got %v", client.State())
-	}
-	if client.IsInitialized() {
-		t.Errorf("Expected client to not be initialized initially")
-	}
+			// Create client
+			client := &Client{DSL: testCase.DSL}
 
-	// Try to connect
-	err := client.Connect(ctx)
-	if err != nil {
-		logTestInfo(t, "Connection failed (expected): %v", err)
-		return
-	}
-	defer client.Disconnect(ctx)
+			// Create context with timeout
+			ctx, cancel := createTestContext(testCase.Timeout)
+			defer cancel()
 
-	// Test connected state
-	if client.State() != types.StateConnected {
-		t.Errorf("Expected state to be connected after connection, got %v", client.State())
-	}
-	if client.IsInitialized() {
-		t.Errorf("Expected client to not be initialized after connection")
-	}
+			// Clean up after test
+			defer client.Disconnect(ctx)
 
-	// Try to initialize
-	_, err = client.Initialize(ctx)
-	if err != nil {
-		logTestInfo(t, "Initialization failed (expected): %v", err)
-		return
-	}
+			// Test initial state
+			if client.State() != types.StateDisconnected {
+				t.Errorf("Expected initial state to be disconnected, got %v", client.State())
+			}
+			if client.IsInitialized() {
+				t.Errorf("Expected client to not be initialized initially")
+			}
 
-	// Test initialized state
-	if client.State() != types.StateInitialized {
-		t.Errorf("Expected state to be initialized after initialization, got %v", client.State())
-	}
-	if !client.IsInitialized() {
-		t.Errorf("Expected client to be initialized after initialization")
-	}
+			// Try to connect
+			err := client.Connect(ctx)
+			if err != nil {
+				logTestInfo(t, "Connection failed (expected): %v", err)
+				return
+			}
+			logTestInfo(t, "Connection succeeded")
 
-	// Test disconnect
-	err = client.Disconnect(ctx)
-	if err != nil {
-		t.Errorf("Disconnect failed: %v", err)
-	}
+			// Test connected state
+			if client.State() != types.StateConnected {
+				t.Errorf("Expected state to be connected after connection, got %v", client.State())
+			}
+			if client.IsInitialized() {
+				t.Errorf("Expected client to not be initialized after connection")
+			}
 
-	// Test disconnected state
-	if client.State() != types.StateDisconnected {
-		t.Errorf("Expected state to be disconnected after disconnect, got %v", client.State())
-	}
-	if client.IsInitialized() {
-		t.Errorf("Expected client to not be initialized after disconnect")
-	}
+			// Try to initialize
+			_, err = client.Initialize(ctx)
+			if err != nil {
+				logTestInfo(t, "Initialization failed (expected): %v", err)
+				return
+			}
+			logTestInfo(t, "Initialization succeeded")
 
-	logTestInfo(t, "State transitions completed successfully")
+			// Test initialized state
+			if client.State() != types.StateInitialized {
+				t.Errorf("Expected state to be initialized after initialization, got %v", client.State())
+			}
+			if !client.IsInitialized() {
+				t.Errorf("Expected client to be initialized after initialization")
+			}
+
+			// Test disconnect
+			err = client.Disconnect(ctx)
+			if err != nil {
+				t.Errorf("Disconnect failed: %v", err)
+			}
+
+			// Test disconnected state
+			if client.State() != types.StateDisconnected {
+				t.Errorf("Expected state to be disconnected after disconnect, got %v", client.State())
+			}
+			if client.IsInitialized() {
+				t.Errorf("Expected client to not be initialized after disconnect")
+			}
+
+			logTestInfo(t, "State transitions completed successfully")
+		})
+	}
 }
 
 // TestGetInitResultMethods tests the GetInitResult and IsInitialized methods

@@ -12,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/yaoapp/gou/http"
 	"github.com/yaoapp/gou/mcp/types"
+	"github.com/yaoapp/kun/log"
 )
 
 // Connect establishes connection to the MCP server
@@ -48,19 +49,16 @@ func (c *Client) Connect(ctx context.Context, options ...types.ConnectionOptions
 }
 
 // connectStdio creates a stdio connection with process tracking
-func (c *Client) connectStdio(_ context.Context) error {
-	// For testing purposes, we'll use the existing mcp-go client
-	// but also track the process if possible
-	client, err := goclient.NewStdioMCPClient(c.DSL.Command, c.DSL.GetEnvs(), c.DSL.Arguments...)
+func (c *Client) connectStdio(ctx context.Context) error {
+
+	stdioTransport := transport.NewStdio(c.DSL.Command, c.DSL.GetEnvs(), c.DSL.Arguments...)
+	c.MCPClient = goclient.NewClient(stdioTransport)
+
+	// Start the client
+	err := c.MCPClient.Start(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create stdio client: %w", err)
+		return fmt.Errorf("failed to start stdio client: %w", err)
 	}
-
-	c.MCPClient = client
-
-	// Note: We can't easily get the process from mcp-go client
-	// This is a limitation of the current mcp-go library
-	// For now, we'll rely on the improved timeout mechanism
 
 	return nil
 }
@@ -150,31 +148,36 @@ func (c *Client) Disconnect(ctx context.Context) error {
 		return nil // Already disconnected
 	}
 
-	// Create a reasonable timeout for the operation
-	disconnectCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
+	// Save reference for use in goroutine
+	mcpClient := c.MCPClient
 
-	// Try graceful close with timeout
-	errChan := make(chan error, 1)
-	go func() {
-		defer close(errChan)
-		errChan <- c.MCPClient.Close()
-	}()
-
-	var err error
-	select {
-	case err = <-errChan:
-		// Graceful close completed
-	case <-disconnectCtx.Done():
-		// Timeout or context cancellation
-		err = disconnectCtx.Err()
-	}
-
-	// Clean up references regardless of close result
+	// Immediately clear references
 	c.MCPClient = nil
 	c.InitResult = nil
 
-	return err
+	// Execute actual close operation in background goroutine
+	go func() {
+		// Create 30-second timeout context
+		closeCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		errChan := make(chan error, 1)
+		go func() {
+			err := mcpClient.Close()
+			errChan <- err
+		}()
+
+		select {
+		case err := <-errChan:
+			if err != nil {
+				log.Error("MCP client close failed: %v", err)
+			}
+		case <-closeCtx.Done():
+			log.Warn("MCP client close timeout after 30 seconds")
+		}
+	}()
+
+	return nil
 }
 
 // IsConnected checks if the client is connected to the server
