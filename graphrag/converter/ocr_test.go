@@ -55,14 +55,8 @@ func ensureOCRTestDataExists(t *testing.T) {
 
 	// Check for required test files
 	requiredPDFFiles := []string{
-		"chinese_sample_1.pdf",
-		"chinese_sample_2.pdf",
-		"english_sample_1.pdf",
-		"english_sample_2.pdf",
-		"chinese_sample_1.pdf.gz",
-		"chinese_sample_2.pdf.gz",
-		"english_sample_1.pdf.gz",
-		"english_sample_2.pdf.gz",
+		"ocr-test.pdf",
+		"ocr-test.pdf.gz",
 	}
 
 	for _, filename := range requiredPDFFiles {
@@ -111,66 +105,18 @@ func getOCRConverterTestFiles() []OCRTestFileInfo {
 	// PDF files
 	pdfFiles := []OCRTestFileInfo{
 		{
-			Name:        "chinese_sample_1.pdf",
-			Path:        getOCRTestFilePath("pdf", "chinese_sample_1.pdf"),
+			Name:        "ocr-test.pdf",
+			Path:        getOCRTestFilePath("pdf", "ocr-test.pdf"),
 			Type:        "pdf",
-			Description: "Chinese PDF sample 1",
-			Language:    "zh",
-			IsGzipped:   false,
-		},
-		{
-			Name:        "chinese_sample_2.pdf",
-			Path:        getOCRTestFilePath("pdf", "chinese_sample_2.pdf"),
-			Type:        "pdf",
-			Description: "Chinese PDF sample 2",
-			Language:    "zh",
-			IsGzipped:   false,
-		},
-		{
-			Name:        "english_sample_1.pdf",
-			Path:        getOCRTestFilePath("pdf", "english_sample_1.pdf"),
-			Type:        "pdf",
-			Description: "English PDF sample 1",
+			Description: "OCR test PDF",
 			Language:    "en",
 			IsGzipped:   false,
 		},
 		{
-			Name:        "english_sample_2.pdf",
-			Path:        getOCRTestFilePath("pdf", "english_sample_2.pdf"),
+			Name:        "ocr-test.pdf.gz",
+			Path:        getOCRTestFilePath("pdf", "ocr-test.pdf.gz"),
 			Type:        "pdf",
-			Description: "English PDF sample 2",
-			Language:    "en",
-			IsGzipped:   false,
-		},
-		{
-			Name:        "chinese_sample_1.pdf.gz",
-			Path:        getOCRTestFilePath("pdf", "chinese_sample_1.pdf.gz"),
-			Type:        "pdf",
-			Description: "Chinese PDF sample 1 (gzipped)",
-			Language:    "zh",
-			IsGzipped:   true,
-		},
-		{
-			Name:        "chinese_sample_2.pdf.gz",
-			Path:        getOCRTestFilePath("pdf", "chinese_sample_2.pdf.gz"),
-			Type:        "pdf",
-			Description: "Chinese PDF sample 2 (gzipped)",
-			Language:    "zh",
-			IsGzipped:   true,
-		},
-		{
-			Name:        "english_sample_1.pdf.gz",
-			Path:        getOCRTestFilePath("pdf", "english_sample_1.pdf.gz"),
-			Type:        "pdf",
-			Description: "English PDF sample 1 (gzipped)",
-			Language:    "en",
-			IsGzipped:   true,
-		},
-		{
-			Name:        "english_sample_2.pdf.gz",
-			Path:        getOCRTestFilePath("pdf", "english_sample_2.pdf.gz"),
-			Type:        "pdf",
-			Description: "English PDF sample 2 (gzipped)",
+			Description: "OCR test PDF (gzipped)",
 			Language:    "en",
 			IsGzipped:   true,
 		},
@@ -469,7 +415,7 @@ func TestOCR_DetectFileType(t *testing.T) {
 	}
 
 	t.Run("PDF file detection", func(t *testing.T) {
-		pdfFile := getOCRTestFilePath("pdf", "chinese_sample_1.pdf")
+		pdfFile := getOCRTestFilePath("pdf", "ocr-test.pdf")
 		fileType, err := converter.detectFileType(pdfFile)
 		if err != nil {
 			t.Fatalf("Failed to detect PDF file type: %v", err)
@@ -823,7 +769,7 @@ func TestOCR_Convert_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	testFile := getOCRTestFilePath("pdf", "chinese_sample_1.pdf")
+	testFile := getOCRTestFilePath("pdf", "ocr-test.pdf")
 	_, err = converter.Convert(ctx, testFile)
 
 	// The operation might complete before cancellation is checked
@@ -1036,9 +982,9 @@ func TestOCR_Integration_Comprehensive(t *testing.T) {
 			description string
 		}{
 			{
-				path:        getOCRTestFilePath("pdf", "chinese_sample_1.pdf"),
+				path:        getOCRTestFilePath("pdf", "ocr-test.pdf"),
 				fileType:    "pdf",
-				description: "Chinese PDF for integration test",
+				description: "OCR test PDF for integration test",
 			},
 			{
 				path:        getOCRTestFilePath("vision", "test.jpg"),

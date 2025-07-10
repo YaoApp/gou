@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/yaoapp/gou/graphrag/types"
+	goupdf "github.com/yaoapp/gou/pdf"
 
 	// Import WebP decoder for image processing
 	"compress/gzip"
@@ -58,7 +58,7 @@ const (
    1. Check if the input file/stream is an image or PDF file
    2. If not supported, return error
    3. If it's an image file, process directly with vision converter
-   4. If it's a PDF file, extract pages as images using pdfcpu
+   4. If it's a PDF file, extract pages as images using PDF library
    5. Process pages with vision converter:
          a. Queue mode: maintain a global queue, process pages sequentially
          b. Concurrent mode: process pages concurrently with concurrency control
@@ -71,6 +71,13 @@ type OCR struct {
 	MaxConcurrency int             // Maximum concurrent processing (for concurrent mode)
 	CompressSize   int64           // Image compression size (max width or height)
 	ForceImageMode bool            // Force convert PDF pages to images even if Vision supports PDF
+
+	// PDF processing
+	PDFProcessor *goupdf.PDF        // PDF processor instance
+	PDFTool      goupdf.ConvertTool // PDF conversion tool type
+	PDFDPI       int                // PDF to image conversion DPI
+	PDFFormat    string             // PDF to image format (png, jpg)
+	PDFQuality   int                // JPEG quality for PDF conversion
 }
 
 // OCROption is the configuration for the OCR converter
@@ -80,6 +87,13 @@ type OCROption struct {
 	MaxConcurrency int             `json:"max_concurrency,omitempty"`  // Max concurrent processing
 	CompressSize   int64           `json:"compress_size,omitempty"`    // Image compression size (max width or height)
 	ForceImageMode bool            `json:"force_image_mode,omitempty"` // Force convert PDF pages to images
+
+	// PDF conversion settings
+	PDFTool     goupdf.ConvertTool `json:"pdf_tool,omitempty"`      // PDF conversion tool (pdftoppm, mutool, imagemagick)
+	PDFToolPath string             `json:"pdf_tool_path,omitempty"` // Custom path to PDF tool
+	PDFDPI      int                `json:"pdf_dpi,omitempty"`       // PDF to image conversion DPI
+	PDFFormat   string             `json:"pdf_format,omitempty"`    // PDF to image format (png, jpg)
+	PDFQuality  int                `json:"pdf_quality,omitempty"`   // JPEG quality for PDF conversion
 }
 
 // PageInfo represents information about a processed page
@@ -141,12 +155,44 @@ func NewOCR(option OCROption) (*OCR, error) {
 		compressSize = 1024 // Default: max 1024px width or height
 	}
 
+	// Set PDF processing defaults
+	pdfTool := option.PDFTool
+	if pdfTool == "" {
+		pdfTool = goupdf.ToolPdftoppm // Default to pdftoppm
+	}
+
+	pdfDPI := option.PDFDPI
+	if pdfDPI == 0 {
+		pdfDPI = 150 // Default DPI
+	}
+
+	pdfFormat := option.PDFFormat
+	if pdfFormat == "" {
+		pdfFormat = "jpg" // Default to JPG
+	}
+
+	pdfQuality := option.PDFQuality
+	if pdfQuality == 0 {
+		pdfQuality = 85 // Default JPEG quality
+	}
+
+	// Create PDF processor
+	pdfProcessor := goupdf.New(goupdf.Options{
+		ConvertTool: pdfTool,
+		ToolPath:    option.PDFToolPath,
+	})
+
 	ocr := &OCR{
 		Vision:         option.Vision,
 		Mode:           processingMode,
 		MaxConcurrency: maxConcurrency,
 		CompressSize:   compressSize,
 		ForceImageMode: option.ForceImageMode,
+		PDFProcessor:   pdfProcessor,
+		PDFTool:        pdfTool,
+		PDFDPI:         pdfDPI,
+		PDFFormat:      pdfFormat,
+		PDFQuality:     pdfQuality,
 	}
 
 	// Global queue is always available, initialized in init()
@@ -467,7 +513,7 @@ func (o *OCR) detectFileType(filePath string) (string, error) {
 }
 
 // extractPDFPages extracts pages from PDF file as images
-func (o *OCR) extractPDFPages(_ context.Context, pdfPath string) ([]PageInfo, error) {
+func (o *OCR) extractPDFPages(ctx context.Context, pdfPath string) ([]PageInfo, error) {
 	// Create temporary directory for PDF pages
 	pagesDir := filepath.Join(os.TempDir(), fmt.Sprintf("pdf_pages_%d", time.Now().UnixNano()))
 	err := os.MkdirAll(pagesDir, 0755)
@@ -475,41 +521,43 @@ func (o *OCR) extractPDFPages(_ context.Context, pdfPath string) ([]PageInfo, er
 		return nil, fmt.Errorf("failed to create pages directory: %w", err)
 	}
 
-	// Get PDF page count
-	pageCount, err := api.PageCountFile(pdfPath)
+	// Configure PDF to image conversion
+	convertConfig := goupdf.ConvertConfig{
+		OutputDir:    pagesDir,
+		OutputPrefix: "page",
+		Format:       o.PDFFormat,
+		DPI:          o.PDFDPI,
+		Quality:      o.PDFQuality,
+		PageRange:    "all", // Convert all pages
+	}
+
+	// Convert PDF pages to images
+	imageFiles, err := o.PDFProcessor.Convert(ctx, pdfPath, convertConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get PDF page count: %w", err)
+		return nil, fmt.Errorf("failed to convert PDF pages to images: %w", err)
 	}
 
 	var pages []PageInfo
-	for i := 1; i <= pageCount; i++ {
-		outputPath := filepath.Join(pagesDir, fmt.Sprintf("page_%03d.png", i))
-
-		// Extract page as image - use simplified approach
-		err := api.ExtractImagesFile(pdfPath, outputPath, []string{fmt.Sprintf("%d", i)}, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to extract page %d: %w", i, err)
-		}
-
+	for i, imageFile := range imageFiles {
 		// Apply compression to extracted page if needed
-		finalPath := outputPath
+		finalPath := imageFile
 		if o.CompressSize > 0 {
-			compressedPath, compressErr := o.compressImageFile(outputPath)
+			compressedPath, compressErr := o.compressImageFile(imageFile)
 			if compressErr != nil {
 				// If compression fails, use original file but log warning
-				finalPath = outputPath
+				finalPath = imageFile
 			} else {
 				finalPath = compressedPath
 				// Remove original uncompressed file if compression succeeded
-				if compressedPath != outputPath {
-					os.Remove(outputPath)
+				if compressedPath != imageFile {
+					os.Remove(imageFile)
 				}
 			}
 		}
 
 		pages = append(pages, PageInfo{
-			Index:       i - 1,
-			PageNumber:  i,
+			Index:       i,
+			PageNumber:  i + 1,
 			FilePath:    finalPath,
 			IsImageFile: true, // This is an extracted image file
 		})
@@ -520,14 +568,14 @@ func (o *OCR) extractPDFPages(_ context.Context, pdfPath string) ([]PageInfo, er
 
 // preparePDFPages prepares page information for direct PDF processing
 func (o *OCR) preparePDFPages(pdfPath string) ([]PageInfo, error) {
-	// Get PDF page count
-	pageCount, err := api.PageCountFile(pdfPath)
+	// Get PDF page count using our PDF library
+	info, err := o.PDFProcessor.GetInfo(context.Background(), pdfPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get PDF page count: %w", err)
+		return nil, fmt.Errorf("failed to get PDF info: %w", err)
 	}
 
 	var pages []PageInfo
-	for i := 1; i <= pageCount; i++ {
+	for i := 1; i <= info.PageCount; i++ {
 		pages = append(pages, PageInfo{
 			Index:       i - 1,
 			PageNumber:  i,
@@ -541,21 +589,33 @@ func (o *OCR) preparePDFPages(pdfPath string) ([]PageInfo, error) {
 
 // createSinglePagePDF creates a temporary PDF file containing only the specified page
 func (o *OCR) createSinglePagePDF(srcPDF string, pageNumber int) (string, error) {
-	// Create temporary file for the single page PDF
-	tempFile, err := os.CreateTemp(os.TempDir(), fmt.Sprintf("pdf_page_%d_*.pdf", pageNumber))
+	// Create temporary directory for single page PDF
+	tempDir := filepath.Join(os.TempDir(), fmt.Sprintf("pdf_single_page_%d", time.Now().UnixNano()))
+	err := os.MkdirAll(tempDir, 0755)
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp file: %w", err)
+		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}
-	tempFile.Close()
 
-	// Extract the specific page using pdfcpu
-	err = api.ExtractPagesFile(srcPDF, tempFile.Name(), []string{fmt.Sprintf("%d", pageNumber)}, nil)
+	// Configure split to extract only the specific page
+	splitConfig := goupdf.SplitConfig{
+		OutputDir:    tempDir,
+		OutputPrefix: fmt.Sprintf("page_%d", pageNumber),
+		PageRanges:   []string{fmt.Sprintf("%d", pageNumber)}, // Extract only this page
+	}
+
+	// Split the PDF to extract the specific page
+	outputFiles, err := o.PDFProcessor.Split(context.Background(), srcPDF, splitConfig)
 	if err != nil {
-		os.Remove(tempFile.Name())
+		os.RemoveAll(tempDir)
 		return "", fmt.Errorf("failed to extract page %d: %w", pageNumber, err)
 	}
 
-	return tempFile.Name(), nil
+	if len(outputFiles) == 0 {
+		os.RemoveAll(tempDir)
+		return "", fmt.Errorf("no output file generated for page %d", pageNumber)
+	}
+
+	return outputFiles[0], nil
 }
 
 // compressImageFile compresses an image file if it exceeds the compression size
@@ -844,7 +904,11 @@ func (o *OCR) combineResults(pages []PageInfo, fileType string) *types.ConvertRe
 	switch fileType {
 	case FileTypePDF:
 		if o.ForceImageMode {
-			metadata["pdf_processing_method"] = "image_extraction"
+			metadata["pdf_processing_method"] = "pdf_library_image_extraction"
+			metadata["pdf_tool"] = string(o.PDFTool)
+			metadata["pdf_dpi"] = o.PDFDPI
+			metadata["pdf_format"] = o.PDFFormat
+			metadata["pdf_quality"] = o.PDFQuality
 		} else {
 			metadata["pdf_processing_method"] = "direct_processing"
 		}
