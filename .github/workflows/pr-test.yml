@@ -258,6 +258,18 @@ jobs:
       - name: Test FFmpeg
         run: ffmpeg -version
 
+      - name: Install pdftoppm, mutool, imagemagick
+        run: |
+          sudo apt install poppler-utils  # for pdftoppm
+          sudo apt install mupdf-tools    # for mutool
+          sudo apt install imagemagick    # for convert
+
+      - name: Test pdftoppm, mutool, imagemagick
+        run: |
+          pdftoppm -v
+          mutool -v
+          magick -version
+
       - name: Setup Go Tools
         run: |
           make tools
