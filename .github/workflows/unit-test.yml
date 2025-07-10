@@ -207,15 +207,14 @@ jobs:
 
       - name: Install pdftoppm, mutool, imagemagick
         run: |
-          sudo apt install poppler-utils  # for pdftoppm
-          sudo apt install mupdf-tools    # for mutool
-          sudo apt install imagemagick    # for convert
+          sudo apt update
+          sudo apt install -y poppler-utils mupdf-tools imagemagick
 
       - name: Test pdftoppm, mutool, imagemagick
         run: |
           pdftoppm -v
           mutool -v
-          magick -version
+          convert -version
 
       - name: Setup Go Tools
         run: |
