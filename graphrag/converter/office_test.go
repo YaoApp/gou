@@ -59,8 +59,14 @@ func ensureOfficeTestDataExists(t *testing.T) {
 		{"docx", "english_sample_2.docx"},
 		{"docx", "chinese_sample_1.docx"},
 		{"docx", "chinese_sample_2.docx"},
+		{"docx", "english_sample_1.docx.gz"},
+		{"docx", "english_sample_2.docx.gz"},
+		{"docx", "chinese_sample_1.docx.gz"},
+		{"docx", "chinese_sample_2.docx.gz"},
 		{"pptx", "sample_1.pptx"},
 		{"pptx", "sample_2.pptx"},
+		{"pptx", "sample_1.pptx.gz"},
+		{"pptx", "sample_2.pptx.gz"},
 	}
 
 	for _, file := range requiredFiles {
@@ -123,6 +129,42 @@ func getOfficeConverterTestFiles() []OfficeTestFileInfo {
 			HasMedia:    false,
 		},
 		{
+			Name:        "english_sample_1.docx.gz",
+			Path:        getOfficeTestFilePath("docx", "english_sample_1.docx.gz"),
+			Format:      "DOCX_GZIP",
+			Description: "English Word document sample 1 (gzipped)",
+			Language:    "en",
+			Type:        "docx",
+			HasMedia:    true,
+		},
+		{
+			Name:        "english_sample_2.docx.gz",
+			Path:        getOfficeTestFilePath("docx", "english_sample_2.docx.gz"),
+			Format:      "DOCX_GZIP",
+			Description: "English Word document sample 2 (gzipped)",
+			Language:    "en",
+			Type:        "docx",
+			HasMedia:    false,
+		},
+		{
+			Name:        "chinese_sample_1.docx.gz",
+			Path:        getOfficeTestFilePath("docx", "chinese_sample_1.docx.gz"),
+			Format:      "DOCX_GZIP",
+			Description: "Chinese Word document sample 1 (gzipped)",
+			Language:    "zh",
+			Type:        "docx",
+			HasMedia:    true,
+		},
+		{
+			Name:        "chinese_sample_2.docx.gz",
+			Path:        getOfficeTestFilePath("docx", "chinese_sample_2.docx.gz"),
+			Format:      "DOCX_GZIP",
+			Description: "Chinese Word document sample 2 (gzipped)",
+			Language:    "zh",
+			Type:        "docx",
+			HasMedia:    false,
+		},
+		{
 			Name:        "sample_1.pptx",
 			Path:        getOfficeTestFilePath("pptx", "sample_1.pptx"),
 			Format:      "PPTX",
@@ -136,6 +178,24 @@ func getOfficeConverterTestFiles() []OfficeTestFileInfo {
 			Path:        getOfficeTestFilePath("pptx", "sample_2.pptx"),
 			Format:      "PPTX",
 			Description: "PowerPoint presentation sample 2",
+			Language:    "en",
+			Type:        "pptx",
+			HasMedia:    true,
+		},
+		{
+			Name:        "sample_1.pptx.gz",
+			Path:        getOfficeTestFilePath("pptx", "sample_1.pptx.gz"),
+			Format:      "PPTX_GZIP",
+			Description: "PowerPoint presentation sample 1 (gzipped)",
+			Language:    "en",
+			Type:        "pptx",
+			HasMedia:    true,
+		},
+		{
+			Name:        "sample_2.pptx.gz",
+			Path:        getOfficeTestFilePath("pptx", "sample_2.pptx.gz"),
+			Format:      "PPTX_GZIP",
+			Description: "PowerPoint presentation sample 2 (gzipped)",
 			Language:    "en",
 			Type:        "pptx",
 			HasMedia:    true,
@@ -766,7 +826,7 @@ func validateOfficeTextContent(t *testing.T, text string, testFile OfficeTestFil
 	// Check minimum text length (should be substantial for office documents)
 	// Allow for some test files to be mostly empty
 	if len(text) < 50 {
-		if testFile.Name == "chinese_sample_2.docx" {
+		if testFile.Name == "chinese_sample_2.docx" || testFile.Name == "chinese_sample_2.docx.gz" {
 			t.Logf("Warning: Generated text is short for %s: %d characters (may be mostly empty document)", testFile.Description, len(text))
 		} else {
 			t.Errorf("Generated text too short for %s: %d characters", testFile.Description, len(text))
@@ -792,7 +852,7 @@ func validateOfficeTextContent(t *testing.T, text string, testFile OfficeTestFil
 			}
 		}
 		if !hasChinese {
-			if testFile.Name == "chinese_sample_2.docx" {
+			if testFile.Name == "chinese_sample_2.docx" || testFile.Name == "chinese_sample_2.docx.gz" {
 				t.Logf("Warning: No Chinese characters detected in Chinese document %s (may be mostly empty)", testFile.Description)
 			} else {
 				t.Logf("Warning: No Chinese characters detected in Chinese document %s", testFile.Description)
@@ -853,6 +913,22 @@ func validateOfficeMetadata(t *testing.T, metadata map[string]interface{}, testF
 	// Validate specific metadata values
 	if sourceType, ok := metadata["source_type"].(string); !ok || sourceType != "office" {
 		t.Errorf("Expected source_type 'office', got %v for %s", metadata["source_type"], testFile.Description)
+	}
+
+	// Check for gzip information
+	if strings.Contains(testFile.Format, "GZIP") {
+		if gzipped, exists := metadata["gzipped"]; !exists {
+			t.Errorf("Missing gzipped field for gzip file %s", testFile.Description)
+		} else if gzippedBool, ok := gzipped.(bool); !ok || !gzippedBool {
+			t.Errorf("Expected gzipped=true for gzip file %s, got %v", testFile.Description, gzipped)
+		}
+	} else {
+		// For non-gzip files, gzipped should be false or not present
+		if gzipped, exists := metadata["gzipped"]; exists {
+			if gzippedBool, ok := gzipped.(bool); ok && gzippedBool {
+				t.Errorf("Expected gzipped=false for non-gzip file %s, got %v", testFile.Description, gzipped)
+			}
+		}
 	}
 
 	if mediaCount, ok := metadata["media_count"].(int); ok {
@@ -944,7 +1020,7 @@ func validateOfficeTextStructure(t *testing.T, text string, testFile OfficeTestF
 	}
 
 	if len(lines) > 1 && emptyLines > len(lines)*2/3 {
-		if testFile.Name == "chinese_sample_2.docx" {
+		if testFile.Name == "chinese_sample_2.docx" || testFile.Name == "chinese_sample_2.docx.gz" {
 			t.Logf("Warning: Too many empty lines (%d/%d) for %s (may be mostly empty document)", emptyLines, len(lines), testFile.Description)
 		} else {
 			t.Errorf("Too many empty lines (%d/%d) for %s", emptyLines, len(lines), testFile.Description)
@@ -968,7 +1044,7 @@ func validateOfficeTextStructure(t *testing.T, text string, testFile OfficeTestF
 	}
 
 	if !hasStructuralElements {
-		if testFile.Name == "chinese_sample_2.docx" {
+		if testFile.Name == "chinese_sample_2.docx" || testFile.Name == "chinese_sample_2.docx.gz" {
 			t.Logf("Warning: No clear structural elements found in %s (may be mostly empty document)", testFile.Description)
 		} else {
 			t.Logf("Warning: No clear structural elements found in %s", testFile.Description)
@@ -1050,5 +1126,148 @@ func TestOffice_FileTypeSpecific(t *testing.T) {
 				}
 			})
 		}
+	})
+}
+
+// ==== GZIP Support Tests ====
+
+func TestOffice_GzipSupport(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping gzip support tests in short mode")
+	}
+
+	ensureOfficeTestDataExists(t)
+	prepareOfficeConnectors(t)
+
+	t.Run("Gzipped office files", func(t *testing.T) {
+		options := createOfficeOptions(t)
+		converter, err := NewOffice(options)
+		if err != nil {
+			t.Fatalf("Failed to create Office converter: %v", err)
+		}
+
+		ctx := context.Background()
+
+		// Test gzipped files
+		gzipTestFiles := []OfficeTestFileInfo{}
+		for _, file := range getOfficeConverterTestFiles() {
+			if strings.Contains(file.Format, "GZIP") {
+				gzipTestFiles = append(gzipTestFiles, file)
+			}
+		}
+
+		if len(gzipTestFiles) == 0 {
+			t.Skip("No gzipped test files available")
+		}
+
+		for _, testFile := range gzipTestFiles {
+			t.Run(testFile.Name, func(t *testing.T) {
+				callback := NewOfficeTestProgressCallback()
+				result, err := converter.Convert(ctx, testFile.Path, callback.Callback)
+
+				if err != nil {
+					t.Fatalf("Convert failed for %s: %v", testFile.Description, err)
+				}
+
+				// Validate gzip-specific metadata
+				if result.Metadata != nil {
+					if gzipped, exists := result.Metadata["gzipped"]; !exists {
+						t.Errorf("Missing gzipped field in metadata for %s", testFile.Description)
+					} else if gzippedBool, ok := gzipped.(bool); !ok || !gzippedBool {
+						t.Errorf("Expected gzipped=true for gzipped file %s, got %v", testFile.Description, gzipped)
+					}
+				}
+
+				// Validate that content was properly extracted
+				if result.Text == "" {
+					t.Errorf("Empty text from gzipped file %s", testFile.Description)
+				}
+
+				// Check that we got reasonable progress callbacks
+				if callback.GetCallCount() < 3 {
+					t.Errorf("Expected at least 3 progress calls for %s, got %d", testFile.Description, callback.GetCallCount())
+				}
+
+				if callback.GetLastStatus() != types.ConverterStatusSuccess {
+					t.Errorf("Expected final status Success for %s, got %v", testFile.Description, callback.GetLastStatus())
+				}
+
+				t.Logf("Gzipped %s: Generated %d chars text with %d progress calls",
+					testFile.Description, len(result.Text), callback.GetCallCount())
+			})
+		}
+	})
+
+	t.Run("Gzip vs non-gzip comparison", func(t *testing.T) {
+		options := createOfficeOptions(t)
+		converter, err := NewOffice(options)
+		if err != nil {
+			t.Fatalf("Failed to create Office converter: %v", err)
+		}
+
+		ctx := context.Background()
+
+		// Find a pair of gzipped and non-gzipped files for comparison
+		var gzipFile, normalFile OfficeTestFileInfo
+		found := false
+
+		for _, file := range getOfficeConverterTestFiles() {
+			if strings.Contains(file.Format, "GZIP") {
+				// Find corresponding non-gzipped file
+				baseName := strings.TrimSuffix(file.Name, ".gz")
+				for _, otherFile := range getOfficeConverterTestFiles() {
+					if otherFile.Name == baseName && !strings.Contains(otherFile.Format, "GZIP") {
+						gzipFile = file
+						normalFile = otherFile
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+		}
+
+		if !found {
+			t.Skip("No matching gzip/non-gzip file pairs found for comparison")
+		}
+
+		t.Run("Content comparison", func(t *testing.T) {
+			// Convert both files
+			gzipResult, err := converter.Convert(ctx, gzipFile.Path)
+			if err != nil {
+				t.Fatalf("Failed to convert gzipped file: %v", err)
+			}
+
+			normalResult, err := converter.Convert(ctx, normalFile.Path)
+			if err != nil {
+				t.Fatalf("Failed to convert normal file: %v", err)
+			}
+
+			// Compare text content (should be identical)
+			if gzipResult.Text != normalResult.Text {
+				t.Errorf("Gzipped and normal file content should be identical")
+				t.Logf("Gzipped text length: %d", len(gzipResult.Text))
+				t.Logf("Normal text length: %d", len(normalResult.Text))
+			}
+
+			// Check metadata differences
+			if gzipResult.Metadata != nil && normalResult.Metadata != nil {
+				if gzipped, exists := gzipResult.Metadata["gzipped"]; !exists {
+					t.Errorf("Gzipped file missing gzipped field in metadata")
+				} else if gzippedBool, ok := gzipped.(bool); !ok || !gzippedBool {
+					t.Errorf("Gzipped file should have gzipped=true")
+				}
+
+				if gzipped, exists := normalResult.Metadata["gzipped"]; exists {
+					if gzippedBool, ok := gzipped.(bool); ok && gzippedBool {
+						t.Errorf("Normal file should not have gzipped=true")
+					}
+				}
+			}
+
+			t.Logf("Gzip vs normal comparison passed for %s", gzipFile.Name)
+		})
 	})
 }
