@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -115,8 +116,44 @@ func (o *Office) Convert(ctx context.Context, file string, callback ...types.Con
 func (o *Office) ConvertStream(ctx context.Context, stream io.ReadSeeker, callback ...types.ConverterProgress) (*types.ConvertResult, error) {
 	o.reportProgress(types.ConverterStatusPending, "Starting office document processing", 0.0, callback...)
 
+	// Check if gzipped
+	var reader io.Reader
+	var isGzipped bool
+	peekBuffer := make([]byte, 2)
+	n, err := io.ReadFull(stream, peekBuffer)
+	if err != nil && err != io.ErrUnexpectedEOF {
+		if err == io.EOF {
+			return nil, fmt.Errorf("empty stream")
+		}
+		o.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to read stream: %v", err), 0.0, callback...)
+		return nil, fmt.Errorf("failed to read stream: %w", err)
+	}
+
+	// Reset to beginning
+	_, err = stream.Seek(0, io.SeekStart)
+	if err != nil {
+		o.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to reset stream: %v", err), 0.0, callback...)
+		return nil, fmt.Errorf("failed to reset stream: %w", err)
+	}
+
+	// Check gzip magic number (0x1f, 0x8b)
+	if n >= 2 && peekBuffer[0] == 0x1f && peekBuffer[1] == 0x8b {
+		o.reportProgress(types.ConverterStatusPending, "Decompressing gzip", 0.05, callback...)
+		gzipReader, err := gzip.NewReader(stream)
+		if err != nil {
+			o.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to create gzip reader: %v", err), 0.0, callback...)
+			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		defer gzipReader.Close()
+		reader = gzipReader
+		isGzipped = true
+	} else {
+		reader = stream
+		isGzipped = false
+	}
+
 	// Read the entire stream into memory
-	data, err := io.ReadAll(stream)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		o.reportProgress(types.ConverterStatusError, fmt.Sprintf("Failed to read stream: %v", err), 0.0, callback...)
 		return nil, fmt.Errorf("failed to read stream: %w", err)
@@ -144,6 +181,11 @@ func (o *Office) ConvertStream(ctx context.Context, stream io.ReadSeeker, callba
 
 	// Merge markdown text with media descriptions
 	finalResult := o.mergeTextAndMedia(parseResult, mediaResults)
+
+	// Add gzip information to metadata
+	if finalResult.Metadata != nil {
+		finalResult.Metadata["gzipped"] = isGzipped
+	}
 
 	o.reportProgress(types.ConverterStatusSuccess, "Office document processing completed", 1.0, callback...)
 	return finalResult, nil
