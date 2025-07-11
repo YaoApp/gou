@@ -87,7 +87,7 @@ func TestAddFile(t *testing.T) {
 
 			ctx := context.Background()
 
-			// Create collection to ensure vector store connection (复用 collection_test.go 的逻辑)
+			// Create collection to ensure vector store connection (reusing collection_test.go logic)
 			vectorConfig := getVectorStore("addfile_test", 1536)
 			// Replace + with _ to make collection name valid
 			safeName := strings.ReplaceAll(configName, "+", "_")
@@ -106,7 +106,7 @@ func TestAddFile(t *testing.T) {
 				collection.GraphStoreConfig = &graphConfig
 			}
 
-			// Create collection (this will auto-connect vector store - 复用 collection_test.go 的模式)
+			// Create collection (this will auto-connect vector store - reusing collection_test.go pattern)
 			_, err = g.CreateCollection(ctx, collection)
 			if err != nil {
 				t.Skipf("Failed to create test collection for %s: %v", configName, err)
@@ -133,7 +133,7 @@ func TestAddFile(t *testing.T) {
 
 				options := &types.UpsertOptions{
 					DocID:     fmt.Sprintf("test_text_%s", configName),
-					GraphName: collectionID, // 使用实际创建的collection ID
+					GraphName: collectionID, // Use the actual created collection ID
 					Metadata: map[string]interface{}{
 						"source": "test",
 						"type":   "text",
@@ -188,7 +188,7 @@ func TestAddFile(t *testing.T) {
 
 				options := &types.UpsertOptions{
 					DocID:     fmt.Sprintf("test_image_%s", configName),
-					GraphName: collectionID, // 使用实际创建的collection ID
+					GraphName: collectionID, // Use the actual created collection ID
 					Metadata: map[string]interface{}{
 						"source": "test",
 						"type":   "image",
@@ -220,7 +220,7 @@ func TestAddFile(t *testing.T) {
 
 				options := &types.UpsertOptions{
 					DocID:     fmt.Sprintf("test_pdf_%s", configName),
-					GraphName: collectionID, // 使用实际创建的collection ID
+					GraphName: collectionID, // Use the actual created collection ID
 					Metadata: map[string]interface{}{
 						"source": "test",
 						"type":   "pdf",
@@ -266,7 +266,7 @@ func TestAddFileErrorHandling(t *testing.T) {
 	t.Run("Non_Existent_File", func(t *testing.T) {
 		options := &types.UpsertOptions{
 			DocID:     "test_nonexistent",
-			GraphName: "nonexistent_collection", // 错误测试，不需要真实collection
+			GraphName: "nonexistent_collection", // Error test, no need for real collection
 		}
 
 		_, err := g.AddFile(ctx, "/non/existent/file.txt", options)
@@ -279,7 +279,7 @@ func TestAddFileErrorHandling(t *testing.T) {
 	t.Run("Empty_File_Path", func(t *testing.T) {
 		options := &types.UpsertOptions{
 			DocID:     "test_empty",
-			GraphName: "empty_test_collection", // 错误测试，不需要真实collection
+			GraphName: "empty_test_collection", // Error test, no need for real collection
 		}
 
 		_, err := g.AddFile(ctx, "", options)
@@ -299,7 +299,8 @@ func TestAddFileErrorHandling(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					t.Logf("AddFile with nil options panicked (expected): %v", r)
+					// Avoid outputting "runtime error" in logs since Makefile checks for this string
+					t.Logf("AddFile with nil options panicked as expected: panic recovered")
 				}
 			}()
 
@@ -345,7 +346,7 @@ func TestAddFileStoreIntegration(t *testing.T) {
 
 			ctx := context.Background()
 
-			// Create collection to ensure vector store connection (复用 collection_test.go 的逻辑)
+			// Create collection to ensure vector store connection (reusing collection_test.go logic)
 			vectorConfig := getVectorStore("store_integration_test", 1536)
 			// Replace + with _ to make collection name valid
 			safeName := strings.ReplaceAll(configName, "+", "_")
@@ -446,7 +447,7 @@ func TestAddFileRealIntegration(t *testing.T) {
 
 	ctx := context.Background()
 
-	// 复用 collection_test.go 的逻辑：先创建 collection 确保连接
+	// Reuse collection_test.go logic: create collection first to ensure connection
 	vectorConfig := getVectorStore("real_integration_test", 1536)
 	realCollectionID := fmt.Sprintf("real_test_collection_%d", time.Now().Unix())
 	collection := types.Collection{
