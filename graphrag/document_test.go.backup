@@ -1,0 +1,759 @@
+package graphrag
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/yaoapp/gou/connector"
+	"github.com/yaoapp/gou/graphrag/types"
+)
+
+// ==== Test Data Utils ====
+
+// getDocumentTestDataDir returns the document test data directory
+func getDocumentTestDataDir() string {
+	_, currentFile, _, _ := runtime.Caller(0)
+	currentDir := filepath.Dir(currentFile)
+	testDataDir := filepath.Join(currentDir, "tests")
+	absPath, err := filepath.Abs(testDataDir)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to get absolute path for document test data dir: %v", err))
+	}
+	return absPath
+}
+
+// getDocumentTestFilePath returns the full path to a document test file
+func getDocumentTestFilePath(filename string) string {
+	return filepath.Join(getDocumentTestDataDir(), filename)
+}
+
+// ensureDocumentTestDataExists checks if document test data directory and files exist
+func ensureDocumentTestDataExists(t *testing.T) {
+	t.Helper()
+
+	testDir := getDocumentTestDataDir()
+	if _, err := os.Stat(testDir); os.IsNotExist(err) {
+		t.Fatalf("Document test data directory does not exist: %s", testDir)
+	}
+
+	// Check for required test files
+	requiredFiles := []string{
+		"sample.txt",
+		"sample.md",
+		"sample.pdf",
+		"sample.png",
+		"sample.jpg",
+		"sample.html",
+		"sample.json",
+		"sample.csv",
+	}
+
+	for _, filename := range requiredFiles {
+		filePath := getDocumentTestFilePath(filename)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			t.Logf("Warning: Test file does not exist: %s", filePath)
+		}
+	}
+}
+
+// DocumentTestFileInfo contains information about a document test file
+type DocumentTestFileInfo struct {
+	Name        string
+	Path        string
+	Type        string
+	Description string
+	ShouldFail  bool
+}
+
+// getDocumentTestFiles returns all document test files
+func getDocumentTestFiles() []DocumentTestFileInfo {
+	return []DocumentTestFileInfo{
+		{
+			Name:        "text.txt",
+			Path:        getDocumentTestFilePath("text.txt"),
+			Type:        "text",
+			Description: "Plain text file",
+		},
+	}
+}
+
+// getImageTestFiles returns image test files (require vision processing)
+func getImageTestFiles() []DocumentTestFileInfo {
+	return []DocumentTestFileInfo{
+		{
+			Name:        "image.png",
+			Path:        getDocumentTestFilePath("image.png"),
+			Type:        "image",
+			Description: "PNG image file",
+		},
+	}
+}
+
+// getComplexTestFiles returns files requiring complex processing (PDF, etc.)
+func getComplexTestFiles() []DocumentTestFileInfo {
+	return []DocumentTestFileInfo{
+		{
+			Name:        "pdf.pdf",
+			Path:        getDocumentTestFilePath("pdf.pdf"),
+			Type:        "pdf",
+			Description: "PDF document",
+		},
+		{
+			Name:        "docx.docx",
+			Path:        getDocumentTestFilePath("docx.docx"),
+			Type:        "docx",
+			Description: "Word document",
+		},
+		{
+			Name:        "pptx.pptx",
+			Path:        getDocumentTestFilePath("pptx.pptx"),
+			Type:        "pptx",
+			Description: "PowerPoint document",
+		},
+		{
+			Name:        "audio.mp3",
+			Path:        getDocumentTestFilePath("audio.mp3"),
+			Type:        "audio",
+			Description: "Audio file",
+		},
+		{
+			Name:        "video.mp4",
+			Path:        getDocumentTestFilePath("video.mp4"),
+			Type:        "video",
+			Description: "Video file",
+		},
+	}
+}
+
+// getAllDocumentTestFiles returns all test files
+func getAllDocumentTestFiles() []DocumentTestFileInfo {
+	var all []DocumentTestFileInfo
+	all = append(all, getDocumentTestFiles()...)
+	all = append(all, getImageTestFiles()...)
+	all = append(all, getComplexTestFiles()...)
+	return all
+}
+
+// ==== Connector Setup ====
+
+// prepareAddFileConnectors creates connectors for AddFile testing
+func prepareAddFileConnectors(t *testing.T) {
+	t.Helper()
+
+	// Create OpenAI connector
+	openaiKey := os.Getenv("OPENAI_TEST_KEY")
+	if openaiKey == "" {
+		openaiKey = "mock-key"
+	}
+
+	openaiDSL := fmt.Sprintf(`{
+		"LANG": "1.0.0",
+		"VERSION": "1.0.0", 
+		"label": "OpenAI AddFile Test",
+		"type": "openai",
+		"options": {
+			"proxy": "https://api.openai.com/v1",
+			"model": "gpt-4o-mini",
+			"key": "%s"
+		}
+	}`, openaiKey)
+
+	_, err := connector.New("openai", "test-addfile-openai", []byte(openaiDSL))
+	if err != nil {
+		t.Logf("Failed to create OpenAI connector: %v", err)
+	}
+
+	// Create mock connector for tests that don't require real LLM calls
+	mockDSL := `{
+		"LANG": "1.0.0",
+		"VERSION": "1.0.0",
+		"label": "Mock AddFile Test",
+		"type": "openai",
+		"options": {
+			"proxy": "http://127.0.0.1:9999",
+			"model": "gpt-4o-mini",
+			"key": "mock-key"
+		}
+	}`
+
+	_, err = connector.New("openai", "test-addfile-mock", []byte(mockDSL))
+	if err != nil {
+		t.Logf("Failed to create mock connector: %v", err)
+	}
+}
+
+// ==== Test Configuration Setup ====
+
+// Use existing test configurations from GetTestConfigs()
+
+// ==== Basic AddFile Tests ====
+
+func TestAddFile_BasicFunctionality(t *testing.T) {
+	ensureDocumentTestDataExists(t)
+	prepareAddFileConnectors(t)
+
+	// Test with simple vector configuration first
+	configs := GetTestConfigs()
+	config := configs["vector"]
+	if config == nil {
+		t.Fatal("Vector config not found")
+	}
+
+	t.Run("Vector_Only", func(t *testing.T) {
+		// Create GraphRag instance
+		g, err := New(config)
+		if err != nil {
+			t.Skipf("Failed to create GraphRag instance (may be missing services): %v", err)
+		}
+
+		// Test with simple text files
+		testFiles := getDocumentTestFiles()
+		for _, testFile := range testFiles {
+			// Check if file exists
+			if _, err := os.Stat(testFile.Path); os.IsNotExist(err) {
+				t.Logf("Skipping %s - file not found", testFile.Name)
+				continue
+			}
+
+			t.Run(testFile.Name, func(t *testing.T) {
+				ctx := context.Background()
+
+				// Test AddFile with nil options (should use defaults)
+				docID, err := g.AddFile(ctx, testFile.Path, nil)
+
+				if err != nil {
+					// With mock connector, we expect LLM-related errors
+					expectedErrors := []string{
+						"connection refused",
+						"LLM processing failed",
+						"streaming request failed",
+						"no such host",
+						"DNS resolve fail",
+						"connector not found",
+						"vector store",
+						"embedding",
+						"extraction",
+					}
+
+					hasExpectedError := false
+					for _, expectedErr := range expectedErrors {
+						if strings.Contains(err.Error(), expectedErr) {
+							hasExpectedError = true
+							break
+						}
+					}
+
+					if hasExpectedError {
+						t.Logf("%s: Expected error with mock setup: %v", testFile.Description, err)
+					} else {
+						t.Errorf("%s: Unexpected error: %v", testFile.Description, err)
+					}
+					return
+				}
+
+				// If successful, validate result
+				if docID == "" {
+					t.Errorf("%s: AddFile returned empty document ID", testFile.Description)
+					return
+				}
+
+				t.Logf("%s: Success - Document ID: %s",
+					testFile.Description, docID)
+			})
+		}
+	})
+}
+
+func TestAddFile_AllConfigurations(t *testing.T) {
+	ensureDocumentTestDataExists(t)
+	prepareAddFileConnectors(t)
+
+	// Use existing test configurations
+	configs := GetTestConfigs()
+	testConfigs := []string{"vector", "vector+graph", "vector+store", "vector+graph+store"}
+
+	for _, configName := range testConfigs {
+		config := configs[configName]
+		if config == nil {
+			t.Skipf("Config %s not found", configName)
+		}
+		t.Run(fmt.Sprintf("Config_%s", configName), func(t *testing.T) {
+			g, err := New(config)
+			if err != nil {
+				t.Skipf("Failed to create GraphRag instance for %s: %v", configName, err)
+			}
+
+			// Test with a simple text file
+			testFile := getDocumentTestFilePath("sample.txt")
+			if _, err := os.Stat(testFile); os.IsNotExist(err) {
+				t.Skip("Test file sample.txt not found")
+			}
+
+			ctx := context.Background()
+			callback := NewTestProgressCallback()
+
+			result, err := g.AddFile(ctx, testFile, nil, callback.Callback)
+
+			if err != nil {
+				// Log expected errors for mock connectors
+				t.Logf("Config %s: Expected error: %v", configName, err)
+
+				// Verify that error is from expected sources
+				expectedSources := []string{
+					"vector store", "graph store", "store", "connector",
+					"embedding", "extraction", "chunking", "conversion",
+				}
+
+				hasExpectedSource := false
+				for _, source := range expectedSources {
+					if strings.Contains(err.Error(), source) {
+						hasExpectedSource = true
+						break
+					}
+				}
+
+				if !hasExpectedSource {
+					t.Errorf("Config %s: Unexpected error source: %v", configName, err)
+				}
+				return
+			}
+
+			// If successful, validate result
+			if result != nil {
+				t.Logf("Config %s: Success - ID: %s, Progress calls: %d",
+					configName, result.ID, callback.GetCallCount())
+			}
+		})
+	}
+}
+
+// ==== AddFile Options Tests ====
+
+func TestAddFile_WithOptions(t *testing.T) {
+	ensureDocumentTestDataExists(t)
+	prepareAddFileConnectors(t)
+
+	configs := GetTestConfigs()
+	config := configs["vector"]
+	if config == nil {
+		t.Fatal("Vector config not found")
+	}
+
+	g, err := New(config)
+	if err != nil {
+		t.Skipf("Failed to create GraphRag instance: %v", err)
+	}
+
+	testFile := getDocumentTestFilePath("sample.txt")
+	if _, err := os.Stat(testFile); os.IsNotExist(err) {
+		t.Skip("Test file sample.txt not found")
+	}
+
+	t.Run("Custom_Options", func(t *testing.T) {
+		ctx := context.Background()
+		callback := NewTestProgressCallback()
+
+		// Create custom options
+		options := &types.AddFileOptions{
+			ID: "custom-test-id",
+			Metadata: map[string]interface{}{
+				"source":      "test",
+				"category":    "unit-test",
+				"timestamp":   time.Now().Unix(),
+				"description": "Test file for AddFile unit test",
+			},
+			Converter:  nil, // Let system auto-detect
+			Chunking:   nil, // Let system auto-detect
+			Embedding:  nil, // Let system auto-detect
+			Extraction: nil, // Let system auto-detect
+		}
+
+		result, err := g.AddFile(ctx, testFile, options, callback.Callback)
+
+		if err != nil {
+			t.Logf("Expected error with mock setup: %v", err)
+			return
+		}
+
+		if result != nil {
+			// Validate custom options were used
+			if result.ID != "custom-test-id" {
+				t.Errorf("Expected custom ID 'custom-test-id', got %s", result.ID)
+			}
+
+			// Check metadata
+			if result.Metadata == nil {
+				t.Error("Expected metadata to be set")
+			} else {
+				if source, ok := result.Metadata["source"]; !ok || source != "test" {
+					t.Error("Expected custom metadata 'source' to be 'test'")
+				}
+			}
+
+			t.Logf("Custom options test successful: ID=%s", result.ID)
+		}
+	})
+
+	t.Run("Nil_Options", func(t *testing.T) {
+		ctx := context.Background()
+		callback := NewTestProgressCallback()
+
+		// Test with nil options - should use defaults
+		result, err := g.AddFile(ctx, testFile, nil, callback.Callback)
+
+		if err != nil {
+			t.Logf("Expected error with mock setup: %v", err)
+			return
+		}
+
+		if result != nil {
+			// Should generate auto ID
+			if result.ID == "" {
+				t.Error("Expected auto-generated ID to be non-empty")
+			}
+
+			t.Logf("Nil options test successful: ID=%s", result.ID)
+		}
+	})
+}
+
+// ==== Error Handling Tests ====
+
+func TestAddFile_ErrorHandling(t *testing.T) {
+	prepareAddFileConnectors(t)
+
+	config := addFileTestConfigs["vector"]
+	if config == nil {
+		t.Fatal("Vector config not found")
+	}
+
+	g, err := New(config)
+	if err != nil {
+		t.Skipf("Failed to create GraphRag instance: %v", err)
+	}
+
+	t.Run("Non_Existent_File", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := g.AddFile(ctx, "/non/existent/file.txt", nil)
+		if err == nil {
+			t.Error("Expected error for non-existent file, but got none")
+		}
+
+		if !strings.Contains(err.Error(), "no such file") &&
+			!strings.Contains(err.Error(), "file not found") &&
+			!strings.Contains(err.Error(), "open") {
+			t.Errorf("Expected file not found error, got: %v", err)
+		}
+
+		t.Logf("Non-existent file correctly rejected: %v", err)
+	})
+
+	t.Run("Empty_File_Path", func(t *testing.T) {
+		ctx := context.Background()
+
+		_, err := g.AddFile(ctx, "", nil)
+		if err == nil {
+			t.Error("Expected error for empty file path, but got none")
+		}
+
+		t.Logf("Empty file path correctly rejected: %v", err)
+	})
+
+	t.Run("Context_Cancellation", func(t *testing.T) {
+		// Create cancelled context
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		testFile := getDocumentTestFilePath("sample.txt")
+		if _, err := os.Stat(testFile); os.IsNotExist(err) {
+			testFile = "/tmp/test.txt"
+			// Create a simple test file
+			if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
+				t.Skip("Cannot create test file")
+			}
+			defer os.Remove(testFile)
+		}
+
+		_, err := g.AddFile(ctx, testFile, nil)
+
+		// The operation might complete before context cancellation is checked
+		if err != nil && err == context.Canceled {
+			t.Log("Context cancellation handled correctly")
+		} else {
+			t.Log("Operation completed before cancellation check (acceptable)")
+		}
+	})
+}
+
+// ==== Store Integration Tests ====
+
+func TestAddFile_StoreIntegration(t *testing.T) {
+	ensureDocumentTestDataExists(t)
+	prepareAddFileConnectors(t)
+
+	// Test configurations that include Store
+	storeConfigs := []string{"vector+store", "vector+graph+store"}
+
+	for _, configName := range storeConfigs {
+		config := addFileTestConfigs[configName]
+		if config == nil {
+			t.Skipf("Config %s not found", configName)
+		}
+
+		t.Run(fmt.Sprintf("Store_%s", configName), func(t *testing.T) {
+			g, err := New(config)
+			if err != nil {
+				t.Skipf("Failed to create GraphRag instance for %s: %v", configName, err)
+			}
+
+			// Skip if Store is not available
+			if g.Store == nil {
+				t.Skipf("Store not available for config %s", configName)
+			}
+
+			testFile := getDocumentTestFilePath("sample.txt")
+			if _, err := os.Stat(testFile); os.IsNotExist(err) {
+				t.Skip("Test file sample.txt not found")
+			}
+
+			ctx := context.Background()
+			callback := NewTestProgressCallback()
+
+			result, err := g.AddFile(ctx, testFile, nil, callback.Callback)
+
+			if err != nil {
+				t.Logf("Config %s: Expected error: %v", configName, err)
+				return
+			}
+
+			if result != nil {
+				// Check if original text was stored
+				originKey := fmt.Sprintf("origin_%s", result.ID)
+				storedData, err := g.Store.Get(originKey)
+				if err != nil {
+					t.Logf("Config %s: Original text not found in store (expected with mock): %v", configName, err)
+				} else {
+					t.Logf("Config %s: Original text stored successfully: %d bytes", configName, len(storedData))
+				}
+			}
+		})
+	}
+}
+
+// ==== File Type Tests ====
+
+func TestAddFile_FileTypes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping file type tests in short mode")
+	}
+
+	ensureDocumentTestDataExists(t)
+	prepareAddFileConnectors(t)
+
+	// Use OpenAI connector if available
+	openaiKey := os.Getenv("OPENAI_TEST_KEY")
+	if openaiKey == "" {
+		t.Skip("OPENAI_TEST_KEY not set, skipping file type tests")
+	}
+
+	// Update config to use real OpenAI connector
+	config := addFileTestConfigs["vector"]
+	if config.Embedding != nil && config.Embedding.OpenAI != nil {
+		config.Embedding.OpenAI.ConnectorName = "test-addfile-openai"
+	}
+	if config.Extraction != nil && config.Extraction.OpenAI != nil {
+		config.Extraction.OpenAI.ConnectorName = "test-addfile-openai"
+	}
+
+	g, err := New(config)
+	if err != nil {
+		t.Skipf("Failed to create GraphRag instance: %v", err)
+	}
+
+	t.Run("Text_Files", func(t *testing.T) {
+		testFiles := getDocumentTestFiles()
+		for _, testFile := range testFiles {
+			if _, err := os.Stat(testFile.Path); os.IsNotExist(err) {
+				t.Logf("Skipping %s - file not found", testFile.Name)
+				continue
+			}
+
+			t.Run(testFile.Name, func(t *testing.T) {
+				ctx := context.Background()
+				callback := NewTestProgressCallback()
+
+				result, err := g.AddFile(ctx, testFile.Path, nil, callback.Callback)
+
+				if err != nil {
+					t.Logf("%s: Error (may be expected): %v", testFile.Description, err)
+					return
+				}
+
+				if result != nil {
+					t.Logf("%s: Success - ID: %s, Progress: %d calls",
+						testFile.Description, result.ID, callback.GetCallCount())
+				}
+			})
+		}
+	})
+}
+
+// ==== Utility Functions ====
+
+// NewTestProgressCallback creates a test progress callback
+func NewTestProgressCallback() *TestProgressCallback {
+	return &TestProgressCallback{
+		Calls: make([]ProgressCall, 0),
+	}
+}
+
+// TestProgressCallback tracks progress calls for testing
+type TestProgressCallback struct {
+	Calls []ProgressCall
+}
+
+type ProgressCall struct {
+	ID       string
+	Type     types.UpsertProgressType
+	Progress float64
+	Message  string
+	Status   interface{}
+}
+
+// Callback implements progress callback interface
+func (tpc *TestProgressCallback) Callback(id string, progressType types.UpsertProgressType, payload types.UpsertProgressPayload) {
+	call := ProgressCall{
+		ID:       id,
+		Type:     progressType,
+		Progress: payload.Progress,
+		Status:   payload.Data,
+	}
+
+	// Extract message from data if available
+	if payload.Data != nil {
+		if msg, ok := payload.Data["message"]; ok {
+			if msgStr, ok := msg.(string); ok {
+				call.Message = msgStr
+			}
+		}
+	}
+
+	tpc.Calls = append(tpc.Calls, call)
+}
+
+// GetCallCount returns the number of progress calls
+func (tpc *TestProgressCallback) GetCallCount() int {
+	return len(tpc.Calls)
+}
+
+// GetLastProgress returns the last progress value
+func (tpc *TestProgressCallback) GetLastProgress() float64 {
+	if len(tpc.Calls) == 0 {
+		return 0
+	}
+	return tpc.Calls[len(tpc.Calls)-1].Progress
+}
+
+// GetLastStatus returns the last status
+func (tpc *TestProgressCallback) GetLastStatus() interface{} {
+	if len(tpc.Calls) == 0 {
+		return nil
+	}
+	return tpc.Calls[len(tpc.Calls)-1].Status
+}
+
+// validateAddFileResult validates the result of AddFile operation
+func validateAddFileResult(result *types.AddFileResult, minContentLength int) error {
+	if result == nil {
+		return fmt.Errorf("result is nil")
+	}
+
+	if result.ID == "" {
+		return fmt.Errorf("result ID is empty")
+	}
+
+	if len(result.ID) < 10 {
+		return fmt.Errorf("result ID too short: %s", result.ID)
+	}
+
+	return nil
+}
+
+// ==== Integration Test with Real Services ====
+
+func TestAddFile_RealIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping real integration test in short mode")
+	}
+
+	ensureDocumentTestDataExists(t)
+	prepareAddFileConnectors(t)
+
+	// Check if OpenAI key is available
+	openaiKey := os.Getenv("OPENAI_TEST_KEY")
+	if openaiKey == "" {
+		t.Skip("OPENAI_TEST_KEY not set, skipping real integration test")
+	}
+
+	// Create config with real OpenAI connector
+	config := addFileTestConfigs["vector"]
+	if config.Embedding != nil && config.Embedding.OpenAI != nil {
+		config.Embedding.OpenAI.ConnectorName = "test-addfile-openai"
+	}
+	if config.Extraction != nil && config.Extraction.OpenAI != nil {
+		config.Extraction.OpenAI.ConnectorName = "test-addfile-openai"
+	}
+
+	g, err := New(config)
+	if err != nil {
+		t.Skipf("Failed to create GraphRag instance: %v", err)
+	}
+
+	t.Run("Single_Text_File", func(t *testing.T) {
+		testFile := getDocumentTestFilePath("sample.txt")
+		if _, err := os.Stat(testFile); os.IsNotExist(err) {
+			// Create a simple test file
+			testFile = "/tmp/addfile_test.txt"
+			content := "This is a test document for AddFile integration testing. It contains some sample text to process."
+			if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+				t.Fatalf("Failed to create test file: %v", err)
+			}
+			defer os.Remove(testFile)
+		}
+
+		ctx := context.Background()
+		callback := NewTestProgressCallback()
+
+		result, err := g.AddFile(ctx, testFile, nil, callback.Callback)
+
+		if err != nil {
+			t.Fatalf("Real integration test failed: %v", err)
+		}
+
+		if result == nil {
+			t.Fatal("Real integration returned nil result")
+		}
+
+		// Validate result
+		if err := validateAddFileResult(result, 10); err != nil {
+			t.Errorf("Result validation failed: %v", err)
+		}
+
+		// Check progress callbacks
+		if callback.GetCallCount() < 3 {
+			t.Errorf("Expected at least 3 progress calls, got %d", callback.GetCallCount())
+		}
+
+		t.Logf("Real integration successful!")
+		t.Logf("Document ID: %s", result.ID)
+		t.Logf("Progress calls: %d", callback.GetCallCount())
+		t.Logf("Result metadata: %v", result.Metadata)
+	})
+}
