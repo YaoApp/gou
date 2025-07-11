@@ -1295,6 +1295,19 @@ func (g *GraphRag) prepareUpsert(file string, options *types.UpsertOptions) erro
 		options.Chunking = chunking
 	}
 
+	// Step 2.1: Set ChunkingOptions if not provided
+	if options.ChunkingOptions == nil {
+		// Auto-detect chunking type based on file extension
+		chunkingType := types.GetChunkingTypeFromFilename(file)
+		options.ChunkingOptions = &types.ChunkingOptions{
+			Type:          chunkingType,
+			Size:          300,
+			Overlap:       20,
+			MaxDepth:      3,
+			MaxConcurrent: 10,
+		}
+	}
+
 	// Step 3: Use the options.Embedding if provided, otherwise detect the embedding to use for the file
 	if options.Embedding == nil {
 		embedding, err := DetectEmbedding(file)

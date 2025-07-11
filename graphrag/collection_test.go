@@ -508,6 +508,11 @@ func TestGetCollections(t *testing.T) {
 
 			var createdCollections []string
 
+			// Clean up any existing test collections first
+			for _, collection := range testCollections {
+				g.RemoveCollection(ctx, collection.ID) // Ignore error if collection doesn't exist
+			}
+
 			// Create test collections
 			for _, collection := range testCollections {
 				id, err := g.CreateCollection(ctx, collection)

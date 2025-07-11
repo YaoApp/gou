@@ -134,6 +134,7 @@ func DetectConverter(file string) (types.Converter, error) {
 			Model:         "gpt-4o-mini",
 			CompressSize:  1024,
 			Language:      "Auto",
+			Options:       map[string]any{"max_tokens": 1000, "temperature": 0.1},
 		})
 
 	// PDF files - use OCR converter
@@ -144,6 +145,7 @@ func DetectConverter(file string) (types.Converter, error) {
 			Model:         "gpt-4o-mini",
 			CompressSize:  1024,
 			Language:      "Auto",
+			Options:       map[string]any{"max_tokens": 1000, "temperature": 0.1},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vision converter for OCR: %w", err)
@@ -154,6 +156,7 @@ func DetectConverter(file string) (types.Converter, error) {
 			Mode:           converter.OCRModeConcurrent,
 			MaxConcurrency: 4,
 			CompressSize:   1024,
+			ForceImageMode: true, // 关键：PDF需要强制图像模式
 		})
 
 	// Office documents - use Office converter
@@ -164,6 +167,7 @@ func DetectConverter(file string) (types.Converter, error) {
 			Model:         "gpt-4o-mini",
 			CompressSize:  1024,
 			Language:      "Auto",
+			Options:       map[string]any{"max_tokens": 1000, "temperature": 0.1},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vision converter for Office: %w", err)
@@ -183,6 +187,7 @@ func DetectConverter(file string) (types.Converter, error) {
 			Model:         "gpt-4o-mini",
 			CompressSize:  1024,
 			Language:      "Auto",
+			Options:       map[string]any{"max_tokens": 1000, "temperature": 0.1},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create vision converter for Video: %w", err)
