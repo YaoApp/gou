@@ -213,7 +213,7 @@ type Reranker interface {
 
 // Fetcher interface is used to fetch URLs
 type Fetcher interface {
-	Fetch(ctx context.Context, url string, callback ...FetcherProgress) (string, error)
+	Fetch(ctx context.Context, url string, callback ...FetcherProgress) (string, string, error)
 }
 
 // Score interface is used to score segments
@@ -254,3 +254,6 @@ type WeightProgress func(status WeightStatus, payload WeightPayload)
 
 // VoteProgress defines the callback function for progress reporting with flexible payload
 type VoteProgress func(status VoteStatus, payload VotePayload)
+
+// UpsertProgress defines the callback function for progress reporting with flexible payload
+type UpsertProgress func(id string, status UpsertProgressType, payload UpsertProgressPayload)

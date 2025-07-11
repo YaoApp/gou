@@ -16,6 +16,40 @@ func GenDocID() string {
 	return strings.ReplaceAll(uuid.New().String(), "-", "")
 }
 
+// GenDocIDWithGraphName generates a UUID for document identification with GraphName prefix
+// Format: graphname__uuid (without dashes)
+func GenDocIDWithGraphName(graphName string) string {
+	if graphName == "" {
+		graphName = "default"
+	}
+	// Clean the graph name to ensure it's valid
+	cleanGraphName := strings.ToLower(strings.TrimSpace(graphName))
+	uuid := strings.ReplaceAll(uuid.New().String(), "-", "")
+	return fmt.Sprintf("%s__%s", cleanGraphName, uuid)
+}
+
+// ExtractGraphNameFromDocID extracts the GraphName from a prefixed docID
+// Returns the GraphName and the plain UUID part
+func ExtractGraphNameFromDocID(docID string) (string, string) {
+	if docID == "" {
+		return "", ""
+	}
+
+	// Check if docID contains the separator "__"
+	parts := strings.SplitN(docID, "__", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1] // graphName, uuid
+	}
+
+	// If no separator found, assume it's a plain UUID without prefix
+	return "", docID
+}
+
+// IsDocIDWithGraphName checks if a docID contains a GraphName prefix
+func IsDocIDWithGraphName(docID string) bool {
+	return strings.Contains(docID, "__")
+}
+
 // GenChunkID generates a UUID for chunk identification
 func GenChunkID() string {
 	return uuid.New().String()

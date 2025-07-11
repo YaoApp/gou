@@ -155,7 +155,7 @@ func NewStructuredOptions(chunkingType types.ChunkingType) *types.ChunkingOption
 }
 
 // Chunk is the main function to chunk text
-func (chunker *StructuredChunker) Chunk(ctx context.Context, text string, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+func (chunker *StructuredChunker) Chunk(ctx context.Context, text string, options *types.ChunkingOptions, callback types.ChunkingProgress) error {
 	// Validate and fix options
 	chunker.validateAndFixOptions(options)
 
@@ -170,7 +170,7 @@ func (chunker *StructuredChunker) Chunk(ctx context.Context, text string, option
 }
 
 // ChunkFile is the function to chunk file
-func (chunker *StructuredChunker) ChunkFile(ctx context.Context, file string, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+func (chunker *StructuredChunker) ChunkFile(ctx context.Context, file string, options *types.ChunkingOptions, callback types.ChunkingProgress) error {
 	// Validate and fix options
 	chunker.validateAndFixOptions(options)
 
@@ -205,7 +205,7 @@ func (chunker *StructuredChunker) ChunkFile(ctx context.Context, file string, op
 }
 
 // ChunkStream is the function to chunk stream
-func (chunker *StructuredChunker) ChunkStream(ctx context.Context, stream io.ReadSeeker, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+func (chunker *StructuredChunker) ChunkStream(ctx context.Context, stream io.ReadSeeker, options *types.ChunkingOptions, callback types.ChunkingProgress) error {
 	// Validate and fix options
 	chunker.validateAndFixOptions(options)
 
@@ -237,7 +237,7 @@ func (chunker *StructuredChunker) getStreamSize(stream io.ReadSeeker) (int64, er
 }
 
 // processStreamLevels processes chunks at different levels directly from stream
-func (chunker *StructuredChunker) processStreamLevels(ctx context.Context, stream io.ReadSeeker, offset, size int64, parentID string, currentDepth int, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+func (chunker *StructuredChunker) processStreamLevels(ctx context.Context, stream io.ReadSeeker, offset, size int64, parentID string, currentDepth int, options *types.ChunkingOptions, callback types.ChunkingProgress) error {
 	// Validate and fix options to ensure defaults are set
 	chunker.validateAndFixOptions(options)
 
@@ -440,7 +440,7 @@ func (chunker *StructuredChunker) generateStreamChunksWithLines(stream io.ReadSe
 }
 
 // processTextLevelsWithLines processes chunks from text content with line tracking (for sub-levels)
-func (chunker *StructuredChunker) processTextLevelsWithLines(ctx context.Context, text string, baseStartLine int, parentID string, currentDepth int, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+func (chunker *StructuredChunker) processTextLevelsWithLines(ctx context.Context, text string, baseStartLine int, parentID string, currentDepth int, options *types.ChunkingOptions, callback types.ChunkingProgress) error {
 	// Validate and fix options to ensure defaults are set
 	chunker.validateAndFixOptions(options)
 
@@ -689,7 +689,7 @@ func (chunker *StructuredChunker) calculateLinesFromOffset(stream io.ReadSeeker,
 }
 
 // processCurrentLevel processes all chunks at current level concurrently
-func (chunker *StructuredChunker) processCurrentLevel(ctx context.Context, chunks []*types.Chunk, maxConcurrent int, callback func(chunk *types.Chunk) error) error {
+func (chunker *StructuredChunker) processCurrentLevel(ctx context.Context, chunks []*types.Chunk, maxConcurrent int, callback types.ChunkingProgress) error {
 	if len(chunks) == 0 {
 		return nil
 	}
