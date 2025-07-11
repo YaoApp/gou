@@ -34,14 +34,14 @@ func NewSemanticChunker(progressCallback ProgressCallback) *SemanticChunker {
 }
 
 // Chunk implements semantic chunking on text
-func (sc *SemanticChunker) Chunk(ctx context.Context, text string, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+func (sc *SemanticChunker) Chunk(ctx context.Context, text string, options *types.ChunkingOptions, callback types.ChunkingProgress) error {
 	// Convert text to ReadSeeker
 	reader := strings.NewReader(text)
 	return sc.ChunkStream(ctx, reader, options, callback)
 }
 
 // ChunkFile implements semantic chunking on file
-func (sc *SemanticChunker) ChunkFile(ctx context.Context, file string, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+func (sc *SemanticChunker) ChunkFile(ctx context.Context, file string, options *types.ChunkingOptions, callback types.ChunkingProgress) error {
 	// Validate semantic options
 	if err := sc.validateSemanticOptions(options); err != nil {
 		return fmt.Errorf("invalid semantic options: %w", err)
@@ -58,7 +58,7 @@ func (sc *SemanticChunker) ChunkFile(ctx context.Context, file string, options *
 }
 
 // ChunkStream implements semantic chunking on stream
-func (sc *SemanticChunker) ChunkStream(ctx context.Context, stream io.ReadSeeker, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+func (sc *SemanticChunker) ChunkStream(ctx context.Context, stream io.ReadSeeker, options *types.ChunkingOptions, callback types.ChunkingProgress) error {
 	// Step 1: Validate and prepare options
 	if err := sc.validateAndPrepareOptions(options); err != nil {
 		return fmt.Errorf("invalid options: %w", err)
@@ -471,7 +471,7 @@ func (sc *SemanticChunker) callLLMForSegmentation(ctx context.Context, chunk *ty
 }
 
 // buildHierarchyAndOutput builds hierarchy and outputs chunks
-func (sc *SemanticChunker) buildHierarchyAndOutput(ctx context.Context, semanticChunks []*types.Chunk, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+func (sc *SemanticChunker) buildHierarchyAndOutput(ctx context.Context, semanticChunks []*types.Chunk, options *types.ChunkingOptions, callback types.ChunkingProgress) error {
 	// Step 1: Set correct Root status for semantic chunks
 	// If MaxDepth == 1, semantic chunks are root chunks
 	// If MaxDepth > 1, semantic chunks are leaf chunks
@@ -498,7 +498,7 @@ func (sc *SemanticChunker) buildHierarchyAndOutput(ctx context.Context, semantic
 }
 
 // buildHierarchy builds hierarchical chunks
-func (sc *SemanticChunker) buildHierarchy(ctx context.Context, baseChunks []*types.Chunk, options *types.ChunkingOptions, callback func(chunk *types.Chunk) error) error {
+func (sc *SemanticChunker) buildHierarchy(ctx context.Context, baseChunks []*types.Chunk, options *types.ChunkingOptions, callback types.ChunkingProgress) error {
 	currentLevelChunks := baseChunks
 	currentDepth := options.MaxDepth - 1 // Start merging from MaxDepth-1 upwards
 

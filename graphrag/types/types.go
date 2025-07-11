@@ -157,7 +157,13 @@ type Chunk struct {
 	// Position information (only one should be populated based on content type)
 	TextPos  *TextPosition  `json:"text_position,omitempty"`  // For text, code, etc.
 	MediaPos *MediaPosition `json:"media_position,omitempty"` // For PDF, video, audio, etc.
+
+	// Extracted text
+	Extracted *ExtractionResult `json:"extracted,omitempty"` // Extracted text from the chunk
 }
+
+// Embeddings is a slice of EmbeddingResult
+type Embeddings []*EmbeddingResult
 
 // ChunkingOptions represents options for chunking
 type ChunkingOptions struct {
@@ -1943,21 +1949,25 @@ type Options struct {
 // UpsertOptions represents the options for adding documents to the graph
 type UpsertOptions struct {
 	// Chunking is the chunking model to use for chunking documents
-	Chunking         Chunking
-	ChunkingOptions  *ChunkingOptions // Chunking options (Optional)
-	ChunkingProgress ChunkingProgress // Chunking progress callback (Optional)
+	Chunking        Chunking
+	ChunkingOptions *ChunkingOptions // Chunking options (Optional)
+	// ChunkingProgress ChunkingProgress // Chunking progress callback (Optional)
 
 	// Embedding is the embedding model to use for embedding documents
-	Embedding         Embedding
-	EmbeddingProgress EmbeddingProgress // Embedding progress callback (Optional)
+	Embedding Embedding
+	// EmbeddingProgress EmbeddingProgress // Embedding progress callback (Optional)
 
 	// Extraction is the extraction model to use for extracting documents (Optional)
-	Extraction         Extraction
-	ExtractionProgress ExtractionProgress // Extraction progress callback (Optional)
+	Extraction Extraction
+
+	// Progress is the progress callback for the upsert
+	Progress UpsertProgress
+
+	// ExtractionProgress ExtractionProgress // Extraction progress callback (Optional)
 
 	// ExtractionEmbedding is the embedding model to use for embedding extracted documents (Optional, default is the same as Embedding)
-	ExtractionEmbedding         Embedding
-	ExtractionEmbeddingProgress EmbeddingProgress // Extraction embedding progress callback (Optional)
+	// ExtractionEmbedding         Embedding
+	// ExtractionEmbeddingProgress EmbeddingProgress // Extraction embedding progress callback (Optional)
 
 	// Fetcher is the fetcher to use for fetching documents from URLs (Optional)
 	Fetcher Fetcher
@@ -1965,8 +1975,43 @@ type UpsertOptions struct {
 	// Converter is the converter to use for converting documents to text (Optional)
 	Converter Converter
 
+	// GraphName is the graph name to use for storing the document (Optional)
+	GraphName string `json:"graph_name,omitempty"`
+
+	// DocID is the document ID to use for tracking, if not provided, will auto-generate (Optional)
+	DocID string `json:"doc_id,omitempty"`
+
 	// Metadata is the metadata to use for the document (Optional)
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// UpsertProgressType represents the type of the progress
+type UpsertProgressType string
+
+// UpsertProgressType values
+const (
+	UpsertProgressTypeConverter  UpsertProgressType = "converter"
+	UpsertProgressTypeChunking   UpsertProgressType = "chunking"
+	UpsertProgressTypeEmbedding  UpsertProgressType = "embedding"
+	UpsertProgressTypeExtraction UpsertProgressType = "extraction"
+	UpsertProgressTypeFetcher    UpsertProgressType = "fetcher"
+)
+
+// UpsertProgressPayload represents the progress of the upsert
+type UpsertProgressPayload struct {
+	ID       string                 `json:"id"`       // ID of the request
+	Progress float64                `json:"progress"` // 0 - 100
+	Type     UpsertProgressType     `json:"type"`     // "converter", "chunking", "embedding", "extraction", "fetcher"
+	Data     map[string]interface{} `json:"data"`     // Data to display
+}
+
+// UpsertCallback is the callback for the upsert progress
+type UpsertCallback struct {
+	Converter  ConverterProgress
+	Chunking   ChunkingProgress
+	Embedding  EmbeddingProgress
+	Extraction ExtractionProgress
+	Fetcher    FetcherProgress
 }
 
 // QueryOptions represents the options for querying the graph
