@@ -2063,20 +2063,21 @@ type Collection struct {
 
 // Segment represents a segment of a document
 type Segment struct {
-	CollectionID string                 `json:"collection_id"`
-	DocumentID   string                 `json:"document_id"`
-	ID           string                 `json:"id"`
-	Text         string                 `json:"text"`
-	Graph        string                 `json:"graph"`
-	Parents      []string               `json:"parents"`
-	Children     []string               `json:"children"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	CreatedAt    time.Time              `json:"created_at"`
-	UpdatedAt    time.Time              `json:"updated_at"`
-	Version      int                    `json:"version"`
-	Weight       float64                `json:"weight"`
-	Score        float64                `json:"score"`
-	Vote         int                    `json:"vote"`
+	CollectionID  string                 `json:"collection_id"`
+	DocumentID    string                 `json:"document_id"`
+	ID            string                 `json:"id"`
+	Text          string                 `json:"text"`
+	Nodes         []GraphNode            `json:"nodes"`
+	Relationships []GraphRelationship    `json:"relationships"`
+	Parents       []string               `json:"parents"`
+	Children      []string               `json:"children"`
+	Metadata      map[string]interface{} `json:"metadata"`
+	CreatedAt     time.Time              `json:"created_at"`
+	UpdatedAt     time.Time              `json:"updated_at"`
+	Version       int                    `json:"version"`
+	Weight        float64                `json:"weight"`
+	Score         float64                `json:"score"`
+	Vote          int                    `json:"vote"`
 }
 
 // SegmentText represents a segment of a document

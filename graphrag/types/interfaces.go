@@ -171,11 +171,13 @@ type GraphRag interface {
 	RemoveDocs(ctx context.Context, ids []string) (int, error)                                   // Remove documents by IDs
 
 	// Segment Management
-	AddSegments(ctx context.Context, id string, segmentTexts []SegmentText, options *UpsertOptions) (int, error) // Add segments to a collection manually
-	UpdateSegments(ctx context.Context, segmentTexts []SegmentText, options *UpsertOptions) (int, error)         // Update segments manually
-	RemoveSegments(ctx context.Context, segmentIDs []string) (int, error)                                        // Remove segments by IDs
-	GetSegments(ctx context.Context, id string) ([]Segment, error)                                               // Get all segments of a collection
-	GetSegment(ctx context.Context, segmentID string) (*Segment, error)                                          // Get a single segment by ID
+	AddSegments(ctx context.Context, docID string, segmentTexts []SegmentText, options *UpsertOptions) ([]string, error) // Add segments to a document manually, return segment IDs
+	UpdateSegments(ctx context.Context, segmentTexts []SegmentText, options *UpsertOptions) (int, error)                 // Update segments manually, return updated count
+	RemoveSegments(ctx context.Context, segmentIDs []string) (int, error)                                                // Remove segments by SegmentIDs, return removed count
+	RemoveSegmentsByDocID(ctx context.Context, docID string) (int, error)                                                // Remove all segments of a document, return removed count
+	GetSegments(ctx context.Context, segmentIDs []string) ([]Segment, error)                                             // Get segments by IDs, return segments
+	GetSegmentsByDocID(ctx context.Context, docID string) ([]Segment, error)                                             // Get all segments of a document, return segments
+	GetSegment(ctx context.Context, segmentID string) (*Segment, error)                                                  // Get a single segment by ID, return segment
 
 	// Segment Voting, Scoring, Weighting
 	Vote(ctx context.Context, segments []SegmentVote, callback ...VoteProgress) ([]SegmentVote, error)         // Vote for segments
