@@ -980,9 +980,9 @@ func TestAddSegmentsStoreIntegration(t *testing.T) {
 
 			// Check if segment metadata was stored
 			for _, segment := range segments {
-				weightKey := fmt.Sprintf("segment_weight_%s_%s", segmentDocID, segment.ID)
-				scoreKey := fmt.Sprintf("segment_score_%s_%s", segmentDocID, segment.ID)
-				voteKey := fmt.Sprintf("segment_vote_%s_%s", segmentDocID, segment.ID)
+				weightKey := fmt.Sprintf(StoreKeyWeight, segment.ID)
+				scoreKey := fmt.Sprintf(StoreKeyScore, segment.ID)
+				voteKey := fmt.Sprintf(StoreKeyVote, segment.ID)
 
 				if g.Store.Has(weightKey) {
 					t.Logf("Config %s: Segment weight stored successfully for %s", configName, segment.ID)
