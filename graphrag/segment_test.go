@@ -580,79 +580,190 @@ func TestSegmentCURD(t *testing.T) {
 				t.Logf("Successfully retrieved %d segments by IDs", len(segments))
 			})
 
-			// Step 7b: Test GetSegmentsByDocID functionality - read all segments of a document
-			t.Run("Get_Segments_By_DocID", func(t *testing.T) {
+			// Step 7b: Test ListSegments functionality - list segments with pagination
+			t.Run("List_Segments_With_Pagination", func(t *testing.T) {
 				// Add segments for a specific document
 				docSegmentTexts := []types.SegmentText{
 					{
-						ID:   "doc_segment_001",
-						Text: "First segment for document reading test.",
+						ID:   "list_segment_001",
+						Text: "First segment for pagination test.",
 					},
 					{
-						ID:   "doc_segment_002",
-						Text: "Second segment for document reading test.",
+						ID:   "list_segment_002",
+						Text: "Second segment for pagination test.",
 					},
 					{
-						ID:   "doc_segment_003",
-						Text: "Third segment for document reading test.",
+						ID:   "list_segment_003",
+						Text: "Third segment for pagination test.",
 					},
 				}
 
-				docReadDocID := fmt.Sprintf("doc_read_segments_%s", configName)
+				listDocID := fmt.Sprintf("list_segments_%s", configName)
 				addOptions := &types.UpsertOptions{
 					GraphName: collectionID,
 					Metadata: map[string]interface{}{
-						"source": "doc_read_test",
+						"source": "list_test",
 						"config": configName,
 					},
 				}
 
-				// Add segments first
-				addedIDs, err := g.AddSegments(ctx, docReadDocID, docSegmentTexts, addOptions)
+				// Add embedding configuration
+				embeddingConfig, err := createTestEmbedding(t)
 				if err != nil {
-					t.Logf("Failed to add segments for document read test (expected): %v", err)
+					t.Skipf("Failed to create embedding config: %v", err)
+				}
+				addOptions.Embedding = embeddingConfig
+
+				// Add extraction configuration if graph is enabled
+				if strings.Contains(configName, "graph") {
+					extractionConfig, err := createTestExtraction(t)
+					if err != nil {
+						t.Skipf("Failed to create extraction config: %v", err)
+					}
+					addOptions.Extraction = extractionConfig
+				}
+
+				// Add segments first
+				addedIDs, err := g.AddSegments(ctx, listDocID, docSegmentTexts, addOptions)
+				if err != nil {
+					t.Logf("Failed to add segments for list test (expected): %v", err)
 					return
 				}
 
 				if len(addedIDs) != 3 {
-					t.Logf("Expected 3 segments to be added for document read test, got %d", len(addedIDs))
+					t.Logf("Expected 3 segments to be added for list test, got %d", len(addedIDs))
 					return
 				}
 
-				// Test GetSegmentsByDocID
-				segments, err := g.GetSegmentsByDocID(ctx, docReadDocID)
+				// Test ListSegments with default options
+				listOptions := &types.ListSegmentsOptions{
+					Limit:  10,
+					Offset: 0,
+				}
+				result, err := g.ListSegments(ctx, listDocID, listOptions)
 				if err != nil {
-					t.Logf("Failed to get segments by docID (expected): %v", err)
+					t.Logf("Failed to list segments (expected): %v", err)
 					return
 				}
 
-				if len(segments) == 0 {
-					t.Log("No segments returned for document - this may be expected with mock setup")
+				if len(result.Segments) == 0 {
+					t.Log("No segments returned for list - this may be expected with mock setup")
 					return
 				}
 
-				if len(segments) != 3 {
-					t.Errorf("Expected 3 segments returned by docID, got %d", len(segments))
+				if len(result.Segments) != 3 {
+					t.Errorf("Expected 3 segments returned by list, got %d", len(result.Segments))
 					return
 				}
 
 				// Validate segment structure
-				for _, segment := range segments {
+				for _, segment := range result.Segments {
 					if segment.ID == "" {
 						t.Error("Segment ID is empty")
 					}
 					if segment.Text == "" {
 						t.Error("Segment text is empty")
 					}
-					if segment.DocumentID != docReadDocID {
-						t.Errorf("Segment document ID mismatch: expected %s, got %s", docReadDocID, segment.DocumentID)
+					if segment.DocumentID != listDocID {
+						t.Errorf("Segment document ID mismatch: expected %s, got %s", listDocID, segment.DocumentID)
 					}
 				}
 
-				t.Logf("Successfully retrieved %d segments by docID", len(segments))
+				t.Logf("Successfully listed %d segments", len(result.Segments))
 			})
 
-			// Step 7c: Test GetSegment functionality - read single segment
+			// Step 7c: Test ScrollSegments functionality - scroll through segments
+			t.Run("Scroll_Segments", func(t *testing.T) {
+				// Add segments for a specific document
+				scrollSegmentTexts := []types.SegmentText{
+					{
+						ID:   "scroll_segment_001",
+						Text: "First segment for scroll test.",
+					},
+					{
+						ID:   "scroll_segment_002",
+						Text: "Second segment for scroll test.",
+					},
+					{
+						ID:   "scroll_segment_003",
+						Text: "Third segment for scroll test.",
+					},
+				}
+
+				scrollDocID := fmt.Sprintf("scroll_segments_%s", configName)
+				addOptions := &types.UpsertOptions{
+					GraphName: collectionID,
+					Metadata: map[string]interface{}{
+						"source": "scroll_test",
+						"config": configName,
+					},
+				}
+
+				// Add embedding configuration
+				embeddingConfig, err := createTestEmbedding(t)
+				if err != nil {
+					t.Skipf("Failed to create embedding config: %v", err)
+				}
+				addOptions.Embedding = embeddingConfig
+
+				// Add extraction configuration if graph is enabled
+				if strings.Contains(configName, "graph") {
+					extractionConfig, err := createTestExtraction(t)
+					if err != nil {
+						t.Skipf("Failed to create extraction config: %v", err)
+					}
+					addOptions.Extraction = extractionConfig
+				}
+
+				// Add segments first
+				addedIDs, err := g.AddSegments(ctx, scrollDocID, scrollSegmentTexts, addOptions)
+				if err != nil {
+					t.Logf("Failed to add segments for scroll test (expected): %v", err)
+					return
+				}
+
+				if len(addedIDs) != 3 {
+					t.Logf("Expected 3 segments to be added for scroll test, got %d", len(addedIDs))
+					return
+				}
+
+				// Test ScrollSegments with default options
+				scrollOptions := &types.ScrollSegmentsOptions{
+					BatchSize: 10,
+				}
+				result, err := g.ScrollSegments(ctx, scrollDocID, scrollOptions)
+				if err != nil {
+					t.Logf("Failed to scroll segments (expected): %v", err)
+					return
+				}
+
+				if len(result.Segments) == 0 {
+					t.Log("No segments returned for scroll - this may be expected with mock setup")
+					return
+				}
+
+				if len(result.Segments) != 3 {
+					t.Errorf("Expected 3 segments returned by scroll, got %d", len(result.Segments))
+					return
+				}
+
+				// Validate segment structure
+				for _, segment := range result.Segments {
+					if segment.ID == "" {
+						t.Error("Segment ID is empty")
+					}
+					if segment.Text == "" {
+						t.Error("Segment text is empty")
+					}
+					if segment.DocumentID != scrollDocID {
+						t.Errorf("Segment document ID mismatch: expected %s, got %s", scrollDocID, segment.DocumentID)
+					}
+				}
+
+				t.Logf("Successfully scrolled %d segments", len(result.Segments))
+			})
+
+			// Step 7d: Test GetSegment functionality - read single segment
 			t.Run("Get_Single_Segment", func(t *testing.T) {
 				// Add a single segment for single read test
 				singleSegmentTexts := []types.SegmentText{
@@ -709,7 +820,7 @@ func TestSegmentCURD(t *testing.T) {
 				t.Logf("Successfully retrieved single segment: %s", segment.ID)
 			})
 
-			// Step 7d: Test read error handling
+			// Step 7e: Test read error handling
 			t.Run("Read_Error_Handling", func(t *testing.T) {
 				// Test GetSegments with empty segment list
 				emptySegments, err := g.GetSegments(ctx, []string{})
@@ -728,20 +839,20 @@ func TestSegmentCURD(t *testing.T) {
 					t.Logf("GetSegments with non-existent IDs returned error (expected): %v", err)
 				}
 
-				// Test GetSegmentsByDocID with empty docID
-				_, err = g.GetSegmentsByDocID(ctx, "")
+				// Test ListSegments with empty docID
+				_, err = g.ListSegments(ctx, "", nil)
 				if err == nil {
-					t.Error("Expected error for GetSegmentsByDocID with empty docID")
+					t.Error("Expected error for ListSegments with empty docID")
 				} else {
-					t.Logf("GetSegmentsByDocID correctly rejected empty docID: %v", err)
+					t.Logf("ListSegments correctly rejected empty docID: %v", err)
 				}
 
-				// Test GetSegmentsByDocID with non-existent docID
-				nonExistentDocSegments, err := g.GetSegmentsByDocID(ctx, "non_existent_doc")
+				// Test ListSegments with non-existent docID
+				nonExistentDocResult, err := g.ListSegments(ctx, "non_existent_doc", nil)
 				if err == nil {
-					t.Logf("GetSegmentsByDocID with non-existent docID handled gracefully: returned %d segments", len(nonExistentDocSegments))
+					t.Logf("ListSegments with non-existent docID handled gracefully: returned %d segments", len(nonExistentDocResult.Segments))
 				} else {
-					t.Logf("GetSegmentsByDocID with non-existent docID returned error (expected): %v", err)
+					t.Logf("ListSegments with non-existent docID returned error (expected): %v", err)
 				}
 
 				// Test GetSegment with empty segmentID
