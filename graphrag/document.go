@@ -33,6 +33,7 @@ type StoreDocumentsOptions struct {
 	DocID                            string // Add document ID for tracking
 	EntityDeduplicationResults       map[string]*EntityDeduplicationResult
 	RelationshipDeduplicationResults map[string]*RelationshipDeduplicationResult
+	OriginalText                     string // Add original text for potential Vector DB storage
 }
 
 // AddFile adds a file to a collection
@@ -77,8 +78,9 @@ func (g *GraphRag) AddFile(ctx context.Context, file string, options *types.Upse
 		return "", fmt.Errorf("failed to convert the file: %w", err)
 	}
 
-	// Step 3.5: Store original text to Store if configured
+	// Step 3.5: Store original text - Strategy based on Store configuration
 	if g.Store != nil {
+		// Store configured - store Origin only in Store
 		originKey := fmt.Sprintf(StoreKeyOrigin, docID)
 		err = g.Store.Set(originKey, result.Text, 0) // No TTL (permanent storage)
 		if err != nil {
@@ -87,6 +89,7 @@ func (g *GraphRag) AddFile(ctx context.Context, file string, options *types.Upse
 			g.Logger.Infof("Stored original text to Store with key: %s", originKey)
 		}
 	}
+	// Note: If Store is not configured, Origin will be stored in Vector DB metadata in Step 7
 
 	// Step 4.1: Chunk the file
 	err = options.Chunking.Chunk(ctx, result.Text, options.ChunkingOptions, cb.Chunking)
@@ -176,6 +179,7 @@ func (g *GraphRag) AddFile(ctx context.Context, file string, options *types.Upse
 		DocID:                            docID,
 		EntityDeduplicationResults:       entityDeduplicationResults,
 		RelationshipDeduplicationResults: relationshipDeduplicationResults,
+		OriginalText:                     result.Text, // Pass original text for potential Vector DB storage
 	}
 
 	err = g.storeAllDocumentsToVectorStore(ctx, storeOptions)
@@ -738,6 +742,16 @@ func (g *GraphRag) storeAllDocumentsToVectorStore(ctx context.Context, opts *Sto
 		metadata["collection_id"] = opts.CollectionID
 		metadata["doc_id"] = opts.DocID
 		metadata["created_at"] = time.Now().Unix()
+
+		// Add default segment metadata (Vote, Score, Weight) to Vector DB metadata
+		metadata["vote"] = 0
+		metadata["score"] = 0.0
+		metadata["weight"] = 0.0
+
+		// If Store is not configured, also store Origin in Vector DB metadata
+		if g.Store == nil && opts.OriginalText != "" {
+			metadata["origin"] = opts.OriginalText
+		}
 
 		// Add position information to chunk_details
 		if chunk.TextPos != nil {

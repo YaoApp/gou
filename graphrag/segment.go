@@ -759,13 +759,17 @@ func (g *GraphRag) convertSegmentTextsToChunks(segmentTexts []types.SegmentText,
 	return chunks, nil
 }
 
-// storeSegmentMetadataToStore stores segment metadata (Weight, Score, Vote) to Store
+// storeSegmentMetadataToStore stores segment metadata (Weight, Score, Vote) to Store and/or Vector DB
 func (g *GraphRag) storeSegmentMetadataToStore(ctx context.Context, docID string, chunks []*types.Chunk, storeCollectionName string) error {
+	// Strategy 1: Store not configured - metadata already stored in Vector DB during storeAllDocumentsToVectorStore
 	if g.Store == nil {
+		g.Logger.Debugf("Store not configured, segment metadata already stored in Vector DB metadata")
 		return nil
 	}
 
-	// Store default metadata for each segment chunk
+	// Strategy 2: Store configured - concurrent storage to Store and Vector DB
+	// Store metadata is stored during storeAllDocumentsToVectorStore
+	// Here we only need to store to Store (Vector DB storage is handled elsewhere)
 	for _, chunk := range chunks {
 		segmentID := chunk.ID
 
@@ -1372,7 +1376,7 @@ func (g *GraphRag) queryNodesAndRelationshipsFromGraph(ctx context.Context, grap
 	return nodes, relationships, nil
 }
 
-// queryMetadataFromStore queries metadata from KV store
+// queryMetadataFromStore queries metadata from Vector DB first, then Store if needed
 func (g *GraphRag) queryMetadataFromStore(ctx context.Context, opts *segmentQueryOptions) (map[string]interface{}, error) {
 	storeData := make(map[string]interface{})
 
@@ -1388,6 +1392,136 @@ func (g *GraphRag) queryMetadataFromStore(ctx context.Context, opts *segmentQuer
 		return storeData, nil
 	default:
 		return storeData, fmt.Errorf("unknown query type: %s", opts.QueryType)
+	}
+
+	// Strategy 1: Try to get metadata from Vector DB first
+	vectorData, err := g.queryMetadataFromVector(ctx, opts)
+	if err != nil {
+		g.Logger.Warnf("Failed to query metadata from Vector DB: %v", err)
+	}
+
+	// Strategy 2: Query from Store if needed (when Store is configured)
+	var storeDataFromStore map[string]interface{}
+	if g.Store != nil {
+		storeDataFromStore = g.queryMetadataFromStoreOnly(segmentIDs)
+	}
+
+	// Merge data: prioritize Vector DB data, fallback to Store data
+	for _, segmentID := range segmentIDs {
+		segmentData := make(map[string]interface{})
+
+		// First check Vector DB data
+		if vectorSegmentData, ok := vectorData[segmentID]; ok {
+			if vectorMap, ok := vectorSegmentData.(map[string]interface{}); ok {
+				// Copy from Vector DB
+				for k, v := range vectorMap {
+					segmentData[k] = v
+				}
+			}
+		}
+
+		// Then check Store data for missing fields (if Store is configured)
+		if g.Store != nil {
+			if storeSegmentData, ok := storeDataFromStore[segmentID]; ok {
+				if storeMap, ok := storeSegmentData.(map[string]interface{}); ok {
+					// Only add from Store if not already in Vector DB data
+					for k, v := range storeMap {
+						if _, exists := segmentData[k]; !exists {
+							segmentData[k] = v
+						}
+					}
+				}
+			}
+		}
+
+		// Only add to result if we have data
+		if len(segmentData) > 0 {
+			storeData[segmentID] = segmentData
+		}
+	}
+
+	return storeData, nil
+}
+
+// queryMetadataFromVector queries metadata from Vector DB
+func (g *GraphRag) queryMetadataFromVector(ctx context.Context, opts *segmentQueryOptions) (map[string]interface{}, error) {
+	vectorData := make(map[string]interface{})
+
+	if g.Vector == nil {
+		return vectorData, nil
+	}
+
+	var segmentIDs []string
+	switch opts.QueryType {
+	case "by_ids":
+		segmentIDs = opts.SegmentIDs
+	default:
+		return vectorData, nil
+	}
+
+	// Get collection IDs
+	collectionIDs, err := utils.GetCollectionIDs(opts.GraphName)
+	if err != nil {
+		return vectorData, err
+	}
+
+	// Check if collection exists
+	exists, err := g.Vector.CollectionExists(ctx, collectionIDs.Vector)
+	if err != nil {
+		return vectorData, err
+	}
+	if !exists {
+		return vectorData, nil
+	}
+
+	// Get segment documents
+	getOpts := &types.GetDocumentOptions{
+		CollectionName: collectionIDs.Vector,
+		IncludeVector:  false,
+		IncludePayload: true,
+	}
+
+	docs, err := g.Vector.GetDocuments(ctx, segmentIDs, getOpts)
+	if err != nil {
+		return vectorData, err
+	}
+
+	// Extract metadata from documents
+	for _, doc := range docs {
+		if doc != nil && doc.Metadata != nil {
+			segmentData := make(map[string]interface{})
+
+			// Extract Vote, Score, Weight from metadata
+			if vote, ok := doc.Metadata["vote"]; ok {
+				segmentData["vote"] = vote
+			}
+			if score, ok := doc.Metadata["score"]; ok {
+				segmentData["score"] = score
+			}
+			if weight, ok := doc.Metadata["weight"]; ok {
+				segmentData["weight"] = weight
+			}
+
+			// If Store is not configured, also extract Origin from metadata
+			if g.Store == nil {
+				if origin, ok := doc.Metadata["origin"]; ok {
+					segmentData["origin"] = origin
+				}
+			}
+
+			vectorData[doc.ID] = segmentData
+		}
+	}
+
+	return vectorData, nil
+}
+
+// queryMetadataFromStoreOnly queries metadata from Store only
+func (g *GraphRag) queryMetadataFromStoreOnly(segmentIDs []string) map[string]interface{} {
+	storeData := make(map[string]interface{})
+
+	if g.Store == nil {
+		return storeData
 	}
 
 	// Query metadata for each segment
@@ -1412,10 +1546,12 @@ func (g *GraphRag) queryMetadataFromStore(ctx context.Context, opts *segmentQuer
 			segmentData["vote"] = vote
 		}
 
-		storeData[segmentID] = segmentData
+		if len(segmentData) > 0 {
+			storeData[segmentID] = segmentData
+		}
 	}
 
-	return storeData, nil
+	return storeData
 }
 
 // assembleSegments assembles segments from the queried data
