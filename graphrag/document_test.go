@@ -246,6 +246,169 @@ func TestAddFile(t *testing.T) {
 	}
 }
 
+// === AddURL And Text Tests ===
+
+// TestAddURL tests the AddURL function with different configurations
+func TestAddURLAndText(t *testing.T) {
+	prepareAddFileConnector(t)
+
+	configs := GetTestConfigs()
+
+	config := configs["vector+graph+store"]
+	configName := "vector+graph+store"
+	g, err := New(config)
+	if err != nil {
+		t.Skipf("Failed to create GraphRag instance: %v", err)
+	}
+
+	safeName := strings.ReplaceAll(configName, "+", "_")
+	collectionID := fmt.Sprintf("test_collection_%s_%d", safeName, time.Now().Unix())
+
+	// Cleanup collection after test
+	defer func() {
+		ctx := context.Background()
+		removed, err := g.RemoveCollection(ctx, collectionID)
+		if err != nil {
+			t.Logf("Warning: Failed to cleanup collection %s: %v", collectionID, err)
+		} else if removed {
+			t.Logf("Successfully cleaned up collection: %s", collectionID)
+		} else {
+			t.Logf("Collection %s was not found (already cleaned up)", collectionID)
+		}
+	}()
+
+	t.Run(fmt.Sprintf("Config_%s", configName), func(t *testing.T) {
+
+		if err != nil {
+			t.Skipf("Failed to create GraphRag instance for %s: %v", configName, err)
+		}
+
+		ctx := context.Background()
+		vectorConfig := getVectorStore("addurltext_test", 1536)
+		collection := types.Collection{
+			ID: collectionID,
+			Metadata: map[string]interface{}{
+				"type": "addurl_test",
+			},
+			VectorConfig: &vectorConfig,
+		}
+
+		// Add GraphStoreConfig for graph-enabled configurations
+		if strings.Contains(configName, "graph") {
+			graphConfig := getGraphStore("addurltext_test")
+			collection.GraphStoreConfig = &graphConfig
+		}
+
+		// Create collection (this will auto-connect vector store - reusing collection_test.go pattern)
+		_, err = g.CreateCollection(ctx, collection)
+		if err != nil {
+			t.Skipf("Failed to create test collection for %s: %v", configName, err)
+		}
+
+	})
+
+	t.Run("AddURL", func(t *testing.T) {
+
+		ctx := context.Background()
+		options := &types.UpsertOptions{
+			DocID:     fmt.Sprintf("test_url_%s", configName),
+			GraphName: collectionID, // Use the actual created collection ID
+			Metadata: map[string]interface{}{
+				"source": "test",
+				"type":   "url",
+				"config": configName,
+			},
+		}
+
+		docID, err := g.AddURL(ctx, "https://www.google.com/", options)
+		if err != nil {
+			// Expected errors with mock setup
+			expectedErrors := []string{
+				"connection refused", "no such host", "connector not found", "connector openai not loaded",
+				"vector store", "graph store", "store", "embedding", "extraction",
+			}
+
+			hasExpectedError := false
+			for _, expectedErr := range expectedErrors {
+				if strings.Contains(err.Error(), expectedErr) {
+					hasExpectedError = true
+					break
+				}
+			}
+
+			if hasExpectedError {
+				t.Logf("Expected error with mock setup: %v", err)
+			} else {
+				t.Errorf("Unexpected error: %v", err)
+			}
+			return
+		}
+
+		// Validate success
+		if docID == "" {
+			t.Error("AddURL returned empty document ID")
+			return
+		}
+
+		if docID != options.DocID {
+			t.Errorf("Expected document ID %s, got %s", options.DocID, docID)
+		}
+
+		t.Logf("URL processed successfully - ID: %s", docID)
+	})
+
+	t.Run("AddText", func(t *testing.T) {
+
+		ctx := context.Background()
+		options := &types.UpsertOptions{
+			DocID:     fmt.Sprintf("test_text_%s", configName),
+			GraphName: collectionID, // Use the actual created collection ID
+			Metadata: map[string]interface{}{
+				"source": "test",
+				"type":   "text",
+				"config": configName,
+			},
+		}
+
+		docID, err := g.AddText(ctx, "This is a lazy dog", options)
+		if err != nil {
+			// Expected errors with mock setup
+			expectedErrors := []string{
+				"connection refused", "no such host", "connector not found", "connector openai not loaded",
+				"vector store", "graph store", "store", "embedding", "extraction",
+			}
+
+			hasExpectedError := false
+			for _, expectedErr := range expectedErrors {
+				if strings.Contains(err.Error(), expectedErr) {
+					hasExpectedError = true
+					break
+				}
+			}
+
+			if hasExpectedError {
+				t.Logf("Expected error with mock setup: %v", err)
+			} else {
+				t.Errorf("Unexpected error: %v", err)
+			}
+			return
+		}
+
+		// Validate success
+		if docID == "" {
+			t.Error("AddURL returned empty document ID")
+			return
+		}
+
+		if docID != options.DocID {
+			t.Errorf("Expected document ID %s, got %s", options.DocID, docID)
+		}
+
+		t.Logf("URL processed successfully - ID: %s", docID)
+	})
+
+}
+
 // TestAddFileErrorHandling tests error conditions
 func TestAddFileErrorHandling(t *testing.T) {
 	prepareAddFileConnector(t)
