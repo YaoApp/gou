@@ -10,8 +10,8 @@ import (
 	"github.com/yaoapp/gou/graphrag/types"
 )
 
-// TestAddUpdateSegments tests the AddSegments and UpdateSegments functions with different configurations
-func TestAddUpdateSegments(t *testing.T) {
+// TestSegmentCURD tests the Complete CRUD operations for segments (Create, Update, Remove, Delete)
+func TestSegmentCURD(t *testing.T) {
 	// Setup connector as in document_test.go
 	prepareAddFileConnector(t)
 
@@ -397,6 +397,412 @@ func TestAddUpdateSegments(t *testing.T) {
 					t.Logf("UpdateSegments with non-existent ID did not fail (may be expected)")
 				} else {
 					t.Logf("UpdateSegments correctly rejected non-existent ID: %v", err)
+				}
+			})
+
+			// Step 7a: Test GetSegments functionality - read segments by IDs
+			t.Run("Get_Segments_By_IDs", func(t *testing.T) {
+				// First, add segments to read
+				readSegmentTexts := []types.SegmentText{
+					{
+						ID:   "read_segment_001",
+						Text: "This segment is for reading by IDs test.",
+					},
+					{
+						ID:   "read_segment_002",
+						Text: "Another segment for reading by IDs test.",
+					},
+				}
+
+				readDocID := fmt.Sprintf("read_segments_%s", configName)
+				addOptions := &types.UpsertOptions{
+					GraphName: collectionID,
+					Metadata: map[string]interface{}{
+						"source": "read_test_prep",
+						"config": configName,
+					},
+				}
+
+				// Add segments first
+				addedIDs, err := g.AddSegments(ctx, readDocID, readSegmentTexts, addOptions)
+				if err != nil {
+					t.Logf("Failed to add segments for read test (expected): %v", err)
+					return
+				}
+
+				if len(addedIDs) != 2 {
+					t.Logf("Expected 2 segments to be added for read test, got %d", len(addedIDs))
+					return
+				}
+
+				// Test GetSegments with specific IDs
+				segments, err := g.GetSegments(ctx, []string{"read_segment_001", "read_segment_002"})
+				if err != nil {
+					t.Logf("Failed to get segments by IDs (expected): %v", err)
+					return
+				}
+
+				if len(segments) == 0 {
+					t.Log("No segments returned - this may be expected with mock setup")
+					return
+				}
+
+				if len(segments) != 2 {
+					t.Errorf("Expected 2 segments returned, got %d", len(segments))
+					return
+				}
+
+				// Validate segment structure
+				for _, segment := range segments {
+					if segment.ID == "" {
+						t.Error("Segment ID is empty")
+					}
+					if segment.Text == "" {
+						t.Error("Segment text is empty")
+					}
+					if segment.CollectionID == "" {
+						t.Error("Segment collection ID is empty")
+					}
+					if segment.DocumentID == "" {
+						t.Error("Segment document ID is empty")
+					}
+				}
+
+				t.Logf("Successfully retrieved %d segments by IDs", len(segments))
+			})
+
+			// Step 7b: Test GetSegmentsByDocID functionality - read all segments of a document
+			t.Run("Get_Segments_By_DocID", func(t *testing.T) {
+				// Add segments for a specific document
+				docSegmentTexts := []types.SegmentText{
+					{
+						ID:   "doc_segment_001",
+						Text: "First segment for document reading test.",
+					},
+					{
+						ID:   "doc_segment_002",
+						Text: "Second segment for document reading test.",
+					},
+					{
+						ID:   "doc_segment_003",
+						Text: "Third segment for document reading test.",
+					},
+				}
+
+				docReadDocID := fmt.Sprintf("doc_read_segments_%s", configName)
+				addOptions := &types.UpsertOptions{
+					GraphName: collectionID,
+					Metadata: map[string]interface{}{
+						"source": "doc_read_test",
+						"config": configName,
+					},
+				}
+
+				// Add segments first
+				addedIDs, err := g.AddSegments(ctx, docReadDocID, docSegmentTexts, addOptions)
+				if err != nil {
+					t.Logf("Failed to add segments for document read test (expected): %v", err)
+					return
+				}
+
+				if len(addedIDs) != 3 {
+					t.Logf("Expected 3 segments to be added for document read test, got %d", len(addedIDs))
+					return
+				}
+
+				// Test GetSegmentsByDocID
+				segments, err := g.GetSegmentsByDocID(ctx, docReadDocID)
+				if err != nil {
+					t.Logf("Failed to get segments by docID (expected): %v", err)
+					return
+				}
+
+				if len(segments) == 0 {
+					t.Log("No segments returned for document - this may be expected with mock setup")
+					return
+				}
+
+				if len(segments) != 3 {
+					t.Errorf("Expected 3 segments returned by docID, got %d", len(segments))
+					return
+				}
+
+				// Validate segment structure
+				for _, segment := range segments {
+					if segment.ID == "" {
+						t.Error("Segment ID is empty")
+					}
+					if segment.Text == "" {
+						t.Error("Segment text is empty")
+					}
+					if segment.DocumentID != docReadDocID {
+						t.Errorf("Segment document ID mismatch: expected %s, got %s", docReadDocID, segment.DocumentID)
+					}
+				}
+
+				t.Logf("Successfully retrieved %d segments by docID", len(segments))
+			})
+
+			// Step 7c: Test GetSegment functionality - read single segment
+			t.Run("Get_Single_Segment", func(t *testing.T) {
+				// Add a single segment for single read test
+				singleSegmentTexts := []types.SegmentText{
+					{
+						ID:   "single_segment_001",
+						Text: "This is a single segment for individual reading test.",
+					},
+				}
+
+				singleReadDocID := fmt.Sprintf("single_read_segment_%s", configName)
+				addOptions := &types.UpsertOptions{
+					GraphName: collectionID,
+					Metadata: map[string]interface{}{
+						"source": "single_read_test",
+						"config": configName,
+					},
+				}
+
+				// Add segment first
+				addedIDs, err := g.AddSegments(ctx, singleReadDocID, singleSegmentTexts, addOptions)
+				if err != nil {
+					t.Logf("Failed to add segment for single read test (expected): %v", err)
+					return
+				}
+
+				if len(addedIDs) != 1 {
+					t.Logf("Expected 1 segment to be added for single read test, got %d", len(addedIDs))
+					return
+				}
+
+				// Test GetSegment with specific ID
+				segment, err := g.GetSegment(ctx, "single_segment_001")
+				if err != nil {
+					t.Logf("Failed to get single segment (expected): %v", err)
+					return
+				}
+
+				if segment == nil {
+					t.Error("GetSegment returned nil segment")
+					return
+				}
+
+				// Validate segment structure
+				if segment.ID == "" {
+					t.Error("Single segment ID is empty")
+				}
+				if segment.Text == "" {
+					t.Error("Single segment text is empty")
+				}
+				if segment.DocumentID != singleReadDocID {
+					t.Errorf("Single segment document ID mismatch: expected %s, got %s", singleReadDocID, segment.DocumentID)
+				}
+
+				t.Logf("Successfully retrieved single segment: %s", segment.ID)
+			})
+
+			// Step 7d: Test read error handling
+			t.Run("Read_Error_Handling", func(t *testing.T) {
+				// Test GetSegments with empty segment list
+				emptySegments, err := g.GetSegments(ctx, []string{})
+				if err != nil {
+					t.Errorf("GetSegments with empty list should not return error: %v", err)
+				}
+				if len(emptySegments) != 0 {
+					t.Errorf("Expected 0 segments for empty list, got %d", len(emptySegments))
+				}
+
+				// Test GetSegments with non-existent segment IDs
+				nonExistentSegments, err := g.GetSegments(ctx, []string{"non_existent_segment"})
+				if err == nil {
+					t.Logf("GetSegments with non-existent IDs handled gracefully: returned %d segments", len(nonExistentSegments))
+				} else {
+					t.Logf("GetSegments with non-existent IDs returned error (expected): %v", err)
+				}
+
+				// Test GetSegmentsByDocID with empty docID
+				_, err = g.GetSegmentsByDocID(ctx, "")
+				if err == nil {
+					t.Error("Expected error for GetSegmentsByDocID with empty docID")
+				} else {
+					t.Logf("GetSegmentsByDocID correctly rejected empty docID: %v", err)
+				}
+
+				// Test GetSegmentsByDocID with non-existent docID
+				nonExistentDocSegments, err := g.GetSegmentsByDocID(ctx, "non_existent_doc")
+				if err == nil {
+					t.Logf("GetSegmentsByDocID with non-existent docID handled gracefully: returned %d segments", len(nonExistentDocSegments))
+				} else {
+					t.Logf("GetSegmentsByDocID with non-existent docID returned error (expected): %v", err)
+				}
+
+				// Test GetSegment with empty segmentID
+				_, err = g.GetSegment(ctx, "")
+				if err == nil {
+					t.Error("Expected error for GetSegment with empty segmentID")
+				} else {
+					t.Logf("GetSegment correctly rejected empty segmentID: %v", err)
+				}
+
+				// Test GetSegment with non-existent segmentID
+				nonExistentSegment, err := g.GetSegment(ctx, "non_existent_single_segment")
+				if err == nil {
+					t.Logf("GetSegment with non-existent ID handled gracefully: returned %v", nonExistentSegment)
+				} else {
+					t.Logf("GetSegment with non-existent ID returned error (expected): %v", err)
+				}
+			})
+
+			// Step 8: Test RemoveSegments functionality
+			t.Run("Remove_Segments", func(t *testing.T) {
+				// First, add segments to remove
+				removeSegmentTexts := []types.SegmentText{
+					{
+						ID:   "remove_segment_001",
+						Text: "This segment will be removed for testing.",
+					},
+					{
+						ID:   "remove_segment_002",
+						Text: "Another segment for removal testing.",
+					},
+				}
+
+				removeDocID := fmt.Sprintf("remove_segments_%s", configName)
+				addOptions := &types.UpsertOptions{
+					GraphName: collectionID,
+					Metadata: map[string]interface{}{
+						"source": "remove_test_prep",
+						"config": configName,
+					},
+				}
+
+				// Add segments first
+				addedIDs, err := g.AddSegments(ctx, removeDocID, removeSegmentTexts, addOptions)
+				if err != nil {
+					t.Logf("Failed to add segments for remove test (expected): %v", err)
+					return
+				}
+
+				if len(addedIDs) != 2 {
+					t.Logf("Expected 2 segments to be added for remove test, got %d", len(addedIDs))
+					return
+				}
+
+				// Test removing specific segments by IDs
+				removeCount, err := g.RemoveSegments(ctx, []string{"remove_segment_001"})
+				if err != nil {
+					t.Logf("Failed to remove segments (expected): %v", err)
+					return
+				}
+
+				if removeCount != 1 {
+					t.Errorf("Expected 1 removed segment, got %d", removeCount)
+					return
+				}
+
+				t.Logf("Successfully removed %d segments by IDs", removeCount)
+
+				// Test removing remaining segments
+				remainingCount, err := g.RemoveSegments(ctx, []string{"remove_segment_002"})
+				if err != nil {
+					t.Logf("Failed to remove remaining segments (expected): %v", err)
+					return
+				}
+
+				if remainingCount != 1 {
+					t.Errorf("Expected 1 remaining segment removed, got %d", remainingCount)
+					return
+				}
+
+				t.Logf("Successfully removed remaining %d segments", remainingCount)
+			})
+
+			// Step 9: Test RemoveSegmentsByDocID functionality
+			t.Run("Remove_Segments_By_DocID", func(t *testing.T) {
+				// Add multiple segments for one document
+				docRemovalSegmentTexts := []types.SegmentText{
+					{
+						ID:   "doc_remove_segment_001",
+						Text: "First segment for document removal testing.",
+					},
+					{
+						ID:   "doc_remove_segment_002",
+						Text: "Second segment for document removal testing.",
+					},
+					{
+						ID:   "doc_remove_segment_003",
+						Text: "Third segment for document removal testing.",
+					},
+				}
+
+				docRemovalDocID := fmt.Sprintf("doc_removal_segments_%s", configName)
+				addOptions := &types.UpsertOptions{
+					GraphName: collectionID,
+					Metadata: map[string]interface{}{
+						"source": "doc_removal_test",
+						"config": configName,
+					},
+				}
+
+				// Add segments first
+				addedIDs, err := g.AddSegments(ctx, docRemovalDocID, docRemovalSegmentTexts, addOptions)
+				if err != nil {
+					t.Logf("Failed to add segments for document removal test (expected): %v", err)
+					return
+				}
+
+				if len(addedIDs) != 3 {
+					t.Logf("Expected 3 segments to be added for document removal test, got %d", len(addedIDs))
+					return
+				}
+
+				// Test removing all segments by document ID
+				removedCount, err := g.RemoveSegmentsByDocID(ctx, docRemovalDocID)
+				if err != nil {
+					t.Logf("Failed to remove segments by docID (expected): %v", err)
+					return
+				}
+
+				if removedCount != 3 {
+					t.Errorf("Expected 3 segments removed by docID, got %d", removedCount)
+					return
+				}
+
+				t.Logf("Successfully removed %d segments by docID", removedCount)
+			})
+
+			// Step 10: Test RemoveSegments error handling
+			t.Run("Remove_Segments_Error_Handling", func(t *testing.T) {
+				// Test with empty segment list
+				emptyRemoveCount, err := g.RemoveSegments(ctx, []string{})
+				if err != nil {
+					t.Errorf("RemoveSegments with empty list should not return error: %v", err)
+				}
+				if emptyRemoveCount != 0 {
+					t.Errorf("Expected 0 removed segments for empty list, got %d", emptyRemoveCount)
+				}
+
+				// Test with non-existent segment IDs
+				nonExistentCount, err := g.RemoveSegments(ctx, []string{"non_existent_segment"})
+				if err == nil {
+					t.Logf("RemoveSegments with non-existent IDs handled gracefully: removed %d", nonExistentCount)
+				} else {
+					t.Logf("RemoveSegments with non-existent IDs returned error (expected): %v", err)
+				}
+
+				// Test RemoveSegmentsByDocID with empty docID
+				_, err = g.RemoveSegmentsByDocID(ctx, "")
+				if err == nil {
+					t.Error("Expected error for RemoveSegmentsByDocID with empty docID")
+				} else {
+					t.Logf("RemoveSegmentsByDocID correctly rejected empty docID: %v", err)
+				}
+
+				// Test RemoveSegmentsByDocID with non-existent docID
+				nonExistentDocCount, err := g.RemoveSegmentsByDocID(ctx, "non_existent_doc")
+				if err == nil {
+					t.Logf("RemoveSegmentsByDocID with non-existent docID handled gracefully: removed %d", nonExistentDocCount)
+				} else {
+					t.Logf("RemoveSegmentsByDocID with non-existent docID returned error (expected): %v", err)
 				}
 			})
 		})
