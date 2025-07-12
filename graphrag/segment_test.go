@@ -7,8 +7,37 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yaoapp/gou/graphrag/embedding"
+	"github.com/yaoapp/gou/graphrag/extraction/openai"
 	"github.com/yaoapp/gou/graphrag/types"
 )
+
+// createTestEmbedding creates an embedding configuration for testing
+func createTestEmbedding(t *testing.T) (types.Embedding, error) {
+	t.Helper()
+
+	return embedding.NewOpenai(embedding.OpenaiOptions{
+		ConnectorName: "openai",
+		Concurrent:    10,
+		Dimension:     1536,
+		Model:         "text-embedding-3-small",
+	})
+}
+
+// createTestExtraction creates an extraction configuration for testing
+func createTestExtraction(t *testing.T) (types.Extraction, error) {
+	t.Helper()
+
+	return openai.NewOpenai(openai.Options{
+		ConnectorName: "openai",
+		Concurrent:    5,
+		Model:         "gpt-4o-mini",
+		Temperature:   0.1,
+		MaxTokens:     4000,
+		Toolcall:      nil,
+		RetryAttempts: 3,
+	})
+}
 
 // TestSegmentCURD tests the Complete CRUD operations for segments (Create, Update, Remove, Delete)
 func TestSegmentCURD(t *testing.T) {
@@ -148,6 +177,22 @@ func TestSegmentCURD(t *testing.T) {
 					},
 				}
 
+				// Add embedding configuration
+				embeddingConfig, err := createTestEmbedding(t)
+				if err != nil {
+					t.Skipf("Failed to create embedding config: %v", err)
+				}
+				segmentOptions.Embedding = embeddingConfig
+
+				// Add extraction configuration if graph is enabled
+				if strings.Contains(configName, "graph") {
+					extractionConfig, err := createTestExtraction(t)
+					if err != nil {
+						t.Skipf("Failed to create extraction config: %v", err)
+					}
+					segmentOptions.Extraction = extractionConfig
+				}
+
 				// Call AddSegments
 				segmentIDs, err := g.AddSegments(ctx, segmentDocID, segmentTexts, segmentOptions)
 				if err != nil {
@@ -202,6 +247,22 @@ func TestSegmentCURD(t *testing.T) {
 					},
 				}
 
+				// Add embedding configuration
+				embeddingConfig, err := createTestEmbedding(t)
+				if err != nil {
+					t.Skipf("Failed to create embedding config: %v", err)
+				}
+				segmentOptions.Embedding = embeddingConfig
+
+				// Add extraction configuration if graph is enabled
+				if strings.Contains(configName, "graph") {
+					extractionConfig, err := createTestExtraction(t)
+					if err != nil {
+						t.Skipf("Failed to create extraction config: %v", err)
+					}
+					segmentOptions.Extraction = extractionConfig
+				}
+
 				segmentIDs, err := g.AddSegments(ctx, emptyDocID, emptySegments, segmentOptions)
 				if err != nil {
 					t.Logf("Error with empty segments (expected): %v", err)
@@ -235,6 +296,22 @@ func TestSegmentCURD(t *testing.T) {
 						"type":   "no_id_segments",
 						"config": configName,
 					},
+				}
+
+				// Add embedding configuration
+				embeddingConfig, err := createTestEmbedding(t)
+				if err != nil {
+					t.Skipf("Failed to create embedding config: %v", err)
+				}
+				segmentOptions.Embedding = embeddingConfig
+
+				// Add extraction configuration if graph is enabled
+				if strings.Contains(configName, "graph") {
+					extractionConfig, err := createTestExtraction(t)
+					if err != nil {
+						t.Skipf("Failed to create extraction config: %v", err)
+					}
+					segmentOptions.Extraction = extractionConfig
 				}
 
 				segmentIDs, err := g.AddSegments(ctx, noIDDocID, segmentTextsNoID, segmentOptions)
@@ -318,6 +395,22 @@ func TestSegmentCURD(t *testing.T) {
 					},
 				}
 
+				// Add embedding configuration
+				embeddingConfig, err := createTestEmbedding(t)
+				if err != nil {
+					t.Skipf("Failed to create embedding config: %v", err)
+				}
+				addOptions.Embedding = embeddingConfig
+
+				// Add extraction configuration if graph is enabled
+				if strings.Contains(configName, "graph") {
+					extractionConfig, err := createTestExtraction(t)
+					if err != nil {
+						t.Skipf("Failed to create extraction config: %v", err)
+					}
+					addOptions.Extraction = extractionConfig
+				}
+
 				// Add segments first
 				addedIDs, err := g.AddSegments(ctx, updateDocID, updateSegmentTexts, addOptions)
 				if err != nil {
@@ -351,6 +444,22 @@ func TestSegmentCURD(t *testing.T) {
 						"score":  0.9,
 						"vote":   5,
 					},
+				}
+
+				// Add embedding configuration
+				embeddingConfig2, err := createTestEmbedding(t)
+				if err != nil {
+					t.Skipf("Failed to create embedding config: %v", err)
+				}
+				updateOptions.Embedding = embeddingConfig2
+
+				// Add extraction configuration if graph is enabled
+				if strings.Contains(configName, "graph") {
+					extractionConfig2, err := createTestExtraction(t)
+					if err != nil {
+						t.Skipf("Failed to create extraction config: %v", err)
+					}
+					updateOptions.Extraction = extractionConfig2
 				}
 
 				updateCount, err := g.UpdateSegments(ctx, updatedSegmentTexts, updateOptions)

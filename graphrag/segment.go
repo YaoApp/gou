@@ -42,21 +42,13 @@ func (g *GraphRag) AddSegments(ctx context.Context, docID string, segmentTexts [
 	var embeddingIndexesMap map[*types.Chunk]int = map[*types.Chunk]int{}
 	var cb = MakeUpsertCallback(docID, nil, opts.Progress)
 
-	// Step 6: Prepare embedding and extraction if not provided
+	// Step 6: Require embedding and extraction configurations
 	if opts.Embedding == nil {
-		embedding, err := DetectEmbedding("")
-		if err != nil {
-			return nil, fmt.Errorf("failed to detect embedding: %w", err)
-		}
-		opts.Embedding = embedding
+		return nil, fmt.Errorf("embedding configuration is required for AddSegments operation")
 	}
 
 	if g.Graph != nil && opts.Extraction == nil {
-		extraction, err := DetectExtractor("")
-		if err != nil {
-			return nil, fmt.Errorf("failed to detect extraction: %w", err)
-		}
-		opts.Extraction = extraction
+		return nil, fmt.Errorf("extraction configuration is required when graph store is configured")
 	}
 
 	// Step 7: Store embedding indexes for chunks (equivalent to AddFile step 4.2)
@@ -395,21 +387,13 @@ func (g *GraphRag) UpdateSegments(ctx context.Context, segmentTexts []types.Segm
 	var embeddingIndexesMap map[*types.Chunk]int = map[*types.Chunk]int{}
 	var cb = MakeUpsertCallback(docID, nil, opts.Progress)
 
-	// Step 7: Prepare embedding and extraction if not provided
+	// Step 7: Require embedding and extraction configurations
 	if opts.Embedding == nil {
-		embedding, err := DetectEmbedding("")
-		if err != nil {
-			return 0, fmt.Errorf("failed to detect embedding: %w", err)
-		}
-		opts.Embedding = embedding
+		return 0, fmt.Errorf("embedding configuration is required for UpdateSegments operation")
 	}
 
 	if g.Graph != nil && opts.Extraction == nil {
-		extraction, err := DetectExtractor("")
-		if err != nil {
-			return 0, fmt.Errorf("failed to detect extraction: %w", err)
-		}
-		opts.Extraction = extraction
+		return 0, fmt.Errorf("extraction configuration is required when graph store is configured")
 	}
 
 	// Step 8: If Graph is configured, remove existing entities and relationships for these segments
