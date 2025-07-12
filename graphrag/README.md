@@ -159,6 +159,7 @@ removed, err := g.RemoveCollection(ctx, collectionID)
 // "github.com/yaoapp/gou/graphrag/embedding"
 // "github.com/yaoapp/gou/graphrag/extraction/openai"
 // "github.com/yaoapp/gou/graphrag/converter"
+// "github.com/yaoapp/gou/graphrag/chunking"
 
 // Create embedding and extraction functions (required for all document operations)
 embeddingFunc, err := embedding.NewOpenai(embedding.OpenaiOptions{
@@ -217,13 +218,39 @@ converterFunc = visionConverter
 //     CleanupTemp:        true,
 // })
 
+// Create semantic chunking instance (recommended for intelligent segmentation)
+semanticChunker := chunking.NewSemanticChunker(func(chunkID, progress, step string, data interface{}) error {
+    log.Printf("Chunking progress - %s: %s", step, progress)
+    return nil
+})
+
+// Configure semantic chunking options
+chunkingOptions := &types.ChunkingOptions{
+    Type:          types.ChunkingTypeText,
+    Size:          500,
+    Overlap:       50,
+    MaxDepth:      3,
+    MaxConcurrent: 4,
+    SemanticOptions: &types.SemanticOptions{
+        Connector:     "openai",
+        ContextSize:   1500,
+        MaxRetry:      3,
+        MaxConcurrent: 2,
+        Toolcall:      true,
+        Options:       `{"temperature": 0.1}`,
+        Prompt:        "Split this text into meaningful semantic segments",
+    },
+}
+
 // Add different types of documents
 options := &types.UpsertOptions{
-    DocID:      "doc1",
-    GraphName:  collectionID,
-    Embedding:  embeddingFunc,
-    Extraction: extractionFunc, // Only needed if using graph storage
-    Converter:  converterFunc,  // Optional - system will auto-detect if not provided
+    DocID:           "doc1",
+    GraphName:       collectionID,
+    Embedding:       embeddingFunc,
+    Extraction:      extractionFunc, // Only needed if using graph storage
+    Converter:       converterFunc,  // Optional - system will auto-detect if not provided
+    Chunking:        semanticChunker, // Recommended: semantic chunking for intelligent segmentation
+    ChunkingOptions: chunkingOptions, // Semantic chunking configuration
     Metadata: map[string]interface{}{
         "source": "research",
         "author": "John Doe",
@@ -242,6 +269,57 @@ docID, err := g.AddText(ctx, "Research paper content...", options)
 // Add from stream
 file, _ := os.Open("document.txt")
 docID, err := g.AddStream(ctx, file, options)
+
+// Example: Using different chunking strategies
+// 1. Semantic chunking for intelligent text segmentation (recommended)
+semanticChunker := chunking.NewSemanticChunker(func(chunkID, progress, step string, data interface{}) error {
+    log.Printf("Semantic chunk %s: %s - %s", chunkID, step, progress)
+    return nil
+})
+semanticOptions := &types.UpsertOptions{
+    DocID:           "academic_paper",
+    GraphName:       collectionID,
+    Embedding:       embeddingFunc,
+    Extraction:      extractionFunc,
+    Chunking:        semanticChunker,
+    ChunkingOptions: &types.ChunkingOptions{
+        Type:          types.ChunkingTypeText,
+        Size:          800,
+        Overlap:       100,
+        MaxDepth:      3,
+        MaxConcurrent: 4,
+        SemanticOptions: &types.SemanticOptions{
+            Connector:     "openai",
+            ContextSize:   2400,
+            MaxRetry:      3,
+            MaxConcurrent: 2,
+            Toolcall:      true,
+            Options:       `{"temperature": 0.1}`,
+            Prompt:        "Intelligently segment this text into coherent sections",
+        },
+    },
+    Metadata: map[string]interface{}{
+        "type":   "academic",
+        "domain": "AI research",
+    },
+}
+docID, err := g.AddFile(ctx, "/path/to/paper.pdf", semanticOptions)
+
+// 2. Structured chunking for basic text splitting (when semantic analysis is not needed)
+structuredChunker := chunking.NewStructuredChunker()
+structuredOptions := &types.UpsertOptions{
+    DocID:           "simple_doc",
+    GraphName:       collectionID,
+    Embedding:       embeddingFunc,
+    Extraction:      extractionFunc,
+    Chunking:        structuredChunker,
+    ChunkingOptions: chunking.NewStructuredOptions(types.ChunkingTypeText), // Basic configuration
+    Metadata: map[string]interface{}{
+        "type": "simple",
+        "note": "using basic chunking",
+    },
+}
+docID, err := g.AddFile(ctx, "/path/to/simple.txt", structuredOptions)
 
 // Remove documents
 removedCount, err := g.RemoveDocs(ctx, []string{"doc1", "doc2"})
@@ -293,12 +371,38 @@ segmentTexts := []types.SegmentText{
     },
 }
 
+// Example: Using semantic chunking for intelligent segmentation
+semanticChunker := chunking.NewSemanticChunker(func(chunkID, progress, step string, data interface{}) error {
+    // Progress callback for monitoring chunking progress
+    log.Printf("Chunk %s: %s - %s", chunkID, step, progress)
+    return nil
+})
+
+semanticChunkingOptions := &types.ChunkingOptions{
+    Type:          types.ChunkingTypeText,
+    Size:          500,
+    Overlap:       50,
+    MaxDepth:      2,
+    MaxConcurrent: 3,
+    SemanticOptions: &types.SemanticOptions{
+        Connector:     "openai",
+        ContextSize:   1500,
+        MaxRetry:      3,
+        MaxConcurrent: 2,
+        Toolcall:      true,
+        Options:       `{"temperature": 0.1}`,
+        Prompt:        "Split this text into meaningful semantic segments",
+    },
+}
+
 options := &types.UpsertOptions{
-    DocID:      "doc1",
-    GraphName:  collectionID,
-    Embedding:  embeddingFunc,
-    Extraction: extractionFunc, // Only needed if using graph storage
-    Converter:  converterFunc,  // Optional - system will auto-detect if not provided
+    DocID:           "doc1",
+    GraphName:       collectionID,
+    Embedding:       embeddingFunc,
+    Extraction:      extractionFunc, // Only needed if using graph storage
+    Converter:       converterFunc,  // Optional - system will auto-detect if not provided
+    Chunking:        semanticChunker, // Using semantic chunking for intelligent segmentation
+    ChunkingOptions: semanticChunkingOptions, // Semantic chunking configuration
     Metadata: map[string]interface{}{
         "source": "manual",
         "type":   "segment",
@@ -437,11 +541,15 @@ graphConfig := types.GraphStoreConfig{
 
 ```go
 options := &types.UpsertOptions{
-    DocID:      "unique_doc_id",
-    GraphName:  "collection_name",
-    Embedding:  embeddingFunction,
-    Extraction: extractionFunction,
-    Chunking:   chunkingFunction,
+    DocID:           "unique_doc_id",
+    GraphName:       "collection_name",
+    Embedding:       embeddingFunction,
+    Extraction:      extractionFunction,
+    Converter:       converterFunction,       // Optional - system will auto-detect if not provided
+    Chunking:        chunkingInstance,        // Optional - system will use default if not provided
+    ChunkingOptions: chunkingOptionsConfig,   // Optional - chunking configuration
+    Fetcher:         fetcherInstance,         // Optional - for URL processing
+    Progress:        progressCallback,        // Optional - progress monitoring
     Metadata: map[string]interface{}{
         "source":     "web",
         "created_at": time.Now(),
@@ -620,13 +728,131 @@ options := &types.UpsertOptions{
   })
   ```
 
+### Chunking
+
+- **Semantic Chunking**: ⭐ **Recommended** - LLM-powered semantic chunking for meaningful content segmentation
+
+  ```go
+  import "github.com/yaoapp/gou/graphrag/chunking"
+
+  // Create semantic chunker with progress callback
+  chunker := chunking.NewSemanticChunker(func(chunkID, progress, step string, data interface{}) error {
+      // Progress callback
+      log.Printf("Chunk %s: %s - %s", chunkID, step, progress)
+      return nil
+  })
+
+  // Or create without progress callback
+  // chunker := chunking.NewSemanticChunker(nil)
+
+  // Configure semantic options
+  options := &types.ChunkingOptions{
+      Type:          types.ChunkingTypeText,
+      Size:          500,
+      Overlap:       50,
+      MaxDepth:      2,
+      MaxConcurrent: 3,
+      SemanticOptions: &types.SemanticOptions{
+          Connector:     "openai",
+          ContextSize:   1500,
+          MaxRetry:      3,
+          MaxConcurrent: 2,
+          Toolcall:      true,
+          Options:       `{"temperature": 0.1}`,
+          Prompt:        "Split this text into meaningful semantic chunks",
+      },
+  }
+
+  // Chunk with semantic analysis
+  err := chunker.ChunkStream(ctx, stream, options, func(chunk *types.Chunk) error {
+      // Process semantic chunk
+      log.Printf("Semantic chunk %d (depth %d): %s", chunk.Index, chunk.Depth, chunk.Text)
+      return nil
+  })
+  ```
+
+- **Chunking Type Support**: Automatic configuration for different content types
+
+  ```go
+  // Semantic chunking automatically adapts to content type
+  semanticChunker := chunking.NewSemanticChunker(progressCallback)
+  semanticOptions := &types.ChunkingOptions{
+      Type:          types.ChunkingTypeText, // Auto-adapts to content
+      SemanticOptions: &types.SemanticOptions{
+          Connector: "openai",
+          // ... other semantic options
+      },
+  }
+
+  // For basic structured chunking (when semantic analysis is not available)
+  codeOptions := chunking.NewStructuredOptions(types.ChunkingTypeCode)
+  // Returns: Size: 800, Overlap: 100, MaxDepth: 3, MaxConcurrent: 10
+
+  textOptions := chunking.NewStructuredOptions(types.ChunkingTypeText)
+  // Returns: Size: 300, Overlap: 20, MaxDepth: 1, MaxConcurrent: 10
+
+  // Supported types: Text, Code, JSON, Video, Audio, Image
+  ```
+
+- **Multi-Input Support**: Process files, streams, or text directly
+
+  ```go
+  // File chunking
+  err := chunker.ChunkFile(ctx, "document.txt", options, callback)
+
+  // Stream chunking
+  err := chunker.ChunkStream(ctx, reader, options, callback)
+
+     // Text chunking
+   err := chunker.Chunk(ctx, textContent, options, callback)
+  ```
+
+- **Structured Chunking**: Basic rule-based hierarchical chunking (when semantic analysis is not needed)
+
+  ```go
+  import "github.com/yaoapp/gou/graphrag/chunking"
+
+  // Create structured chunker
+  chunker := chunking.NewStructuredChunker()
+
+  // Configure chunking options
+  options := &types.ChunkingOptions{
+      Type:            types.ChunkingTypeText,
+      Size:            500,
+      Overlap:         50,
+      MaxDepth:        3,
+      SizeMultiplier:  3,
+      MaxConcurrent:   5,
+  }
+
+  // Chunk text
+  err := chunker.Chunk(ctx, text, options, func(chunk *types.Chunk) error {
+      // Process each chunk
+      log.Printf("Chunk %d: %s", chunk.Index, chunk.Text)
+      return nil
+  })
+  ```
+
 ### Auto-Detection
 
 - **DetectConverter**: Automatically selects converters based on file type
-- **DetectChunking**: Automatically selects chunking methods
+- **DetectChunking**: Automatically selects chunking methods and configurations
 - **DetectFetcher**: Automatically selects fetchers for URL content
 - **DetectExtractor**: Automatically selects extraction methods
 - **DetectEmbedding**: Automatically selects embedding functions
+
+```go
+// Auto-detection examples
+// Recommended: Use semantic chunking for intelligent content segmentation
+semanticChunker := chunking.NewSemanticChunker(progressCallback)
+
+// Basic: Auto-configured structured chunking for specific content types
+options := chunking.NewStructuredOptions(types.ChunkingTypeCode) // Auto-configured for code files
+
+// Other auto-detection utilities
+converter := converter.DetectConverter(filePath)                  // Auto-detects based on file extension
+fetcher := fetcher.DetectFetcher(url)                            // Auto-detects based on URL pattern
+```
 
 ## Supported Data Storage
 
