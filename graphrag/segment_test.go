@@ -7,37 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yaoapp/gou/graphrag/embedding"
-	"github.com/yaoapp/gou/graphrag/extraction/openai"
 	"github.com/yaoapp/gou/graphrag/types"
 )
 
-// createTestEmbedding creates an embedding configuration for testing
-func createTestEmbedding(t *testing.T) (types.Embedding, error) {
-	t.Helper()
+// ==== Test Helper Functions ====
 
-	return embedding.NewOpenai(embedding.OpenaiOptions{
-		ConnectorName: "openai",
-		Concurrent:    10,
-		Dimension:     1536,
-		Model:         "text-embedding-3-small",
-	})
-}
+// These functions are defined in document_test.go and reused here
 
-// createTestExtraction creates an extraction configuration for testing
-func createTestExtraction(t *testing.T) (types.Extraction, error) {
-	t.Helper()
-
-	return openai.NewOpenai(openai.Options{
-		ConnectorName: "openai",
-		Concurrent:    5,
-		Model:         "gpt-4o-mini",
-		Temperature:   0.1,
-		MaxTokens:     4000,
-		Toolcall:      nil,
-		RetryAttempts: 3,
-	})
-}
+// ==== Segment Tests ====
 
 // TestSegmentCURD tests the Complete CRUD operations for segments (Create, Update, Remove, Delete)
 func TestSegmentCURD(t *testing.T) {
