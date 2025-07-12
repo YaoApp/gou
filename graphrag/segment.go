@@ -656,13 +656,13 @@ func (g *GraphRag) GetSegments(ctx context.Context, segmentIDs []string) ([]type
 	return segments, nil
 }
 
-// GetSegmentsByDocID gets all segments of a document
-func (g *GraphRag) GetSegmentsByDocID(ctx context.Context, docID string) ([]types.Segment, error) {
+// ListSegments lists segments of a document with pagination
+func (g *GraphRag) ListSegments(ctx context.Context, docID string, options *types.ListSegmentsOptions) (*types.PaginatedSegmentsResult, error) {
 	if docID == "" {
 		return nil, fmt.Errorf("docID cannot be empty")
 	}
 
-	g.Logger.Debugf("Getting all segments for document: %s", docID)
+	g.Logger.Debugf("Listing segments for document: %s", docID)
 
 	// Parse GraphName from docID
 	graphName, _ := utils.ExtractGraphNameFromDocID(docID)
@@ -670,11 +670,30 @@ func (g *GraphRag) GetSegmentsByDocID(ctx context.Context, docID string) ([]type
 		graphName = "default"
 	}
 
-	// Query segment data from all configured databases
-	segmentData, err := g.querySegmentData(ctx, &segmentQueryOptions{
-		GraphName: graphName,
-		DocID:     docID,
-		QueryType: "by_doc_id",
+	// Set default options
+	if options == nil {
+		options = &types.ListSegmentsOptions{}
+	}
+
+	// Set default limit
+	limit := options.Limit
+	if limit <= 0 {
+		limit = 100 // Default limit
+	}
+
+	// Query segment data from all configured databases with pagination
+	segmentData, total, hasMore, nextOffset, err := g.querySegmentDataWithPagination(ctx, &segmentQueryOptions{
+		GraphName:            graphName,
+		DocID:                docID,
+		QueryType:            "list",
+		Limit:                limit,
+		Offset:               options.Offset,
+		Filter:               options.Filter,
+		OrderBy:              options.OrderBy,
+		Fields:               options.Fields,
+		IncludeNodes:         options.IncludeNodes,
+		IncludeRelationships: options.IncludeRelationships,
+		IncludeMetadata:      options.IncludeMetadata,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query segment data: %w", err)
@@ -683,8 +702,70 @@ func (g *GraphRag) GetSegmentsByDocID(ctx context.Context, docID string) ([]type
 	// Assemble segments from the queried data
 	segments := g.assembleSegments(segmentData, graphName, docID)
 
-	g.Logger.Debugf("Successfully retrieved %d segments for document %s", len(segments), docID)
-	return segments, nil
+	result := &types.PaginatedSegmentsResult{
+		Segments:   segments,
+		Total:      total,
+		HasMore:    hasMore,
+		NextOffset: nextOffset,
+	}
+
+	g.Logger.Debugf("Successfully listed %d segments for document %s", len(segments), docID)
+	return result, nil
+}
+
+// ScrollSegments scrolls through segments of a document with iterator-style pagination
+func (g *GraphRag) ScrollSegments(ctx context.Context, docID string, options *types.ScrollSegmentsOptions) (*types.SegmentScrollResult, error) {
+	if docID == "" {
+		return nil, fmt.Errorf("docID cannot be empty")
+	}
+
+	g.Logger.Debugf("Scrolling segments for document: %s", docID)
+
+	// Parse GraphName from docID
+	graphName, _ := utils.ExtractGraphNameFromDocID(docID)
+	if graphName == "" {
+		graphName = "default"
+	}
+
+	// Set default options
+	if options == nil {
+		options = &types.ScrollSegmentsOptions{}
+	}
+
+	// Set default batch size
+	batchSize := options.BatchSize
+	if batchSize <= 0 {
+		batchSize = 100 // Default batch size
+	}
+
+	// Query segment data from all configured databases with scroll
+	segmentData, scrollID, hasMore, err := g.querySegmentDataWithScroll(ctx, &segmentQueryOptions{
+		GraphName:            graphName,
+		DocID:                docID,
+		QueryType:            "scroll",
+		BatchSize:            batchSize,
+		ScrollID:             options.ScrollID,
+		Filter:               options.Filter,
+		Fields:               options.Fields,
+		IncludeNodes:         options.IncludeNodes,
+		IncludeRelationships: options.IncludeRelationships,
+		IncludeMetadata:      options.IncludeMetadata,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query segment data: %w", err)
+	}
+
+	// Assemble segments from the queried data
+	segments := g.assembleSegments(segmentData, graphName, docID)
+
+	result := &types.SegmentScrollResult{
+		Segments: segments,
+		ScrollID: scrollID,
+		HasMore:  hasMore,
+	}
+
+	g.Logger.Debugf("Successfully scrolled %d segments for document %s", len(segments), docID)
+	return result, nil
 }
 
 // GetSegment gets a single segment by ID
@@ -1081,7 +1162,23 @@ type segmentQueryOptions struct {
 	GraphName  string   // Graph name for collection IDs
 	DocID      string   // Document ID
 	SegmentIDs []string // Segment IDs (for specific ID queries)
-	QueryType  string   // "by_ids" or "by_doc_id"
+	QueryType  string   // "by_ids", "by_doc_id", "list", "scroll"
+
+	// Pagination options
+	Limit     int    // Limit for pagination
+	Offset    int    // Offset for pagination
+	BatchSize int    // Batch size for scroll
+	ScrollID  string // Scroll ID for scroll continuation
+
+	// Filter and ordering options
+	Filter  map[string]interface{} // Metadata filter
+	OrderBy []string               // Fields to order by
+	Fields  []string               // Specific fields to retrieve
+
+	// Include options
+	IncludeNodes         bool // Whether to include graph nodes
+	IncludeRelationships bool // Whether to include graph relationships
+	IncludeMetadata      bool // Whether to include segment metadata
 }
 
 // segmentQueryResult represents the result of querying segment data from multiple databases
@@ -1180,6 +1277,194 @@ func (g *GraphRag) querySegmentData(ctx context.Context, opts *segmentQueryOptio
 	return result, nil
 }
 
+// querySegmentDataWithPagination queries segment data with pagination support
+func (g *GraphRag) querySegmentDataWithPagination(ctx context.Context, opts *segmentQueryOptions) (*segmentQueryResult, int64, bool, int, error) {
+	// Get collection IDs
+	collectionIDs, err := utils.GetCollectionIDs(opts.GraphName)
+	if err != nil {
+		return nil, 0, false, 0, fmt.Errorf("failed to get collection IDs: %w", err)
+	}
+
+	result := &segmentQueryResult{
+		StoreData: make(map[string]interface{}),
+	}
+
+	var totalCount int64 = 0
+	var hasMore bool = false
+	var nextOffset int = opts.Offset
+
+	// Create error channel for concurrent operations
+	errChan := make(chan error, 3)
+
+	// Query vector database with pagination
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				errChan <- fmt.Errorf("panic in vector pagination query: %v", r)
+			}
+		}()
+		chunks, total, hasMorePages, nextOff, err := g.queryChunksFromVectorWithPagination(ctx, collectionIDs.Vector, opts)
+		if err != nil {
+			errChan <- fmt.Errorf("vector pagination query failed: %w", err)
+			return
+		}
+		result.Chunks = chunks
+		totalCount = total
+		hasMore = hasMorePages
+		nextOffset = nextOff
+		errChan <- nil
+	}()
+
+	// Query graph database (if configured)
+	if g.Graph != nil && g.Graph.IsConnected() && opts.IncludeNodes {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					errChan <- fmt.Errorf("panic in graph query: %v", r)
+				}
+			}()
+			nodes, relationships, err := g.queryNodesAndRelationshipsFromGraph(ctx, collectionIDs.Graph, opts)
+			if err != nil {
+				errChan <- fmt.Errorf("graph query failed: %w", err)
+				return
+			}
+			result.Nodes = nodes
+			result.Relationships = relationships
+			errChan <- nil
+		}()
+	} else {
+		// Send nil error if graph is not configured
+		go func() {
+			errChan <- nil
+		}()
+	}
+
+	// Query KV store (if configured)
+	if g.Store != nil && opts.IncludeMetadata {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					errChan <- fmt.Errorf("panic in store query: %v", r)
+				}
+			}()
+			storeData, err := g.queryMetadataFromStore(ctx, opts)
+			if err != nil {
+				errChan <- fmt.Errorf("store query failed: %w", err)
+				return
+			}
+			result.StoreData = storeData
+			errChan <- nil
+		}()
+	} else {
+		// Send nil error if store is not configured
+		go func() {
+			errChan <- nil
+		}()
+	}
+
+	// Wait for all queries to complete
+	for i := 0; i < 3; i++ {
+		if err := <-errChan; err != nil {
+			return nil, 0, false, 0, err
+		}
+	}
+
+	return result, totalCount, hasMore, nextOffset, nil
+}
+
+// querySegmentDataWithScroll queries segment data with scroll support
+func (g *GraphRag) querySegmentDataWithScroll(ctx context.Context, opts *segmentQueryOptions) (*segmentQueryResult, string, bool, error) {
+	// Get collection IDs
+	collectionIDs, err := utils.GetCollectionIDs(opts.GraphName)
+	if err != nil {
+		return nil, "", false, fmt.Errorf("failed to get collection IDs: %w", err)
+	}
+
+	result := &segmentQueryResult{
+		StoreData: make(map[string]interface{}),
+	}
+
+	var scrollID string = ""
+	var hasMore bool = false
+
+	// Create error channel for concurrent operations
+	errChan := make(chan error, 3)
+
+	// Query vector database with scroll
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				errChan <- fmt.Errorf("panic in vector scroll query: %v", r)
+			}
+		}()
+		chunks, nextScrollID, hasMorePages, err := g.queryChunksFromVectorWithScroll(ctx, collectionIDs.Vector, opts)
+		if err != nil {
+			errChan <- fmt.Errorf("vector scroll query failed: %w", err)
+			return
+		}
+		result.Chunks = chunks
+		scrollID = nextScrollID
+		hasMore = hasMorePages
+		errChan <- nil
+	}()
+
+	// Query graph database (if configured)
+	if g.Graph != nil && g.Graph.IsConnected() && opts.IncludeNodes {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					errChan <- fmt.Errorf("panic in graph query: %v", r)
+				}
+			}()
+			nodes, relationships, err := g.queryNodesAndRelationshipsFromGraph(ctx, collectionIDs.Graph, opts)
+			if err != nil {
+				errChan <- fmt.Errorf("graph query failed: %w", err)
+				return
+			}
+			result.Nodes = nodes
+			result.Relationships = relationships
+			errChan <- nil
+		}()
+	} else {
+		// Send nil error if graph is not configured
+		go func() {
+			errChan <- nil
+		}()
+	}
+
+	// Query KV store (if configured)
+	if g.Store != nil && opts.IncludeMetadata {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					errChan <- fmt.Errorf("panic in store query: %v", r)
+				}
+			}()
+			storeData, err := g.queryMetadataFromStore(ctx, opts)
+			if err != nil {
+				errChan <- fmt.Errorf("store query failed: %w", err)
+				return
+			}
+			result.StoreData = storeData
+			errChan <- nil
+		}()
+	} else {
+		// Send nil error if store is not configured
+		go func() {
+			errChan <- nil
+		}()
+	}
+
+	// Wait for all queries to complete
+	for i := 0; i < 3; i++ {
+		if err := <-errChan; err != nil {
+			return nil, "", false, err
+		}
+	}
+
+	return result, scrollID, hasMore, nil
+}
+
 // queryChunksFromVector queries chunks from vector database
 func (g *GraphRag) queryChunksFromVector(ctx context.Context, collectionName string, opts *segmentQueryOptions) ([]*types.Document, error) {
 	// Check if collection exists
@@ -1238,6 +1523,129 @@ func (g *GraphRag) queryChunksFromVector(ctx context.Context, collectionName str
 	}
 
 	return validChunks, nil
+}
+
+// queryChunksFromVectorWithPagination queries chunks from vector database with pagination
+func (g *GraphRag) queryChunksFromVectorWithPagination(ctx context.Context, collectionName string, opts *segmentQueryOptions) ([]*types.Document, int64, bool, int, error) {
+	// Check if collection exists
+	exists, err := g.Vector.CollectionExists(ctx, collectionName)
+	if err != nil {
+		return nil, 0, false, 0, fmt.Errorf("failed to check collection existence: %w", err)
+	}
+	if !exists {
+		g.Logger.Infof("Vector collection %s does not exist, returning empty chunks", collectionName)
+		return []*types.Document{}, 0, false, 0, nil
+	}
+
+	// Build filter for documents
+	filter := map[string]interface{}{
+		"doc_id":        opts.DocID,
+		"document_type": "chunk",
+	}
+
+	// Add user-provided filter if any
+	if opts.Filter != nil {
+		for k, v := range opts.Filter {
+			filter[k] = v
+		}
+	}
+
+	// Set limit, using default if not provided
+	limit := opts.Limit
+	if limit <= 0 {
+		limit = 100
+	}
+
+	// List documents with pagination
+	listOpts := &types.ListDocumentsOptions{
+		CollectionName: collectionName,
+		Filter:         filter,
+		Limit:          limit,
+		Offset:         opts.Offset,
+		OrderBy:        opts.OrderBy,
+		Fields:         opts.Fields,
+		IncludeVector:  false,
+		IncludePayload: true,
+	}
+
+	result, err := g.Vector.ListDocuments(ctx, listOpts)
+	if err != nil {
+		return nil, 0, false, 0, fmt.Errorf("failed to list documents with pagination: %w", err)
+	}
+
+	// Filter out nil chunks
+	var validChunks []*types.Document
+	for _, chunk := range result.Documents {
+		if chunk != nil {
+			validChunks = append(validChunks, chunk)
+		}
+	}
+
+	// Calculate next offset
+	nextOffset := opts.Offset + len(validChunks)
+	if nextOffset >= int(result.Total) {
+		nextOffset = int(result.Total)
+	}
+
+	return validChunks, result.Total, result.HasMore, nextOffset, nil
+}
+
+// queryChunksFromVectorWithScroll queries chunks from vector database with scroll
+func (g *GraphRag) queryChunksFromVectorWithScroll(ctx context.Context, collectionName string, opts *segmentQueryOptions) ([]*types.Document, string, bool, error) {
+	// Check if collection exists
+	exists, err := g.Vector.CollectionExists(ctx, collectionName)
+	if err != nil {
+		return nil, "", false, fmt.Errorf("failed to check collection existence: %w", err)
+	}
+	if !exists {
+		g.Logger.Infof("Vector collection %s does not exist, returning empty chunks", collectionName)
+		return []*types.Document{}, "", false, nil
+	}
+
+	// Build filter for documents
+	filter := map[string]interface{}{
+		"doc_id":        opts.DocID,
+		"document_type": "chunk",
+	}
+
+	// Add user-provided filter if any
+	if opts.Filter != nil {
+		for k, v := range opts.Filter {
+			filter[k] = v
+		}
+	}
+
+	// Set batch size, using default if not provided
+	batchSize := opts.BatchSize
+	if batchSize <= 0 {
+		batchSize = 100
+	}
+
+	// Scroll documents
+	scrollOpts := &types.ScrollOptions{
+		CollectionName: collectionName,
+		Filter:         filter,
+		BatchSize:      batchSize,
+		ScrollID:       opts.ScrollID,
+		Fields:         opts.Fields,
+		IncludeVector:  false,
+		IncludePayload: true,
+	}
+
+	result, err := g.Vector.ScrollDocuments(ctx, scrollOpts)
+	if err != nil {
+		return nil, "", false, fmt.Errorf("failed to scroll documents: %w", err)
+	}
+
+	// Filter out nil chunks
+	var validChunks []*types.Document
+	for _, chunk := range result.Documents {
+		if chunk != nil {
+			validChunks = append(validChunks, chunk)
+		}
+	}
+
+	return validChunks, result.ScrollID, result.HasMore, nil
 }
 
 // queryNodesAndRelationshipsFromGraph queries nodes and relationships from graph database
@@ -1306,7 +1714,7 @@ func (g *GraphRag) queryNodesAndRelationshipsFromGraph(ctx context.Context, grap
 			}
 		}
 
-	case "by_doc_id":
+	case "by_doc_id", "list", "scroll":
 		// Query all entities and relationships for this document
 		nodeQueryOpts := &types.GraphQueryOptions{
 			GraphName: graphName,
@@ -1368,11 +1776,11 @@ func (g *GraphRag) queryMetadataFromStore(ctx context.Context, opts *segmentQuer
 	switch opts.QueryType {
 	case "by_ids":
 		segmentIDs = opts.SegmentIDs
-	case "by_doc_id":
-		// For by_doc_id, we need to find segments first from vector database
+	case "by_doc_id", "list", "scroll":
+		// For by_doc_id, list, and scroll queries, we need to find segments first from vector database
 		// This is a limitation - we could optimize this by querying vector first
-		// For now, we'll skip store data for by_doc_id queries
-		g.Logger.Debugf("Skipping store data query for by_doc_id type")
+		// For now, we'll skip store data for these query types
+		g.Logger.Debugf("Skipping store data query for %s type", opts.QueryType)
 		return storeData, nil
 	default:
 		return storeData, fmt.Errorf("unknown query type: %s", opts.QueryType)

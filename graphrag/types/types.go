@@ -2103,3 +2103,47 @@ type SegmentWeight struct {
 	ID     string  `json:"id"`
 	Weight float64 `json:"weight,omitempty"`
 }
+
+// ===== Segment Pagination Types =====
+
+// ListSegmentsOptions represents options for listing segments with pagination
+type ListSegmentsOptions struct {
+	Filter  map[string]interface{} `json:"filter,omitempty"`   // Metadata filter (vote, score, weight, etc.)
+	Limit   int                    `json:"limit,omitempty"`    // Number of segments per page (default: 100)
+	Offset  int                    `json:"offset,omitempty"`   // Offset for pagination
+	OrderBy []string               `json:"order_by,omitempty"` // Fields to order by (score, weight, vote, created_at, etc.)
+	Fields  []string               `json:"fields,omitempty"`   // Specific fields to retrieve
+
+	// Include options
+	IncludeNodes         bool `json:"include_nodes"`         // Whether to include graph nodes
+	IncludeRelationships bool `json:"include_relationships"` // Whether to include graph relationships
+	IncludeMetadata      bool `json:"include_metadata"`      // Whether to include segment metadata
+}
+
+// PaginatedSegmentsResult represents paginated segment query results
+type PaginatedSegmentsResult struct {
+	Segments   []Segment `json:"segments"`
+	Total      int64     `json:"total"`       // Total number of matching segments (if supported)
+	HasMore    bool      `json:"has_more"`    // Whether there are more pages
+	NextOffset int       `json:"next_offset"` // Offset for next page
+}
+
+// ScrollSegmentsOptions represents options for scrolling through segments (iterator-style)
+type ScrollSegmentsOptions struct {
+	Filter    map[string]interface{} `json:"filter,omitempty"`     // Metadata filter (vote, score, weight, etc.)
+	BatchSize int                    `json:"batch_size,omitempty"` // Number of segments per batch (default: 100)
+	ScrollID  string                 `json:"scroll_id,omitempty"`  // Scroll ID for continuing pagination
+	Fields    []string               `json:"fields,omitempty"`     // Specific fields to retrieve
+
+	// Include options
+	IncludeNodes         bool `json:"include_nodes"`         // Whether to include graph nodes
+	IncludeRelationships bool `json:"include_relationships"` // Whether to include graph relationships
+	IncludeMetadata      bool `json:"include_metadata"`      // Whether to include segment metadata
+}
+
+// SegmentScrollResult represents scroll-based segment query results
+type SegmentScrollResult struct {
+	Segments []Segment `json:"segments"`
+	ScrollID string    `json:"scroll_id,omitempty"` // ID for next scroll request
+	HasMore  bool      `json:"has_more"`            // Whether there are more results
+}

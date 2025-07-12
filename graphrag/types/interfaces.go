@@ -176,8 +176,9 @@ type GraphRag interface {
 	RemoveSegments(ctx context.Context, segmentIDs []string) (int, error)                                                // Remove segments by SegmentIDs, return removed count
 	RemoveSegmentsByDocID(ctx context.Context, docID string) (int, error)                                                // Remove all segments of a document, return removed count
 	GetSegments(ctx context.Context, segmentIDs []string) ([]Segment, error)                                             // Get segments by IDs, return segments
-	GetSegmentsByDocID(ctx context.Context, docID string) ([]Segment, error)                                             // Get all segments of a document, return segments
 	GetSegment(ctx context.Context, segmentID string) (*Segment, error)                                                  // Get a single segment by ID, return segment
+	ListSegments(ctx context.Context, docID string, options *ListSegmentsOptions) (*PaginatedSegmentsResult, error)      // List segments with pagination, return segments
+	ScrollSegments(ctx context.Context, docID string, options *ScrollSegmentsOptions) (*SegmentScrollResult, error)      // Scroll segments with iterator-style pagination, return segments
 
 	// Segment Voting, Scoring, Weighting
 	UpdateVote(ctx context.Context, segments []SegmentVote) (int, error)     // Vote for segments, return updated count
