@@ -180,9 +180,9 @@ type GraphRag interface {
 	GetSegment(ctx context.Context, segmentID string) (*Segment, error)                                                  // Get a single segment by ID, return segment
 
 	// Segment Voting, Scoring, Weighting
-	Vote(ctx context.Context, segments []SegmentVote, callback ...VoteProgress) ([]SegmentVote, error)         // Vote for segments
-	Score(ctx context.Context, segments []SegmentScore, callback ...ScoreProgress) ([]SegmentScore, error)     // Score for segments
-	Weight(ctx context.Context, segments []SegmentWeight, callback ...WeightProgress) ([]SegmentWeight, error) // Weight for segments
+	UpdateVote(ctx context.Context, segments []SegmentVote) (int, error)     // Vote for segments, return updated count
+	UpdateScore(ctx context.Context, segments []SegmentScore) (int, error)   // Score for segments, return updated count
+	UpdateWeight(ctx context.Context, segments []SegmentWeight) (int, error) // Weight for segments, return updated count
 
 	// Search Management
 	Search(ctx context.Context, options *QueryOptions, callback ...SearcherProgress) ([]Segment, error)                  // Search for segments
@@ -220,19 +220,19 @@ type Fetcher interface {
 
 // Score interface is used to score segments
 type Score interface {
-	Score(ctx context.Context, segments []SegmentScore, callback ...ScoreProgress) ([]SegmentScore, error)
+	Score(ctx context.Context, segments []Segment, callback ...ScoreProgress) ([]SegmentScore, error)
 	Name() string
 }
 
 // Weight interface is used to weight segments
 type Weight interface {
-	Weight(ctx context.Context, segments []SegmentWeight) ([]SegmentWeight, error)
+	Weight(ctx context.Context, segments []Segment) ([]SegmentWeight, error)
 	Name() string
 }
 
 // Voter interface is used to vote segments
 type Voter interface {
-	Vote(ctx context.Context, segments []SegmentVote) ([]SegmentVote, error)
+	Vote(ctx context.Context, segments []Segment) ([]SegmentVote, error)
 	Name() string
 }
 

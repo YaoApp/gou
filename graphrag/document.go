@@ -79,7 +79,7 @@ func (g *GraphRag) AddFile(ctx context.Context, file string, options *types.Upse
 
 	// Step 3.5: Store original text to Store if configured
 	if g.Store != nil {
-		originKey := fmt.Sprintf("origin_%s", docID)
+		originKey := fmt.Sprintf(StoreKeyOrigin, docID)
 		err = g.Store.Set(originKey, result.Text, 0) // No TTL (permanent storage)
 		if err != nil {
 			g.Logger.Warnf("Failed to store original text to Store: %v", err)
@@ -670,17 +670,20 @@ func (g *GraphRag) processRelationshipsForDeletion(ctx context.Context, graphNam
 	return nil
 }
 
-// removeDocsFromStore removes original documents from Store
+// removeDocsFromStore removes original documents and segment metadata from Store
 func (g *GraphRag) removeDocsFromStore(ctx context.Context, docIDs []string) {
 	for _, docID := range docIDs {
 		// Delete original text
-		originKey := fmt.Sprintf("origin_%s", docID)
+		originKey := fmt.Sprintf(StoreKeyOrigin, docID)
 		err := g.Store.Del(originKey)
 		if err != nil {
 			g.Logger.Warnf("Failed to delete original text for docID %s: %v", docID, err)
 		} else {
 			g.Logger.Debugf("Deleted original text for docID %s", docID)
 		}
+
+		// Delete all segment metadata for this document
+		g.removeAllSegmentMetadataFromStore(ctx, docID)
 	}
 }
 

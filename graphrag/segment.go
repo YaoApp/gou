@@ -191,30 +191,21 @@ func (g *GraphRag) removeSegmentsFromVectorStore(ctx context.Context, collection
 func (g *GraphRag) removeSegmentsFromStore(ctx context.Context, docID string, segmentIDs []string) {
 	for _, segmentID := range segmentIDs {
 		// Delete Weight
-		weightKey := fmt.Sprintf("segment_weight_%s_%s", docID, segmentID)
-		err := g.Store.Del(weightKey)
+		err := g.deleteSegmentValue(segmentID, StoreKeyWeight)
 		if err != nil {
 			g.Logger.Warnf("Failed to delete weight for segment %s: %v", segmentID, err)
-		} else {
-			g.Logger.Debugf("Deleted weight for segment %s", segmentID)
 		}
 
 		// Delete Score
-		scoreKey := fmt.Sprintf("segment_score_%s_%s", docID, segmentID)
-		err = g.Store.Del(scoreKey)
+		err = g.deleteSegmentValue(segmentID, StoreKeyScore)
 		if err != nil {
 			g.Logger.Warnf("Failed to delete score for segment %s: %v", segmentID, err)
-		} else {
-			g.Logger.Debugf("Deleted score for segment %s", segmentID)
 		}
 
 		// Delete Vote
-		voteKey := fmt.Sprintf("segment_vote_%s_%s", docID, segmentID)
-		err = g.Store.Del(voteKey)
+		err = g.deleteSegmentValue(segmentID, StoreKeyVote)
 		if err != nil {
 			g.Logger.Warnf("Failed to delete vote for segment %s: %v", segmentID, err)
-		} else {
-			g.Logger.Debugf("Deleted vote for segment %s", segmentID)
 		}
 	}
 }
@@ -293,25 +284,66 @@ func (g *GraphRag) removeSegmentsByDocIDFromVectorStore(ctx context.Context, col
 
 // removeAllSegmentMetadataFromStore removes all segment metadata for a document from Store
 func (g *GraphRag) removeAllSegmentMetadataFromStore(ctx context.Context, docID string) {
-	// Since we don't know exact segment IDs, we need to use a pattern-based approach
-	// The Store interface might not support pattern deletion, so we'll log the limitation
-
-	// In a real implementation, you might need to:
-	// 1. Query all keys with pattern "segment_*_{docID}_*"
-	// 2. Delete them one by one
-	// 3. Or use a Store implementation that supports pattern deletion
-
-	// For now, we'll use a simple approach and try to delete common patterns
-	// This is a limitation that should be addressed based on the specific Store implementation
+	if g.Store == nil {
+		return
+	}
 
 	g.Logger.Debugf("Attempting to remove segment metadata for document %s", docID)
 
-	// Note: This is a simplified implementation. In practice, you might need to:
-	// - Use Store.Keys() with pattern if supported
-	// - Or keep track of segment IDs separately
-	// - Or use a different storage strategy for segment metadata
+	// Parse GraphName from docID to find the right collection
+	graphName, _ := utils.ExtractGraphNameFromDocID(docID)
+	if graphName == "" {
+		graphName = "default"
+	}
 
-	g.Logger.Infof("Segment metadata cleanup completed for document %s (implementation depends on Store capabilities)", docID)
+	// Get collection IDs for this graph
+	collectionIDs, err := utils.GetCollectionIDs(graphName)
+	if err != nil {
+		g.Logger.Warnf("Failed to get collection IDs for document %s: %v", docID, err)
+		return
+	}
+
+	// Find all segment IDs for this document from vector store
+	segmentIDs, err := g.findSegmentsByDocID(ctx, collectionIDs.Vector, docID)
+	if err != nil {
+		g.Logger.Warnf("Failed to find segments for document %s: %v", docID, err)
+		return
+	}
+
+	if len(segmentIDs) == 0 {
+		g.Logger.Debugf("No segments found for document %s, no Store cleanup needed", docID)
+		return
+	}
+
+	// Delete Store metadata for each segment using the helper function
+	removedCount := 0
+	for _, segmentID := range segmentIDs {
+		// Delete Weight
+		err := g.deleteSegmentValue(segmentID, StoreKeyWeight)
+		if err != nil {
+			g.Logger.Warnf("Failed to delete weight for segment %s: %v", segmentID, err)
+		} else {
+			removedCount++
+		}
+
+		// Delete Score
+		err = g.deleteSegmentValue(segmentID, StoreKeyScore)
+		if err != nil {
+			g.Logger.Warnf("Failed to delete score for segment %s: %v", segmentID, err)
+		} else {
+			removedCount++
+		}
+
+		// Delete Vote
+		err = g.deleteSegmentValue(segmentID, StoreKeyVote)
+		if err != nil {
+			g.Logger.Warnf("Failed to delete vote for segment %s: %v", segmentID, err)
+		} else {
+			removedCount++
+		}
+	}
+
+	g.Logger.Infof("Segment metadata cleanup completed for document %s: removed %d Store entries for %d segments", docID, removedCount, len(segmentIDs))
 }
 
 // UpdateSegments updates segments manually
@@ -699,6 +731,7 @@ func (g *GraphRag) convertSegmentTextsToChunks(segmentTexts []types.SegmentText,
 	for i, segmentText := range segmentTexts {
 		chunkID := segmentText.ID
 		if chunkID == "" {
+			// Generate UUID for chunk ID
 			chunkID = utils.GenChunkID()
 		}
 
@@ -736,23 +769,20 @@ func (g *GraphRag) storeSegmentMetadataToStore(ctx context.Context, docID string
 	for _, chunk := range chunks {
 		segmentID := chunk.ID
 
-		// Store Weight
-		weightKey := fmt.Sprintf("segment_weight_%s_%s", docID, segmentID)
-		err := g.Store.Set(weightKey, 0.0, 0) // Default weight: 0.0
+		// Store default Weight
+		err := g.storeSegmentValue(segmentID, StoreKeyWeight, 0.0)
 		if err != nil {
 			g.Logger.Warnf("Failed to store weight for segment %s: %v", segmentID, err)
 		}
 
-		// Store Score
-		scoreKey := fmt.Sprintf("segment_score_%s_%s", docID, segmentID)
-		err = g.Store.Set(scoreKey, 0.0, 0) // Default score: 0.0
+		// Store default Score
+		err = g.storeSegmentValue(segmentID, StoreKeyScore, 0.0)
 		if err != nil {
 			g.Logger.Warnf("Failed to store score for segment %s: %v", segmentID, err)
 		}
 
-		// Store Vote
-		voteKey := fmt.Sprintf("segment_vote_%s_%s", docID, segmentID)
-		err = g.Store.Set(voteKey, 0, 0) // Default vote: 0
+		// Store default Vote
+		err = g.storeSegmentValue(segmentID, StoreKeyVote, 0)
 		if err != nil {
 			g.Logger.Warnf("Failed to store vote for segment %s: %v", segmentID, err)
 		}
@@ -1017,10 +1047,6 @@ func (g *GraphRag) updateSegmentMetadataInStore(ctx context.Context, docID strin
 	}
 
 	// Check if user metadata contains vote, weight, or score
-	hasVote := false
-	hasWeight := false
-	hasScore := false
-
 	vote, hasVote := userMetadata["vote"]
 	weight, hasWeight := userMetadata["weight"]
 	score, hasScore := userMetadata["score"]
@@ -1036,8 +1062,7 @@ func (g *GraphRag) updateSegmentMetadataInStore(ctx context.Context, docID strin
 
 		// Update Vote if provided
 		if hasVote {
-			voteKey := fmt.Sprintf("segment_vote_%s_%s", docID, segmentID)
-			err := g.Store.Set(voteKey, vote, 0)
+			err := g.storeSegmentValue(segmentID, StoreKeyVote, vote)
 			if err != nil {
 				g.Logger.Warnf("Failed to update vote for segment %s: %v", segmentID, err)
 			}
@@ -1045,8 +1070,7 @@ func (g *GraphRag) updateSegmentMetadataInStore(ctx context.Context, docID strin
 
 		// Update Weight if provided
 		if hasWeight {
-			weightKey := fmt.Sprintf("segment_weight_%s_%s", docID, segmentID)
-			err := g.Store.Set(weightKey, weight, 0)
+			err := g.storeSegmentValue(segmentID, StoreKeyWeight, weight)
 			if err != nil {
 				g.Logger.Warnf("Failed to update weight for segment %s: %v", segmentID, err)
 			}
@@ -1054,8 +1078,7 @@ func (g *GraphRag) updateSegmentMetadataInStore(ctx context.Context, docID strin
 
 		// Update Score if provided
 		if hasScore {
-			scoreKey := fmt.Sprintf("segment_score_%s_%s", docID, segmentID)
-			err := g.Store.Set(scoreKey, score, 0)
+			err := g.storeSegmentValue(segmentID, StoreKeyScore, score)
 			if err != nil {
 				g.Logger.Warnf("Failed to update score for segment %s: %v", segmentID, err)
 			}
@@ -1372,30 +1395,21 @@ func (g *GraphRag) queryMetadataFromStore(ctx context.Context, opts *segmentQuer
 		segmentData := make(map[string]interface{})
 
 		// Query Weight
-		weightKey := fmt.Sprintf("segment_weight_%s_%s", opts.DocID, segmentID)
-		weight, ok := g.Store.Get(weightKey)
+		weight, ok := g.getSegmentValue(segmentID, StoreKeyWeight)
 		if ok {
 			segmentData["weight"] = weight
-		} else {
-			g.Logger.Debugf("Failed to get weight for segment %s: key not found", segmentID)
 		}
 
 		// Query Score
-		scoreKey := fmt.Sprintf("segment_score_%s_%s", opts.DocID, segmentID)
-		score, ok := g.Store.Get(scoreKey)
+		score, ok := g.getSegmentValue(segmentID, StoreKeyScore)
 		if ok {
 			segmentData["score"] = score
-		} else {
-			g.Logger.Debugf("Failed to get score for segment %s: key not found", segmentID)
 		}
 
 		// Query Vote
-		voteKey := fmt.Sprintf("segment_vote_%s_%s", opts.DocID, segmentID)
-		vote, ok := g.Store.Get(voteKey)
+		vote, ok := g.getSegmentValue(segmentID, StoreKeyVote)
 		if ok {
 			segmentData["vote"] = vote
-		} else {
-			g.Logger.Debugf("Failed to get vote for segment %s: key not found", segmentID)
 		}
 
 		storeData[segmentID] = segmentData
