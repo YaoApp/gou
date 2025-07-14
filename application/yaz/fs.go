@@ -31,6 +31,11 @@ func (yaz *Yaz) FS(root string) http.FileSystem {
 	return Dir{path: filepath.Join(yaz.root, root), cipher: yaz.cipher}
 }
 
+// Info the file info
+func (yaz *Yaz) Info(name string) (os.FileInfo, error) {
+	return os.Stat(filepath.Join(yaz.root, name))
+}
+
 // Open implements FileSystem using os.Open, opening files for reading rooted
 func (dir Dir) Open(name string) (http.File, error) {
 
