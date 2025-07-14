@@ -1,6 +1,9 @@
 package application
 
-import "net/http"
+import (
+	"net/http"
+	"os"
+)
 
 // Application the application interface
 type Application interface {
@@ -9,6 +12,7 @@ type Application interface {
 	Write(name string, content []byte) error
 	Remove(name string) error
 	Exists(name string) (bool, error)
+	Info(name string) (os.FileInfo, error)
 	Watch(handler func(event string, name string), interrupt chan uint8) error
 	Glob(pattern string) (matches []string, err error)
 

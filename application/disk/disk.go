@@ -65,6 +65,15 @@ func (disk *Disk) Glob(pattern string) ([]string, error) {
 	return matches, nil
 }
 
+// Info the file info
+func (disk *Disk) Info(name string) (os.FileInfo, error) {
+	file, err := disk.abs(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.Stat(file)
+}
+
 // Walk traverse folders and read file contents
 func (disk *Disk) Walk(root string, handler func(root, file string, isdir bool) error, patterns ...string) error {
 	rootAbs, err := disk.abs(root)
