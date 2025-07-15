@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/kun/maps"
 )
 
@@ -36,6 +37,7 @@ type Model struct {
 
 // MetaData 元数据
 type MetaData struct {
+	types.MetaInfo
 	Name      string              `json:"name,omitempty"`      // 元数据名称
 	Connector string              `json:"connector,omitempty"` // Bind a connector, MySQL, SQLite, Postgres, Clickhouse, Tidb, Oracle support. default is SQLite
 	Table     Table               `json:"table,omitempty"`     // 数据表选项
