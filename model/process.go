@@ -102,8 +102,8 @@ func processModelLoad(process *process.Process) interface{} {
 func processModelUnload(process *process.Process) interface{} {
 	process.ValidateArgNums(1)
 	id := process.ArgsString(0)
-	lock.Lock()
-	defer lock.Unlock()
+	rwlock.Lock()
+	defer rwlock.Unlock()
 	delete(Models, id)
 	return nil
 }
