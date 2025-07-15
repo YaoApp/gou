@@ -14,19 +14,19 @@ import (
 
 // Models 已载入模型
 var Models = map[string]*Model{}
-var lock sync.Mutex
+var rwlock sync.RWMutex // Use RWMutex for better concurrency
 
 // LoadSync load model sync
 func LoadSync(file string, id string) (*Model, error) {
-	lock.Lock()
-	defer lock.Unlock()
+	rwlock.Lock()
+	defer rwlock.Unlock()
 	return Load(file, id)
 }
 
 // LoadSourceSync load model sync
 func LoadSourceSync(source []byte, id string, file string) (*Model, error) {
-	lock.Lock()
-	defer lock.Unlock()
+	rwlock.Lock()
+	defer rwlock.Unlock()
 	return LoadSource(source, id, "")
 }
 
@@ -41,7 +41,6 @@ func Load(file string, id string) (*Model, error) {
 
 // LoadSource load model from source
 func LoadSource(source []byte, id string, file string) (*Model, error) {
-
 	if file == "" {
 		file = fmt.Sprintf("__source.%s.mod.yao", id)
 	}
@@ -60,13 +59,13 @@ func LoadSource(source []byte, id string, file string) (*Model, error) {
 		source:   source,
 	}
 
-	// 解析常用数值
-	columns := map[string]*Column{} // 字段映射表
-	columnNames := []interface{}{}  // 字段名称清单
-	PrimaryKey := "id"              // 字段主键
-	uniqueColumns := []*Column{}    // 唯一字段清单
+	// Parse common values
+	columns := map[string]*Column{}
+	columnNames := []interface{}{}
+	PrimaryKey := "id"
+	uniqueColumns := []*Column{}
 
-	// 补充字段(软删除)
+	// Add soft delete column if enabled
 	if mod.MetaData.Option.SoftDeletes {
 		mod.MetaData.Columns = append(mod.MetaData.Columns, Column{
 			Label:    "::Delete At",
@@ -77,7 +76,7 @@ func LoadSource(source []byte, id string, file string) (*Model, error) {
 		})
 	}
 
-	// 补充时间戳(软删除)
+	// Add timestamp columns if enabled
 	if mod.MetaData.Option.Timestamps {
 		mod.MetaData.Columns = append(mod.MetaData.Columns,
 			Column{
@@ -98,20 +97,19 @@ func LoadSource(source []byte, id string, file string) (*Model, error) {
 	}
 
 	for i, column := range mod.MetaData.Columns {
-		mod.MetaData.Columns[i].model = mod // 链接所属模型
+		mod.MetaData.Columns[i].model = mod
 		columns[column.Name] = &mod.MetaData.Columns[i]
 		columnNames = append(columnNames, column.Name)
 		if strings.ToLower(column.Type) == "id" || column.Primary == true {
 			PrimaryKey = column.Name
 		}
 
-		// 唯一字段
 		if column.Unique || column.Primary {
 			uniqueColumns = append(uniqueColumns, columns[column.Name])
 		}
 	}
 
-	// 唯一索引
+	// Process unique indexes
 	for _, index := range mod.MetaData.Indexes {
 		if strings.ToLower(index.Type) == "unique" {
 			for _, name := range index.Columns {
@@ -144,13 +142,19 @@ func LoadSource(source []byte, id string, file string) (*Model, error) {
 	return mod, nil
 }
 
-// Reload 更新模型
+// Reload updates the model
 func (mod *Model) Reload() (*Model, error) {
-	new, err := LoadSync(mod.File, mod.ID)
+	// Load new model first
+	new, err := Load(mod.File, mod.ID)
 	if err != nil {
 		return nil, err
 	}
+
+	// Update model under lock
+	rwlock.Lock()
+	defer rwlock.Unlock()
 	*mod = *new
+	Models[mod.ID] = mod
 	return mod, nil
 }
 
@@ -208,8 +212,10 @@ func WithDonotInsertValues(v bool) MigrateOption {
 	}
 }
 
-// Select select the model
+// Select selects a model
 func Select(id string) *Model {
+	rwlock.RLock()
+	defer rwlock.RUnlock()
 	mod, has := Models[id]
 	if !has {
 		exception.New(
@@ -220,18 +226,20 @@ func Select(id string) *Model {
 	return mod
 }
 
-// Exists Check if the model is loaded
+// Exists checks if model exists
 func Exists(id string) bool {
+	rwlock.RLock()
+	defer rwlock.RUnlock()
 	_, has := Models[id]
 	return has
 }
 
-// GetMetaData get the model meta data
+// GetMetaData gets model metadata
 func GetMetaData(id string) MetaData {
 	return Select(id).MetaData
 }
 
-// Read read the model source
+// Read reads model source
 func Read(id string) []byte {
 	return Select(id).source
 }
