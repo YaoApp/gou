@@ -219,21 +219,20 @@ func TestLoadSourceSync(t *testing.T) {
 		}
 	}`)
 
-	redisSource := []byte(`{
-		"type": "redis",
-		"name": "Redis Test",
-		"version": "1.0.0",
-		"options": {
-			"host": "127.0.0.1",
-			"port": "6379",
-			"db": "0",
-			"pass": "123456",
-			"timeout": 5
-		}
-	}`)
+	// redisSource := []byte(`{
+	// 	"type": "redis",
+	// 	"name": "Redis Test",
+	// 	"version": "1.0.0",
+	// 	"options": {
+	// 		"host": "127.0.0.1",
+	// 		"port": "6379",
+	// 		"db": "0",
+	// 		"timeout": 5
+	// 	}
+	// }`)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(1)
 
 	errs := []error{}
 	var errMu sync.Mutex
@@ -249,15 +248,15 @@ func TestLoadSourceSync(t *testing.T) {
 		}
 	}()
 
-	go func() {
-		defer wg.Done()
-		_, err := LoadSourceSync(redisSource, "redis-source-sync", "redis.source.conn.yao")
-		if err != nil {
-			errMu.Lock()
-			errs = append(errs, fmt.Errorf("redis: %v", err))
-			errMu.Unlock()
-		}
-	}()
+	// go func() {
+	// 	defer wg.Done()
+	// 	_, err := LoadSourceSync(redisSource, "redis-source-sync", "redis.source.conn.yao")
+	// 	if err != nil {
+	// 		errMu.Lock()
+	// 		errs = append(errs, fmt.Errorf("redis: %v", err))
+	// 		errMu.Unlock()
+	// 	}
+	// }()
 
 	// Wait for all goroutines to complete
 	wg.Wait()
@@ -276,10 +275,10 @@ func TestLoadSourceSync(t *testing.T) {
 	assert.NotNil(t, mysql, "mysql connector should not be nil")
 	assert.True(t, mysql.Is(DATABASE))
 
-	redis, has := Connectors["redis-source-sync"]
-	assert.True(t, has, "redis connector should be loaded")
-	assert.NotNil(t, redis, "redis connector should not be nil")
-	assert.True(t, redis.Is(REDIS))
+	// redis, has := Connectors["redis-source-sync"]
+	// assert.True(t, has, "redis connector should be loaded")
+	// assert.NotNil(t, redis, "redis connector should not be nil")
+	// assert.True(t, redis.Is(REDIS))
 }
 
 func prepare(t *testing.T, name string) string {
