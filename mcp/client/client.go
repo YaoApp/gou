@@ -6,6 +6,7 @@ import (
 	goclient "github.com/mark3labs/mcp-go/client"
 
 	"github.com/yaoapp/gou/mcp/types"
+	gouTypes "github.com/yaoapp/gou/types"
 )
 
 // Client the MCP Client
@@ -64,4 +65,9 @@ func New(dsl *types.ClientDSL) (*Client, error) {
 	}
 
 	return client, nil
+}
+
+// GetMetaInfo returns the meta information of the client
+func (c *Client) GetMetaInfo() gouTypes.MetaInfo {
+	return c.DSL.MetaInfo
 }

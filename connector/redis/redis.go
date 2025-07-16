@@ -8,6 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/xun/dbal/query"
 	"github.com/yaoapp/xun/dbal/schema"
@@ -20,6 +21,7 @@ type Connector struct {
 	Name    string        `json:"name"`
 	Rdb     *redis.Client `json:"-"`
 	Options Options       `json:"options"`
+	types.MetaInfo
 }
 
 // Options the redis connector option
@@ -136,4 +138,9 @@ func (r *Connector) Setting() map[string]interface{} {
 		"pass":    r.Options.Pass,
 		"timeout": r.Options.Timeout,
 	}
+}
+
+// GetMetaInfo returns the meta information
+func (r *Connector) GetMetaInfo() types.MetaInfo {
+	return r.MetaInfo
 }

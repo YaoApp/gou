@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/yaoapp/gou/mcp/types"
+	gouTypes "github.com/yaoapp/gou/types"
 )
 
 // Client the MCP client interface
@@ -51,6 +52,9 @@ type Client interface {
 	OnEvent(eventType string, handler func(event types.Event))
 	OnNotification(method string, handler types.NotificationHandler)
 	OnError(handler types.ErrorHandler)
+
+	// Get meta info
+	GetMetaInfo() gouTypes.MetaInfo
 }
 
 // Server the MCP service interface

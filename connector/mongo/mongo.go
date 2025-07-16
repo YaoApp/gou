@@ -7,6 +7,7 @@ import (
 
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/xun/dbal/query"
 	"github.com/yaoapp/xun/dbal/schema"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -22,6 +23,7 @@ type Connector struct {
 	Options  Options         `json:"options"`
 	Client   *mongo.Client   `json:"-"`
 	Database *mongo.Database `json:"-"`
+	types.MetaInfo
 }
 
 // Options the connetion options
@@ -176,4 +178,9 @@ func (m *Connector) Setting() map[string]interface{} {
 		"hosts":   m.Options.Hosts,
 		"dsn":     m.Options.dsn,
 	}
+}
+
+// GetMetaInfo returns the meta information
+func (m *Connector) GetMetaInfo() types.MetaInfo {
+	return m.MetaInfo
 }

@@ -65,6 +65,7 @@ type Connector interface {
 	ID() string
 	Is(int) bool
 	Setting() map[string]interface{}
+	GetMetaInfo() gouTypes.MetaInfo
 }
 
 // Option the option interface

@@ -3,6 +3,7 @@ package fastembed
 import (
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/xun/dbal/query"
 	"github.com/yaoapp/xun/dbal/schema"
 )
@@ -13,6 +14,7 @@ type Connector struct {
 	file    string
 	Name    string  `json:"name"`
 	Options Options `json:"options"`
+	types.MetaInfo
 }
 
 // Options the fastembed connector option
@@ -80,4 +82,9 @@ func (o *Connector) Setting() map[string]interface{} {
 		"key":   o.Options.Key,
 		"model": o.Options.Model,
 	}
+}
+
+// GetMetaInfo returns the meta information
+func (o *Connector) GetMetaInfo() types.MetaInfo {
+	return o.MetaInfo
 }
