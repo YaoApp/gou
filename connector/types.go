@@ -1,6 +1,7 @@
 package connector
 
 import (
+	gouTypes "github.com/yaoapp/gou/types"
 	"github.com/yaoapp/xun/dbal/query"
 	"github.com/yaoapp/xun/dbal/schema"
 )
@@ -74,10 +75,11 @@ type Option struct {
 
 // DSL the connector DSL
 type DSL struct {
-	ID      string                 `json:"-"`
-	Type    string                 `json:"type"`
-	Name    string                 `json:"name,omitempty"`
-	Label   string                 `json:"label,omitempty"`
+	gouTypes.MetaInfo
+	ID   string `json:"-"`
+	Type string `json:"type"`
+	Name string `json:"name,omitempty"`
+	// Label   string                 `json:"label,omitempty"`
 	Version string                 `json:"version,omitempty"`
 	Options map[string]interface{} `json:"options,omitempty"`
 }
