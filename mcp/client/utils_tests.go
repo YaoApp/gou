@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/yaoapp/gou/mcp/types"
+	gouTypes "github.com/yaoapp/gou/types"
 )
 
 // Test environment variable names
@@ -48,12 +49,14 @@ func getTestConfig() *TestConfig {
 // createHTTPTestDSL creates a test DSL for HTTP transport
 func createHTTPTestDSL(config *TestConfig) *types.ClientDSL {
 	return &types.ClientDSL{
-		ID:                 "test-http-client",
-		Name:               "Test HTTP MCP Client",
-		Version:            "1.0.0",
-		Transport:          types.TransportHTTP,
-		Label:              "HTTP Test Client",
-		Description:        "MCP client for HTTP testing",
+		ID:        "test-http-client",
+		Name:      "Test HTTP MCP Client",
+		Version:   "1.0.0",
+		Transport: types.TransportHTTP,
+		MetaInfo: gouTypes.MetaInfo{
+			Label:       "HTTP Test Client",
+			Description: "MCP client for HTTP testing",
+		},
 		URL:                config.HTTPUrl,
 		AuthorizationToken: config.HTTPToken,
 		EnableSampling:     true,
@@ -66,12 +69,14 @@ func createHTTPTestDSL(config *TestConfig) *types.ClientDSL {
 // createSSETestDSL creates a test DSL for SSE transport
 func createSSETestDSL(config *TestConfig) *types.ClientDSL {
 	return &types.ClientDSL{
-		ID:                 "test-sse-client",
-		Name:               "Test SSE MCP Client",
-		Version:            "1.0.0",
-		Transport:          types.TransportSSE,
-		Label:              "SSE Test Client",
-		Description:        "MCP client for SSE testing",
+		ID:        "test-sse-client",
+		Name:      "Test SSE MCP Client",
+		Version:   "1.0.0",
+		Transport: types.TransportSSE,
+		MetaInfo: gouTypes.MetaInfo{
+			Label:       "SSE Test Client",
+			Description: "MCP client for SSE testing",
+		},
 		URL:                config.SSEUrl,
 		AuthorizationToken: config.SSEToken,
 		EnableSampling:     true,
@@ -84,12 +89,14 @@ func createSSETestDSL(config *TestConfig) *types.ClientDSL {
 // createStdioTestDSL creates a test DSL for stdio transport
 func createStdioTestDSL() *types.ClientDSL {
 	return &types.ClientDSL{
-		ID:               "test-stdio-client",
-		Name:             "Test Stdio MCP Client",
-		Version:          "1.0.0",
-		Transport:        types.TransportStdio,
-		Label:            "Stdio Test Client",
-		Description:      "MCP client for stdio testing",
+		ID:        "test-stdio-client",
+		Name:      "Test Stdio MCP Client",
+		Version:   "1.0.0",
+		Transport: types.TransportStdio,
+		MetaInfo: gouTypes.MetaInfo{
+			Label:       "Stdio Test Client",
+			Description: "MCP client for stdio testing",
+		},
 		Command:          "npx",
 		Arguments:        []string{"-y", "@modelcontextprotocol/server-everything"},
 		EnableSampling:   true,

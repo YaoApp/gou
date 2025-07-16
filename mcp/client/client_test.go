@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/yaoapp/gou/mcp/types"
+	gouTypes "github.com/yaoapp/gou/types"
 )
 
 // TestNew tests the New function for creating MCP clients
@@ -97,12 +98,14 @@ func TestNew(t *testing.T) {
 		{
 			name: "Complete DSL with All Fields",
 			dsl: &types.ClientDSL{
-				ID:                 "complete-client",
-				Name:               "Complete Test Client",
-				Version:            "2.0.0",
-				Transport:          types.TransportHTTP,
-				Label:              "Complete Client",
-				Description:        "A complete test client",
+				ID:        "complete-client",
+				Name:      "Complete Test Client",
+				Version:   "2.0.0",
+				Transport: types.TransportHTTP,
+				MetaInfo: gouTypes.MetaInfo{
+					Label:       "Complete Client",
+					Description: "A complete test client",
+				},
 				URL:                "https://api.example.com/mcp",
 				AuthorizationToken: "Bearer test-token",
 				EnableSampling:     true,

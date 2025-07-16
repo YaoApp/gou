@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"sync"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector/database"
@@ -152,6 +154,132 @@ func TestLoadFastembed(t *testing.T) {
 	assert.Equal(t, "fastembed", Connectors["fastembed"].ID())
 	assert.NotEmpty(t, setting["host"])
 	assert.NotEmpty(t, setting["model"])
+}
+
+func TestLoadSync(t *testing.T) {
+	// Clean up existing connectors
+	Connectors = map[string]Connector{}
+
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	// Load multiple connectors concurrently
+	go func() {
+		defer wg.Done()
+		_, err := LoadSync(prepare(t, "mysql"), "mysql-sync")
+		assert.NoError(t, err)
+	}()
+
+	go func() {
+		defer wg.Done()
+		_, err := LoadSync(prepare(t, "redis"), "redis-sync")
+		assert.NoError(t, err)
+	}()
+
+	go func() {
+		defer wg.Done()
+		_, err := LoadSync(prepare(t, "mongo"), "mongo-sync")
+		assert.NoError(t, err)
+	}()
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+
+	// Verify all connectors are loaded correctly
+	connectors := []string{"mysql-sync", "redis-sync", "mongo-sync"}
+	for _, id := range connectors {
+		conn, has := Connectors[id]
+		if !has {
+			t.Fatalf("connector %s not loaded", id)
+		}
+		assert.NotNil(t, conn, "connector %s should not be nil", id)
+	}
+
+	// Verify connector types
+	assert.True(t, Connectors["mysql-sync"].Is(DATABASE))
+	assert.True(t, Connectors["redis-sync"].Is(REDIS))
+	assert.True(t, Connectors["mongo-sync"].Is(MONGO))
+}
+
+func TestLoadSourceSync(t *testing.T) {
+	// Clean up existing connectors
+	Connectors = map[string]Connector{}
+
+	// Prepare test data
+	mysqlSource := []byte(`{
+		"type": "mysql",
+		"name": "MySQL Test",
+		"version": "1.0.0",
+		"options": {
+			"database": "test",
+			"host": "127.0.0.1",
+			"port": "3306",
+			"user": "root",
+			"password": "123456"
+		}
+	}`)
+
+	redisSource := []byte(`{
+		"type": "redis",
+		"name": "Redis Test",
+		"version": "1.0.0",
+		"options": {
+			"host": "127.0.0.1",
+			"port": "6379",
+			"db": "0",
+			"pass": "123456",
+			"timeout": 5
+		}
+	}`)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	errs := []error{}
+	var errMu sync.Mutex
+
+	// Load connectors concurrently
+	go func() {
+		defer wg.Done()
+		_, err := LoadSourceSync(mysqlSource, "mysql-source-sync", "mysql.source.conn.yao")
+		if err != nil {
+			errMu.Lock()
+			errs = append(errs, fmt.Errorf("mysql: %v", err))
+			errMu.Unlock()
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		_, err := LoadSourceSync(redisSource, "redis-source-sync", "redis.source.conn.yao")
+		if err != nil {
+			errMu.Lock()
+			errs = append(errs, fmt.Errorf("redis: %v", err))
+			errMu.Unlock()
+		}
+	}()
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+
+	// Check for errors
+	if len(errs) > 0 {
+		for _, err := range errs {
+			t.Error(err)
+		}
+		t.FailNow()
+	}
+
+	// Verify connectors are loaded correctly
+	mysql, has := Connectors["mysql-source-sync"]
+	assert.True(t, has, "mysql connector should be loaded")
+	assert.NotNil(t, mysql, "mysql connector should not be nil")
+	assert.True(t, mysql.Is(DATABASE))
+
+	redis, has := Connectors["redis-source-sync"]
+	assert.True(t, has, "redis connector should be loaded")
+	assert.NotNil(t, redis, "redis connector should not be nil")
+	assert.True(t, redis.Is(REDIS))
 }
 
 func prepare(t *testing.T, name string) string {

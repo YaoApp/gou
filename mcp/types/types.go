@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"time"
+
+	"github.com/yaoapp/gou/types"
 )
 
 // TransportType the transport type
@@ -41,9 +43,7 @@ type ClientDSL struct {
 	Version   string        `json:"version,omitempty"` // The version of the MCP Client
 	Transport TransportType `json:"transport"`         // One of the TransportType (required)
 
-	// Display in the DUI (Development UI) platform
-	Label       string `json:"label,omitempty"`       // Label of the MCP Client
-	Description string `json:"description,omitempty"` // Description of the MCP Client
+	types.MetaInfo
 
 	// Client capabilities configuration
 	EnableSampling    bool `json:"enable_sampling,omitempty"`    // Enable sampling capability
