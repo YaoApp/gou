@@ -8,6 +8,7 @@ import (
 
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/xun/capsule"
 	"github.com/yaoapp/xun/dbal"
@@ -24,6 +25,7 @@ type Xun struct {
 	Driver  string           `json:"type"`
 	Version string           `json:"version,omitempty"`
 	Options XunOptions       `json:"options"`
+	types.MetaInfo
 }
 
 // XunOptions the connetion options
@@ -307,4 +309,9 @@ func (x *Xun) Setting() map[string]interface{} {
 		"file":      x.Options.File,
 		"hosts":     x.Options.Hosts,
 	}
+}
+
+// GetMetaInfo returns the meta information
+func (x *Xun) GetMetaInfo() types.MetaInfo {
+	return x.MetaInfo
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/http"
+	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/xun/dbal/query"
 	"github.com/yaoapp/xun/dbal/schema"
 )
@@ -40,6 +41,7 @@ func (m *mockConnector) Query() (query.Query, error)                       { ret
 func (m *mockConnector) Schema() (schema.Schema, error)                    { return nil, nil }
 func (m *mockConnector) Close() error                                      { return nil }
 func (m *mockConnector) Setting() map[string]interface{}                   { return m.settings }
+func (m *mockConnector) GetMetaInfo() types.MetaInfo                       { return types.MetaInfo{} }
 
 func TestPostLLM_LocalLLM(t *testing.T) {
 	// Read environment variables for local LLM

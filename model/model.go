@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
 	"github.com/yaoapp/kun/maps"
@@ -184,7 +185,7 @@ func (mod *Model) Migrate(force bool, opts ...MigrateOption) error {
 
 		if !options.DonotInsertValues {
 			_, errs := mod.InsertValues()
-			if errs != nil && len(errs) > 0 {
+			if len(errs) > 0 {
 				for _, err := range errs {
 					log.Error("[Migrate] %s", err.Error())
 				}
@@ -267,4 +268,9 @@ func (mod *Model) Validate(row maps.MapStrAny) []ValidateResponse {
 		}
 	}
 	return res
+}
+
+// GetMetaInfo returns the meta information of the model
+func (mod *Model) GetMetaInfo() types.MetaInfo {
+	return mod.MetaData.MetaInfo
 }

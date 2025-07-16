@@ -53,7 +53,7 @@ func LoadSource(source []byte, id string, file string) (Connector, error) {
 		return nil, err
 	}
 
-	c, err := make(dsl.Type)
+	c, err := makeConnector(dsl.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func LoadSource(source []byte, id string, file string) (Connector, error) {
 
 // New create a new connector
 func New(typ string, id string, dsl []byte) (Connector, error) {
-	c, err := make(typ)
+	c, err := makeConnector(typ)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func Remove(id string) error {
 	return connector.Close()
 }
 
-func make(typ string) (Connector, error) {
+func makeConnector(typ string) (Connector, error) {
 
 	t, has := types[typ]
 	if !has {

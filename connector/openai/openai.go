@@ -3,6 +3,7 @@ package openai
 import (
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/xun/dbal/query"
 	"github.com/yaoapp/xun/dbal/schema"
 )
@@ -13,6 +14,7 @@ type Connector struct {
 	file    string
 	Name    string  `json:"name"`
 	Options Options `json:"options"`
+	types.MetaInfo
 }
 
 // Options the redis connector option
@@ -78,4 +80,9 @@ func (o *Connector) Setting() map[string]interface{} {
 		"model": o.Options.Model,
 		"azure": o.Options.Azure,
 	}
+}
+
+// GetMetaInfo returns the meta information
+func (o *Connector) GetMetaInfo() types.MetaInfo {
+	return o.MetaInfo
 }
