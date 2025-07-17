@@ -10,6 +10,7 @@ import (
 	mongodb "github.com/yaoapp/gou/connector/mongo"
 	"github.com/yaoapp/kun/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -38,6 +39,23 @@ func New(c connector.Connector) (*Store, error) {
 	return &Store{Database: mongodb.Database, Collection: coll}, nil
 }
 
+// convertValue handles primitive.Binary conversion to []byte for consistency with other stores
+func convertValue(value interface{}) interface{} {
+	if binary, ok := value.(primitive.Binary); ok {
+		return binary.Data
+	}
+	return value
+}
+
+// convertSlice handles primitive.Binary conversion for slices
+func convertSlice(slice []interface{}) []interface{} {
+	result := make([]interface{}, len(slice))
+	for i, item := range slice {
+		result[i] = convertValue(item)
+	}
+	return result
+}
+
 // Get looks up a key's value from the store.
 func (store *Store) Get(key string) (value interface{}, ok bool) {
 	var result bson.M
@@ -48,8 +66,14 @@ func (store *Store) Get(key string) (value interface{}, ok bool) {
 		}
 		return nil, false
 	}
+
 	value, has := result["value"]
-	return value, has
+	if !has {
+		return nil, false
+	}
+
+	// Handle primitive.Binary by converting to []byte for consistency with other stores
+	return convertValue(value), true
 }
 
 // Set adds a value to the store.
@@ -253,7 +277,7 @@ func (store *Store) Pop(key string, position int) (interface{}, error) {
 		return nil, err
 	}
 
-	return popValue, nil
+	return convertValue(popValue), nil
 }
 
 // Pull removes all occurrences of a value from a list using MongoDB $pull operator
@@ -344,7 +368,7 @@ func (store *Store) ArrayGet(key string, index int) (interface{}, error) {
 		if err := cursor.Decode(&result); err != nil {
 			return nil, err
 		}
-		return result.Element, nil
+		return convertValue(result.Element), nil
 	}
 
 	return nil, fmt.Errorf("index out of range")
@@ -383,7 +407,7 @@ func (store *Store) ArraySlice(key string, skip, limit int) ([]interface{}, erro
 		if err := cursor.Decode(&result); err != nil {
 			return nil, err
 		}
-		return result.Slice, nil
+		return convertSlice(result.Slice), nil
 	}
 
 	return []interface{}{}, nil
@@ -418,7 +442,7 @@ func (store *Store) ArrayAll(key string) ([]interface{}, error) {
 	if list, ok := value.(bson.A); ok {
 		interfaceList := make([]interface{}, len(list))
 		copy(interfaceList, list)
-		return interfaceList, nil
+		return convertSlice(interfaceList), nil
 	}
 
 	return nil, fmt.Errorf("key is not a list")
