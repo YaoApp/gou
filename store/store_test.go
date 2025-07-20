@@ -216,12 +216,18 @@ func getConnector(t *testing.T, name string) connector.Connector {
 }
 
 func prepareStores(t *testing.T) {
+
 	stores := map[string]string{
 		"cache":  filepath.Join("stores", "cache.lru.yao"),
 		"share":  filepath.Join("stores", "share.redis.yao"),
 		"data":   filepath.Join("stores", "data.mongo.yao"),
 		"badger": filepath.Join("stores", "local.badger.yao"),
 	}
+
+	// Remove the data store (For cleaning the stores whitch created by the test)
+	var path = filepath.Join(os.Getenv("GOU_TEST_APPLICATION"), "badger", "db")
+	os.RemoveAll(path)
+
 	for id, file := range stores {
 		_, err := Load(file, id)
 		if err != nil {
