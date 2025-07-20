@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector"
@@ -16,22 +17,35 @@ import (
 
 // Pools LRU pools
 var Pools = map[string]Store{}
+var rwlock sync.RWMutex // Use RWMutex for better concurrency
+
+// LoadSync load store sync
+func LoadSync(file string, name string) (Store, error) {
+	rwlock.Lock()
+	defer rwlock.Unlock()
+	return Load(file, name)
+}
+
+// LoadSourceSync load store from source sync
+func LoadSourceSync(data []byte, id string, file string) (Store, error) {
+	rwlock.Lock()
+	defer rwlock.Unlock()
+	return LoadSource(data, id, file)
+}
 
 // Load load kv store
 func Load(file string, name string) (Store, error) {
-
-	// Check if store is already loaded
-	if store, exists := Pools[name]; exists {
-		return store, nil
-	}
-
 	data, err := application.App.Read(file)
 	if err != nil {
 		return nil, err
 	}
+	return LoadSource(data, name, file)
+}
 
+// LoadSource load store from source
+func LoadSource(data []byte, id string, file string) (Store, error) {
 	inst := Instance{}
-	err = application.Parse(file, data, &inst)
+	err := application.Parse(file, data, &inst)
 	if err != nil {
 		return nil, err
 	}
@@ -42,13 +56,13 @@ func Load(file string, name string) (Store, error) {
 		if err != nil {
 			return nil, err
 		}
-		Pools[name] = stor
-		return Pools[name], nil
+		Pools[id] = stor
+		return Pools[id], nil
 	}
 
 	connector, has := connector.Connectors[inst.Connector]
 	if !has {
-		return nil, fmt.Errorf("Store %s Connector:%s was not loaded", name, inst.Connector)
+		return nil, fmt.Errorf("Store %s Connector:%s was not loaded", id, inst.Connector)
 	}
 
 	stor, err := New(connector, inst.Option)
@@ -56,8 +70,8 @@ func Load(file string, name string) (Store, error) {
 		return nil, err
 	}
 
-	Pools[name] = stor
-	return Pools[name], nil
+	Pools[id] = stor
+	return Pools[id], nil
 }
 
 // Select Select loaded kv store
@@ -67,6 +81,15 @@ func Select(name string) Store {
 		exception.New("Store:%s does not load", 500, name).Throw()
 	}
 	return store
+}
+
+// Get Get the store from the pool
+func Get(name string) (Store, error) {
+	store, has := Pools[name]
+	if !has {
+		return nil, fmt.Errorf("Store:%s does not load", name)
+	}
+	return store, nil
 }
 
 // New create a store via connector

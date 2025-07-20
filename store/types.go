@@ -1,6 +1,10 @@
 package store
 
-import "time"
+import (
+	"time"
+
+	"github.com/yaoapp/gou/types"
+)
 
 // Store The interface of a key-value store
 type Store interface {
@@ -34,11 +38,11 @@ type Store interface {
 
 // Instance the kv-store setting
 type Instance struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description,omitempty"`
-	Connector   string                 `json:"connector,omitempty"`
-	Type        string                 `json:"type,omitempty"` // warning: type is deprecated in the future new version
-	Option      map[string]interface{} `json:"option,omitempty"`
+	types.MetaInfo
+	Name      string                 `json:"name"`
+	Connector string                 `json:"connector,omitempty"`
+	Type      string                 `json:"type,omitempty"` // warning: type is deprecated in the future new version
+	Option    map[string]interface{} `json:"option,omitempty"`
 }
 
 // Option the store option
