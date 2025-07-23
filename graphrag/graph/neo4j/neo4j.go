@@ -22,6 +22,11 @@ func NewStore() *Store {
 	return &Store{}
 }
 
+// NewStoreWithConfig creates a new Neo4j graph store instance with a configuration
+func NewStoreWithConfig(config types.GraphStoreConfig) *Store {
+	return &Store{config: config}
+}
+
 // GetDriver returns the underlying Neo4j driver
 func (s *Store) GetDriver() neo4j.DriverWithContext {
 	s.mu.RLock()
