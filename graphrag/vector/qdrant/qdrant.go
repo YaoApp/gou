@@ -23,6 +23,11 @@ func NewStore() *Store {
 	return &Store{}
 }
 
+// NewStoreWithConfig creates a new Qdrant vector store instance with a configuration
+func NewStoreWithConfig(config types.VectorStoreConfig) *Store {
+	return &Store{config: config}
+}
+
 // GetClient returns the underlying Qdrant client
 func (s *Store) GetClient() *qdrant.Client {
 	s.mu.RLock()
