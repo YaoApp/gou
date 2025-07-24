@@ -171,6 +171,24 @@ func (g *GraphRag) RemoveCollection(ctx context.Context, id string) (bool, error
 		return false, fmt.Errorf("collection ID cannot be empty")
 	}
 
+	// Connect to vector store if not already connected and config is provided
+	if g.Vector != nil && !g.Vector.IsConnected() {
+		err := g.Vector.Connect(ctx)
+		if err != nil {
+			return false, fmt.Errorf("failed to connect to vector store: %w", err)
+		}
+		g.Logger.Infof("Connected to vector store")
+	}
+
+	// Connect to graph store if not already connected and config is provided
+	if g.Graph != nil && !g.Graph.IsConnected() {
+		err := g.Graph.Connect(ctx)
+		if err != nil {
+			return false, fmt.Errorf("failed to connect to graph store: %w", err)
+		}
+		g.Logger.Infof("Connected to graph store")
+	}
+
 	// Check if collection exists
 	exists, err := g.CollectionExists(ctx, id)
 	if err != nil {
@@ -269,6 +287,15 @@ func (g *GraphRag) CollectionExists(ctx context.Context, id string) (bool, error
 		return g.Store.Has(id), nil
 	}
 
+	// Connect to vector store if not already connected and config is provided
+	if g.Vector != nil && !g.Vector.IsConnected() {
+		err := g.Vector.Connect(ctx)
+		if err != nil {
+			return false, fmt.Errorf("failed to connect to vector store: %w", err)
+		}
+		g.Logger.Infof("Connected to vector store")
+	}
+
 	// Check in System Collection if Store is not available
 	if g.Vector != nil {
 		exists, err := g.Vector.CollectionExists(ctx, g.System)
@@ -308,6 +335,15 @@ func (g *GraphRag) CollectionExists(ctx context.Context, id string) (bool, error
 func (g *GraphRag) GetCollections(ctx context.Context, filter map[string]interface{}) ([]types.CollectionInfo, error) {
 	if g.Vector == nil {
 		return nil, fmt.Errorf("vector store is required for collection management")
+	}
+
+	// Connect to vector store if not already connected and config is provided
+	if g.Vector != nil && !g.Vector.IsConnected() {
+		err := g.Vector.Connect(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to vector store: %w", err)
+		}
+		g.Logger.Infof("Connected to vector store")
 	}
 
 	// Step 1: Get all vector collections to ensure data consistency
