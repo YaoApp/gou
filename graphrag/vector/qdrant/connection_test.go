@@ -24,14 +24,11 @@ func TestConnect(t *testing.T) {
 		defer store.Close()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_connection",
 			ExtraParams: map[string]interface{}{
 				"host": config.Host,
 				"port": config.Port,
 			},
+			Timeout: 10,
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -54,8 +51,8 @@ func TestConnect(t *testing.T) {
 
 		// Verify config is stored
 		storedConfig := store.GetConfig()
-		if storedConfig.Dimension != storeConfig.Dimension {
-			t.Errorf("Expected dimension %d, got %d", storeConfig.Dimension, storedConfig.Dimension)
+		if storedConfig.Timeout != storeConfig.Timeout {
+			t.Errorf("Expected timeout %d, got %d", storeConfig.Timeout, storedConfig.Timeout)
 		}
 	})
 
@@ -65,15 +62,12 @@ func TestConnect(t *testing.T) {
 		defer store.Close()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_connection_apikey",
 			ExtraParams: map[string]interface{}{
 				"host":    config.Host,
 				"port":    config.Port,
 				"api_key": "test-api-key",
 			},
+			Timeout: 10,
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -96,14 +90,11 @@ func TestConnect(t *testing.T) {
 		defer store.Close()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_connection_string_port",
 			ExtraParams: map[string]interface{}{
 				"host": config.Host,
 				"port": config.Port, // String port
 			},
+			Timeout: 10,
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -132,14 +123,11 @@ func TestConnect(t *testing.T) {
 		}
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_connection_int_port",
 			ExtraParams: map[string]interface{}{
 				"host": config.Host,
 				"port": port, // Int port
 			},
+			Timeout: 10,
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -160,12 +148,7 @@ func TestConnect(t *testing.T) {
 		defer store.Close()
 
 		// Test with no ExtraParams (should use defaults)
-		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_connection_defaults",
-		}
+		storeConfig := types.VectorStoreConfig{}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -187,14 +170,11 @@ func TestConnect(t *testing.T) {
 		defer store.Close()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_already_connected",
 			ExtraParams: map[string]interface{}{
 				"host": config.Host,
 				"port": config.Port,
 			},
+			Timeout: 10,
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -222,10 +202,7 @@ func TestConnect(t *testing.T) {
 		defer store.Close()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_connection_failure",
+
 			ExtraParams: map[string]interface{}{
 				"host": "invalid-host-that-does-not-exist",
 				"port": "6334",
@@ -256,10 +233,7 @@ func TestConnect(t *testing.T) {
 		defer store.Close()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_invalid_port",
+
 			ExtraParams: map[string]interface{}{
 				"host": config.Host,
 				"port": "invalid-port",
@@ -288,10 +262,7 @@ func TestDisconnect(t *testing.T) {
 		store := NewStore()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_disconnect",
+
 			ExtraParams: map[string]interface{}{
 				"host": config.Host,
 				"port": config.Port,
@@ -349,10 +320,7 @@ func TestDisconnect(t *testing.T) {
 		store := NewStore()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_double_disconnect",
+
 			ExtraParams: map[string]interface{}{
 				"host": config.Host,
 				"port": config.Port,
@@ -401,10 +369,7 @@ func TestIsConnected(t *testing.T) {
 		defer store.Close()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_is_connected",
+
 			ExtraParams: map[string]interface{}{
 				"host": config.Host,
 				"port": config.Port,
@@ -429,10 +394,7 @@ func TestIsConnected(t *testing.T) {
 		store := NewStore()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_is_connected_after_disconnect",
+
 			ExtraParams: map[string]interface{}{
 				"host": config.Host,
 				"port": config.Port,
@@ -462,10 +424,7 @@ func TestIsConnected(t *testing.T) {
 		defer store.Close()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_is_connected_failed",
+
 			ExtraParams: map[string]interface{}{
 				"host": "invalid-host",
 				"port": "6334",
@@ -493,10 +452,7 @@ func TestClose(t *testing.T) {
 		store := NewStore()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_close",
+
 			ExtraParams: map[string]interface{}{
 				"host": config.Host,
 				"port": config.Port,
@@ -543,10 +499,7 @@ func TestClose(t *testing.T) {
 		store := NewStore()
 
 		storeConfig := types.VectorStoreConfig{
-			Dimension:      128,
-			Distance:       types.DistanceCosine,
-			IndexType:      types.IndexTypeHNSW,
-			CollectionName: "test_double_close",
+
 			ExtraParams: map[string]interface{}{
 				"host": config.Host,
 				"port": config.Port,
@@ -584,10 +537,7 @@ func TestConnectionConcurrency(t *testing.T) {
 	config := getTestConfig()
 
 	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "test_concurrency",
+
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -725,10 +675,7 @@ func TestConnectionConcurrency(t *testing.T) {
 func BenchmarkConnect(b *testing.B) {
 	config := getTestConfig()
 	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "bench_connect",
+
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -754,10 +701,7 @@ func BenchmarkConnect(b *testing.B) {
 func BenchmarkDisconnect(b *testing.B) {
 	config := getTestConfig()
 	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "bench_disconnect",
+
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -801,10 +745,7 @@ func BenchmarkIsConnected(b *testing.B) {
 func BenchmarkClose(b *testing.B) {
 	config := getTestConfig()
 	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "bench_close",
+
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -834,10 +775,7 @@ func BenchmarkClose(b *testing.B) {
 func BenchmarkConnectionCycle(b *testing.B) {
 	config := getTestConfig()
 	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "bench_cycle",
+
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -880,10 +818,7 @@ func TestConnectionMemoryLeakDetection(t *testing.T) {
 
 	config := getTestConfig()
 	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "test_connection_memory_leak",
+
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -986,10 +921,7 @@ func TestConcurrentConnectionMemoryLeak(t *testing.T) {
 
 	config := getTestConfig()
 	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "test_concurrent_memory_leak",
+
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,

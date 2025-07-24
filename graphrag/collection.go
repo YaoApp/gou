@@ -9,9 +9,9 @@ import (
 )
 
 // saveCollectionMetadata saves collection metadata with priority: Store > System Collection
-func (g *GraphRag) saveCollectionMetadata(ctx context.Context, collection types.Collection) error {
+func (g *GraphRag) saveCollectionMetadata(ctx context.Context, collection types.CollectionConfig) error {
 	// Serialize collection to JSON
-	serializedData, err := types.SerializeCollection(collection)
+	serializedData, err := types.SerializeCollectionConfig(collection)
 	if err != nil {
 		return fmt.Errorf("failed to serialize collection metadata: %w", err)
 	}
@@ -63,10 +63,10 @@ func (g *GraphRag) saveCollectionMetadata(ctx context.Context, collection types.
 }
 
 // CreateCollection creates a new collection
-func (g *GraphRag) CreateCollection(ctx context.Context, collection types.Collection) (string, error) {
+func (g *GraphRag) CreateCollection(ctx context.Context, collection types.CollectionConfig) (string, error) {
 	// Connect to vector store if not already connected and config is provided
-	if g.Vector != nil && !g.Vector.IsConnected() && collection.VectorConfig != nil {
-		err := g.Vector.Connect(ctx, *collection.VectorConfig)
+	if g.Vector != nil && !g.Vector.IsConnected() {
+		err := g.Vector.Connect(ctx)
 		if err != nil {
 			return "", fmt.Errorf("failed to connect to vector store: %w", err)
 		}
@@ -74,8 +74,8 @@ func (g *GraphRag) CreateCollection(ctx context.Context, collection types.Collec
 	}
 
 	// Connect to graph store if not already connected and config is provided
-	if g.Graph != nil && !g.Graph.IsConnected() && collection.GraphStoreConfig != nil {
-		err := g.Graph.Connect(ctx, *collection.GraphStoreConfig)
+	if g.Graph != nil && !g.Graph.IsConnected() {
+		err := g.Graph.Connect(ctx)
 		if err != nil {
 			return "", fmt.Errorf("failed to connect to graph store: %w", err)
 		}
@@ -115,19 +115,19 @@ func (g *GraphRag) CreateCollection(ctx context.Context, collection types.Collec
 	collection.ID = collectionID
 
 	// Set CollectionName in VectorConfig if it exists
-	if collection.VectorConfig != nil {
-		collection.VectorConfig.CollectionName = ids.Vector
+	if collection.Config != nil {
+		collection.Config.CollectionName = ids.Vector
 	}
 
 	// Validate collection after setting all necessary fields
-	if err := types.ValidateCollection(collection); err != nil {
+	if err := types.ValidateCollectionConfig(collection); err != nil {
 		return "", fmt.Errorf("invalid collection: %w", err)
 	}
 
 	// Create vector collection, if error, return error
 	var vectorCreated bool
-	if collection.VectorConfig != nil {
-		err = g.Vector.CreateCollection(ctx, collection.VectorConfig)
+	if collection.Config != nil {
+		err = g.Vector.CreateCollection(ctx, collection.Config)
 		if err != nil {
 			return "", fmt.Errorf("failed to create vector collection: %w", err)
 		}
@@ -305,7 +305,7 @@ func (g *GraphRag) CollectionExists(ctx context.Context, id string) (bool, error
 }
 
 // GetCollections gets all collections with optional metadata filtering
-func (g *GraphRag) GetCollections(ctx context.Context, filter map[string]interface{}) ([]types.Collection, error) {
+func (g *GraphRag) GetCollections(ctx context.Context, filter map[string]interface{}) ([]types.CollectionInfo, error) {
 	if g.Vector == nil {
 		return nil, fmt.Errorf("vector store is required for collection management")
 	}
@@ -332,7 +332,7 @@ func (g *GraphRag) GetCollections(ctx context.Context, filter map[string]interfa
 	}
 
 	// Step 2: Get collection metadata based on configuration
-	var collections []types.Collection
+	var collections []types.CollectionInfo
 	if g.Store != nil {
 		// Store-based approach
 		collections, err = g.getCollectionsFromStore(ctx, collectionIDs)
@@ -348,10 +348,14 @@ func (g *GraphRag) GetCollections(ctx context.Context, filter map[string]interfa
 	}
 
 	// Step 3: Apply metadata filtering
-	var filteredCollections []types.Collection
+	var filteredCollections []types.CollectionInfo
 	for _, collection := range collections {
 		if g.matchesFilter(collection, filter) {
-			filteredCollections = append(filteredCollections, collection)
+			filteredCollections = append(filteredCollections, types.CollectionInfo{
+				ID:       collection.ID,
+				Metadata: collection.Metadata,
+				Config:   collection.Config,
+			})
 		}
 	}
 
@@ -362,8 +366,8 @@ func (g *GraphRag) GetCollections(ctx context.Context, filter map[string]interfa
 }
 
 // getCollectionsFromStore retrieves collection metadata from Store
-func (g *GraphRag) getCollectionsFromStore(_ context.Context, collectionIDs []string) ([]types.Collection, error) {
-	var collections []types.Collection
+func (g *GraphRag) getCollectionsFromStore(_ context.Context, collectionIDs []string) ([]types.CollectionInfo, error) {
+	var collections []types.CollectionInfo
 
 	for _, collectionID := range collectionIDs {
 		if g.Store.Has(collectionID) {
@@ -379,22 +383,27 @@ func (g *GraphRag) getCollectionsFromStore(_ context.Context, collectionIDs []st
 				continue
 			}
 
-			collection, err := types.DeserializeCollection(serializedData)
+			collection, err := types.DeserializeCollectionConfig(serializedData)
 			if err != nil {
 				g.Logger.Warnf("Failed to deserialize collection from store for ID %s: %v", collectionID, err)
 				continue
 			}
 
-			collections = append(collections, collection)
+			collections = append(collections, types.CollectionInfo{
+				ID:       collection.ID,
+				Metadata: collection.Metadata,
+				Config:   collection.Config,
+			})
 		} else {
 			// Collection exists in vector store but not in metadata store
 			// Create minimal collection with inferred metadata
-			collection := types.Collection{
+			collection := types.CollectionInfo{
 				ID: collectionID,
 				Metadata: map[string]interface{}{
 					"inferred": true,
 					"source":   "vector_collection",
 				},
+				Config: nil, // No config available for inferred collections
 			}
 			collections = append(collections, collection)
 		}
@@ -404,8 +413,8 @@ func (g *GraphRag) getCollectionsFromStore(_ context.Context, collectionIDs []st
 }
 
 // getCollectionsFromSystemCollection retrieves collection metadata from System Collection
-func (g *GraphRag) getCollectionsFromSystemCollection(ctx context.Context, collectionIDs []string) ([]types.Collection, error) {
-	var collections []types.Collection
+func (g *GraphRag) getCollectionsFromSystemCollection(ctx context.Context, collectionIDs []string) ([]types.CollectionInfo, error) {
+	var collections []types.CollectionInfo
 
 	// Check if system collection exists
 	exists, err := g.Vector.CollectionExists(ctx, g.System)
@@ -423,7 +432,10 @@ func (g *GraphRag) getCollectionsFromSystemCollection(ctx context.Context, colle
 					"source":   "vector_collection",
 				},
 			}
-			collections = append(collections, collection)
+			collections = append(collections, types.CollectionInfo{
+				ID:       collection.ID,
+				Metadata: collection.Metadata,
+			})
 		}
 		return collections, nil
 	}
@@ -443,21 +455,26 @@ func (g *GraphRag) getCollectionsFromSystemCollection(ctx context.Context, colle
 		}
 
 		if len(docs) > 0 && docs[0] != nil && docs[0].Content != "" {
-			collection, err := types.DeserializeCollection(docs[0].Content)
+			collection, err := types.DeserializeCollectionConfig(docs[0].Content)
 			if err != nil {
 				g.Logger.Warnf("Failed to deserialize collection from system collection for ID %s: %v", collectionID, err)
 				continue
 			}
-			collections = append(collections, collection)
+			collections = append(collections, types.CollectionInfo{
+				ID:       collection.ID,
+				Metadata: collection.Metadata,
+				Config:   collection.Config,
+			})
 		} else {
 			// Collection exists in vector store but not in system collection
 			// Create minimal collection with inferred metadata
-			collection := types.Collection{
+			collection := types.CollectionInfo{
 				ID: collectionID,
 				Metadata: map[string]interface{}{
 					"inferred": true,
 					"source":   "vector_collection",
 				},
+				Config: nil, // No config available for inferred collections
 			}
 			collections = append(collections, collection)
 		}
@@ -467,7 +484,7 @@ func (g *GraphRag) getCollectionsFromSystemCollection(ctx context.Context, colle
 }
 
 // matchesFilter checks if a collection matches the given metadata filter
-func (g *GraphRag) matchesFilter(collection types.Collection, filter map[string]interface{}) bool {
+func (g *GraphRag) matchesFilter(collection types.CollectionInfo, filter map[string]interface{}) bool {
 	// If no filter provided, match all
 	if len(filter) == 0 {
 		return true
@@ -507,14 +524,14 @@ func (g *GraphRag) ensureSystemCollection(ctx context.Context) error {
 
 	// Create system collection if not exists
 	if !exists {
-		systemConfig := &types.VectorStoreConfig{
+		systemCollectionConfig := &types.CreateCollectionOptions{
 			CollectionName: g.System,
 			Dimension:      512, // Default dimension for metadata storage
 			Distance:       types.DistanceCosine,
 			IndexType:      types.IndexTypeHNSW,
 		}
 
-		err = g.Vector.CreateCollection(ctx, systemConfig)
+		err = g.Vector.CreateCollection(ctx, systemCollectionConfig)
 		if err != nil {
 			return fmt.Errorf("failed to create system collection: %w", err)
 		}

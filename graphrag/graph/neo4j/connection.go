@@ -9,12 +9,18 @@ import (
 )
 
 // Connect establishes connection to Neo4j server
-func (s *Store) Connect(ctx context.Context, config types.GraphStoreConfig) error {
+func (s *Store) Connect(ctx context.Context, storeConfig ...types.GraphStoreConfig) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if s.connected {
 		return nil
+	}
+
+	config := s.config
+	if len(storeConfig) > 0 {
+		config = storeConfig[0]
+		s.config = config
 	}
 
 	// Validate required configuration

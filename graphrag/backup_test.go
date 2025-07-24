@@ -35,22 +35,20 @@ func TestBackupAndRestore(t *testing.T) {
 			ctx := context.Background()
 
 			// Create collection using utility from collection_test.go
-			vectorConfig := getVectorStore("backup_test", 1536)
 			// Replace + with _ to make collection name valid
 			safeName := strings.ReplaceAll(configName, "+", "_")
 			collectionID := fmt.Sprintf("backup_test_collection_%s_%d", safeName, time.Now().Unix())
-			collection := types.Collection{
+			collection := types.CollectionConfig{
 				ID: collectionID,
 				Metadata: map[string]interface{}{
 					"type": "backup_test",
 				},
-				VectorConfig: &vectorConfig,
-			}
-
-			// Add GraphStoreConfig for graph-enabled configurations
-			if strings.Contains(configName, "graph") {
-				graphConfig := getGraphStore("backup_test")
-				collection.GraphStoreConfig = &graphConfig
+				Config: &types.CreateCollectionOptions{
+					CollectionName: fmt.Sprintf("%s_vector", collectionID),
+					Dimension:      1536,
+					Distance:       types.DistanceCosine,
+					IndexType:      types.IndexTypeHNSW,
+				},
 			}
 
 			// Create collection (this will auto-connect vector store)
@@ -190,18 +188,17 @@ func TestBackupAndRestore(t *testing.T) {
 				t.Run("Restore_Collection", func(t *testing.T) {
 					// Create restore collection with different name
 					restoreCollectionID := fmt.Sprintf("restore_test_collection_%s_%d", safeName, time.Now().Unix())
-					restoreCollection := types.Collection{
+					restoreCollection := types.CollectionConfig{
 						ID: restoreCollectionID,
 						Metadata: map[string]interface{}{
 							"type": "restore_test",
 						},
-						VectorConfig: &vectorConfig,
-					}
-
-					// Add GraphStoreConfig for graph-enabled configurations
-					if strings.Contains(configName, "graph") {
-						graphConfig := getGraphStore("restore_test")
-						restoreCollection.GraphStoreConfig = &graphConfig
+						Config: &types.CreateCollectionOptions{
+							CollectionName: fmt.Sprintf("%s_vector", restoreCollectionID),
+							Dimension:      1536,
+							Distance:       types.DistanceCosine,
+							IndexType:      types.IndexTypeHNSW,
+						},
 					}
 
 					// Create restore collection
@@ -342,22 +339,20 @@ func TestBackupStoreIntegration(t *testing.T) {
 			ctx := context.Background()
 
 			// Create collection using utility from collection_test.go
-			vectorConfig := getVectorStore("backup_store_test", 1536)
 			// Replace + with _ to make collection name valid
 			safeName := strings.ReplaceAll(configName, "+", "_")
 			storeCollectionID := fmt.Sprintf("backup_store_collection_%s_%d", safeName, time.Now().Unix())
-			collection := types.Collection{
+			collection := types.CollectionConfig{
 				ID: storeCollectionID,
 				Metadata: map[string]interface{}{
 					"type": "backup_store_test",
 				},
-				VectorConfig: &vectorConfig,
-			}
-
-			// Add GraphStoreConfig for graph-enabled configurations
-			if strings.Contains(configName, "graph") {
-				graphConfig := getGraphStore("backup_store_test")
-				collection.GraphStoreConfig = &graphConfig
+				Config: &types.CreateCollectionOptions{
+					CollectionName: fmt.Sprintf("%s_vector", storeCollectionID),
+					Dimension:      1536,
+					Distance:       types.DistanceCosine,
+					IndexType:      types.IndexTypeHNSW,
+				},
 			}
 
 			// Create collection

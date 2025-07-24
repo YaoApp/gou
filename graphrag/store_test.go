@@ -34,16 +34,20 @@ func TestUpdateStoreFunctions(t *testing.T) {
 			ctx := context.Background()
 
 			// Create collection using utility from collection_test.go
-			vectorConfig := getVectorStore("update_store_test", 1536)
 			// Replace + with _ to make collection name valid
 			safeName := strings.ReplaceAll(configName, "+", "_")
 			collectionID := fmt.Sprintf("update_store_collection_%s_%d", safeName, time.Now().Unix())
-			collection := types.Collection{
+			collection := types.CollectionConfig{
 				ID: collectionID,
 				Metadata: map[string]interface{}{
 					"type": "update_store_test",
 				},
-				VectorConfig: &vectorConfig,
+				Config: &types.CreateCollectionOptions{
+					CollectionName: fmt.Sprintf("%s_vector", collectionID),
+					Dimension:      1536,
+					Distance:       types.DistanceCosine,
+					IndexType:      types.IndexTypeHNSW,
+				},
 			}
 
 			// Create collection

@@ -22,7 +22,11 @@ import (
 
 func GetTestConfigs() map[string]*Config {
 	vectorStore := qdrant.NewStore()
-	graphStore := neo4j.NewStore()
+
+	// Create graph store with proper configuration
+	graphStoreConfig := getGraphStore("test")
+	graphStore := neo4j.NewStoreWithConfig(graphStoreConfig)
+
 	logger := log.StandardLogger()
 	testStore := getRedisStore("store_redis", 6)
 
@@ -61,10 +65,6 @@ func GetTestConfigs() map[string]*Config {
 // getVectorStore returns the vector store for the given name
 func getVectorStore(name string, dimension int) types.VectorStoreConfig {
 	return types.VectorStoreConfig{
-		Dimension:      dimension,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: fmt.Sprintf("test_connection_%s", name),
 		ExtraParams: map[string]interface{}{
 			"host": getEnvOrDefault("QDRANT_TEST_HOST", "localhost"),
 			"port": getEnvOrDefault("QDRANT_TEST_PORT", "6334"),

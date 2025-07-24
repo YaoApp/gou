@@ -968,8 +968,8 @@ func runClearCollections(ctx context.Context) error {
 
 	// Create config with connection parameters in ExtraParams
 	config := types.VectorStoreConfig{
-		CollectionName: "dummy", // Required field, but not used for connection
-		Dimension:      1,       // Required field, but not used for connection
+		// CollectionName: "dummy", // Required field, but not used for connection
+		// Dimension:      1,       // Required field, but not used for connection
 		ExtraParams: map[string]interface{}{
 			"host": host,
 			"port": port,

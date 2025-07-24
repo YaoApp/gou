@@ -18,30 +18,32 @@ import (
 
 // DocumentTestEnvironment holds document test environment
 type DocumentTestEnvironment struct {
-	Store          *Store
-	Config         types.VectorStoreConfig
-	CollectionName string
+	Store            *Store
+	ConnectionConfig types.VectorStoreConfig
+	CollectionConfig types.CreateCollectionOptions
+	CollectionName   string
 }
 
 // setupDocumentTestEnvironment creates a clean test environment for document operations
 func setupDocumentTestEnvironment(t *testing.T) *DocumentTestEnvironment {
 	t.Helper()
 
-	store, baseConfig := setupConnectedStoreForCollection(t)
+	store, connectionConfig, collectionConfig := setupConnectedStoreForDocumentTest(t)
 
 	// Create unique collection name for this test (remove invalid characters)
 	testName := t.Name()
 	// Replace problematic characters that Qdrant doesn't allow
 	testName = fmt.Sprintf("%d", time.Now().UnixNano()) // Use timestamp instead to ensure uniqueness
 	collectionName := fmt.Sprintf("test_doc_%s", testName)
-	config := baseConfig
-	config.CollectionName = collectionName
+
+	// Update collection config with unique name
+	collectionConfig.CollectionName = collectionName
 
 	// Create test collection
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	err := store.CreateCollection(ctx, &config)
+	err := store.CreateCollection(ctx, &collectionConfig)
 	if err != nil {
 		// Clean up store connection before failing
 		if disconnectErr := store.Disconnect(ctx); disconnectErr != nil {
@@ -51,9 +53,10 @@ func setupDocumentTestEnvironment(t *testing.T) *DocumentTestEnvironment {
 	}
 
 	return &DocumentTestEnvironment{
-		Store:          store,
-		Config:         config,
-		CollectionName: collectionName,
+		Store:            store,
+		ConnectionConfig: connectionConfig,
+		CollectionConfig: collectionConfig,
+		CollectionName:   collectionName,
 	}
 }
 
@@ -88,14 +91,26 @@ func withDocumentTestEnvironment(t *testing.T, testFunc func(*DocumentTestEnviro
 	testFunc(env)
 }
 
-// setupConnectedStoreForDocument reuses the collection setup but for document tests
-func setupConnectedStoreForDocument(t *testing.T) (*Store, types.VectorStoreConfig) {
+// setupConnectedStoreForDocumentTest creates separated configurations for document tests
+func setupConnectedStoreForDocumentTest(t *testing.T) (*Store, types.VectorStoreConfig, types.CreateCollectionOptions) {
 	t.Helper()
-	return setupConnectedStoreForCollection(t)
+	store, collectionConfig := setupConnectedStoreForCollection(t)
+
+	// Get connection config from store
+	connectionConfig := store.GetConfig()
+
+	return store, connectionConfig, collectionConfig
+}
+
+// setupConnectedStoreForDocument reuses the collection setup but for document tests
+func setupConnectedStoreForDocument(t *testing.T) (*Store, types.CreateCollectionOptions) {
+	t.Helper()
+	store, collectionConfig := setupConnectedStoreForCollection(t)
+	return store, collectionConfig
 }
 
 // createTestCollection creates a test collection for document operations
-func createTestCollection(t *testing.T, store *Store, config types.VectorStoreConfig) {
+func createTestCollection(t *testing.T, store *Store, config types.CreateCollectionOptions) {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -340,16 +355,16 @@ func TestAddDocuments(t *testing.T) {
 		}()
 
 		collectionName := fmt.Sprintf("test_named_vectors_%d", time.Now().UnixNano())
-		config := baseConfig
-		config.CollectionName = collectionName
-		config.EnableSparseVectors = true
-		config.DenseVectorName = "dense"
-		config.SparseVectorName = "sparse"
+		collectionConfig := baseConfig
+		collectionConfig.CollectionName = collectionName
+		collectionConfig.EnableSparseVectors = true
+		collectionConfig.DenseVectorName = "dense"
+		collectionConfig.SparseVectorName = "sparse"
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		err := store.CreateCollection(ctx, &config)
+		err := store.CreateCollection(ctx, &collectionConfig)
 		if err != nil {
 			t.Fatalf("Failed to create test collection: %v", err)
 		}
@@ -381,16 +396,16 @@ func TestAddDocuments(t *testing.T) {
 		}()
 
 		collectionName := fmt.Sprintf("test_custom_vector_%d", time.Now().UnixNano())
-		config := baseConfig
-		config.CollectionName = collectionName
-		config.EnableSparseVectors = true
-		config.DenseVectorName = "custom_dense"
-		config.SparseVectorName = "custom_sparse"
+		collectionConfig := baseConfig
+		collectionConfig.CollectionName = collectionName
+		collectionConfig.EnableSparseVectors = true
+		collectionConfig.DenseVectorName = "custom_dense"
+		collectionConfig.SparseVectorName = "custom_sparse"
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		err := store.CreateCollection(ctx, &config)
+		err := store.CreateCollection(ctx, &collectionConfig)
 		if err != nil {
 			t.Fatalf("Failed to create test collection: %v", err)
 		}
@@ -450,9 +465,9 @@ func TestGetDocuments(t *testing.T) {
 
 	// Setup test collection with documents
 	collectionName := fmt.Sprintf("test_get_docs_%d", time.Now().UnixNano())
-	config := baseConfig
-	config.CollectionName = collectionName
-	createTestCollection(t, store, config)
+	collectionConfig := baseConfig
+	collectionConfig.CollectionName = collectionName
+	createTestCollection(t, store, collectionConfig)
 	defer cleanupCollection(t, store, collectionName)
 
 	// Add test documents
@@ -648,9 +663,9 @@ func TestDeleteDocuments(t *testing.T) {
 			name: "delete by IDs",
 			setup: func() (*types.DeleteDocumentOptions, []string) {
 				collectionName := fmt.Sprintf("test_delete_ids_%d", time.Now().UnixNano())
-				config := baseConfig
-				config.CollectionName = collectionName
-				createTestCollection(t, store, config)
+				collectionConfig := baseConfig
+				collectionConfig.CollectionName = collectionName
+				createTestCollection(t, store, collectionConfig)
 
 				// Add test documents
 				testDocs := createTestDocuments(5)
@@ -681,9 +696,9 @@ func TestDeleteDocuments(t *testing.T) {
 			name: "delete by filter",
 			setup: func() (*types.DeleteDocumentOptions, []string) {
 				collectionName := fmt.Sprintf("test_delete_filter_%d", time.Now().UnixNano())
-				config := baseConfig
-				config.CollectionName = collectionName
-				createTestCollection(t, store, config)
+				collectionConfig := baseConfig
+				collectionConfig.CollectionName = collectionName
+				createTestCollection(t, store, collectionConfig)
 
 				// Add test documents with specific metadata
 				testDocs := createTestDocuments(4)
@@ -720,9 +735,9 @@ func TestDeleteDocuments(t *testing.T) {
 			name: "dry run mode",
 			setup: func() (*types.DeleteDocumentOptions, []string) {
 				collectionName := fmt.Sprintf("test_delete_dryrun_%d", time.Now().UnixNano())
-				config := baseConfig
-				config.CollectionName = collectionName
-				createTestCollection(t, store, config)
+				collectionConfig := baseConfig
+				collectionConfig.CollectionName = collectionName
+				createTestCollection(t, store, collectionConfig)
 
 				// Add test documents
 				testDocs := createTestDocuments(3)
@@ -761,9 +776,9 @@ func TestDeleteDocuments(t *testing.T) {
 			name: "no IDs or filter",
 			setup: func() (*types.DeleteDocumentOptions, []string) {
 				collectionName := fmt.Sprintf("test_delete_empty_%d", time.Now().UnixNano())
-				config := baseConfig
-				config.CollectionName = collectionName
-				createTestCollection(t, store, config)
+				collectionConfig := baseConfig
+				collectionConfig.CollectionName = collectionName
+				createTestCollection(t, store, collectionConfig)
 
 				deleteOpts := &types.DeleteDocumentOptions{
 					CollectionName: collectionName,
@@ -843,9 +858,9 @@ func TestListDocuments(t *testing.T) {
 
 	// Setup test collection with documents
 	collectionName := fmt.Sprintf("test_list_docs_%d", time.Now().UnixNano())
-	config := baseConfig
-	config.CollectionName = collectionName
-	createTestCollection(t, store, config)
+	collectionConfig := baseConfig
+	collectionConfig.CollectionName = collectionName
+	createTestCollection(t, store, collectionConfig)
 	defer cleanupCollection(t, store, collectionName)
 
 	// Add test documents with different metadata for filtering
@@ -1104,9 +1119,9 @@ func TestScrollDocuments(t *testing.T) {
 
 	// Setup test collection with documents
 	collectionName := fmt.Sprintf("test_scroll_docs_%d", time.Now().UnixNano())
-	config := baseConfig
-	config.CollectionName = collectionName
-	createTestCollection(t, store, config)
+	collectionConfig := baseConfig
+	collectionConfig.CollectionName = collectionName
+	createTestCollection(t, store, collectionConfig)
 	defer cleanupCollection(t, store, collectionName)
 
 	// Add test documents
@@ -1310,9 +1325,9 @@ func TestDocumentOperationsIntegration(t *testing.T) {
 	}()
 
 	collectionName := fmt.Sprintf("test_integration_%d", time.Now().UnixNano())
-	config := baseConfig
-	config.CollectionName = collectionName
-	createTestCollection(t, store, config)
+	collectionConfig := baseConfig
+	collectionConfig.CollectionName = collectionName
+	createTestCollection(t, store, collectionConfig)
 	defer cleanupCollection(t, store, collectionName)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -1418,9 +1433,9 @@ func BenchmarkAddDocuments(b *testing.B) {
 	}()
 
 	collectionName := fmt.Sprintf("bench_add_docs_%d", time.Now().UnixNano())
-	config := baseConfig
-	config.CollectionName = collectionName
-	createTestCollection(&testing.T{}, store, config)
+	collectionConfig := baseConfig
+	collectionConfig.CollectionName = collectionName
+	createTestCollection(&testing.T{}, store, collectionConfig)
 	defer cleanupCollection(&testing.T{}, store, collectionName)
 
 	// Test with different document counts
@@ -1480,9 +1495,9 @@ func BenchmarkGetDocuments(b *testing.B) {
 	}()
 
 	collectionName := fmt.Sprintf("bench_get_docs_%d", time.Now().UnixNano())
-	config := baseConfig
-	config.CollectionName = collectionName
-	createTestCollection(&testing.T{}, store, config)
+	collectionConfig := baseConfig
+	collectionConfig.CollectionName = collectionName
+	createTestCollection(&testing.T{}, store, collectionConfig)
 	defer cleanupCollection(&testing.T{}, store, collectionName)
 
 	// Setup test data
@@ -1545,9 +1560,9 @@ func BenchmarkListDocuments(b *testing.B) {
 	}()
 
 	collectionName := fmt.Sprintf("bench_list_docs_%d", time.Now().UnixNano())
-	config := baseConfig
-	config.CollectionName = collectionName
-	createTestCollection(&testing.T{}, store, config)
+	collectionConfig := baseConfig
+	collectionConfig.CollectionName = collectionName
+	createTestCollection(&testing.T{}, store, collectionConfig)
 	defer cleanupCollection(&testing.T{}, store, collectionName)
 
 	// Setup test data
@@ -1609,9 +1624,9 @@ func BenchmarkScrollDocuments(b *testing.B) {
 	}()
 
 	collectionName := fmt.Sprintf("bench_scroll_docs_%d", time.Now().UnixNano())
-	config := baseConfig
-	config.CollectionName = collectionName
-	createTestCollection(&testing.T{}, store, config)
+	collectionConfig := baseConfig
+	collectionConfig.CollectionName = collectionName
+	createTestCollection(&testing.T{}, store, collectionConfig)
 	defer cleanupCollection(&testing.T{}, store, collectionName)
 
 	// Setup test data
@@ -1679,9 +1694,9 @@ func TestDocumentMemoryLeakDetection(t *testing.T) {
 	}()
 
 	collectionName := fmt.Sprintf("test_memory_leak_%d", time.Now().UnixNano())
-	config := baseConfig
-	config.CollectionName = collectionName
-	createTestCollection(t, store, config)
+	collectionConfig := baseConfig
+	collectionConfig.CollectionName = collectionName
+	createTestCollection(t, store, collectionConfig)
 	defer cleanupCollection(t, store, collectionName)
 
 	// Force garbage collection and get initial memory stats
@@ -1805,9 +1820,9 @@ func TestConcurrentDocumentOperations(t *testing.T) {
 	}()
 
 	collectionName := fmt.Sprintf("test_concurrent_%d", time.Now().UnixNano())
-	config := baseConfig
-	config.CollectionName = collectionName
-	createTestCollection(t, store, config)
+	collectionConfig := baseConfig
+	collectionConfig.CollectionName = collectionName
+	createTestCollection(t, store, collectionConfig)
 	defer cleanupCollection(t, store, collectionName)
 
 	const numGoroutines = 10
@@ -1913,9 +1928,9 @@ func TestDocumentOperationsEdgeCases(t *testing.T) {
 	}()
 
 	collectionName := fmt.Sprintf("test_edge_cases_%d", time.Now().UnixNano())
-	config := baseConfig
-	config.CollectionName = collectionName
-	createTestCollection(t, store, config)
+	collectionConfig := baseConfig
+	collectionConfig.CollectionName = collectionName
+	createTestCollection(t, store, collectionConfig)
 	defer cleanupCollection(t, store, collectionName)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -2870,11 +2885,11 @@ func TestCollectionUsesNamedVectors(t *testing.T) {
 	t.Run("traditional collection returns false", func(t *testing.T) {
 		// Create traditional collection (no sparse vectors)
 		collectionName := fmt.Sprintf("test_traditional_%d", time.Now().UnixNano())
-		config := baseConfig
-		config.CollectionName = collectionName
-		config.EnableSparseVectors = false
+		collectionConfig := baseConfig
+		collectionConfig.CollectionName = collectionName
+		collectionConfig.EnableSparseVectors = false
 
-		err := store.CreateCollection(ctx, &config)
+		err := store.CreateCollection(ctx, &collectionConfig)
 		if err != nil {
 			t.Fatalf("Failed to create traditional collection: %v", err)
 		}
@@ -2892,13 +2907,13 @@ func TestCollectionUsesNamedVectors(t *testing.T) {
 	t.Run("named vector collection returns true", func(t *testing.T) {
 		// Create collection with sparse vectors (named vectors)
 		collectionName := fmt.Sprintf("test_named_%d", time.Now().UnixNano())
-		config := baseConfig
-		config.CollectionName = collectionName
-		config.EnableSparseVectors = true
-		config.DenseVectorName = "dense"
-		config.SparseVectorName = "sparse"
+		collectionConfig := baseConfig
+		collectionConfig.CollectionName = collectionName
+		collectionConfig.EnableSparseVectors = true
+		collectionConfig.DenseVectorName = "dense"
+		collectionConfig.SparseVectorName = "sparse"
 
-		err := store.CreateCollection(ctx, &config)
+		err := store.CreateCollection(ctx, &collectionConfig)
 		if err != nil {
 			t.Fatalf("Failed to create named vector collection: %v", err)
 		}

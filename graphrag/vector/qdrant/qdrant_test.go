@@ -22,9 +22,10 @@ type TestConfig struct {
 
 // TestEnvironment holds test environment data
 type TestEnvironment struct {
-	Store           *Store
-	Config          types.VectorStoreConfig
-	TestCollections []string
+	Store            *Store
+	ConnectionConfig types.VectorStoreConfig
+	CollectionConfig types.CreateCollectionOptions
+	TestCollections  []string
 }
 
 // getTestConfig returns test configuration from environment variables
@@ -55,14 +56,9 @@ func setupTestEnvironment(t *testing.T) *TestEnvironment {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: fmt.Sprintf("test_collection_%d", time.Now().UnixNano()),
-		M:              16,
-		EfConstruction: 100,
-		Timeout:        30,
+	// Connection configuration
+	connectionConfig := types.VectorStoreConfig{
+		Timeout: 30,
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -70,24 +66,35 @@ func setupTestEnvironment(t *testing.T) *TestEnvironment {
 	}
 
 	if config.APIKey != "" {
-		storeConfig.ExtraParams["api_key"] = config.APIKey
+		connectionConfig.ExtraParams["api_key"] = config.APIKey
 	}
 	if config.Username != "" {
-		storeConfig.ExtraParams["username"] = config.Username
+		connectionConfig.ExtraParams["username"] = config.Username
 	}
 	if config.Password != "" {
-		storeConfig.ExtraParams["password"] = config.Password
+		connectionConfig.ExtraParams["password"] = config.Password
 	}
 
-	err := store.Connect(ctx, storeConfig)
+	// Collection configuration
+	collectionConfig := types.CreateCollectionOptions{
+		Dimension:      128,
+		Distance:       types.DistanceCosine,
+		IndexType:      types.IndexTypeHNSW,
+		CollectionName: fmt.Sprintf("test_collection_%d", time.Now().UnixNano()),
+		M:              16,
+		EfConstruction: 100,
+	}
+
+	err := store.Connect(ctx, connectionConfig)
 	if err != nil {
 		t.Skipf("Failed to connect to Qdrant server: %v", err)
 	}
 
 	env := &TestEnvironment{
-		Store:           store,
-		Config:          storeConfig,
-		TestCollections: make([]string, 0),
+		Store:            store,
+		ConnectionConfig: connectionConfig,
+		CollectionConfig: collectionConfig,
+		TestCollections:  make([]string, 0),
 	}
 
 	return env
@@ -140,12 +147,12 @@ func TestNewStore(t *testing.T) {
 
 	// Verify default config
 	config := store.GetConfig()
-	if config.Dimension != 0 {
-		t.Errorf("Expected dimension 0, got %d", config.Dimension)
+	if config.Timeout != 0 {
+		t.Errorf("Expected timeout 0, got %d", config.Timeout)
 	}
 
-	if config.CollectionName != "" {
-		t.Errorf("Expected empty collection name, got %s", config.CollectionName)
+	if config.ExtraParams != nil {
+		t.Errorf("Expected nil extra params, got %v", config.ExtraParams)
 	}
 }
 
@@ -176,17 +183,8 @@ func TestGetConfig(t *testing.T) {
 		config := store.GetConfig()
 
 		// Should return zero values for unconnected store
-		if config.Dimension != 0 {
-			t.Errorf("Expected dimension 0, got %d", config.Dimension)
-		}
-		if config.CollectionName != "" {
-			t.Errorf("Expected empty collection name, got %s", config.CollectionName)
-		}
-		if config.Distance != "" {
-			t.Errorf("Expected empty distance, got %s", config.Distance)
-		}
-		if config.IndexType != "" {
-			t.Errorf("Expected empty index type, got %s", config.IndexType)
+		if config.Timeout != 0 {
+			t.Errorf("Expected timeout 0, got %d", config.Timeout)
 		}
 		if config.ExtraParams != nil {
 			t.Errorf("Expected nil extra params, got %v", config.ExtraParams)
@@ -197,27 +195,9 @@ func TestGetConfig(t *testing.T) {
 		withTestEnvironment(t, func(env *TestEnvironment) {
 			config := env.Store.GetConfig()
 
-			// Should return the configured values
-			if config.Dimension != env.Config.Dimension {
-				t.Errorf("Expected dimension %d, got %d", env.Config.Dimension, config.Dimension)
-			}
-			if config.Distance != env.Config.Distance {
-				t.Errorf("Expected distance %v, got %v", env.Config.Distance, config.Distance)
-			}
-			if config.IndexType != env.Config.IndexType {
-				t.Errorf("Expected index type %v, got %v", env.Config.IndexType, config.IndexType)
-			}
-			if config.CollectionName != env.Config.CollectionName {
-				t.Errorf("Expected collection name %s, got %s", env.Config.CollectionName, config.CollectionName)
-			}
-			if config.M != env.Config.M {
-				t.Errorf("Expected M %d, got %d", env.Config.M, config.M)
-			}
-			if config.EfConstruction != env.Config.EfConstruction {
-				t.Errorf("Expected EfConstruction %d, got %d", env.Config.EfConstruction, config.EfConstruction)
-			}
-			if config.Timeout != env.Config.Timeout {
-				t.Errorf("Expected Timeout %d, got %d", env.Config.Timeout, config.Timeout)
+			// Should return the configured connection values
+			if config.Timeout != env.ConnectionConfig.Timeout {
+				t.Errorf("Expected Timeout %d, got %d", env.ConnectionConfig.Timeout, config.Timeout)
 			}
 
 			// Check ExtraParams
@@ -432,11 +412,7 @@ func TestMemoryLeakWithConnection(t *testing.T) {
 	}
 
 	config := getTestConfig()
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "test_memory_leak",
+	connectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -458,7 +434,7 @@ func TestMemoryLeakWithConnection(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			err := store.Connect(ctx, storeConfig)
+			err := store.Connect(ctx, connectionConfig)
 			if err != nil {
 				// Skip if connection fails, but don't fail the test
 				return

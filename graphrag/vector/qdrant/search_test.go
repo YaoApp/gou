@@ -566,11 +566,8 @@ func getOrCreateSearchTestEnvironment(t *testing.T) *SearchTestEnvironment {
 		store := NewStore()
 		testConfig := getTestConfig()
 
-		// Create VectorStoreConfig from TestConfig
+		// Create VectorStoreConfig from TestConfig (connection only)
 		config := types.VectorStoreConfig{
-			Dimension: 128, // Default dimension, will be updated per collection
-			Distance:  types.DistanceCosine,
-			IndexType: types.IndexTypeHNSW,
 			ExtraParams: map[string]interface{}{
 				"host":     testConfig.Host,
 				"port":     testConfig.Port,
@@ -621,15 +618,18 @@ func getOrCreateTestDataSet(t *testing.T, language string) *TestDataSet {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	// Update config dimension for this collection and enable sparse vectors for hybrid search
-	config := env.Config
-	config.Dimension = dataSet.VectorDim
-	config.CollectionName = dataSet.CollectionName
-	config.EnableSparseVectors = true  // Enable sparse vectors for hybrid search support
-	config.DenseVectorName = "dense"   // Named vector for dense embeddings
-	config.SparseVectorName = "sparse" // Named vector for sparse vectors (BM25, TF-IDF, etc.)
+	// Create collection configuration with sparse vectors for hybrid search
+	collectionConfig := types.CreateCollectionOptions{
+		Dimension:           dataSet.VectorDim,
+		CollectionName:      dataSet.CollectionName,
+		Distance:            types.DistanceCosine,
+		IndexType:           types.IndexTypeHNSW,
+		EnableSparseVectors: true,     // Enable sparse vectors for hybrid search support
+		DenseVectorName:     "dense",  // Named vector for dense embeddings
+		SparseVectorName:    "sparse", // Named vector for sparse vectors (BM25, TF-IDF, etc.)
+	}
 
-	if err := env.Store.CreateCollection(ctx, &config); err != nil {
+	if err := env.Store.CreateCollection(ctx, &collectionConfig); err != nil {
 		t.Fatalf("Failed to create collection %s: %v", dataSet.CollectionName, err)
 	}
 

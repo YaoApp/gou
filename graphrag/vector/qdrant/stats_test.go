@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/yaoapp/gou/graphrag/types"
 )
 
 // TestGetStats tests the GetStats function
@@ -732,11 +734,15 @@ func TestStatsEdgeCases(t *testing.T) {
 		emptyCollectionName := fmt.Sprintf("test_empty_%d", time.Now().UnixNano())
 
 		// Create collection config
-		config := env.Config
-		config.CollectionName = emptyCollectionName
+		collectionConfig := types.CreateCollectionOptions{
+			CollectionName: emptyCollectionName,
+			Dimension:      128,
+			Distance:       types.DistanceCosine,
+			IndexType:      types.IndexTypeHNSW,
+		}
 
 		// Create empty collection
-		err := env.Store.CreateCollection(ctx, &config)
+		err := env.Store.CreateCollection(ctx, &collectionConfig)
 		if err != nil {
 			t.Skipf("Failed to create empty collection: %v", err)
 		}
@@ -770,11 +776,15 @@ func TestStatsEdgeCases(t *testing.T) {
 		emptyCollectionName := fmt.Sprintf("test_empty_search_%d", time.Now().UnixNano())
 
 		// Create collection config
-		config := env.Config
-		config.CollectionName = emptyCollectionName
+		collectionConfig := types.CreateCollectionOptions{
+			CollectionName: emptyCollectionName,
+			Dimension:      128,
+			Distance:       types.DistanceCosine,
+			IndexType:      types.IndexTypeHNSW,
+		}
 
 		// Create empty collection
-		err := env.Store.CreateCollection(ctx, &config)
+		err := env.Store.CreateCollection(ctx, &collectionConfig)
 		if err != nil {
 			t.Skipf("Failed to create empty collection: %v", err)
 		}

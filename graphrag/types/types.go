@@ -501,12 +501,29 @@ type SearchResult struct {
 	MinScore    float64                 `json:"min_score,omitempty"`   // Lowest score in results
 }
 
-// VectorStoreConfig represents configuration for vector store
+// VectorStoreConfig represents configuration for vector store connection
 type VectorStoreConfig struct {
-	// Vector Configuration
-	Dimension int            `json:"dimension"`  // Vector dimension (e.g., 1536 for OpenAI embeddings)
-	Distance  DistanceMetric `json:"distance"`   // Distance metric
-	IndexType IndexType      `json:"index_type"` // Index type
+	// Database Connection Configuration
+	DatabaseURL    string                 `json:"database_url,omitempty"`    // Database connection URL
+	ConnectionPool int                    `json:"connection_pool,omitempty"` // Connection pool size
+	Timeout        int                    `json:"timeout,omitempty"`         // Operation timeout in seconds
+	ExtraParams    map[string]interface{} `json:"extra_params,omitempty"`    // Database-specific parameters (host, port, api_key, etc.)
+}
+
+// Validate validates the vector store connection configuration
+func (c *VectorStoreConfig) Validate() error {
+	// Basic validation for connection config
+	// Most validation will be database-specific and handled by individual drivers
+	return nil
+}
+
+// CreateCollectionOptions represents configuration for creating a collection
+type CreateCollectionOptions struct {
+	// Collection Basic Configuration
+	CollectionName string         `json:"collection_name"` // Collection/Table name
+	Dimension      int            `json:"dimension"`       // Vector dimension (e.g., 1536 for OpenAI embeddings)
+	Distance       DistanceMetric `json:"distance"`        // Distance metric
+	IndexType      IndexType      `json:"index_type"`      // Index type
 
 	// Index Parameters (for HNSW)
 	M              int `json:"m,omitempty"`               // Number of bidirectional links for each node (HNSW)
@@ -523,18 +540,14 @@ type VectorStoreConfig struct {
 	SparseVectorName    string `json:"sparse_vector_name,omitempty"`    // Named vector for sparse vectors (default: "sparse")
 
 	// Storage Configuration
-	CollectionName string `json:"collection_name"`        // Collection/Table name
-	PersistPath    string `json:"persist_path,omitempty"` // Path for persistent storage
+	PersistPath string `json:"persist_path,omitempty"` // Path for persistent storage
 
-	// Database-specific settings
-	DatabaseURL    string                 `json:"database_url,omitempty"`    // Database connection URL
-	ConnectionPool int                    `json:"connection_pool,omitempty"` // Connection pool size
-	Timeout        int                    `json:"timeout,omitempty"`         // Operation timeout in seconds
-	ExtraParams    map[string]interface{} `json:"extra_params,omitempty"`    // Database-specific parameters
+	// Collection-specific settings
+	ExtraParams map[string]interface{} `json:"extra_params,omitempty"` // Collection-specific parameters
 }
 
-// Validate validates the vector store configuration
-func (c *VectorStoreConfig) Validate() error {
+// Validate validates the collection creation configuration
+func (c *CreateCollectionOptions) Validate() error {
 	if !c.IndexType.IsValid() {
 		return fmt.Errorf("invalid index type: %s, supported types: %v", c.IndexType, GetSupportedIndexTypes())
 	}
@@ -2055,10 +2068,25 @@ type QueryOptions struct {
 
 // Collection represents a collection of documents
 type Collection struct {
-	ID               string                 `json:"id"`
-	Metadata         map[string]interface{} `json:"metadata"`
-	VectorConfig     *VectorStoreConfig     `json:"vector_config"`
-	GraphStoreConfig *GraphStoreConfig      `json:"graph_store_config"`
+	ID               string                   `json:"id"`
+	Metadata         map[string]interface{}   `json:"metadata"`
+	VectorConfig     *VectorStoreConfig       `json:"vector_config"`     // Connection configuration
+	CollectionConfig *CreateCollectionOptions `json:"collection_config"` // Collection creation configuration
+	GraphStoreConfig *GraphStoreConfig        `json:"graph_store_config"`
+}
+
+// CollectionInfo represents the information of a collection
+type CollectionInfo struct {
+	ID       string                   `json:"id"`
+	Metadata map[string]interface{}   `json:"metadata"`
+	Config   *CreateCollectionOptions `json:"config"`
+}
+
+// CollectionConfig represents the configuration for a collection
+type CollectionConfig struct {
+	ID       string                   `json:"id"`
+	Metadata map[string]interface{}   `json:"metadata"`
+	Config   *CreateCollectionOptions `json:"config"`
 }
 
 // Segment represents a segment of a document

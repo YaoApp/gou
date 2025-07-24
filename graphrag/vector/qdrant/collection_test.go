@@ -30,32 +30,37 @@ func contains(s, substr string) bool {
 }
 
 // setupConnectedStoreForCollection creates a connected store for collection tests
-func setupConnectedStoreForCollection(t *testing.T) (*Store, types.VectorStoreConfig) {
+func setupConnectedStoreForCollection(t *testing.T) (*Store, types.CreateCollectionOptions) {
 	t.Helper()
 
 	config := getTestConfig()
-	store := NewStore()
 
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: fmt.Sprintf("test_collection_%d", time.Now().UnixNano()),
+	// Connection configuration (only connection-related settings)
+	connectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
 		},
 	}
+	store := NewStoreWithConfig(connectionConfig)
+
+	// Collection configuration (only collection-related settings)
+	collectionConfig := types.CreateCollectionOptions{
+		Dimension:      128,
+		Distance:       types.DistanceCosine,
+		IndexType:      types.IndexTypeHNSW,
+		CollectionName: fmt.Sprintf("test_collection_%d", time.Now().UnixNano()),
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	err := store.Connect(ctx, storeConfig)
+	err := store.Connect(ctx)
 	if err != nil {
 		t.Skipf("Failed to connect to Qdrant server: %v", err)
 	}
 
-	return store, storeConfig
+	return store, collectionConfig
 }
 
 // cleanupCollection removes test collection
@@ -85,17 +90,17 @@ func TestCreateCollection(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		setup       func() (*Store, types.VectorStoreConfig)
-		config      types.VectorStoreConfig
+		setup       func() (*Store, types.CreateCollectionOptions)
+		config      types.CreateCollectionOptions
 		wantErr     bool
 		errContains string
 	}{
 		{
 			name: "successful creation with cosine distance",
-			setup: func() (*Store, types.VectorStoreConfig) {
+			setup: func() (*Store, types.CreateCollectionOptions) {
 				return store, baseConfig
 			},
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:      128,
 				Distance:       types.DistanceCosine,
 				IndexType:      types.IndexTypeHNSW,
@@ -105,10 +110,10 @@ func TestCreateCollection(t *testing.T) {
 		},
 		{
 			name: "successful creation with euclidean distance",
-			setup: func() (*Store, types.VectorStoreConfig) {
+			setup: func() (*Store, types.CreateCollectionOptions) {
 				return store, baseConfig
 			},
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:      64,
 				Distance:       types.DistanceEuclidean,
 				IndexType:      types.IndexTypeHNSW,
@@ -118,10 +123,10 @@ func TestCreateCollection(t *testing.T) {
 		},
 		{
 			name: "successful creation with dot distance",
-			setup: func() (*Store, types.VectorStoreConfig) {
+			setup: func() (*Store, types.CreateCollectionOptions) {
 				return store, baseConfig
 			},
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:      256,
 				Distance:       types.DistanceDot,
 				IndexType:      types.IndexTypeHNSW,
@@ -131,10 +136,10 @@ func TestCreateCollection(t *testing.T) {
 		},
 		{
 			name: "successful creation with manhattan distance",
-			setup: func() (*Store, types.VectorStoreConfig) {
+			setup: func() (*Store, types.CreateCollectionOptions) {
 				return store, baseConfig
 			},
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:      32,
 				Distance:       types.DistanceManhattan,
 				IndexType:      types.IndexTypeHNSW,
@@ -144,10 +149,10 @@ func TestCreateCollection(t *testing.T) {
 		},
 		{
 			name: "successful creation with HNSW parameters",
-			setup: func() (*Store, types.VectorStoreConfig) {
+			setup: func() (*Store, types.CreateCollectionOptions) {
 				return store, baseConfig
 			},
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:      128,
 				Distance:       types.DistanceCosine,
 				IndexType:      types.IndexTypeHNSW,
@@ -159,10 +164,10 @@ func TestCreateCollection(t *testing.T) {
 		},
 		{
 			name: "successful creation with sparse vectors enabled",
-			setup: func() (*Store, types.VectorStoreConfig) {
+			setup: func() (*Store, types.CreateCollectionOptions) {
 				return store, baseConfig
 			},
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:           128,
 				Distance:            types.DistanceCosine,
 				IndexType:           types.IndexTypeHNSW,
@@ -173,10 +178,10 @@ func TestCreateCollection(t *testing.T) {
 		},
 		{
 			name: "successful creation with sparse vectors and custom names",
-			setup: func() (*Store, types.VectorStoreConfig) {
+			setup: func() (*Store, types.CreateCollectionOptions) {
 				return store, baseConfig
 			},
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:           256,
 				Distance:            types.DistanceDot,
 				IndexType:           types.IndexTypeHNSW,
@@ -189,10 +194,10 @@ func TestCreateCollection(t *testing.T) {
 		},
 		{
 			name: "successful creation with sparse vectors and HNSW parameters",
-			setup: func() (*Store, types.VectorStoreConfig) {
+			setup: func() (*Store, types.CreateCollectionOptions) {
 				return store, baseConfig
 			},
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:           512,
 				Distance:            types.DistanceEuclidean,
 				IndexType:           types.IndexTypeHNSW,
@@ -207,10 +212,10 @@ func TestCreateCollection(t *testing.T) {
 		},
 		{
 			name: "not connected store",
-			setup: func() (*Store, types.VectorStoreConfig) {
+			setup: func() (*Store, types.CreateCollectionOptions) {
 				return NewStore(), baseConfig
 			},
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:      128,
 				Distance:       types.DistanceCosine,
 				IndexType:      types.IndexTypeHNSW,
@@ -265,13 +270,13 @@ func TestCreateCollectionEdgeCases(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		config      types.VectorStoreConfig
+		config      types.CreateCollectionOptions
 		wantErr     bool
 		errContains string
 	}{
 		{
 			name: "unknown distance metric - should use default cosine",
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:      128,
 				Distance:       types.DistanceMetric("unknown_distance"), // This will hit the default case
 				IndexType:      types.IndexTypeHNSW,
@@ -281,7 +286,7 @@ func TestCreateCollectionEdgeCases(t *testing.T) {
 		},
 		{
 			name: "non-HNSW index type - should not set HNSW config",
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:      128,
 				Distance:       types.DistanceCosine,
 				IndexType:      types.IndexTypeFlat, // This will not trigger HNSW config creation
@@ -291,7 +296,7 @@ func TestCreateCollectionEdgeCases(t *testing.T) {
 		},
 		{
 			name: "HNSW with zero M parameter",
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:      128,
 				Distance:       types.DistanceCosine,
 				IndexType:      types.IndexTypeHNSW,
@@ -303,7 +308,7 @@ func TestCreateCollectionEdgeCases(t *testing.T) {
 		},
 		{
 			name: "HNSW with zero EfConstruction parameter",
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:      128,
 				Distance:       types.DistanceCosine,
 				IndexType:      types.IndexTypeHNSW,
@@ -1060,34 +1065,40 @@ func TestCollectionConcurrency(t *testing.T) {
 
 func BenchmarkCreateCollection(b *testing.B) {
 	config := getTestConfig()
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "bench_create",
+
+	// Connection configuration
+	connectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
 		},
 	}
 
+	// Base collection configuration
+	baseCollectionConfig := types.CreateCollectionOptions{
+		Dimension:      128,
+		Distance:       types.DistanceCosine,
+		IndexType:      types.IndexTypeHNSW,
+		CollectionName: "bench_create",
+	}
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Create and connect for each iteration
-		store := NewStore()
+		store := NewStoreWithConfig(connectionConfig)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		err := store.Connect(ctx, storeConfig)
+		err := store.Connect(ctx)
 		cancel()
 		if err != nil {
 			b.Skipf("Failed to connect to Qdrant server: %v", err)
 		}
 
 		// Create unique collection for each iteration
-		config := storeConfig
-		config.CollectionName = fmt.Sprintf("bench_create_%d_%d", i, time.Now().UnixNano())
+		collectionConfig := baseCollectionConfig
+		collectionConfig.CollectionName = fmt.Sprintf("bench_create_%d_%d", i, time.Now().UnixNano())
 
 		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-		err = store.CreateCollection(ctx, &config)
+		err = store.CreateCollection(ctx, &collectionConfig)
 		cancel()
 		if err != nil {
 			b.Errorf("CreateCollection failed: %v", err)
@@ -1095,7 +1106,7 @@ func BenchmarkCreateCollection(b *testing.B) {
 
 		// Cleanup
 		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-		_ = store.DropCollection(ctx, config.CollectionName)
+		_ = store.DropCollection(ctx, collectionConfig.CollectionName)
 		_ = store.Disconnect(ctx)
 		cancel()
 	}
@@ -1103,11 +1114,9 @@ func BenchmarkCreateCollection(b *testing.B) {
 
 func BenchmarkListCollections(b *testing.B) {
 	config := getTestConfig()
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "bench_list",
+
+	// Connection configuration
+	connectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -1115,9 +1124,9 @@ func BenchmarkListCollections(b *testing.B) {
 	}
 
 	// Setup connected store
-	store := NewStore()
+	store := NewStoreWithConfig(connectionConfig)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	err := store.Connect(ctx, storeConfig)
+	err := store.Connect(ctx)
 	cancel()
 	if err != nil {
 		b.Skipf("Failed to connect to Qdrant server: %v", err)
@@ -1141,28 +1150,33 @@ func BenchmarkListCollections(b *testing.B) {
 
 func BenchmarkCollectionExists(b *testing.B) {
 	config := getTestConfig()
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: fmt.Sprintf("bench_exists_%d", time.Now().UnixNano()),
+	// Connection configuration
+	connectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
 		},
 	}
 
+	// Collection configuration
+	collectionConfig := types.CreateCollectionOptions{
+		Dimension:      128,
+		Distance:       types.DistanceCosine,
+		IndexType:      types.IndexTypeHNSW,
+		CollectionName: fmt.Sprintf("bench_exists_%d", time.Now().UnixNano()),
+	}
+
 	// Setup connected store with test collection
-	store := NewStore()
+	store := NewStoreWithConfig(connectionConfig)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	err := store.Connect(ctx, storeConfig)
+	err := store.Connect(ctx)
 	cancel()
 	if err != nil {
 		b.Skipf("Failed to connect to Qdrant server: %v", err)
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	err = store.CreateCollection(ctx, &storeConfig)
+	err = store.CreateCollection(ctx, &collectionConfig)
 	cancel()
 	if err != nil {
 		b.Skipf("Failed to create test collection: %v", err)
@@ -1170,7 +1184,7 @@ func BenchmarkCollectionExists(b *testing.B) {
 
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		_ = store.DropCollection(ctx, storeConfig.CollectionName)
+		_ = store.DropCollection(ctx, collectionConfig.CollectionName)
 		_ = store.Disconnect(ctx)
 		cancel()
 	}()
@@ -1178,7 +1192,7 @@ func BenchmarkCollectionExists(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		_, err := store.CollectionExists(ctx, storeConfig.CollectionName)
+		_, err := store.CollectionExists(ctx, collectionConfig.CollectionName)
 		cancel()
 		if err != nil {
 			b.Errorf("CollectionExists failed: %v", err)
@@ -1188,28 +1202,34 @@ func BenchmarkCollectionExists(b *testing.B) {
 
 func BenchmarkDescribeCollection(b *testing.B) {
 	config := getTestConfig()
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: fmt.Sprintf("bench_describe_%d", time.Now().UnixNano()),
+
+	// Connection configuration
+	connectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
 		},
 	}
 
+	// Collection configuration
+	collectionConfig := types.CreateCollectionOptions{
+		Dimension:      128,
+		Distance:       types.DistanceCosine,
+		IndexType:      types.IndexTypeHNSW,
+		CollectionName: fmt.Sprintf("bench_describe_%d", time.Now().UnixNano()),
+	}
+
 	// Setup connected store with test collection
-	store := NewStore()
+	store := NewStoreWithConfig(connectionConfig)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	err := store.Connect(ctx, storeConfig)
+	err := store.Connect(ctx)
 	cancel()
 	if err != nil {
 		b.Skipf("Failed to connect to Qdrant server: %v", err)
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	err = store.CreateCollection(ctx, &storeConfig)
+	err = store.CreateCollection(ctx, &collectionConfig)
 	cancel()
 	if err != nil {
 		b.Skipf("Failed to create test collection: %v", err)
@@ -1217,7 +1237,7 @@ func BenchmarkDescribeCollection(b *testing.B) {
 
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		_ = store.DropCollection(ctx, storeConfig.CollectionName)
+		_ = store.DropCollection(ctx, collectionConfig.CollectionName)
 		_ = store.Disconnect(ctx)
 		cancel()
 	}()
@@ -1225,7 +1245,7 @@ func BenchmarkDescribeCollection(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		_, err := store.DescribeCollection(ctx, storeConfig.CollectionName)
+		_, err := store.DescribeCollection(ctx, collectionConfig.CollectionName)
 		cancel()
 		if err != nil {
 			b.Errorf("DescribeCollection failed: %v", err)
@@ -1235,28 +1255,34 @@ func BenchmarkDescribeCollection(b *testing.B) {
 
 func BenchmarkGetLoadState(b *testing.B) {
 	config := getTestConfig()
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: fmt.Sprintf("bench_load_state_%d", time.Now().UnixNano()),
+
+	// Connection configuration
+	connectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
 		},
 	}
 
+	// Collection configuration
+	collectionConfig := types.CreateCollectionOptions{
+		Dimension:      128,
+		Distance:       types.DistanceCosine,
+		IndexType:      types.IndexTypeHNSW,
+		CollectionName: fmt.Sprintf("bench_load_state_%d", time.Now().UnixNano()),
+	}
+
 	// Setup connected store with test collection
-	store := NewStore()
+	store := NewStoreWithConfig(connectionConfig)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	err := store.Connect(ctx, storeConfig)
+	err := store.Connect(ctx)
 	cancel()
 	if err != nil {
 		b.Skipf("Failed to connect to Qdrant server: %v", err)
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	err = store.CreateCollection(ctx, &storeConfig)
+	err = store.CreateCollection(ctx, &collectionConfig)
 	cancel()
 	if err != nil {
 		b.Skipf("Failed to create test collection: %v", err)
@@ -1264,7 +1290,7 @@ func BenchmarkGetLoadState(b *testing.B) {
 
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		_ = store.DropCollection(ctx, storeConfig.CollectionName)
+		_ = store.DropCollection(ctx, collectionConfig.CollectionName)
 		_ = store.Disconnect(ctx)
 		cancel()
 	}()
@@ -1272,7 +1298,7 @@ func BenchmarkGetLoadState(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		_, err := store.GetLoadState(ctx, storeConfig.CollectionName)
+		_, err := store.GetLoadState(ctx, collectionConfig.CollectionName)
 		cancel()
 		if err != nil {
 			b.Errorf("GetLoadState failed: %v", err)
@@ -1282,11 +1308,7 @@ func BenchmarkGetLoadState(b *testing.B) {
 
 func BenchmarkLoadCollection(b *testing.B) {
 	config := getTestConfig()
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "bench_load",
+	connectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -1294,9 +1316,9 @@ func BenchmarkLoadCollection(b *testing.B) {
 	}
 
 	// Setup connected store
-	store := NewStore()
+	store := NewStoreWithConfig(connectionConfig)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	err := store.Connect(ctx, storeConfig)
+	err := store.Connect(ctx)
 	cancel()
 	if err != nil {
 		b.Skipf("Failed to connect to Qdrant server: %v", err)
@@ -1320,11 +1342,7 @@ func BenchmarkLoadCollection(b *testing.B) {
 
 func BenchmarkReleaseCollection(b *testing.B) {
 	config := getTestConfig()
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "bench_release",
+	connectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -1332,9 +1350,9 @@ func BenchmarkReleaseCollection(b *testing.B) {
 	}
 
 	// Setup connected store
-	store := NewStore()
+	store := NewStoreWithConfig(connectionConfig)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	err := store.Connect(ctx, storeConfig)
+	err := store.Connect(ctx)
 	cancel()
 	if err != nil {
 		b.Skipf("Failed to connect to Qdrant server: %v", err)
@@ -1367,11 +1385,7 @@ func TestCollectionMemoryLeakDetection(t *testing.T) {
 	}
 
 	config := getTestConfig()
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "test_collection_memory_leak",
+	connectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -1388,23 +1402,27 @@ func TestCollectionMemoryLeakDetection(t *testing.T) {
 	// Perform operations that might leak memory
 	for i := 0; i < 100; i++ {
 		func() {
-			store := NewStore()
+			store := NewStoreWithConfig(connectionConfig)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 
-			err := store.Connect(ctx, storeConfig)
+			err := store.Connect(ctx)
 			if err != nil {
 				// Skip if connection fails, but don't fail the test
 				return
 			}
 
 			// Create unique collection
-			config := storeConfig
-			config.CollectionName = fmt.Sprintf("test_memory_leak_%d", i)
+			collectionConfig := types.CreateCollectionOptions{
+				CollectionName: fmt.Sprintf("test_memory_leak_%d", i),
+				Dimension:      128,
+				Distance:       types.DistanceCosine,
+				IndexType:      types.IndexTypeHNSW,
+			}
 
 			// Test CreateCollection
-			err = store.CreateCollection(ctx, &config)
+			err = store.CreateCollection(ctx, &collectionConfig)
 			if err != nil {
 				t.Logf("Failed to create collection in memory leak test: %v", err)
 				return
@@ -1417,7 +1435,7 @@ func TestCollectionMemoryLeakDetection(t *testing.T) {
 			}
 
 			// Test CollectionExists
-			exists, err := store.CollectionExists(ctx, config.CollectionName)
+			exists, err := store.CollectionExists(ctx, collectionConfig.CollectionName)
 			if err != nil {
 				t.Logf("Failed to check collection exists in memory leak test: %v", err)
 			}
@@ -1425,33 +1443,33 @@ func TestCollectionMemoryLeakDetection(t *testing.T) {
 
 			// Test DescribeCollection
 			if exists {
-				_, err = store.DescribeCollection(ctx, config.CollectionName)
+				_, err = store.DescribeCollection(ctx, collectionConfig.CollectionName)
 				if err != nil {
 					t.Logf("Failed to describe collection in memory leak test: %v", err)
 				}
 			}
 
 			// Test GetLoadState
-			state, err := store.GetLoadState(ctx, config.CollectionName)
+			state, err := store.GetLoadState(ctx, collectionConfig.CollectionName)
 			if err != nil {
 				t.Logf("Failed to get load state in memory leak test: %v", err)
 			}
 			_ = state
 
 			// Test LoadCollection (no-op)
-			err = store.LoadCollection(ctx, config.CollectionName)
+			err = store.LoadCollection(ctx, collectionConfig.CollectionName)
 			if err != nil {
 				t.Logf("Failed to load collection in memory leak test: %v", err)
 			}
 
 			// Test ReleaseCollection (no-op)
-			err = store.ReleaseCollection(ctx, config.CollectionName)
+			err = store.ReleaseCollection(ctx, collectionConfig.CollectionName)
 			if err != nil {
 				t.Logf("Failed to release collection in memory leak test: %v", err)
 			}
 
 			// Test DropCollection
-			err = store.DropCollection(ctx, config.CollectionName)
+			err = store.DropCollection(ctx, collectionConfig.CollectionName)
 			if err != nil {
 				t.Logf("Failed to drop collection in memory leak test: %v", err)
 			}
@@ -1502,11 +1520,7 @@ func TestConcurrentCollectionMemoryLeak(t *testing.T) {
 	}
 
 	config := getTestConfig()
-	storeConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "test_concurrent_collection_memory_leak",
+	connectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": config.Port,
@@ -1532,31 +1546,35 @@ func TestConcurrentCollectionMemoryLeak(t *testing.T) {
 
 			for j := 0; j < numOperations; j++ {
 				func() {
-					store := NewStore()
+					store := NewStoreWithConfig(connectionConfig)
 
 					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 					defer cancel()
 
-					err := store.Connect(ctx, storeConfig)
+					err := store.Connect(ctx)
 					if err != nil {
 						return // Skip if connection fails
 					}
 
 					// Create unique collection
-					config := storeConfig
-					config.CollectionName = fmt.Sprintf("test_concurrent_memory_%d_%d_%d", goroutineID, j, time.Now().UnixNano())
+					collectionConfig := types.CreateCollectionOptions{
+						CollectionName: fmt.Sprintf("test_concurrent_memory_%d_%d_%d", goroutineID, j, time.Now().UnixNano()),
+						Dimension:      128,
+						Distance:       types.DistanceCosine,
+						IndexType:      types.IndexTypeHNSW,
+					}
 
 					// Test all collection operations
-					_ = store.CreateCollection(ctx, &config)
+					_ = store.CreateCollection(ctx, &collectionConfig)
 					_, _ = store.ListCollections(ctx)
-					exists, _ := store.CollectionExists(ctx, config.CollectionName)
+					exists, _ := store.CollectionExists(ctx, collectionConfig.CollectionName)
 					if exists {
-						_, _ = store.DescribeCollection(ctx, config.CollectionName)
+						_, _ = store.DescribeCollection(ctx, collectionConfig.CollectionName)
 					}
-					_, _ = store.GetLoadState(ctx, config.CollectionName)
-					_ = store.LoadCollection(ctx, config.CollectionName)
-					_ = store.ReleaseCollection(ctx, config.CollectionName)
-					_ = store.DropCollection(ctx, config.CollectionName)
+					_, _ = store.GetLoadState(ctx, collectionConfig.CollectionName)
+					_ = store.LoadCollection(ctx, collectionConfig.CollectionName)
+					_ = store.ReleaseCollection(ctx, collectionConfig.CollectionName)
+					_ = store.DropCollection(ctx, collectionConfig.CollectionName)
 					_ = store.Close()
 				}()
 			}
@@ -1596,25 +1614,30 @@ func TestCollectionOperationsWithInvalidConnection(t *testing.T) {
 	config := getTestConfig()
 
 	// Create a store that connects to an invalid port to simulate network failures
-	invalidConfig := types.VectorStoreConfig{
-		Dimension:      128,
-		Distance:       types.DistanceCosine,
-		IndexType:      types.IndexTypeHNSW,
-		CollectionName: "test_invalid",
+	// Invalid connection config for testing connection failure
+	invalidConnectionConfig := types.VectorStoreConfig{
 		ExtraParams: map[string]interface{}{
 			"host": config.Host,
 			"port": "9999", // Invalid port
 		},
 	}
 
-	store := NewStore()
+	// Invalid collection config for testing
+	invalidCollectionConfig := types.CreateCollectionOptions{
+		Dimension:      128,
+		Distance:       types.DistanceCosine,
+		IndexType:      types.IndexTypeHNSW,
+		CollectionName: "test_invalid",
+	}
+
+	store := NewStoreWithConfig(invalidConnectionConfig)
 
 	t.Run("operations on store with failed connection", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 
 		// Try to connect to invalid port - this should fail
-		err := store.Connect(ctx, invalidConfig)
+		err := store.Connect(ctx)
 		if err == nil {
 			t.Skip("Expected connection to fail but it succeeded")
 		}
@@ -1627,7 +1650,7 @@ func TestCollectionOperationsWithInvalidConnection(t *testing.T) {
 			{
 				name: "CreateCollection",
 				op: func() error {
-					return store.CreateCollection(ctx, &invalidConfig)
+					return store.CreateCollection(ctx, &invalidCollectionConfig)
 				},
 			},
 			{
@@ -2175,14 +2198,14 @@ func TestCreateCollectionSparseVectors(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		config        types.VectorStoreConfig
+		config        types.CreateCollectionOptions
 		wantErr       bool
 		errContains   string
 		validateAfter func(t *testing.T, store *Store, collectionName string)
 	}{
 		{
 			name: "sparse vectors with default names",
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:           384,
 				Distance:            types.DistanceCosine,
 				IndexType:           types.IndexTypeHNSW,
@@ -2222,7 +2245,7 @@ func TestCreateCollectionSparseVectors(t *testing.T) {
 		},
 		{
 			name: "sparse vectors with custom names",
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:           768,
 				Distance:            types.DistanceDot,
 				IndexType:           types.IndexTypeHNSW,
@@ -2250,7 +2273,7 @@ func TestCreateCollectionSparseVectors(t *testing.T) {
 		},
 		{
 			name: "sparse vectors with euclidean distance",
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:           1536,
 				Distance:            types.DistanceEuclidean,
 				IndexType:           types.IndexTypeHNSW,
@@ -2276,7 +2299,7 @@ func TestCreateCollectionSparseVectors(t *testing.T) {
 		},
 		{
 			name: "sparse vectors with manhattan distance",
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:           512,
 				Distance:            types.DistanceManhattan,
 				IndexType:           types.IndexTypeHNSW,
@@ -2342,12 +2365,12 @@ func TestCreateCollectionSparseVectorEdgeCases(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		config      types.VectorStoreConfig
+		config      types.CreateCollectionOptions
 		description string
 	}{
 		{
 			name: "empty dense vector name uses default",
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:           128,
 				Distance:            types.DistanceCosine,
 				IndexType:           types.IndexTypeHNSW,
@@ -2360,7 +2383,7 @@ func TestCreateCollectionSparseVectorEdgeCases(t *testing.T) {
 		},
 		{
 			name: "empty sparse vector name uses default",
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:           128,
 				Distance:            types.DistanceCosine,
 				IndexType:           types.IndexTypeHNSW,
@@ -2373,7 +2396,7 @@ func TestCreateCollectionSparseVectorEdgeCases(t *testing.T) {
 		},
 		{
 			name: "both names empty use defaults",
-			config: types.VectorStoreConfig{
+			config: types.CreateCollectionOptions{
 				Dimension:           128,
 				Distance:            types.DistanceCosine,
 				IndexType:           types.IndexTypeHNSW,
