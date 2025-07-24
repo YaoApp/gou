@@ -271,20 +271,22 @@ func TestValidateCollection(t *testing.T) {
 			collection: Collection{
 				ID: "vector-collection",
 				VectorConfig: &VectorStoreConfig{
-					CollectionName: "test-vector",
-					Dimension:      512,
-					Distance:       DistanceCosine,
-					IndexType:      IndexTypeHNSW,
+					DatabaseURL: "http://localhost:6334",
+					Timeout:     30,
+					ExtraParams: map[string]interface{}{
+						"host": "localhost",
+						"port": 6334,
+					},
 				},
 			},
 			expectError: false,
 			description: "Should validate collection with valid VectorConfig",
 		},
 		{
-			name: "Invalid collection - invalid VectorConfig",
+			name: "Invalid collection - invalid CollectionConfig",
 			collection: Collection{
-				ID: "invalid-vector-collection",
-				VectorConfig: &VectorStoreConfig{
+				ID: "invalid-collection-config",
+				CollectionConfig: &CreateCollectionOptions{
 					CollectionName: "", // Invalid - empty collection name
 					Dimension:      512,
 					Distance:       DistanceCosine,
@@ -292,15 +294,15 @@ func TestValidateCollection(t *testing.T) {
 				},
 			},
 			expectError: true,
-			errorMsg:    "invalid vector config",
-			description: "Should return error for invalid VectorConfig",
+			errorMsg:    "invalid collection config",
+			description: "Should return error for invalid CollectionConfig",
 		},
 
 		{
-			name: "Valid collection with VectorConfig",
+			name: "Valid collection with both configs",
 			collection: Collection{
 				ID: "full-collection",
-				VectorConfig: &VectorStoreConfig{
+				CollectionConfig: &CreateCollectionOptions{
 					CollectionName: "test-both",
 					Dimension:      256,
 					Distance:       DistanceEuclidean,
@@ -308,7 +310,7 @@ func TestValidateCollection(t *testing.T) {
 				},
 			},
 			expectError: false,
-			description: "Should validate collection with VectorConfig",
+			description: "Should validate collection with both VectorConfig and CollectionConfig",
 		},
 	}
 
@@ -382,13 +384,17 @@ func TestCloneCollection(t *testing.T) {
 			description: "Should clone collection with complex nested metadata",
 		},
 		{
-			name: "Clone collection with VectorConfig",
+			name: "Clone collection with both configs",
 			original: Collection{
 				ID: "vector-collection",
 				Metadata: map[string]interface{}{
 					"type": "vector",
 				},
 				VectorConfig: &VectorStoreConfig{
+					DatabaseURL: "http://localhost:6334",
+					Timeout:     30,
+				},
+				CollectionConfig: &CreateCollectionOptions{
 					CollectionName: "test-clone-vector",
 					Dimension:      768,
 					Distance:       DistanceCosine,
@@ -396,7 +402,7 @@ func TestCloneCollection(t *testing.T) {
 				},
 			},
 			expectError: false,
-			description: "Should clone collection with VectorConfig",
+			description: "Should clone collection with both VectorConfig and CollectionConfig",
 		},
 
 		{
@@ -463,9 +469,26 @@ func TestCloneCollection(t *testing.T) {
 						t.Error("VectorConfig should be deeply cloned, not just copied by reference")
 					}
 					// Verify values are the same
-					if cloned.VectorConfig.CollectionName != tt.original.VectorConfig.CollectionName {
-						t.Errorf("VectorConfig CollectionName mismatch: expected %s, got %s",
-							tt.original.VectorConfig.CollectionName, cloned.VectorConfig.CollectionName)
+					if cloned.VectorConfig.DatabaseURL != tt.original.VectorConfig.DatabaseURL {
+						t.Errorf("VectorConfig DatabaseURL mismatch: expected %s, got %s",
+							tt.original.VectorConfig.DatabaseURL, cloned.VectorConfig.DatabaseURL)
+					}
+				}
+			}
+
+			// Verify CollectionConfig is cloned (if it exists)
+			if tt.original.CollectionConfig != nil {
+				if cloned.CollectionConfig == nil {
+					t.Error("Cloned CollectionConfig should not be nil when original is not nil")
+				} else {
+					// Verify it's a different pointer (deep copy)
+					if &tt.original.CollectionConfig == &cloned.CollectionConfig {
+						t.Error("CollectionConfig should be deeply cloned, not just copied by reference")
+					}
+					// Verify values are the same
+					if cloned.CollectionConfig.CollectionName != tt.original.CollectionConfig.CollectionName {
+						t.Errorf("CollectionConfig CollectionName mismatch: expected %s, got %s",
+							tt.original.CollectionConfig.CollectionName, cloned.CollectionConfig.CollectionName)
 					}
 				}
 			}

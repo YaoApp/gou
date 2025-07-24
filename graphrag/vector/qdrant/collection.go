@@ -9,7 +9,7 @@ import (
 )
 
 // CreateCollection creates a new collection in Qdrant
-func (s *Store) CreateCollection(ctx context.Context, config *types.VectorStoreConfig) error {
+func (s *Store) CreateCollection(ctx context.Context, opts *types.CreateCollectionOptions) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -19,7 +19,7 @@ func (s *Store) CreateCollection(ctx context.Context, config *types.VectorStoreC
 
 	// Convert distance metric
 	var distance qdrant.Distance
-	switch config.Distance {
+	switch opts.Distance {
 	case types.DistanceCosine:
 		distance = qdrant.Distance_Cosine
 	case types.DistanceEuclidean:
@@ -35,21 +35,21 @@ func (s *Store) CreateCollection(ctx context.Context, config *types.VectorStoreC
 	var vectorsConfig *qdrant.VectorsConfig
 	var sparseVectorsConfig *qdrant.SparseVectorConfig
 
-	if config.EnableSparseVectors {
+	if opts.EnableSparseVectors {
 		// Create named vectors for hybrid search
-		denseVectorName := config.DenseVectorName
+		denseVectorName := opts.DenseVectorName
 		if denseVectorName == "" {
 			denseVectorName = "dense"
 		}
 
-		sparseVectorName := config.SparseVectorName
+		sparseVectorName := opts.SparseVectorName
 		if sparseVectorName == "" {
 			sparseVectorName = "sparse"
 		}
 
 		// Create dense vector configuration with named vectors
 		denseVectorParams := &qdrant.VectorParams{
-			Size:     uint64(config.Dimension),
+			Size:     uint64(opts.Dimension),
 			Distance: distance,
 		}
 
@@ -69,7 +69,7 @@ func (s *Store) CreateCollection(ctx context.Context, config *types.VectorStoreC
 	} else {
 		// Create standard single vector configuration
 		vectorParams := &qdrant.VectorParams{
-			Size:     uint64(config.Dimension),
+			Size:     uint64(opts.Dimension),
 			Distance: distance,
 		}
 		vectorsConfig = qdrant.NewVectorsConfig(vectorParams)
@@ -77,19 +77,19 @@ func (s *Store) CreateCollection(ctx context.Context, config *types.VectorStoreC
 
 	// Create HNSW config if specified
 	var hnswConfig *qdrant.HnswConfigDiff
-	if config.IndexType == types.IndexTypeHNSW {
+	if opts.IndexType == types.IndexTypeHNSW {
 		hnswConfig = &qdrant.HnswConfigDiff{}
-		if config.M > 0 {
-			hnswConfig.M = qdrant.PtrOf(uint64(config.M))
+		if opts.M > 0 {
+			hnswConfig.M = qdrant.PtrOf(uint64(opts.M))
 		}
-		if config.EfConstruction > 0 {
-			hnswConfig.EfConstruct = qdrant.PtrOf(uint64(config.EfConstruction))
+		if opts.EfConstruction > 0 {
+			hnswConfig.EfConstruct = qdrant.PtrOf(uint64(opts.EfConstruction))
 		}
 	}
 
 	// Create collection request
 	req := &qdrant.CreateCollection{
-		CollectionName:      config.CollectionName,
+		CollectionName:      opts.CollectionName,
 		VectorsConfig:       vectorsConfig,
 		SparseVectorsConfig: sparseVectorsConfig,
 		HnswConfig:          hnswConfig,
@@ -98,7 +98,7 @@ func (s *Store) CreateCollection(ctx context.Context, config *types.VectorStoreC
 	// Execute create collection
 	err := s.client.CreateCollection(ctx, req)
 	if err != nil {
-		return fmt.Errorf("failed to create collection %s: %w", config.CollectionName, err)
+		return fmt.Errorf("failed to create collection %s: %w", opts.CollectionName, err)
 	}
 
 	return nil

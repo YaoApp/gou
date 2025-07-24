@@ -1111,15 +1111,14 @@ func TestBackupRestore_ContextCancellation(t *testing.T) {
 func setupTestCollection(t *testing.T, store *Store, collectionName string) {
 	ctx := context.Background()
 
-	// Create collection
-	config := types.VectorStoreConfig{
+	// Create collection configuration
+	config := types.CreateCollectionOptions{
 		Dimension:      128,
 		Distance:       types.DistanceCosine,
 		IndexType:      types.IndexTypeHNSW,
 		CollectionName: collectionName,
 		M:              16,
 		EfConstruction: 100,
-		Timeout:        30,
 	}
 
 	err := store.CreateCollection(ctx, &config)
@@ -1164,15 +1163,14 @@ func setupTestCollection(t *testing.T, store *Store, collectionName string) {
 func setupLargeTestCollection(t *testing.T, store *Store, collectionName string, numDocs int) {
 	ctx := context.Background()
 
-	// Create collection
-	config := types.VectorStoreConfig{
+	// Create collection configuration
+	config := types.CreateCollectionOptions{
 		Dimension:      128,
 		Distance:       types.DistanceCosine,
 		IndexType:      types.IndexTypeHNSW,
 		CollectionName: collectionName,
 		M:              16,
 		EfConstruction: 100,
-		Timeout:        30,
 	}
 
 	err := store.CreateCollection(ctx, &config)

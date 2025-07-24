@@ -4,16 +4,16 @@ import (
 	"testing"
 )
 
-func TestVectorStoreConfig_ValidateSparseVectors(t *testing.T) {
+func TestCreateCollectionOptions_ValidateSparseVectors(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  VectorStoreConfig
+		config  CreateCollectionOptions
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "valid sparse vector config with different names",
-			config: VectorStoreConfig{
+			config: CreateCollectionOptions{
 				Dimension:           128,
 				Distance:            DistanceCosine,
 				IndexType:           IndexTypeHNSW,
@@ -26,7 +26,7 @@ func TestVectorStoreConfig_ValidateSparseVectors(t *testing.T) {
 		},
 		{
 			name: "valid sparse vector config with default names",
-			config: VectorStoreConfig{
+			config: CreateCollectionOptions{
 				Dimension:           128,
 				Distance:            DistanceCosine,
 				IndexType:           IndexTypeHNSW,
@@ -38,7 +38,7 @@ func TestVectorStoreConfig_ValidateSparseVectors(t *testing.T) {
 		},
 		{
 			name: "invalid sparse vector config - same names",
-			config: VectorStoreConfig{
+			config: CreateCollectionOptions{
 				Dimension:           128,
 				Distance:            DistanceCosine,
 				IndexType:           IndexTypeHNSW,
@@ -52,7 +52,7 @@ func TestVectorStoreConfig_ValidateSparseVectors(t *testing.T) {
 		},
 		{
 			name: "invalid sparse vector config - one empty defaults to same as other",
-			config: VectorStoreConfig{
+			config: CreateCollectionOptions{
 				Dimension:           128,
 				Distance:            DistanceCosine,
 				IndexType:           IndexTypeHNSW,
@@ -66,7 +66,7 @@ func TestVectorStoreConfig_ValidateSparseVectors(t *testing.T) {
 		},
 		{
 			name: "sparse vectors disabled - no validation needed",
-			config: VectorStoreConfig{
+			config: CreateCollectionOptions{
 				Dimension:           128,
 				Distance:            DistanceCosine,
 				IndexType:           IndexTypeHNSW,

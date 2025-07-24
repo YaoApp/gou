@@ -11,7 +11,7 @@ import (
 // Only handles vectors, text-to-vector conversion is done externally via EmbeddingFunction
 type VectorStore interface {
 	// Collection Management
-	CreateCollection(ctx context.Context, config *VectorStoreConfig) error
+	CreateCollection(ctx context.Context, opts *CreateCollectionOptions) error
 	ListCollections(ctx context.Context) ([]string, error)
 	DropCollection(ctx context.Context, collectionName string) error
 	CollectionExists(ctx context.Context, collectionName string) (bool, error)
@@ -48,7 +48,7 @@ type VectorStore interface {
 	Restore(ctx context.Context, reader io.Reader, opts *RestoreOptions) error
 
 	// Connection Management
-	Connect(ctx context.Context, config VectorStoreConfig) error
+	Connect(ctx context.Context, config ...VectorStoreConfig) error
 	Disconnect(ctx context.Context) error
 	IsConnected() bool
 	Close() error
@@ -105,7 +105,7 @@ type ExtractionProgress func(status ExtractionStatus, payload ExtractionPayload)
 // Similar to VectorStore design - focused on core operations with flexible data structures
 type GraphStore interface {
 	// Connection Management
-	Connect(ctx context.Context, config GraphStoreConfig) error
+	Connect(ctx context.Context, config ...GraphStoreConfig) error
 	Disconnect(ctx context.Context) error
 	IsConnected() bool
 	Close() error
@@ -158,10 +158,10 @@ type Logger interface {
 // GraphRag defines the interface for GraphRag
 type GraphRag interface {
 	// Collection Management
-	CreateCollection(ctx context.Context, collection Collection) (string, error)             // Create a new collection
-	RemoveCollection(ctx context.Context, id string) (bool, error)                           // Remove a collection
-	CollectionExists(ctx context.Context, id string) (bool, error)                           // Check if a collection exists
-	GetCollections(ctx context.Context, filter map[string]interface{}) ([]Collection, error) // Get collections with optional metadata filtering
+	CreateCollection(ctx context.Context, config CollectionConfig) (string, error)               // Create a new collection
+	RemoveCollection(ctx context.Context, id string) (bool, error)                               // Remove a collection
+	CollectionExists(ctx context.Context, id string) (bool, error)                               // Check if a collection exists
+	GetCollections(ctx context.Context, filter map[string]interface{}) ([]CollectionInfo, error) // Get collections with optional metadata filtering
 
 	// Document Management
 	AddFile(ctx context.Context, file string, options *UpsertOptions) (string, error)            // Add a file to a collection

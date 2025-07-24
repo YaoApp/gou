@@ -119,22 +119,20 @@ func TestAddFile(t *testing.T) {
 			ctx := context.Background()
 
 			// Create collection to ensure vector store connection (reusing collection_test.go logic)
-			vectorConfig := getVectorStore("addfile_test", 1536)
 			// Replace + with _ to make collection name valid
 			safeName := strings.ReplaceAll(configName, "+", "_")
 			collectionID := fmt.Sprintf("test_collection_%s_%d", safeName, time.Now().Unix())
-			collection := types.Collection{
+			collection := types.CollectionConfig{
 				ID: collectionID,
 				Metadata: map[string]interface{}{
 					"type": "addfile_test",
 				},
-				VectorConfig: &vectorConfig,
-			}
-
-			// Add GraphStoreConfig for graph-enabled configurations
-			if strings.Contains(configName, "graph") {
-				graphConfig := getGraphStore("addfile_test")
-				collection.GraphStoreConfig = &graphConfig
+				Config: &types.CreateCollectionOptions{
+					CollectionName: fmt.Sprintf("%s_vector", collectionID),
+					Dimension:      1536,
+					Distance:       types.DistanceCosine,
+					IndexType:      types.IndexTypeHNSW,
+				},
 			}
 
 			// Create collection (this will auto-connect vector store - reusing collection_test.go pattern)
@@ -331,19 +329,17 @@ func TestAddURLAndText(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		vectorConfig := getVectorStore("addurltext_test", 1536)
-		collection := types.Collection{
+		collection := types.CollectionConfig{
 			ID: collectionID,
 			Metadata: map[string]interface{}{
 				"type": "addurl_test",
 			},
-			VectorConfig: &vectorConfig,
-		}
-
-		// Add GraphStoreConfig for graph-enabled configurations
-		if strings.Contains(configName, "graph") {
-			graphConfig := getGraphStore("addurltext_test")
-			collection.GraphStoreConfig = &graphConfig
+			Config: &types.CreateCollectionOptions{
+				CollectionName: fmt.Sprintf("%s_vector", collectionID),
+				Dimension:      1536,
+				Distance:       types.DistanceCosine,
+				IndexType:      types.IndexTypeHNSW,
+			},
 		}
 
 		// Create collection (this will auto-connect vector store - reusing collection_test.go pattern)
@@ -557,22 +553,20 @@ func TestAddFileStoreIntegration(t *testing.T) {
 			ctx := context.Background()
 
 			// Create collection to ensure vector store connection (reusing collection_test.go logic)
-			vectorConfig := getVectorStore("store_integration_test", 1536)
 			// Replace + with _ to make collection name valid
 			safeName := strings.ReplaceAll(configName, "+", "_")
 			storeCollectionID := fmt.Sprintf("store_test_collection_%s_%d", safeName, time.Now().Unix())
-			collection := types.Collection{
+			collection := types.CollectionConfig{
 				ID: storeCollectionID,
 				Metadata: map[string]interface{}{
 					"type": "store_integration_test",
 				},
-				VectorConfig: &vectorConfig,
-			}
-
-			// Add GraphStoreConfig for graph-enabled configurations
-			if strings.Contains(configName, "graph") {
-				graphConfig := getGraphStore("store_integration_test")
-				collection.GraphStoreConfig = &graphConfig
+				Config: &types.CreateCollectionOptions{
+					CollectionName: fmt.Sprintf("%s_vector", storeCollectionID),
+					Dimension:      1536,
+					Distance:       types.DistanceCosine,
+					IndexType:      types.IndexTypeHNSW,
+				},
 			}
 
 			// Create collection (this will auto-connect vector store)
@@ -658,14 +652,18 @@ func TestAddFileRealIntegration(t *testing.T) {
 	ctx := context.Background()
 
 	// Reuse collection_test.go logic: create collection first to ensure connection
-	vectorConfig := getVectorStore("real_integration_test", 1536)
 	realCollectionID := fmt.Sprintf("real_test_collection_%d", time.Now().Unix())
-	collection := types.Collection{
+	collection := types.CollectionConfig{
 		ID: realCollectionID,
 		Metadata: map[string]interface{}{
 			"type": "real_integration_test",
 		},
-		VectorConfig: &vectorConfig,
+		Config: &types.CreateCollectionOptions{
+			CollectionName: fmt.Sprintf("%s_vector", realCollectionID),
+			Dimension:      1536,
+			Distance:       types.DistanceCosine,
+			IndexType:      types.IndexTypeHNSW,
+		},
 	}
 
 	// Create collection (this will auto-connect vector store)
@@ -735,19 +733,19 @@ func TestRemoveDocs(t *testing.T) {
 	ctx := context.Background()
 
 	// Create collection for testing
-	vectorConfig := getVectorStore("removedocs_test", 1536)
 	collectionID := fmt.Sprintf("removedocs_test_collection_%d", time.Now().Unix())
-	collection := types.Collection{
+	collection := types.CollectionConfig{
 		ID: collectionID,
 		Metadata: map[string]interface{}{
 			"type": "removedocs_test",
 		},
-		VectorConfig: &vectorConfig,
+		Config: &types.CreateCollectionOptions{
+			CollectionName: fmt.Sprintf("%s_vector", collectionID),
+			Dimension:      1536,
+			Distance:       types.DistanceCosine,
+			IndexType:      types.IndexTypeHNSW,
+		},
 	}
-
-	// Add GraphStoreConfig for graph-enabled configuration
-	graphConfig := getGraphStore("removedocs_test")
-	collection.GraphStoreConfig = &graphConfig
 
 	// Create collection
 	_, err = g.CreateCollection(ctx, collection)

@@ -1830,8 +1830,62 @@ func TestVectorStoreConfig_Validate(t *testing.T) {
 		errMsg    string
 	}{
 		{
-			name: "Valid HNSW config",
+			name: "Valid connection config",
 			config: &VectorStoreConfig{
+				DatabaseURL: "http://localhost:6334",
+				Timeout:     30,
+				ExtraParams: map[string]interface{}{
+					"host": "localhost",
+					"port": 6334,
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "Valid minimal config",
+			config: &VectorStoreConfig{
+				ExtraParams: map[string]interface{}{
+					"host": "localhost",
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name:      "Empty config is valid (connection details in ExtraParams)",
+			config:    &VectorStoreConfig{},
+			expectErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+
+			if tt.expectErr {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				} else if !strings.Contains(err.Error(), tt.errMsg) {
+					t.Errorf("Expected error containing %q, got: %v", tt.errMsg, err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestCreateCollectionOptions_Validate(t *testing.T) {
+	tests := []struct {
+		name      string
+		config    *CreateCollectionOptions
+		expectErr bool
+		errMsg    string
+	}{
+		{
+			name: "Valid HNSW config",
+			config: &CreateCollectionOptions{
 				Dimension:      1536,
 				Distance:       DistanceCosine,
 				IndexType:      IndexTypeHNSW,
@@ -1841,7 +1895,7 @@ func TestVectorStoreConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "Invalid dimension",
-			config: &VectorStoreConfig{
+			config: &CreateCollectionOptions{
 				Dimension:      0,
 				Distance:       DistanceCosine,
 				IndexType:      IndexTypeHNSW,
@@ -1852,7 +1906,7 @@ func TestVectorStoreConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "Invalid distance metric",
-			config: &VectorStoreConfig{
+			config: &CreateCollectionOptions{
 				Dimension:      1536,
 				Distance:       DistanceMetric("invalid"),
 				IndexType:      IndexTypeHNSW,
@@ -1863,7 +1917,7 @@ func TestVectorStoreConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "Invalid index type",
-			config: &VectorStoreConfig{
+			config: &CreateCollectionOptions{
 				Dimension:      1536,
 				Distance:       DistanceCosine,
 				IndexType:      IndexType("invalid"),
@@ -1874,7 +1928,7 @@ func TestVectorStoreConfig_Validate(t *testing.T) {
 		},
 		{
 			name: "Empty collection name",
-			config: &VectorStoreConfig{
+			config: &CreateCollectionOptions{
 				Dimension:      1536,
 				Distance:       DistanceCosine,
 				IndexType:      IndexTypeHNSW,

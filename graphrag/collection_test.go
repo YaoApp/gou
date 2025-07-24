@@ -43,74 +43,95 @@ func TestCreateCollection(t *testing.T) {
 				t.Fatalf("Failed to create GraphRag instance: %v", err)
 			}
 
-			// Create reusable vector configs using utility functions
-			vectorConfig := getVectorStore("collection_test", 1536)
-			graphConfig := getGraphStore("collection_test")
+			// Note: Vector configs are now created inline within each test case
 
 			// Test cases for CreateCollection
 			testCases := []struct {
 				name        string
-				collection  types.Collection
+				collection  types.CollectionConfig
 				expectError bool
 				description string
 			}{
 				{
 					name: "Valid_collection_with_ID",
-					collection: types.Collection{
+					collection: types.CollectionConfig{
 						ID: "test_collection_001",
 						Metadata: map[string]interface{}{
 							"type":        "test",
 							"description": "Test collection",
 						},
-						VectorConfig: &vectorConfig,
+						Config: &types.CreateCollectionOptions{
+							CollectionName: "test_collection_001_vector",
+							Dimension:      1536,
+							Distance:       types.DistanceCosine,
+							IndexType:      types.IndexTypeHNSW,
+						},
 					},
 					expectError: false,
 					description: "Should create collection with provided ID",
 				},
 				{
 					name: "Valid_collection_without_ID",
-					collection: types.Collection{
+					collection: types.CollectionConfig{
 						Metadata: map[string]interface{}{
 							"type": "auto-generated",
 						},
-						VectorConfig: &vectorConfig,
+						Config: &types.CreateCollectionOptions{
+							CollectionName: "auto_generated_vector",
+							Dimension:      1536,
+							Distance:       types.DistanceCosine,
+							IndexType:      types.IndexTypeHNSW,
+						},
 					},
 					expectError: false,
 					description: "Should create collection with auto-generated ID",
 				},
 				{
-					name: "Collection_with_graph_config",
-					collection: types.Collection{
-						ID: "test_collection_graph",
+					name: "Collection_with_sparse_vectors",
+					collection: types.CollectionConfig{
+						ID: "test_collection_sparse",
 						Metadata: map[string]interface{}{
-							"type": "graph",
+							"type": "sparse",
 						},
-						VectorConfig:     &vectorConfig,
-						GraphStoreConfig: &graphConfig,
+						Config: &types.CreateCollectionOptions{
+							CollectionName:      "test_collection_sparse_vector",
+							Dimension:           1536,
+							Distance:            types.DistanceCosine,
+							IndexType:           types.IndexTypeHNSW,
+							EnableSparseVectors: true,
+							DenseVectorName:     "dense",
+							SparseVectorName:    "sparse",
+						},
 					},
 					expectError: false,
-					description: "Should create collection with graph config",
+					description: "Should create collection with sparse vector config",
 				},
 				{
 					name: "Collection_with_nil_metadata",
-					collection: types.Collection{
-						ID:           "test_collection_nil_meta",
-						Metadata:     nil,
-						VectorConfig: &vectorConfig,
+					collection: types.CollectionConfig{
+						ID:       "test_collection_nil_meta",
+						Metadata: nil,
+						Config: &types.CreateCollectionOptions{
+							CollectionName: "nil_meta_vector",
+							Dimension:      1536,
+							Distance:       types.DistanceCosine,
+							IndexType:      types.IndexTypeHNSW,
+						},
 					},
 					expectError: false,
 					description: "Should handle nil metadata",
 				},
 				{
-					name: "Collection_without_vector_config",
-					collection: types.Collection{
-						ID: "test_collection_no_vector",
+					name: "Collection_without_config",
+					collection: types.CollectionConfig{
+						ID: "test_collection_no_config",
 						Metadata: map[string]interface{}{
-							"type": "no_vector",
+							"type": "no_config",
 						},
+						Config: nil,
 					},
 					expectError: false,
-					description: "Should handle collection without vector config",
+					description: "Should handle collection without config",
 				},
 			}
 
@@ -170,12 +191,17 @@ func TestCreateCollection(t *testing.T) {
 			// Test duplicate collection creation
 			t.Run("Duplicate_collection_creation", func(t *testing.T) {
 				ctx := context.Background()
-				collection := types.Collection{
+				collection := types.CollectionConfig{
 					ID: "duplicate_test",
 					Metadata: map[string]interface{}{
 						"type": "duplicate",
 					},
-					VectorConfig: &vectorConfig,
+					Config: &types.CreateCollectionOptions{
+						CollectionName: "duplicate_test_vector",
+						Dimension:      1536,
+						Distance:       types.DistanceCosine,
+						IndexType:      types.IndexTypeHNSW,
+					},
 				}
 
 				// Create first collection
@@ -226,8 +252,7 @@ func TestRemoveCollection(t *testing.T) {
 
 			ctx := context.Background()
 
-			// Create reusable vector config using utility function
-			vectorConfig := getVectorStore("remove_test", 1536)
+			// Vector configs are now created inline within each test case
 
 			// Test cases for RemoveCollection
 			testCases := []struct {
@@ -241,12 +266,17 @@ func TestRemoveCollection(t *testing.T) {
 				{
 					name: "Remove_existing_collection",
 					setupCollection: func() string {
-						collection := types.Collection{
+						collection := types.CollectionConfig{
 							ID: "remove_test_001",
 							Metadata: map[string]interface{}{
 								"type": "remove_test",
 							},
-							VectorConfig: &vectorConfig,
+							Config: &types.CreateCollectionOptions{
+								CollectionName: "remove_test_001_vector",
+								Dimension:      1536,
+								Distance:       types.DistanceCosine,
+								IndexType:      types.IndexTypeHNSW,
+							},
 						}
 						id, err := g.CreateCollection(ctx, collection)
 						if err != nil {
@@ -350,7 +380,6 @@ func TestCollectionExists(t *testing.T) {
 			ctx := context.Background()
 
 			// Create reusable vector config using utility function
-			vectorConfig := getVectorStore("exists_test", 1536)
 
 			// Test cases for CollectionExists
 			testCases := []struct {
@@ -364,13 +393,17 @@ func TestCollectionExists(t *testing.T) {
 				{
 					name: "Existing_collection",
 					setupCollection: func() string {
-						vectorConfig := getVectorStore("exists_test", 1536)
-						collection := types.Collection{
+						collection := types.CollectionConfig{
 							ID: "exists_test_001",
 							Metadata: map[string]interface{}{
 								"type": "exists_test",
 							},
-							VectorConfig: &vectorConfig,
+							Config: &types.CreateCollectionOptions{
+								CollectionName: "exists_test_001_vector",
+								Dimension:      1536,
+								Distance:       types.DistanceCosine,
+								IndexType:      types.IndexTypeHNSW,
+							},
 						}
 						id, err := g.CreateCollection(ctx, collection)
 						if err != nil {
@@ -424,11 +457,17 @@ func TestCollectionExists(t *testing.T) {
 
 					// If collection should exist, verify actual storage layers
 					if tc.expectExists && tc.setupCollection != nil {
-						// Create a dummy collection object for verification
-						dummyCollection := types.Collection{
-							VectorConfig: &vectorConfig,
+						// Create a dummy collection config object for verification
+						dummyCollectionConfig := types.CollectionConfig{
+							ID: collectionID,
+							Config: &types.CreateCollectionOptions{
+								CollectionName: "exists_test_vector",
+								Dimension:      1536,
+								Distance:       types.DistanceCosine,
+								IndexType:      types.IndexTypeHNSW,
+							},
 						}
-						err = verifyCollectionStorage(ctx, t, g, collectionID, dummyCollection)
+						err = verifyCollectionStorage(ctx, t, g, collectionID, dummyCollectionConfig)
 						if err != nil {
 							t.Errorf("Storage verification failed: %v", err)
 							return
@@ -473,10 +512,9 @@ func TestGetCollections(t *testing.T) {
 			ctx := context.Background()
 
 			// Create reusable vector config using utility function
-			vectorConfig := getVectorStore("get_collections_test", 1536)
 
 			// Setup test collections
-			testCollections := []types.Collection{
+			testCollections := []types.CollectionConfig{
 				{
 					ID: "get_test_001",
 					Metadata: map[string]interface{}{
@@ -484,7 +522,12 @@ func TestGetCollections(t *testing.T) {
 						"category": "research",
 						"count":    10,
 					},
-					VectorConfig: &vectorConfig,
+					Config: &types.CreateCollectionOptions{
+						CollectionName: "get_test_001_vector",
+						Dimension:      1536,
+						Distance:       types.DistanceCosine,
+						IndexType:      types.IndexTypeHNSW,
+					},
 				},
 				{
 					ID: "get_test_002",
@@ -493,7 +536,12 @@ func TestGetCollections(t *testing.T) {
 						"category": "blog",
 						"count":    5,
 					},
-					VectorConfig: &vectorConfig,
+					Config: &types.CreateCollectionOptions{
+						CollectionName: "get_test_002_vector",
+						Dimension:      1536,
+						Distance:       types.DistanceCosine,
+						IndexType:      types.IndexTypeHNSW,
+					},
 				},
 				{
 					ID: "get_test_003",
@@ -502,7 +550,12 @@ func TestGetCollections(t *testing.T) {
 						"category": "research",
 						"count":    3,
 					},
-					VectorConfig: &vectorConfig,
+					Config: &types.CreateCollectionOptions{
+						CollectionName: "get_test_003_vector",
+						Dimension:      1536,
+						Distance:       types.DistanceCosine,
+						IndexType:      types.IndexTypeHNSW,
+					},
 				},
 			}
 
@@ -673,13 +726,12 @@ func TestEnsureSystemCollection(t *testing.T) {
 
 			// Test ensureSystemCollection by creating a collection
 			// This will internally call ensureSystemCollection
-			vectorConfig := getVectorStore("system_test", 1536)
-			collection := types.Collection{
+			collection := types.CollectionConfig{
 				ID: "system_test_001",
 				Metadata: map[string]interface{}{
 					"type": "system_test",
 				},
-				VectorConfig: &vectorConfig,
+				Config: &types.CreateCollectionOptions{CollectionName: "default_vector", Dimension: 1536, Distance: types.DistanceCosine, IndexType: types.IndexTypeHNSW},
 			}
 
 			// Create collection (this will test ensureSystemCollection)
@@ -740,18 +792,19 @@ func TestMultiLayerStorageVerification(t *testing.T) {
 			ctx := context.Background()
 
 			// Create comprehensive test configuration
-			vectorConfig := getVectorStore("multilayer_test", 1536)
-			graphConfig := getGraphStore("multilayer_test")
-
-			testCollection := types.Collection{
+			testCollection := types.CollectionConfig{
 				ID: "multilayer_test_001",
 				Metadata: map[string]interface{}{
 					"type":        "multilayer",
 					"description": "Comprehensive storage test",
 					"layers":      []string{"vector", "graph", "metadata"},
 				},
-				VectorConfig:     &vectorConfig,
-				GraphStoreConfig: &graphConfig,
+				Config: &types.CreateCollectionOptions{
+					CollectionName: "multilayer_test_001_vector",
+					Dimension:      1536,
+					Distance:       types.DistanceCosine,
+					IndexType:      types.IndexTypeHNSW,
+				},
 			}
 
 			// Phase 1: Create collection and verify all layers
@@ -896,18 +949,17 @@ func BenchmarkCreateCollection(b *testing.B) {
 	ctx := context.Background()
 
 	// Create reusable vector config using utility function
-	vectorConfig := getVectorStore("benchmark_create", 1536)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Use UUID to ensure unique collection ID for each iteration
-		collection := types.Collection{
+		collection := types.CollectionConfig{
 			ID: utils.GenDocID(), // This generates a unique UUID
 			Metadata: map[string]interface{}{
 				"type":  "benchmark",
 				"index": i,
 			},
-			VectorConfig: &vectorConfig,
+			Config: &types.CreateCollectionOptions{CollectionName: "default_vector", Dimension: 1536, Distance: types.DistanceCosine, IndexType: types.IndexTypeHNSW},
 		}
 
 		_, err := g.CreateCollection(ctx, collection)
@@ -932,15 +984,14 @@ func BenchmarkCollectionExists(b *testing.B) {
 	ctx := context.Background()
 
 	// Create reusable vector config using utility function
-	vectorConfig := getVectorStore("benchmark_exists", 1536)
 
 	// Create a test collection with unique ID
-	collection := types.Collection{
+	collection := types.CollectionConfig{
 		ID: utils.GenDocID(), // Use unique UUID
 		Metadata: map[string]interface{}{
 			"type": "benchmark",
 		},
-		VectorConfig: &vectorConfig,
+		Config: &types.CreateCollectionOptions{CollectionName: "default_vector", Dimension: 1536, Distance: types.DistanceCosine, IndexType: types.IndexTypeHNSW},
 	}
 
 	collectionID, err := g.CreateCollection(ctx, collection)
@@ -963,9 +1014,21 @@ func BenchmarkCollectionExists(b *testing.B) {
 	}
 }
 
+// Helper function to convert CollectionConfig to Collection for storage verification
+func configToCollection(config types.CollectionConfig) types.Collection {
+	return types.Collection{
+		ID:               config.ID,
+		Metadata:         config.Metadata,
+		CollectionConfig: config.Config,
+	}
+}
+
 // verifyCollectionStorage verifies that collection data exists in all expected storage layers
-func verifyCollectionStorage(ctx context.Context, t *testing.T, g *GraphRag, collectionID string, originalCollection types.Collection) error {
+func verifyCollectionStorage(ctx context.Context, t *testing.T, g *GraphRag, collectionID string, originalCollection types.CollectionConfig) error {
 	t.Helper()
+
+	// Convert to Collection for verification
+	collection := configToCollection(originalCollection)
 
 	// Generate collection IDs for different storage systems
 	ids, err := utils.GetCollectionIDs(collectionID)
@@ -974,7 +1037,7 @@ func verifyCollectionStorage(ctx context.Context, t *testing.T, g *GraphRag, col
 	}
 
 	// 1. Verify Vector Collection exists
-	if g.Vector != nil && originalCollection.VectorConfig != nil {
+	if g.Vector != nil && originalCollection.Config != nil {
 		exists, err := g.Vector.CollectionExists(ctx, ids.Vector)
 		if err != nil {
 			return fmt.Errorf("failed to check vector collection existence: %w", err)
@@ -986,7 +1049,7 @@ func verifyCollectionStorage(ctx context.Context, t *testing.T, g *GraphRag, col
 	}
 
 	// 2. Verify Graph Storage exists (if configured)
-	if g.Graph != nil && originalCollection.GraphStoreConfig != nil {
+	if g.Graph != nil && collection.GraphStoreConfig != nil {
 		// Use GraphExists as the primary method to check if graph exists
 		exists, err := g.Graph.GraphExists(ctx, ids.Graph)
 		if err != nil {
@@ -1176,14 +1239,13 @@ func TestCollectionConcurrentStress(t *testing.T) {
 
 				// Create operation
 				createOperation := func(ctx context.Context) error {
-					vectorConfig := getVectorStore("stress_create", 1536)
-					collection := types.Collection{
+					collection := types.CollectionConfig{
 						ID: utils.GenDocID(), // Unique ID for each operation
 						Metadata: map[string]interface{}{
 							"type":   "stress_test",
 							"source": "concurrent",
 						},
-						VectorConfig: &vectorConfig,
+						Config: &types.CreateCollectionOptions{CollectionName: "default_vector", Dimension: 1536, Distance: types.DistanceCosine, IndexType: types.IndexTypeHNSW},
 					}
 
 					collectionID, err := g.CreateCollection(ctx, collection)
@@ -1224,13 +1286,12 @@ func TestCollectionConcurrentStress(t *testing.T) {
 
 			t.Run("Concurrent_Check_Existence", func(t *testing.T) {
 				// Setup: Create a test collection
-				vectorConfig := getVectorStore("stress_check", 1536)
-				collection := types.Collection{
+				collection := types.CollectionConfig{
 					ID: "stress_check_collection",
 					Metadata: map[string]interface{}{
 						"type": "stress_test",
 					},
-					VectorConfig: &vectorConfig,
+					Config: &types.CreateCollectionOptions{CollectionName: "default_vector", Dimension: 1536, Distance: types.DistanceCosine, IndexType: types.IndexTypeHNSW},
 				}
 
 				collectionID, err := g.CreateCollection(context.Background(), collection)
@@ -1271,13 +1332,12 @@ func TestCollectionConcurrentStress(t *testing.T) {
 
 					switch opType {
 					case 0: // Create
-						vectorConfig := getVectorStore("stress_mixed", 1536)
-						collection := types.Collection{
+						collection := types.CollectionConfig{
 							ID: utils.GenDocID(),
 							Metadata: map[string]interface{}{
 								"type": "mixed_stress",
 							},
-							VectorConfig: &vectorConfig,
+							Config: &types.CreateCollectionOptions{CollectionName: "default_vector", Dimension: 1536, Distance: types.DistanceCosine, IndexType: types.IndexTypeHNSW},
 						}
 
 						collectionID, err := g.CreateCollection(ctx, collection)
@@ -1366,14 +1426,13 @@ func TestCollectionLeakDetection(t *testing.T) {
 
 					// Create multiple collections
 					for i := 0; i < 10; i++ {
-						vectorConfig := getVectorStore("leak_test", 1536)
-						collection := types.Collection{
+						collection := types.CollectionConfig{
 							ID: fmt.Sprintf("leak_test_%d_%s", i, utils.GenDocID()),
 							Metadata: map[string]interface{}{
 								"type":  "leak_test",
 								"index": i,
 							},
-							VectorConfig: &vectorConfig,
+							Config: &types.CreateCollectionOptions{CollectionName: "default_vector", Dimension: 1536, Distance: types.DistanceCosine, IndexType: types.IndexTypeHNSW},
 						}
 
 						collectionID, err := g.CreateCollection(context.Background(), collection)
@@ -1413,17 +1472,16 @@ func TestCollectionLeakDetection(t *testing.T) {
 
 			t.Run("Repeated_Operations_Leak_Detection", func(t *testing.T) {
 				result := runWithLeakDetection(t, func() error {
-					vectorConfig := getVectorStore("repeated_leak", 1536)
 
 					// Repeat create-check-remove cycle multiple times
 					for i := 0; i < 20; i++ {
-						collection := types.Collection{
+						collection := types.CollectionConfig{
 							ID: fmt.Sprintf("repeated_%d_%s", i, utils.GenDocID()),
 							Metadata: map[string]interface{}{
 								"type":  "repeated_test",
 								"cycle": i,
 							},
-							VectorConfig: &vectorConfig,
+							Config: &types.CreateCollectionOptions{CollectionName: "default_vector", Dimension: 1536, Distance: types.DistanceCosine, IndexType: types.IndexTypeHNSW},
 						}
 
 						// Create
@@ -1459,17 +1517,16 @@ func TestCollectionLeakDetection(t *testing.T) {
 
 			t.Run("Error_Conditions_Leak_Detection", func(t *testing.T) {
 				result := runWithLeakDetection(t, func() error {
-					vectorConfig := getVectorStore("error_leak", 1536)
 
 					// Test various error conditions that might cause leaks
 					for i := 0; i < 5; i++ {
 						// Try to create collection with duplicate ID
-						collection := types.Collection{
+						collection := types.CollectionConfig{
 							ID: "duplicate_error_test",
 							Metadata: map[string]interface{}{
 								"type": "error_test",
 							},
-							VectorConfig: &vectorConfig,
+							Config: &types.CreateCollectionOptions{CollectionName: "default_vector", Dimension: 1536, Distance: types.DistanceCosine, IndexType: types.IndexTypeHNSW},
 						}
 
 						if i == 0 {
@@ -1536,10 +1593,9 @@ func TestCollectionStressWithFiltering(t *testing.T) {
 			t.Run("Concurrent_GetCollections_Stress", func(t *testing.T) {
 				// Setup: Create multiple collections with different metadata
 				var createdCollections []string
-				vectorConfig := getVectorStore("filter_stress", 1536)
 
 				for i := 0; i < 10; i++ {
-					collection := types.Collection{
+					collection := types.CollectionConfig{
 						ID: fmt.Sprintf("filter_test_%d", i),
 						Metadata: map[string]interface{}{
 							"type":     "filter_test",
@@ -1547,7 +1603,7 @@ func TestCollectionStressWithFiltering(t *testing.T) {
 							"index":    i,
 							"even":     i%2 == 0,
 						},
-						VectorConfig: &vectorConfig,
+						Config: &types.CreateCollectionOptions{CollectionName: "default_vector", Dimension: 1536, Distance: types.DistanceCosine, IndexType: types.IndexTypeHNSW},
 					}
 
 					collectionID, err := g.CreateCollection(context.Background(), collection)
@@ -1625,7 +1681,6 @@ func BenchmarkCollectionOperationsWithLeakDetection(b *testing.B) {
 	}
 
 	ctx := context.Background()
-	vectorConfig := getVectorStore("benchmark_leak", 1536)
 
 	// Capture initial state
 	beforeMem := captureMemoryStats()
@@ -1637,13 +1692,13 @@ func BenchmarkCollectionOperationsWithLeakDetection(b *testing.B) {
 		var collectionIDs []string
 
 		for i := 0; i < b.N; i++ {
-			collection := types.Collection{
+			collection := types.CollectionConfig{
 				ID: utils.GenDocID(),
 				Metadata: map[string]interface{}{
 					"type":  "benchmark_leak",
 					"index": i,
 				},
-				VectorConfig: &vectorConfig,
+				Config: &types.CreateCollectionOptions{CollectionName: "default_vector", Dimension: 1536, Distance: types.DistanceCosine, IndexType: types.IndexTypeHNSW},
 			}
 
 			collectionID, err := g.CreateCollection(ctx, collection)

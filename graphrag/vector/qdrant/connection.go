@@ -6,12 +6,11 @@ import (
 	"strconv"
 
 	"github.com/qdrant/go-client/qdrant"
-
 	"github.com/yaoapp/gou/graphrag/types"
 )
 
 // Connect establishes connection to Qdrant server
-func (s *Store) Connect(ctx context.Context, config types.VectorStoreConfig) error {
+func (s *Store) Connect(ctx context.Context, storeConfig ...types.VectorStoreConfig) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -19,9 +18,16 @@ func (s *Store) Connect(ctx context.Context, config types.VectorStoreConfig) err
 		return nil
 	}
 
-	// Extract connection parameters
+	// Extract connection parameters from ExtraParams
 	host := "localhost"
 	port := 6334
+
+	// If storeConfig is provided, use it, otherwise use the default config
+	config := s.config
+	if len(storeConfig) > 0 {
+		config = storeConfig[0]
+		s.config = config
+	}
 
 	if config.ExtraParams != nil {
 		if h, ok := config.ExtraParams["host"].(string); ok && h != "" {
