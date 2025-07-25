@@ -1959,7 +1959,7 @@ type Options struct {
 	GraphStore GraphStore
 }
 
-// UpsertOptions represents the options for adding documents to the graph
+// UpsertOptions represents the options for GraphRag
 type UpsertOptions struct {
 	// Chunking is the chunking model to use for chunking documents
 	Chunking        Chunking
@@ -1988,8 +1988,8 @@ type UpsertOptions struct {
 	// Converter is the converter to use for converting documents to text (Optional)
 	Converter Converter
 
-	// GraphName is the graph name to use for storing the document (Optional)
-	GraphName string `json:"graph_name,omitempty"`
+	// CollectionID is the collection ID to use for storing the document (Optional)
+	CollectionID string `json:"collection_id,omitempty"`
 
 	// DocID is the document ID to use for tracking, if not provided, will auto-generate (Optional)
 	DocID string `json:"doc_id,omitempty"`

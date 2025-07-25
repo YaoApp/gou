@@ -89,7 +89,7 @@ func TestBackupAndRestore(t *testing.T) {
 
 				backupDocID := fmt.Sprintf("backup_doc_%s", configName)
 				addOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "backup_test",
 						"config": configName,
@@ -387,7 +387,7 @@ func TestBackupStoreIntegration(t *testing.T) {
 
 			segmentDocID := fmt.Sprintf("store_backup_segments_%s", configName)
 			options := &types.UpsertOptions{
-				GraphName: storeCollectionID,
+				CollectionID: storeCollectionID,
 				Metadata: map[string]interface{}{
 					"source": "store_backup_test",
 					"config": configName,

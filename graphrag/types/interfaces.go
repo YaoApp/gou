@@ -231,8 +231,8 @@ type Weight interface {
 	Name() string
 }
 
-// Voter interface is used to vote segments
-type Voter interface {
+// Vote interface is used to vote segments
+type Vote interface {
 	Vote(ctx context.Context, segments []Segment) ([]SegmentVote, error)
 	Name() string
 }
