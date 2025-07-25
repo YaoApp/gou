@@ -77,7 +77,7 @@ func TestSegmentCURD(t *testing.T) {
 			// Step 1: Add a TEXT document first
 			t.Run("Add_Base_Document", func(t *testing.T) {
 				baseDocOptions := &types.UpsertOptions{
-					DocID:     fmt.Sprintf("base_doc_%s", configName),
+					DocID:        fmt.Sprintf("base_doc_%s", configName),
 					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "segment_test",
