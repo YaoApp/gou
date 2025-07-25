@@ -16,9 +16,9 @@ func GenDocID() string {
 	return strings.ReplaceAll(uuid.New().String(), "-", "")
 }
 
-// GenDocIDWithGraphName generates a UUID for document identification with GraphName prefix
+// GenDocIDWithCollectionID generates a UUID for document identification with GraphName prefix
 // Format: graphname__uuid (without dashes)
-func GenDocIDWithGraphName(graphName string) string {
+func GenDocIDWithCollectionID(graphName string) string {
 	if graphName == "" {
 		graphName = "default"
 	}
@@ -28,9 +28,9 @@ func GenDocIDWithGraphName(graphName string) string {
 	return fmt.Sprintf("%s__%s", cleanGraphName, uuid)
 }
 
-// ExtractGraphNameFromDocID extracts the GraphName from a prefixed docID
+// ExtractCollectionIDFromDocID extracts the GraphName from a prefixed docID
 // Returns the GraphName and the plain UUID part
-func ExtractGraphNameFromDocID(docID string) (string, string) {
+func ExtractCollectionIDFromDocID(docID string) (string, string) {
 	if docID == "" {
 		return "", ""
 	}
@@ -45,8 +45,8 @@ func ExtractGraphNameFromDocID(docID string) (string, string) {
 	return "", docID
 }
 
-// IsDocIDWithGraphName checks if a docID contains a GraphName prefix
-func IsDocIDWithGraphName(docID string) bool {
+// IsDocIDWithCollectionID checks if a docID contains a GraphName prefix
+func IsDocIDWithCollectionID(docID string) bool {
 	return strings.Contains(docID, "__")
 }
 

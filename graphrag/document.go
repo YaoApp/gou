@@ -46,7 +46,7 @@ func (g *GraphRag) AddFile(ctx context.Context, file string, options *types.Upse
 	}
 
 	// Step 1.5: Get collection IDs for vector and graph storage
-	collectionID := options.GraphName
+	collectionID := options.CollectionID
 	if collectionID == "" {
 		collectionID = "default"
 	}
@@ -61,7 +61,7 @@ func (g *GraphRag) AddFile(ctx context.Context, file string, options *types.Upse
 	if options.DocID != "" {
 		docID = options.DocID
 	} else {
-		docID = utils.GenDocIDWithGraphName(collectionID)
+		docID = utils.GenDocIDWithCollectionID(collectionID)
 	}
 
 	// Create the callback for the upsert progress
@@ -221,16 +221,16 @@ func (g *GraphRag) AddText(ctx context.Context, text string, options *types.Upse
 
 // AddURL adds a URL to a collection
 func (g *GraphRag) AddURL(ctx context.Context, url string, options *types.UpsertOptions) (string, error) {
-	// Get GraphName for docID prefix
-	graphName := options.GraphName
-	if graphName == "" {
-		graphName = "default"
+	// Get CollectionID for docID prefix
+	collectionID := options.CollectionID
+	if collectionID == "" {
+		collectionID = "default"
 	}
 
 	// Create document ID if not provided
 	docID := options.DocID
 	if docID == "" {
-		docID = utils.GenDocIDWithGraphName(graphName)
+		docID = utils.GenDocIDWithCollectionID(collectionID)
 	}
 
 	// Use default fetcher if none provided
@@ -349,7 +349,7 @@ func (g *GraphRag) RemoveDocs(ctx context.Context, ids []string) (int, error) {
 	// Step 1: Parse GraphName from IDs and group by GraphName
 	graphGroups := make(map[string][]string) // graphName -> docIDs
 	for _, docID := range ids {
-		graphName, _ := utils.ExtractGraphNameFromDocID(docID)
+		graphName, _ := utils.ExtractCollectionIDFromDocID(docID)
 		if graphName == "" {
 			graphName = "default" // Backward compatibility for docIDs without prefix
 		}

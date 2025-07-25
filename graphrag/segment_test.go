@@ -78,7 +78,7 @@ func TestSegmentCURD(t *testing.T) {
 			t.Run("Add_Base_Document", func(t *testing.T) {
 				baseDocOptions := &types.UpsertOptions{
 					DocID:     fmt.Sprintf("base_doc_%s", configName),
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "segment_test",
 						"type":   "base_document",
@@ -142,7 +142,7 @@ func TestSegmentCURD(t *testing.T) {
 
 				// Prepare options for AddSegments
 				segmentOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source":    "segment_test",
 						"type":      "segments",
@@ -214,7 +214,7 @@ func TestSegmentCURD(t *testing.T) {
 				emptyDocID := fmt.Sprintf("empty_segments_%s", configName)
 
 				segmentOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "segment_test",
 						"type":   "empty_segments",
@@ -265,7 +265,7 @@ func TestSegmentCURD(t *testing.T) {
 				noIDDocID := fmt.Sprintf("no_id_segments_%s", configName)
 
 				segmentOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "segment_test",
 						"type":   "no_id_segments",
@@ -363,7 +363,7 @@ func TestSegmentCURD(t *testing.T) {
 
 				updateDocID := fmt.Sprintf("update_segments_%s", configName)
 				addOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "update_test_prep",
 						"config": configName,
@@ -411,7 +411,7 @@ func TestSegmentCURD(t *testing.T) {
 				}
 
 				updateOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "update_test",
 						"config": configName,
@@ -500,7 +500,7 @@ func TestSegmentCURD(t *testing.T) {
 
 				readDocID := fmt.Sprintf("read_segments_%s", configName)
 				addOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "read_test_prep",
 						"config": configName,
@@ -575,7 +575,7 @@ func TestSegmentCURD(t *testing.T) {
 
 				listDocID := fmt.Sprintf("list_segments_%s", configName)
 				addOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "list_test",
 						"config": configName,
@@ -667,7 +667,7 @@ func TestSegmentCURD(t *testing.T) {
 
 				scrollDocID := fmt.Sprintf("scroll_segments_%s", configName)
 				addOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "scroll_test",
 						"config": configName,
@@ -750,7 +750,7 @@ func TestSegmentCURD(t *testing.T) {
 
 				singleReadDocID := fmt.Sprintf("single_read_segment_%s", configName)
 				addOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "single_read_test",
 						"config": configName,
@@ -863,7 +863,7 @@ func TestSegmentCURD(t *testing.T) {
 
 				removeDocID := fmt.Sprintf("remove_segments_%s", configName)
 				addOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "remove_test_prep",
 						"config": configName,
@@ -931,7 +931,7 @@ func TestSegmentCURD(t *testing.T) {
 
 				docRemovalDocID := fmt.Sprintf("doc_removal_segments_%s", configName)
 				addOptions := &types.UpsertOptions{
-					GraphName: collectionID,
+					CollectionID: collectionID,
 					Metadata: map[string]interface{}{
 						"source": "doc_removal_test",
 						"config": configName,
@@ -1030,7 +1030,7 @@ func TestAddSegmentsErrorHandling(t *testing.T) {
 		}
 
 		options := &types.UpsertOptions{
-			GraphName: "nonexistent_collection",
+			CollectionID: "nonexistent_collection",
 		}
 
 		_, err := g.AddSegments(ctx, "", segments, options)
@@ -1049,7 +1049,7 @@ func TestAddSegmentsErrorHandling(t *testing.T) {
 		}
 
 		options := &types.UpsertOptions{
-			GraphName: "nonexistent_collection",
+			CollectionID: "nonexistent_collection",
 		}
 
 		_, err := g.AddSegments(ctx, "test_doc", segments, options)
@@ -1061,7 +1061,7 @@ func TestAddSegmentsErrorHandling(t *testing.T) {
 
 	t.Run("Nil_Segments", func(t *testing.T) {
 		options := &types.UpsertOptions{
-			GraphName: "test_collection",
+			CollectionID: "test_collection",
 		}
 
 		segmentIDs, err := g.AddSegments(ctx, "test_doc", nil, options)
@@ -1153,7 +1153,7 @@ func TestAddSegmentsStoreIntegration(t *testing.T) {
 
 			segmentDocID := fmt.Sprintf("store_segments_%s", configName)
 			options := &types.UpsertOptions{
-				GraphName: storeCollectionID,
+				CollectionID: storeCollectionID,
 				Metadata: map[string]interface{}{
 					"source": "store_integration_test",
 					"config": configName,
