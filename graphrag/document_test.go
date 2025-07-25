@@ -354,7 +354,7 @@ func TestAddURLAndText(t *testing.T) {
 
 		ctx := context.Background()
 		options := &types.UpsertOptions{
-			DocID:     fmt.Sprintf("test_url_%s", configName),
+			DocID:        fmt.Sprintf("test_url_%s", configName),
 			CollectionID: collectionID, // Use the actual created collection ID
 			Metadata: map[string]interface{}{
 				"source": "test",
@@ -404,7 +404,7 @@ func TestAddURLAndText(t *testing.T) {
 
 		ctx := context.Background()
 		options := &types.UpsertOptions{
-			DocID:     fmt.Sprintf("test_text_%s", configName),
+			DocID:        fmt.Sprintf("test_text_%s", configName),
 			CollectionID: collectionID, // Use the actual created collection ID
 			Metadata: map[string]interface{}{
 				"source": "test",
@@ -471,7 +471,7 @@ func TestAddFileErrorHandling(t *testing.T) {
 
 	t.Run("Non_Existent_File", func(t *testing.T) {
 		options := &types.UpsertOptions{
-			DocID:     "test_nonexistent",
+			DocID:        "test_nonexistent",
 			CollectionID: "nonexistent_collection", // Error test, no need for real collection
 		}
 
@@ -484,7 +484,7 @@ func TestAddFileErrorHandling(t *testing.T) {
 
 	t.Run("Empty_File_Path", func(t *testing.T) {
 		options := &types.UpsertOptions{
-			DocID:     "test_empty",
+			DocID:        "test_empty",
 			CollectionID: "empty_test_collection", // Error test, no need for real collection
 		}
 
@@ -592,7 +592,7 @@ func TestAddFileStoreIntegration(t *testing.T) {
 				t.Skip("Test file text.txt not found")
 			}
 			options := &types.UpsertOptions{
-				DocID:     fmt.Sprintf("test_store_%s", configName),
+				DocID:        fmt.Sprintf("test_store_%s", configName),
 				CollectionID: storeCollectionID,
 				Metadata: map[string]interface{}{
 					"source": "store_test",
@@ -693,7 +693,7 @@ func TestAddFileRealIntegration(t *testing.T) {
 	defer os.Remove(testFile)
 
 	options := &types.UpsertOptions{
-		DocID:     "real_test_001",
+		DocID:        "real_test_001",
 		CollectionID: realCollectionID,
 		Metadata: map[string]interface{}{
 			"source": "real_test",
@@ -806,9 +806,9 @@ func TestRemoveDocs(t *testing.T) {
 	t.Run("AddTestDocuments", func(t *testing.T) {
 		for _, doc := range testDocs {
 			options := &types.UpsertOptions{
-				DocID:     fmt.Sprintf("removedocs_test_%s", doc.id),
+				DocID:        fmt.Sprintf("removedocs_test_%s", doc.id),
 				CollectionID: collectionID,
-				Metadata:  doc.metadata,
+				Metadata:     doc.metadata,
 			}
 
 			docID, err := g.AddText(ctx, doc.content, options)
@@ -923,9 +923,9 @@ func TestRemoveDocs(t *testing.T) {
 		var allDocIDs []string
 		for _, doc := range testDocs {
 			options := &types.UpsertOptions{
-				DocID:     fmt.Sprintf("removedocs_batch_test_%s", doc.id),
+				DocID:        fmt.Sprintf("removedocs_batch_test_%s", doc.id),
 				CollectionID: collectionID,
-				Metadata:  doc.metadata,
+				Metadata:     doc.metadata,
 			}
 
 			docID, err := g.AddText(ctx, doc.content, options)
