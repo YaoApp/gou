@@ -57,6 +57,12 @@ type VideoOption struct {
 	MaxConcurrency     int             `json:"max_concurrency,omitempty"`     // Max concurrent vision processing
 	TextOptimization   bool            `json:"text_optimization,omitempty"`   // Enable text optimization
 	DeduplicationRatio float64         `json:"deduplication_ratio,omitempty"` // Text deduplication ratio
+	// FFmpeg configuration fields
+	FFmpegPath  string `json:"ffmpeg_path,omitempty"`  // Path to FFmpeg executable
+	FFprobePath string `json:"ffprobe_path,omitempty"` // Path to FFprobe executable
+	EnableGPU   *bool  `json:"enable_gpu,omitempty"`   // Enable GPU acceleration (pointer to detect if set)
+	GPUIndex    *int   `json:"gpu_index,omitempty"`    // GPU index (pointer to detect if set)
+	MaxThreads  *int   `json:"max_threads,omitempty"`  // Max threads per process (pointer to detect if set)
 }
 
 // KeyframeInfo represents information about an extracted keyframe
@@ -111,11 +117,31 @@ func NewVideo(option VideoOption) (*Video, error) {
 
 	// Initialize FFmpeg
 	ffmpegInstance := ffmpeg.NewFFmpeg()
+
+	// Build FFmpeg config with defaults, then override with VideoOption values
 	ffmpegConfig := ffmpeg.Config{
 		MaxProcesses: maxConcurrency,
-		MaxThreads:   4,
-		EnableGPU:    true, // Enable GPU for video processing
+		MaxThreads:   4,    // Default value
+		EnableGPU:    true, // Default value
+		GPUIndex:     -1,   // Default auto-detect
 		WorkDir:      tempDir,
+	}
+
+	// Override with values from VideoOption if provided
+	if option.FFmpegPath != "" {
+		ffmpegConfig.FFmpegPath = option.FFmpegPath
+	}
+	if option.FFprobePath != "" {
+		ffmpegConfig.FFprobePath = option.FFprobePath
+	}
+	if option.EnableGPU != nil {
+		ffmpegConfig.EnableGPU = *option.EnableGPU
+	}
+	if option.GPUIndex != nil {
+		ffmpegConfig.GPUIndex = *option.GPUIndex
+	}
+	if option.MaxThreads != nil {
+		ffmpegConfig.MaxThreads = *option.MaxThreads
 	}
 
 	if err := ffmpegInstance.Init(ffmpegConfig); err != nil {
