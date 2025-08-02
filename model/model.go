@@ -110,13 +110,18 @@ func LoadSource(source []byte, id string, file string) (*Model, error) {
 		}
 	}
 
-	// Process unique indexes
+	// Process unique indexes (avoid duplicates)
+	uniqueColumnMap := map[string]*Column{}
+	for _, col := range uniqueColumns {
+		uniqueColumnMap[col.Name] = col
+	}
+
 	for _, index := range mod.MetaData.Indexes {
 		if strings.ToLower(index.Type) == "unique" {
 			for _, name := range index.Columns {
 				col, has := columns[name]
 				if has {
-					uniqueColumns = append(uniqueColumns, col)
+					uniqueColumnMap[col.Name] = col
 				}
 			}
 		} else if strings.ToLower(index.Type) == "primary" {
@@ -124,10 +129,16 @@ func LoadSource(source []byte, id string, file string) (*Model, error) {
 				col, has := columns[name]
 				if has {
 					PrimaryKey = col.Name
-					uniqueColumns = append(uniqueColumns, col)
+					uniqueColumnMap[col.Name] = col
 				}
 			}
 		}
+	}
+
+	// Convert map back to slice
+	uniqueColumns = []*Column{}
+	for _, col := range uniqueColumnMap {
+		uniqueColumns = append(uniqueColumns, col)
 	}
 
 	mod.Columns = columns
