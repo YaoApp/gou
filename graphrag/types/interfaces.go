@@ -158,10 +158,11 @@ type Logger interface {
 // GraphRag defines the interface for GraphRag
 type GraphRag interface {
 	// Collection Management
-	CreateCollection(ctx context.Context, config CollectionConfig) (string, error)               // Create a new collection
-	RemoveCollection(ctx context.Context, id string) (bool, error)                               // Remove a collection
-	CollectionExists(ctx context.Context, id string) (bool, error)                               // Check if a collection exists
-	GetCollections(ctx context.Context, filter map[string]interface{}) ([]CollectionInfo, error) // Get collections with optional metadata filtering
+	CreateCollection(ctx context.Context, config CollectionConfig) (string, error)                  // Create a new collection
+	RemoveCollection(ctx context.Context, id string) (bool, error)                                  // Remove a collection
+	CollectionExists(ctx context.Context, id string) (bool, error)                                  // Check if a collection exists
+	GetCollections(ctx context.Context, filter map[string]interface{}) ([]CollectionInfo, error)    // Get collections with optional metadata filtering
+	UpdateCollectionMetadata(ctx context.Context, id string, metadata map[string]interface{}) error // Update collection metadata
 
 	// Document Management
 	AddFile(ctx context.Context, file string, options *UpsertOptions) (string, error)            // Add a file to a collection

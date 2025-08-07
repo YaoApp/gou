@@ -546,6 +546,104 @@ func (g *GraphRag) matchesFilter(collection types.CollectionInfo, filter map[str
 	return true
 }
 
+// UpdateCollectionMetadata updates the metadata of an existing collection
+func (g *GraphRag) UpdateCollectionMetadata(ctx context.Context, id string, metadata map[string]interface{}) error {
+	if id == "" {
+		return fmt.Errorf("collection ID cannot be empty")
+	}
+
+	if metadata == nil {
+		return fmt.Errorf("metadata cannot be nil")
+	}
+
+	// Connect to vector store if not already connected and config is provided
+	if g.Vector != nil && !g.Vector.IsConnected() {
+		err := g.Vector.Connect(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to connect to vector store: %w", err)
+		}
+		g.Logger.Infof("Connected to vector store")
+	}
+
+	// Check if collection exists
+	exists, err := g.CollectionExists(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to check collection existence: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("collection with ID '%s' does not exist", id)
+	}
+
+	// Get existing collection configuration
+	var existingCollection types.CollectionConfig
+	found := false
+
+	// Priority 1: Try to get from Store if available
+	if g.Store != nil {
+		if g.Store.Has(id) {
+			data, ok := g.Store.Get(id)
+			if ok {
+				if serializedData, ok := data.(string); ok {
+					collection, err := types.DeserializeCollectionConfig(serializedData)
+					if err == nil {
+						existingCollection = collection
+						found = true
+					}
+				}
+			}
+		}
+	}
+
+	// Priority 2: Try to get from System Collection if Store is not available or failed
+	if !found && g.Vector != nil {
+		systemExists, err := g.Vector.CollectionExists(ctx, g.System)
+		if err == nil && systemExists {
+			opts := &types.GetDocumentOptions{
+				CollectionName: g.System,
+				IncludeVector:  false,
+				IncludePayload: true,
+			}
+
+			docs, err := g.Vector.GetDocuments(ctx, []string{id}, opts)
+			if err == nil && len(docs) > 0 && docs[0] != nil && docs[0].Content != "" {
+				collection, err := types.DeserializeCollectionConfig(docs[0].Content)
+				if err == nil {
+					existingCollection = collection
+					found = true
+				}
+			}
+		}
+	}
+
+	// If we couldn't find existing configuration, create a minimal one
+	if !found {
+		existingCollection = types.CollectionConfig{
+			ID:       id,
+			Metadata: make(map[string]interface{}),
+			Config:   nil, // Config might not be available for inferred collections
+		}
+	}
+
+	// Update metadata - merge with existing metadata
+	if existingCollection.Metadata == nil {
+		existingCollection.Metadata = make(map[string]interface{})
+	}
+
+	// Merge new metadata with existing metadata
+	for key, value := range metadata {
+		existingCollection.Metadata[key] = value
+	}
+
+	// Save updated collection metadata
+	err = g.saveCollectionMetadata(ctx, existingCollection)
+	if err != nil {
+		return fmt.Errorf("failed to save updated collection metadata: %w", err)
+	}
+
+	g.Logger.Infof("Successfully updated metadata for collection: %s", id)
+	return nil
+}
+
 // ensureSystemCollection ensures the system collection exists and creates it if not
 func (g *GraphRag) ensureSystemCollection(ctx context.Context) error {
 	if g.Vector == nil {
