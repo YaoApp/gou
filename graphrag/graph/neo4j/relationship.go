@@ -12,6 +12,11 @@ import (
 
 // AddRelationships adds relationships to the graph
 func (s *Store) AddRelationships(ctx context.Context, opts *types.AddRelationshipsOptions) ([]string, error) {
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	connected := s.connected
 	s.mu.RUnlock()
@@ -298,6 +303,11 @@ func (s *Store) executeBatchRelationshipOperation(ctx context.Context, tx neo4j.
 
 // GetRelationships retrieves relationships from the graph
 func (s *Store) GetRelationships(ctx context.Context, opts *types.GetRelationshipsOptions) ([]*types.GraphRelationship, error) {
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	connected := s.connected
 	s.mu.RUnlock()
@@ -570,6 +580,11 @@ func (s *Store) parseRelationshipFromRecord(record *neo4j.Record, opts *types.Ge
 
 // DeleteRelationships deletes relationships from the graph
 func (s *Store) DeleteRelationships(ctx context.Context, opts *types.DeleteRelationshipsOptions) error {
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	connected := s.connected
 	s.mu.RUnlock()

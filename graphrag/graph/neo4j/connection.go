@@ -166,3 +166,11 @@ func (s *Store) IsConnected() bool {
 func (s *Store) Close() error {
 	return s.Disconnect(context.Background())
 }
+
+// tryConnect tries to connect to Neo4j server
+func (s *Store) tryConnect(ctx context.Context) error {
+	if s.connected {
+		return nil
+	}
+	return s.Connect(ctx, s.config)
+}

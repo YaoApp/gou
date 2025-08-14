@@ -11,6 +11,11 @@ import (
 
 // GetSchema returns the schema of the graph
 func (s *Store) GetSchema(ctx context.Context, graphName string) (*types.DynamicGraphSchema, error) {
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -30,6 +35,11 @@ func (s *Store) GetSchema(ctx context.Context, graphName string) (*types.Dynamic
 
 // CreateIndex creates an index on the graph
 func (s *Store) CreateIndex(ctx context.Context, opts *types.CreateIndexOptions) error {
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -57,6 +67,11 @@ func (s *Store) CreateIndex(ctx context.Context, opts *types.CreateIndexOptions)
 
 // DropIndex drops an index from the graph
 func (s *Store) DropIndex(ctx context.Context, opts *types.DropIndexOptions) error {
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

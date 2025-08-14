@@ -12,6 +12,12 @@ import (
 
 // Query executes a graph query with flexible options
 func (s *Store) Query(ctx context.Context, opts *types.GraphQueryOptions) (*types.GraphResult, error) {
+
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	connected := s.connected
 	s.mu.RUnlock()
