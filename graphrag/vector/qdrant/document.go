@@ -173,12 +173,16 @@ func convertMetadataToPayload(metadata map[string]interface{}) (map[string]*qdra
 
 // AddDocuments adds documents to the collection
 func (s *Store) AddDocuments(ctx context.Context, opts *types.AddDocumentOptions) ([]string, error) {
+
+	// Auto connect
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+
+	// Lock the mutex
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-
-	if !s.connected {
-		return nil, fmt.Errorf("not connected to Qdrant server")
-	}
 
 	if opts == nil || len(opts.Documents) == 0 {
 		return nil, fmt.Errorf("no documents provided")
