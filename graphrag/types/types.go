@@ -167,20 +167,15 @@ type Embeddings []*EmbeddingResult
 
 // ChunkingOptions represents options for chunking
 type ChunkingOptions struct {
-	Type            ChunkingType     `json:"type,omitempty"`  // Content type, auto-detected if not provided
-	Size            int              `json:"size"`            // For text, PDF, Word, only, default is QA 300, Code 800,
-	Overlap         int              `json:"overlap"`         // For text, PDF, Word, only, default is QA 20, Code 100,
-	MaxDepth        int              `json:"max_depth"`       // For text, PDF, Word, only, default is 5
-	SizeMultiplier  int              `json:"size_multiplier"` // Base multiplier for chunk size calculation, default is 3
-	MaxConcurrent   int              `json:"max_concurrent"`
+	Type            ChunkingType     `json:"type,omitempty"`   // Content type, auto-detected if not provided
+	Size            int              `json:"size"`             // For text, PDF, Word, only, default is QA 300, Code 800,
+	Overlap         int              `json:"overlap"`          // For text, PDF, Word, only, default is QA 20, Code 100,
+	MaxDepth        int              `json:"max_depth"`        // For text, PDF, Word, only, default is 5
+	SizeMultiplier  int              `json:"size_multiplier"`  // Base multiplier for chunk size calculation, default is 3
+	MaxConcurrent   int              `json:"max_concurrent"`   // Maximum concurrent operations
+	Separator       string           `json:"separator"`        // Custom separator pattern (regex supported)
+	EnableDebug     bool             `json:"enable_debug"`     // Enable debug mode for detailed splitting information
 	SemanticOptions *SemanticOptions `json:"semantic_options"` // For Semantic recognition, etc.
-	VideoConnector  string           `json:"video_connector"`  // For Video recognition, etc.
-	AudioConnector  string           `json:"audio_connector"`  // For Audio recognition, etc.
-	ImageConnector  string           `json:"image_connector"`  // For Image recognition, etc.
-	FFmpegPath      string           `json:"ffmpeg_path"`      // ffmpeg path, for video, audio, etc.
-	FFprobePath     string           `json:"ffprobe_path"`     // ffprobe path, for video, audio, etc.
-	FFmpegOptions   string           `json:"ffmpeg_options"`   // ffmpeg options, for video, audio, etc.
-	FFprobeOptions  string           `json:"ffprobe_options"`  // ffprobe options, for video, audio, etc.
 }
 
 // SemanticOptions represents options for semantic recognition
