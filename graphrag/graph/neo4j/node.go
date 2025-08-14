@@ -12,6 +12,12 @@ import (
 
 // AddNodes adds nodes to the graph
 func (s *Store) AddNodes(ctx context.Context, opts *types.AddNodesOptions) ([]string, error) {
+
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	connected := s.connected
 	s.mu.RUnlock()
@@ -266,6 +272,12 @@ func (s *Store) executeBatchNodeOperation(ctx context.Context, tx neo4j.ManagedT
 
 // GetNodes retrieves nodes from the graph
 func (s *Store) GetNodes(ctx context.Context, opts *types.GetNodesOptions) ([]*types.GraphNode, error) {
+
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	connected := s.connected
 	s.mu.RUnlock()

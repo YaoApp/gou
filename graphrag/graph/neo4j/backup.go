@@ -24,9 +24,9 @@ type BackupData struct {
 
 // Backup creates a backup of the graph
 func (s *Store) Backup(ctx context.Context, writer io.Writer, opts *types.GraphBackupOptions) error {
-	// Check basic conditions without holding lock
-	if !s.connected {
-		return fmt.Errorf("not connected to Neo4j server")
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Neo4j server: %w", err)
 	}
 
 	if opts == nil {

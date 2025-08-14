@@ -22,6 +22,11 @@ const (
 
 // CreateGraph creates a new graph (database for enterprise, namespace/label for community)
 func (s *Store) CreateGraph(ctx context.Context, graphName string) error {
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -69,6 +74,11 @@ func (s *Store) DropGraph(ctx context.Context, graphName string) error {
 
 // GraphExists checks if a graph exists
 func (s *Store) GraphExists(ctx context.Context, graphName string) (bool, error) {
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -90,6 +100,11 @@ func (s *Store) GraphExists(ctx context.Context, graphName string) (bool, error)
 
 // ListGraphs returns a list of available graphs
 func (s *Store) ListGraphs(ctx context.Context) ([]string, error) {
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -107,6 +122,11 @@ func (s *Store) ListGraphs(ctx context.Context) ([]string, error) {
 
 // DescribeGraph returns statistics about a graph
 func (s *Store) DescribeGraph(ctx context.Context, graphName string) (*types.GraphStats, error) {
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Neo4j server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
