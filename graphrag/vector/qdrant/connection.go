@@ -109,3 +109,17 @@ func (s *Store) IsConnected() bool {
 func (s *Store) Close() error {
 	return s.Disconnect(context.Background())
 }
+
+// tryConnect tries to connect to Qdrant server
+func (s *Store) tryConnect(ctx context.Context) error {
+
+	if s.connected {
+		return nil
+	}
+
+	err := s.Connect(ctx, s.config)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+	return nil
+}
