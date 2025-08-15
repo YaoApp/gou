@@ -1348,12 +1348,13 @@ type PaginatedDocumentsResult struct {
 // ScrollOptions represents options for scrolling through documents (iterator-style)
 type ScrollOptions struct {
 	CollectionName string                 `json:"collection_name"`
-	Filter         map[string]interface{} `json:"filter,omitempty"`     // Metadata filter
-	BatchSize      int                    `json:"batch_size,omitempty"` // Number of documents per batch (default: 100)
-	ScrollID       string                 `json:"scroll_id,omitempty"`  // Scroll ID for continuing pagination
-	IncludeVector  bool                   `json:"include_vector"`       // Whether to include vector data
-	IncludePayload bool                   `json:"include_payload"`      // Whether to include payload/metadata
-	Fields         []string               `json:"fields,omitempty"`     // Specific fields to retrieve
+	Filter         map[string]interface{} `json:"filter,omitempty"`    // Metadata filter
+	Limit          int                    `json:"limit,omitempty"`     // Number of documents per batch (default: 100)
+	ScrollID       string                 `json:"scroll_id,omitempty"` // Scroll ID for continuing pagination
+	OrderBy        []string               `json:"order_by,omitempty"`  // Fields to order by
+	IncludeVector  bool                   `json:"include_vector"`      // Whether to include vector data
+	IncludePayload bool                   `json:"include_payload"`     // Whether to include payload/metadata
+	Fields         []string               `json:"fields,omitempty"`    // Specific fields to retrieve
 }
 
 // ScrollResult represents scroll-based query results
@@ -2153,10 +2154,11 @@ type PaginatedSegmentsResult struct {
 
 // ScrollSegmentsOptions represents options for scrolling through segments (iterator-style)
 type ScrollSegmentsOptions struct {
-	Filter    map[string]interface{} `json:"filter,omitempty"`     // Metadata filter (vote, score, weight, etc.)
-	BatchSize int                    `json:"batch_size,omitempty"` // Number of segments per batch (default: 100)
-	ScrollID  string                 `json:"scroll_id,omitempty"`  // Scroll ID for continuing pagination
-	Fields    []string               `json:"fields,omitempty"`     // Specific fields to retrieve
+	Filter   map[string]interface{} `json:"filter,omitempty"`    // Metadata filter (vote, score, weight, etc.)
+	Limit    int                    `json:"limit,omitempty"`     // Number of segments per batch (default: 100)
+	ScrollID string                 `json:"scroll_id,omitempty"` // Scroll ID for continuing pagination
+	OrderBy  []string               `json:"order_by,omitempty"`  // Fields to order by (score, weight, vote, created_at, etc.)
+	Fields   []string               `json:"fields,omitempty"`    // Specific fields to retrieve
 
 	// Include options
 	IncludeNodes         bool `json:"include_nodes"`         // Whether to include graph nodes

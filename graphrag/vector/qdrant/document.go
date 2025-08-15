@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/qdrant/go-client/qdrant"
 	"github.com/yaoapp/gou/graphrag/types"
@@ -674,7 +675,7 @@ func convertFilterToQdrant(filter map[string]interface{}) (*qdrant.Filter, error
 	}, nil
 }
 
-// ListDocuments lists documents with pagination
+// ListDocuments lists documents with pagination (Deprecated)
 func (s *Store) ListDocuments(ctx context.Context, opts *types.ListDocumentsOptions) (*types.PaginatedDocumentsResult, error) {
 	// Auto connect
 	err := s.tryConnect(ctx)
@@ -783,15 +784,15 @@ func (s *Store) ScrollDocuments(ctx context.Context, opts *types.ScrollOptions) 
 		return nil, fmt.Errorf("scroll options cannot be nil")
 	}
 
-	batchSize := opts.BatchSize
-	if batchSize <= 0 {
-		batchSize = 100 // Default batch size
+	limit := opts.Limit
+	if limit <= 0 {
+		limit = 100 // Default limit
 	}
 
 	// Prepare scroll request
 	req := &qdrant.ScrollPoints{
 		CollectionName: opts.CollectionName,
-		Limit:          qdrant.PtrOf(uint32(batchSize)),
+		Limit:          qdrant.PtrOf(uint32(limit)),
 		WithPayload:    qdrant.NewWithPayload(opts.IncludePayload),
 		WithVectors:    qdrant.NewWithVectors(opts.IncludeVector),
 	}
@@ -805,6 +806,32 @@ func (s *Store) ScrollDocuments(ctx context.Context, opts *types.ScrollOptions) 
 		req.Filter = filter
 	}
 
+	// Add ordering if provided
+	if len(opts.OrderBy) > 0 {
+		// Use the first OrderBy field (Qdrant ScrollPoints supports single field ordering)
+		orderField := opts.OrderBy[0]
+
+		// Parse direction from field name (e.g., "score:desc" or just "score" for asc)
+		direction := qdrant.Direction_Asc // Default to ascending
+		fieldKey := orderField
+
+		if strings.Contains(orderField, ":") {
+			parts := strings.Split(orderField, ":")
+			if len(parts) == 2 {
+				fieldKey = parts[0]
+				if strings.ToLower(parts[1]) == "desc" {
+					direction = qdrant.Direction_Desc
+				}
+			}
+		}
+
+		// Set OrderBy for the request
+		req.OrderBy = &qdrant.OrderBy{
+			Key:       fmt.Sprintf("metadata.%s", fieldKey), // Access nested metadata field
+			Direction: &direction,
+		}
+	}
+
 	// Handle continuation with scroll ID
 	if opts.ScrollID != "" {
 		// Convert scroll ID back to offset (this is a simplified approach)
@@ -813,47 +840,41 @@ func (s *Store) ScrollDocuments(ctx context.Context, opts *types.ScrollOptions) 
 		}
 	}
 
-	// Collect all documents by scrolling through all batches
-	var allDocuments []*types.Document
-	var nextOffset *qdrant.PointId
+	// Perform single scroll request (not collecting all documents)
+	result, err := s.client.Scroll(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scroll documents: %w", err)
+	}
 
-	for {
-		// Set offset for continuation
-		if nextOffset != nil {
-			req.Offset = nextOffset
-		}
+	// Convert results to documents
+	var documents []*types.Document
+	for _, point := range result {
+		doc := convertRetrievedPointToDocument(point, opts.IncludeVector, opts.IncludePayload)
+		documents = append(documents, doc)
+	}
 
-		// Perform scroll
-		result, err := s.client.Scroll(ctx, req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scroll documents: %w", err)
-		}
+	// Determine if there are more results and generate next scroll ID
+	hasMore := len(result) == limit
+	var nextScrollID string
 
-		// Convert results to documents
-		for _, point := range result {
-			doc := convertRetrievedPointToDocument(point, opts.IncludeVector, opts.IncludePayload)
-			allDocuments = append(allDocuments, doc)
-		}
-
-		// Check if we have more results
-		if len(result) < batchSize {
-			// No more results
-			break
-		}
-
-		// Set next offset to the last point ID for continuation
-		if len(result) > 0 {
-			lastPoint := result[len(result)-1]
-			nextOffset = lastPoint.Id
-		} else {
-			break
+	if hasMore && len(result) > 0 {
+		// Use the last point ID as the next scroll ID
+		lastPoint := result[len(result)-1]
+		if lastPoint.Id != nil {
+			// Convert point ID to string for scroll ID
+			if numID := lastPoint.Id.GetNum(); numID != 0 {
+				nextScrollID = fmt.Sprintf("%d", numID)
+			} else if uuidID := lastPoint.Id.GetUuid(); uuidID != "" {
+				nextScrollID = uuidID
+			}
 		}
 	}
 
 	// Prepare scroll result
 	scrollResult := &types.ScrollResult{
-		Documents: allDocuments,
-		HasMore:   false, // We've collected all documents
+		Documents: documents,
+		ScrollID:  nextScrollID,
+		HasMore:   hasMore,
 	}
 
 	return scrollResult, nil

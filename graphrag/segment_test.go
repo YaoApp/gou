@@ -704,7 +704,7 @@ func TestSegmentCURD(t *testing.T) {
 
 				// Test ScrollSegments with default options
 				scrollOptions := &types.ScrollSegmentsOptions{
-					BatchSize: 10,
+					Limit: 10,
 				}
 				result, err := g.ScrollSegments(ctx, scrollDocID, scrollOptions)
 				if err != nil {

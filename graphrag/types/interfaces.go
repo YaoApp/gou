@@ -28,7 +28,7 @@ type VectorStore interface {
 	DeleteDocuments(ctx context.Context, opts *DeleteDocumentOptions) error
 
 	// Document Listing and Pagination
-	ListDocuments(ctx context.Context, opts *ListDocumentsOptions) (*PaginatedDocumentsResult, error)
+	ListDocuments(ctx context.Context, opts *ListDocumentsOptions) (*PaginatedDocumentsResult, error) // deprecated
 	ScrollDocuments(ctx context.Context, opts *ScrollOptions) (*ScrollResult, error)
 
 	// Vector Search Operations (core functionality)

@@ -1158,7 +1158,7 @@ func TestScrollDocuments(t *testing.T) {
 			setup: func() *types.ScrollOptions {
 				return &types.ScrollOptions{
 					CollectionName: collectionName,
-					BatchSize:      10,
+					Limit:          10,
 					IncludeVector:  true,
 					IncludePayload: true,
 				}
@@ -1172,7 +1172,7 @@ func TestScrollDocuments(t *testing.T) {
 			setup: func() *types.ScrollOptions {
 				return &types.ScrollOptions{
 					CollectionName: collectionName,
-					BatchSize:      5,
+					Limit:          5,
 					IncludeVector:  true,
 					IncludePayload: true,
 				}
@@ -1186,7 +1186,7 @@ func TestScrollDocuments(t *testing.T) {
 			setup: func() *types.ScrollOptions {
 				return &types.ScrollOptions{
 					CollectionName: collectionName,
-					BatchSize:      10,
+					Limit:          10,
 					IncludeVector:  false,
 					IncludePayload: true,
 				}
@@ -1200,7 +1200,7 @@ func TestScrollDocuments(t *testing.T) {
 			setup: func() *types.ScrollOptions {
 				return &types.ScrollOptions{
 					CollectionName: collectionName,
-					BatchSize:      10,
+					Limit:          10,
 					IncludeVector:  true,
 					IncludePayload: false,
 				}
@@ -1214,7 +1214,7 @@ func TestScrollDocuments(t *testing.T) {
 			setup: func() *types.ScrollOptions {
 				return &types.ScrollOptions{
 					CollectionName: collectionName,
-					BatchSize:      10,
+					Limit:          10,
 					Filter: map[string]interface{}{
 						"batch": 1, // Should match documents 5-9
 					},
@@ -1239,7 +1239,7 @@ func TestScrollDocuments(t *testing.T) {
 			setup: func() *types.ScrollOptions {
 				return &types.ScrollOptions{
 					CollectionName: collectionName,
-					BatchSize:      10,
+					Limit:          10,
 				}
 			},
 			wantErr:     true,
@@ -1385,7 +1385,7 @@ func TestDocumentOperationsIntegration(t *testing.T) {
 		// Step 4: Scroll documents
 		scrollOpts := types.ScrollOptions{
 			CollectionName: collectionName,
-			BatchSize:      7,
+			Limit:          7,
 			IncludeVector:  true,
 			IncludePayload: true,
 		}
@@ -1659,7 +1659,7 @@ func BenchmarkScrollDocuments(b *testing.B) {
 		b.Run(bm.name, func(b *testing.B) {
 			opts := &types.ScrollOptions{
 				CollectionName: collectionName,
-				BatchSize:      bm.batchSize,
+				Limit:          bm.batchSize,
 				IncludeVector:  true,
 				IncludePayload: true,
 			}
@@ -2472,7 +2472,7 @@ func TestScrollDocumentsInvalidScrollID(t *testing.T) {
 		// Test with invalid scroll ID (should be ignored gracefully)
 		scrollOpts := types.ScrollOptions{
 			CollectionName: env.CollectionName,
-			BatchSize:      10,
+			Limit:          10,
 			ScrollID:       "invalid_scroll_id", // Invalid format, should be ignored
 			IncludeVector:  true,
 			IncludePayload: true,
@@ -2650,7 +2650,7 @@ func TestScrollDocumentsWithScrollID(t *testing.T) {
 		// Test with valid numeric scroll ID
 		scrollOpts := types.ScrollOptions{
 			CollectionName: env.CollectionName,
-			BatchSize:      5,
+			Limit:          5,
 			ScrollID:       "12345", // Valid numeric string
 			IncludeVector:  true,
 			IncludePayload: true,
@@ -2763,7 +2763,7 @@ func TestScrollDocumentsWithFilter(t *testing.T) {
 		// Test scroll with filter to trigger convertFilterToQdrant error path
 		scrollOpts := types.ScrollOptions{
 			CollectionName: env.CollectionName,
-			BatchSize:      5,
+			Limit:          5,
 			Filter: map[string]interface{}{
 				"test_filter": true,
 			},
@@ -2828,7 +2828,7 @@ func TestScrollDocumentsErrorPath(t *testing.T) {
 		// Test with invalid collection name to trigger error
 		scrollOpts := types.ScrollOptions{
 			CollectionName: "nonexistent_collection_scroll",
-			BatchSize:      10,
+			Limit:          10,
 			IncludeVector:  true,
 			IncludePayload: true,
 		}
