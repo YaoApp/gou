@@ -789,10 +789,14 @@ func (s *Store) ScrollDocuments(ctx context.Context, opts *types.ScrollOptions) 
 		limit = 100 // Default limit
 	}
 
+	// Request limit+1 documents to determine if there are more results
+	// If limit+1 documents are returned, the last one serves as cursor but is not returned to user
+	queryLimit := limit + 1
+
 	// Prepare scroll request
 	req := &qdrant.ScrollPoints{
 		CollectionName: opts.CollectionName,
-		Limit:          qdrant.PtrOf(uint32(limit)),
+		Limit:          qdrant.PtrOf(uint32(queryLimit)), // Request limit+1 documents
 		WithPayload:    qdrant.NewWithPayload(opts.IncludePayload),
 		WithVectors:    qdrant.NewWithVectors(opts.IncludeVector),
 	}
@@ -846,27 +850,39 @@ func (s *Store) ScrollDocuments(ctx context.Context, opts *types.ScrollOptions) 
 		return nil, fmt.Errorf("failed to scroll documents: %w", err)
 	}
 
-	// Convert results to documents
+	// Process results: if limit+1 documents are returned, use the last one as cursor but don't return to user
 	var documents []*types.Document
-	for _, point := range result {
-		doc := convertRetrievedPointToDocument(point, opts.IncludeVector, opts.IncludePayload)
-		documents = append(documents, doc)
-	}
-
-	// Determine if there are more results and generate next scroll ID
-	hasMore := len(result) == limit
+	var hasMore bool
 	var nextScrollID string
 
-	if hasMore && len(result) > 0 {
-		// Use the last point ID as the next scroll ID
-		lastPoint := result[len(result)-1]
+	if len(result) > limit {
+		// Received limit+1 documents, indicating there are more results
+		hasMore = true
+
+		// Convert only the first 'limit' documents for the user
+		for i := 0; i < limit; i++ {
+			doc := convertRetrievedPointToDocument(result[i], opts.IncludeVector, opts.IncludePayload)
+			documents = append(documents, doc)
+		}
+
+		// Use the last document (limit+1-th) as cursor
+		lastPoint := result[limit] // This is the (limit+1)-th document, used as cursor
 		if lastPoint.Id != nil {
-			// Convert point ID to string for scroll ID
 			if numID := lastPoint.Id.GetNum(); numID != 0 {
 				nextScrollID = fmt.Sprintf("%d", numID)
 			} else if uuidID := lastPoint.Id.GetUuid(); uuidID != "" {
 				nextScrollID = uuidID
 			}
+		}
+	} else {
+		// Received <= limit documents, indicating no more results
+		hasMore = false
+		nextScrollID = ""
+
+		// Convert all returned documents
+		for _, point := range result {
+			doc := convertRetrievedPointToDocument(point, opts.IncludeVector, opts.IncludePayload)
+			documents = append(documents, doc)
 		}
 	}
 
