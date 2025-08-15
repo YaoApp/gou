@@ -838,6 +838,10 @@ func (s *Store) ScrollDocuments(ctx context.Context, opts *types.ScrollOptions) 
 
 	// Handle continuation with scroll ID
 	if opts.ScrollID != "" {
+
+		// Remove the order by from the request
+		req.OrderBy = nil
+
 		// Convert scroll ID back to offset (this is a simplified approach)
 		if offset, err := strconv.ParseUint(opts.ScrollID, 10, 64); err == nil {
 			req.Offset = qdrant.NewIDNum(offset)
