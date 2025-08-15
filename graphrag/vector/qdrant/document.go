@@ -490,6 +490,12 @@ func (s *Store) shouldUseNamedVectors(doc *types.Document, opts *types.AddDocume
 
 // GetDocuments retrieves documents by IDs
 func (s *Store) GetDocuments(ctx context.Context, ids []string, opts *types.GetDocumentOptions) ([]*types.Document, error) {
+	// Auto connect
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -670,6 +676,12 @@ func convertFilterToQdrant(filter map[string]interface{}) (*qdrant.Filter, error
 
 // ListDocuments lists documents with pagination
 func (s *Store) ListDocuments(ctx context.Context, opts *types.ListDocumentsOptions) (*types.PaginatedDocumentsResult, error) {
+	// Auto connect
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -754,6 +766,12 @@ func (s *Store) ListDocuments(ctx context.Context, opts *types.ListDocumentsOpti
 
 // ScrollDocuments provides iterator-style access to documents
 func (s *Store) ScrollDocuments(ctx context.Context, opts *types.ScrollOptions) (*types.ScrollResult, error) {
+	// Auto connect
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

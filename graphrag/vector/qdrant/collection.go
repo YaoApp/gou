@@ -10,6 +10,12 @@ import (
 
 // CreateCollection creates a new collection in Qdrant
 func (s *Store) CreateCollection(ctx context.Context, opts *types.CreateCollectionOptions) error {
+	// Auto connect
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -96,7 +102,7 @@ func (s *Store) CreateCollection(ctx context.Context, opts *types.CreateCollecti
 	}
 
 	// Execute create collection
-	err := s.client.CreateCollection(ctx, req)
+	err = s.client.CreateCollection(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed to create collection %s: %w", opts.CollectionName, err)
 	}
@@ -106,6 +112,12 @@ func (s *Store) CreateCollection(ctx context.Context, opts *types.CreateCollecti
 
 // ListCollections returns a list of all collections
 func (s *Store) ListCollections(ctx context.Context) ([]string, error) {
+	// Auto connect
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -123,6 +135,12 @@ func (s *Store) ListCollections(ctx context.Context) ([]string, error) {
 
 // DropCollection deletes a collection
 func (s *Store) DropCollection(ctx context.Context, collectionName string) error {
+	// Auto connect
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -130,7 +148,7 @@ func (s *Store) DropCollection(ctx context.Context, collectionName string) error
 		return fmt.Errorf("not connected to Qdrant server")
 	}
 
-	err := s.client.DeleteCollection(ctx, collectionName)
+	err = s.client.DeleteCollection(ctx, collectionName)
 	if err != nil {
 		return fmt.Errorf("failed to drop collection %s: %w", collectionName, err)
 	}
@@ -140,6 +158,12 @@ func (s *Store) DropCollection(ctx context.Context, collectionName string) error
 
 // CollectionExists checks if a collection exists
 func (s *Store) CollectionExists(ctx context.Context, collectionName string) (bool, error) {
+	// Auto connect
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -157,6 +181,13 @@ func (s *Store) CollectionExists(ctx context.Context, collectionName string) (bo
 
 // DescribeCollection returns statistics about a collection
 func (s *Store) DescribeCollection(ctx context.Context, collectionName string) (*types.VectorStoreStats, error) {
+
+	// Auto connect
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
