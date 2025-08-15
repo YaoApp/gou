@@ -656,7 +656,7 @@ func (g *GraphRag) GetSegments(ctx context.Context, segmentIDs []string) ([]type
 	return segments, nil
 }
 
-// ListSegments lists segments of a document with pagination
+// ListSegments lists segments of a document with pagination (deprecated)
 func (g *GraphRag) ListSegments(ctx context.Context, docID string, options *types.ListSegmentsOptions) (*types.PaginatedSegmentsResult, error) {
 	if docID == "" {
 		return nil, fmt.Errorf("docID cannot be empty")
@@ -732,10 +732,10 @@ func (g *GraphRag) ScrollSegments(ctx context.Context, docID string, options *ty
 		options = &types.ScrollSegmentsOptions{}
 	}
 
-	// Set default batch size
-	batchSize := options.BatchSize
-	if batchSize <= 0 {
-		batchSize = 100 // Default batch size
+	// Set default limit
+	limit := options.Limit
+	if limit <= 0 {
+		limit = 100 // Default limit
 	}
 
 	// Query segment data from all configured databases with scroll
@@ -743,9 +743,10 @@ func (g *GraphRag) ScrollSegments(ctx context.Context, docID string, options *ty
 		GraphName:            graphName,
 		DocID:                docID,
 		QueryType:            "scroll",
-		BatchSize:            batchSize,
+		BatchSize:            limit,
 		ScrollID:             options.ScrollID,
 		Filter:               options.Filter,
+		OrderBy:              options.OrderBy,
 		Fields:               options.Fields,
 		IncludeNodes:         options.IncludeNodes,
 		IncludeRelationships: options.IncludeRelationships,
@@ -1615,18 +1616,19 @@ func (g *GraphRag) queryChunksFromVectorWithScroll(ctx context.Context, collecti
 		}
 	}
 
-	// Set batch size, using default if not provided
-	batchSize := opts.BatchSize
-	if batchSize <= 0 {
-		batchSize = 100
+	// Set limit, using default if not provided
+	limit := opts.BatchSize
+	if limit <= 0 {
+		limit = 100
 	}
 
 	// Scroll documents
 	scrollOpts := &types.ScrollOptions{
 		CollectionName: collectionName,
 		Filter:         filter,
-		BatchSize:      batchSize,
+		Limit:          limit,
 		ScrollID:       opts.ScrollID,
+		OrderBy:        opts.OrderBy,
 		Fields:         opts.Fields,
 		IncludeVector:  false,
 		IncludePayload: true,
