@@ -357,10 +357,14 @@ func (g *GraphRag) UpdateSegments(ctx context.Context, segmentTexts []types.Segm
 		segmentIDs = append(segmentIDs, segment.ID)
 	}
 
-	docID, collectionID, err := g.getDocIDFromExistingSegments(ctx, segmentIDs)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get doc_id from existing segments: %w", err)
-	}
+	// docID, collectionID, err := g.getDocIDFromExistingSegments(ctx, segmentIDs)
+	// if err != nil {
+	// 	return 0, fmt.Errorf("failed to get doc_id from existing segments: %w", err)
+	// }
+
+	// Step 3: Get collection ID and doc ID from options (for update segments)
+	collectionID := options.CollectionID
+	docID := options.DocID
 
 	// Step 3: Prepare options by copying and setting necessary fields
 	opts := &types.UpsertOptions{}
