@@ -107,6 +107,65 @@ func (s *Store) CreateCollection(ctx context.Context, opts *types.CreateCollecti
 		return fmt.Errorf("failed to create collection %s: %w", opts.CollectionName, err)
 	}
 
+	// Create indexes
+	err = s.createIndexes(ctx, opts.CollectionName)
+	if err != nil {
+		return fmt.Errorf("failed to create indexes for collection %s: %w", opts.CollectionName, err)
+	}
+
+	return nil
+}
+
+// createIndexes creates indexes for a collection to optimize sorting and filtering
+func (s *Store) createIndexes(ctx context.Context, collectionName string) error {
+	// Define integer field indexes for sorting
+	integerFields := []string{
+		"score",
+		"size",
+		"text_length",
+		"vote",
+		"weight",
+		"recall_count",
+		"chunk_details.depth",
+		"chunk_details.index",
+	}
+
+	// Define boolean field indexes
+	boolFields := []string{
+		"chunk_details.is_leaf",
+		"chunk_details.is_root",
+	}
+
+	// Create indexes for integer fields
+	for _, field := range integerFields {
+		indexName := fmt.Sprintf("metadata.%s", field)
+		req := &qdrant.CreateFieldIndexCollection{
+			CollectionName: collectionName,
+			FieldName:      indexName,
+			FieldType:      qdrant.PtrOf(qdrant.FieldType_FieldTypeInteger),
+		}
+
+		_, err := s.client.CreateFieldIndex(ctx, req)
+		if err != nil {
+			return fmt.Errorf("failed to create index for field %s: %w", field, err)
+		}
+	}
+
+	// Create indexes for boolean fields
+	for _, field := range boolFields {
+		indexName := fmt.Sprintf("metadata.%s", field)
+		req := &qdrant.CreateFieldIndexCollection{
+			CollectionName: collectionName,
+			FieldName:      indexName,
+			FieldType:      qdrant.PtrOf(qdrant.FieldType_FieldTypeBool),
+		}
+
+		_, err := s.client.CreateFieldIndex(ctx, req)
+		if err != nil {
+			return fmt.Errorf("failed to create index for field %s: %w", field, err)
+		}
+	}
+
 	return nil
 }
 

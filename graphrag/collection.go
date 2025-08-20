@@ -331,6 +331,87 @@ func (g *GraphRag) CollectionExists(ctx context.Context, id string) (bool, error
 	return exists, nil
 }
 
+// GetCollection gets a single collection by ID
+func (g *GraphRag) GetCollection(ctx context.Context, id string) (*types.CollectionInfo, error) {
+	if id == "" {
+		return nil, fmt.Errorf("collection ID cannot be empty")
+	}
+
+	// Check if collection exists first
+	exists, err := g.CollectionExists(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check collection existence: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("collection with ID '%s' not found", id)
+	}
+
+	// Connect to vector store if not already connected and config is provided
+	if g.Vector != nil && !g.Vector.IsConnected() {
+		err := g.Vector.Connect(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to vector store: %w", err)
+		}
+		g.Logger.Infof("Connected to vector store")
+	}
+
+	// Try to get collection metadata from Store first (if available)
+	if g.Store != nil && g.Store.Has(id) {
+		data, ok := g.Store.Get(id)
+		if ok {
+			if serializedData, ok := data.(string); ok {
+				collection, err := types.DeserializeCollectionConfig(serializedData)
+				if err == nil {
+					return &types.CollectionInfo{
+						ID:       collection.ID,
+						Metadata: collection.Metadata,
+						Config:   collection.Config,
+					}, nil
+				}
+				g.Logger.Warnf("Failed to deserialize collection from store for ID %s: %v", id, err)
+			}
+		}
+	}
+
+	// Try to get from System Collection if Store is not available or failed
+	if g.Vector != nil {
+		systemExists, err := g.Vector.CollectionExists(ctx, g.System)
+		if err == nil && systemExists {
+			opts := &types.GetDocumentOptions{
+				CollectionName: g.System,
+				IncludeVector:  false,
+				IncludePayload: true,
+			}
+
+			docs, err := g.Vector.GetDocuments(ctx, []string{id}, opts)
+			if err == nil && len(docs) > 0 && docs[0] != nil && docs[0].Content != "" {
+				collection, err := types.DeserializeCollectionConfig(docs[0].Content)
+				if err == nil {
+					return &types.CollectionInfo{
+						ID:       collection.ID,
+						Metadata: collection.Metadata,
+						Config:   collection.Config,
+					}, nil
+				}
+				g.Logger.Warnf("Failed to deserialize collection from system collection for ID %s: %v", id, err)
+			}
+		}
+	}
+
+	// If we can't find metadata, create a minimal collection info with inferred metadata
+	// This handles cases where collection exists in vector store but metadata is missing
+	g.Logger.Infof("Collection %s exists but metadata not found, returning inferred collection info", id)
+	return &types.CollectionInfo{
+		ID: id,
+		Metadata: map[string]interface{}{
+			"inferred": true,
+			"source":   "vector_collection",
+			"name":     id, // Use ID as fallback name
+		},
+		Config: nil, // No config available for inferred collections
+	}, nil
+}
+
 // GetCollections gets all collections with optional metadata filtering
 func (g *GraphRag) GetCollections(ctx context.Context, filter map[string]interface{}) ([]types.CollectionInfo, error) {
 	if g.Vector == nil {

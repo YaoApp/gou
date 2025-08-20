@@ -161,6 +161,7 @@ type GraphRag interface {
 	CreateCollection(ctx context.Context, config CollectionConfig) (string, error)                  // Create a new collection
 	RemoveCollection(ctx context.Context, id string) (bool, error)                                  // Remove a collection
 	CollectionExists(ctx context.Context, id string) (bool, error)                                  // Check if a collection exists
+	GetCollection(ctx context.Context, id string) (*CollectionInfo, error)                          // Get a single collection by ID
 	GetCollections(ctx context.Context, filter map[string]interface{}) ([]CollectionInfo, error)    // Get collections with optional metadata filtering
 	UpdateCollectionMetadata(ctx context.Context, id string, metadata map[string]interface{}) error // Update collection metadata
 
@@ -178,8 +179,8 @@ type GraphRag interface {
 	RemoveSegmentsByDocID(ctx context.Context, docID string) (int, error)                                                // Remove all segments of a document, return removed count
 	GetSegments(ctx context.Context, segmentIDs []string) ([]Segment, error)                                             // Get segments by IDs, return segments
 	GetSegment(ctx context.Context, segmentID string) (*Segment, error)                                                  // Get a single segment by ID, return segment
-	ListSegments(ctx context.Context, docID string, options *ListSegmentsOptions) (*PaginatedSegmentsResult, error)      // List segments with pagination, return segments
-	ScrollSegments(ctx context.Context, docID string, options *ScrollSegmentsOptions) (*SegmentScrollResult, error)      // Scroll segments with iterator-style pagination, return segments
+	// ListSegments(ctx context.Context, docID string, options *ListSegmentsOptions) (*PaginatedSegmentsResult, error)      // List segments with pagination, return segments Deprecated
+	ScrollSegments(ctx context.Context, docID string, options *ScrollSegmentsOptions) (*SegmentScrollResult, error) // Scroll segments with iterator-style pagination, return segments
 
 	// Segment Voting, Scoring, Weighting
 	UpdateVote(ctx context.Context, segments []SegmentVote) (int, error)     // Vote for segments, return updated count
