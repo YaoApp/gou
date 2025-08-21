@@ -447,3 +447,228 @@ func (chunk *Chunk) GetTextAtPosition(pos *TextPosition) string {
 
 	return chunk.Text[relativeStart:relativeEnd]
 }
+
+// MetadataToTextPosition converts metadata map to TextPosition struct
+func MetadataToTextPosition(metadata map[string]interface{}) *TextPosition {
+	if metadata == nil {
+		return nil
+	}
+
+	// First try to find text_position in chunk_details (nested structure)
+	if chunkDetails, ok := metadata["chunk_details"].(map[string]interface{}); ok {
+		if textPos, ok := chunkDetails["text_position"].(map[string]interface{}); ok {
+			return &TextPosition{
+				StartIndex: SafeExtractInt(textPos["start_index"], 0),
+				EndIndex:   SafeExtractInt(textPos["end_index"], 0),
+				StartLine:  SafeExtractInt(textPos["start_line"], 0),
+				EndLine:    SafeExtractInt(textPos["end_line"], 0),
+			}
+		}
+	}
+
+	// Fallback: try to find text_position directly in metadata (flat structure)
+	if textPos, ok := metadata["text_position"].(map[string]interface{}); ok {
+		return &TextPosition{
+			StartIndex: SafeExtractInt(textPos["start_index"], 0),
+			EndIndex:   SafeExtractInt(textPos["end_index"], 0),
+			StartLine:  SafeExtractInt(textPos["start_line"], 0),
+			EndLine:    SafeExtractInt(textPos["end_line"], 0),
+		}
+	}
+
+	return nil
+}
+
+// MetadataToMediaPosition converts metadata map to MediaPosition struct
+func MetadataToMediaPosition(metadata map[string]interface{}) *MediaPosition {
+	if metadata == nil {
+		return nil
+	}
+
+	// First try to find media_position in chunk_details (nested structure)
+	if chunkDetails, ok := metadata["chunk_details"].(map[string]interface{}); ok {
+		if mediaPos, ok := chunkDetails["media_position"].(map[string]interface{}); ok {
+			return &MediaPosition{
+				StartTime: SafeExtractInt(mediaPos["start_time"], 0),
+				EndTime:   SafeExtractInt(mediaPos["end_time"], 0),
+				Page:      SafeExtractInt(mediaPos["page"], 0),
+			}
+		}
+	}
+
+	// Fallback: try to find media_position directly in metadata (flat structure)
+	if mediaPos, ok := metadata["media_position"].(map[string]interface{}); ok {
+		return &MediaPosition{
+			StartTime: SafeExtractInt(mediaPos["start_time"], 0),
+			EndTime:   SafeExtractInt(mediaPos["end_time"], 0),
+			Page:      SafeExtractInt(mediaPos["page"], 0),
+		}
+	}
+
+	return nil
+}
+
+// MetadataToExtractionResult converts metadata map to ExtractionResult struct
+func MetadataToExtractionResult(metadata map[string]interface{}) *ExtractionResult {
+	if metadata == nil {
+		return nil
+	}
+
+	extracted, ok := metadata["extracted"]
+	if !ok {
+		return nil
+	}
+
+	extractedMap, ok := extracted.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	model, _ := extractedMap["model"].(string)
+
+	// Extract usage information
+	var usage ExtractionUsage
+	if usageMap, ok := extractedMap["usage"].(map[string]interface{}); ok {
+		usage.TotalTokens = SafeExtractInt(usageMap["total_tokens"], 0)
+		usage.PromptTokens = SafeExtractInt(usageMap["prompt_tokens"], 0)
+		usage.TotalTexts = SafeExtractInt(usageMap["total_texts"], 0)
+	}
+
+	// Extract nodes if present
+	var nodes []Node
+	if nodesArray, ok := extractedMap["nodes"].([]interface{}); ok {
+		nodes = make([]Node, 0, len(nodesArray))
+		for _, nodeData := range nodesArray {
+			if nodeMap, ok := nodeData.(map[string]interface{}); ok {
+				node := Node{}
+				if id, ok := nodeMap["id"].(string); ok {
+					node.ID = id
+				}
+				if name, ok := nodeMap["name"].(string); ok {
+					node.Name = name
+				}
+				if description, ok := nodeMap["description"].(string); ok {
+					node.Description = description
+				}
+				if nodeType, ok := nodeMap["type"].(string); ok {
+					node.Type = nodeType
+				}
+				nodes = append(nodes, node)
+			}
+		}
+	}
+
+	// Extract relationships if present
+	var relationships []Relationship
+	if relsArray, ok := extractedMap["relationships"].([]interface{}); ok {
+		relationships = make([]Relationship, 0, len(relsArray))
+		for _, relData := range relsArray {
+			if relMap, ok := relData.(map[string]interface{}); ok {
+				rel := Relationship{}
+				if id, ok := relMap["id"].(string); ok {
+					rel.ID = id
+				}
+				if relType, ok := relMap["type"].(string); ok {
+					rel.Type = relType
+				}
+				if startNode, ok := relMap["start_node"].(string); ok {
+					rel.StartNode = startNode
+				}
+				if endNode, ok := relMap["end_node"].(string); ok {
+					rel.EndNode = endNode
+				}
+				if description, ok := relMap["description"].(string); ok {
+					rel.Description = description
+				}
+				rel.Weight = SafeExtractFloat64(relMap["weight"], 0.0)
+				rel.Confidence = SafeExtractFloat64(relMap["confidence"], 0.0)
+				relationships = append(relationships, rel)
+			}
+		}
+	}
+
+	return &ExtractionResult{
+		Usage:         usage,
+		Model:         model,
+		Nodes:         nodes,
+		Relationships: relationships,
+	}
+}
+
+// MetadataToChunkingType converts metadata map to ChunkingType
+func MetadataToChunkingType(metadata map[string]interface{}) ChunkingType {
+	if metadata == nil {
+		return ChunkingTypeText
+	}
+
+	// First try to find type in chunk_details (nested structure)
+	if chunkDetails, ok := metadata["chunk_details"].(map[string]interface{}); ok {
+		if chunkType, ok := chunkDetails["type"].(string); ok && chunkType != "" {
+			return ChunkingType(chunkType)
+		}
+	}
+
+	// Fallback: try to find type directly in metadata (flat structure)
+	if chunkType, ok := metadata["type"].(string); ok && chunkType != "" {
+		return ChunkingType(chunkType)
+	}
+
+	return ChunkingTypeText
+}
+
+// MetadataToChunkingStatus converts metadata map to ChunkingStatus
+func MetadataToChunkingStatus(metadata map[string]interface{}) ChunkingStatus {
+	if metadata == nil {
+		return ChunkingStatusCompleted
+	}
+
+	// First try to find status in chunk_details (nested structure)
+	if chunkDetails, ok := metadata["chunk_details"].(map[string]interface{}); ok {
+		if status, ok := chunkDetails["status"].(string); ok && status != "" {
+			return ChunkingStatus(status)
+		}
+	}
+
+	// Fallback: try to find status directly in metadata (flat structure)
+	if status, ok := metadata["status"].(string); ok && status != "" {
+		return ChunkingStatus(status)
+	}
+
+	return ChunkingStatusCompleted
+}
+
+// MergeMetadata merges two metadata maps, with newMetadata taking precedence
+func MergeMetadata(existingMetadata, newMetadata map[string]interface{}) map[string]interface{} {
+	if existingMetadata == nil && newMetadata == nil {
+		return make(map[string]interface{})
+	}
+	if existingMetadata == nil {
+		return copyMetadata(newMetadata)
+	}
+	if newMetadata == nil {
+		return copyMetadata(existingMetadata)
+	}
+
+	// Start with a copy of existing metadata
+	merged := copyMetadata(existingMetadata)
+
+	// Merge new metadata, with new values taking precedence
+	for key, value := range newMetadata {
+		merged[key] = value
+	}
+
+	return merged
+}
+
+// copyMetadata creates a deep copy of metadata map
+func copyMetadata(metadata map[string]interface{}) map[string]interface{} {
+	if metadata == nil {
+		return make(map[string]interface{})
+	}
+
+	copied := make(map[string]interface{})
+	for key, value := range metadata {
+		copied[key] = value
+	}
+	return copied
+}

@@ -9,6 +9,10 @@ import (
 	"github.com/yaoapp/gou/graphrag/utils"
 )
 
+// ================================================================================================
+// CRUD Operations - Exported Methods
+// ================================================================================================
+
 // AddSegments adds segments to a collection manually
 func (g *GraphRag) AddSegments(ctx context.Context, docID string, segmentTexts []types.SegmentText, options *types.UpsertOptions) ([]string, error) {
 	// Step 1: Parse CollectionID from docID
@@ -152,190 +156,6 @@ func (g *GraphRag) AddSegments(ctx context.Context, docID string, segmentTexts [
 	}
 
 	return segmentIDs, nil
-}
-
-// removeSegmentsFromVectorStore removes segments from vector database
-func (g *GraphRag) removeSegmentsFromVectorStore(ctx context.Context, collectionName string, segmentIDs []string) error {
-	// Check if collection exists
-	exists, err := g.Vector.CollectionExists(ctx, collectionName)
-	if err != nil {
-		return fmt.Errorf("failed to check collection existence: %w", err)
-	}
-	if !exists {
-		g.Logger.Infof("Vector collection %s does not exist, skipping vector deletion", collectionName)
-		return nil
-	}
-
-	// Delete segments (chunks) by IDs
-	err = g.Vector.DeleteDocuments(ctx, &types.DeleteDocumentOptions{
-		CollectionName: collectionName,
-		IDs:            segmentIDs,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to delete segments: %w", err)
-	}
-
-	g.Logger.Debugf("Deleted %d segments from vector store", len(segmentIDs))
-	return nil
-}
-
-// removeSegmentsFromStore removes segment metadata from Store
-func (g *GraphRag) removeSegmentsFromStore(ctx context.Context, docID string, segmentIDs []string) {
-	for _, segmentID := range segmentIDs {
-		// Delete Weight
-		err := g.deleteSegmentValue(segmentID, StoreKeyWeight)
-		if err != nil {
-			g.Logger.Warnf("Failed to delete weight for segment %s: %v", segmentID, err)
-		}
-
-		// Delete Score
-		err = g.deleteSegmentValue(segmentID, StoreKeyScore)
-		if err != nil {
-			g.Logger.Warnf("Failed to delete score for segment %s: %v", segmentID, err)
-		}
-
-		// Delete Vote
-		err = g.deleteSegmentValue(segmentID, StoreKeyVote)
-		if err != nil {
-			g.Logger.Warnf("Failed to delete vote for segment %s: %v", segmentID, err)
-		}
-	}
-}
-
-// findSegmentsByDocID finds all segment IDs for a given document from vector store
-func (g *GraphRag) findSegmentsByDocID(ctx context.Context, collectionName string, docID string) ([]string, error) {
-	// Check if collection exists
-	exists, err := g.Vector.CollectionExists(ctx, collectionName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check collection existence: %w", err)
-	}
-	if !exists {
-		g.Logger.Infof("Vector collection %s does not exist, no segments to find", collectionName)
-		return []string{}, nil
-	}
-
-	// Use ListDocuments to find all chunks (segments) for this document
-	// We filter by doc_id and document_type = "chunk"
-	listOpts := &types.ListDocumentsOptions{
-		CollectionName: collectionName,
-		Filter: map[string]interface{}{
-			"doc_id":        docID,
-			"document_type": "chunk",
-		},
-		Limit:          1000, // Set a reasonable limit to avoid too much data
-		IncludeVector:  false,
-		IncludePayload: false, // We only need the IDs
-	}
-
-	result, err := g.Vector.ListDocuments(ctx, listOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list segments: %w", err)
-	}
-
-	// Extract segment IDs from the result
-	segmentIDs := make([]string, 0, len(result.Documents))
-	for _, doc := range result.Documents {
-		if doc.ID != "" {
-			segmentIDs = append(segmentIDs, doc.ID)
-		}
-	}
-
-	g.Logger.Debugf("Found %d segments for document %s", len(segmentIDs), docID)
-	return segmentIDs, nil
-}
-
-// removeSegmentsByDocIDFromVectorStore removes all segments for a document from vector store using filter
-func (g *GraphRag) removeSegmentsByDocIDFromVectorStore(ctx context.Context, collectionName string, docID string) error {
-	// Check if collection exists
-	exists, err := g.Vector.CollectionExists(ctx, collectionName)
-	if err != nil {
-		return fmt.Errorf("failed to check collection existence: %w", err)
-	}
-	if !exists {
-		g.Logger.Infof("Vector collection %s does not exist, skipping vector deletion", collectionName)
-		return nil
-	}
-
-	// Delete all chunks (segments) for this document
-	chunksFilter := map[string]interface{}{
-		"doc_id":        docID,
-		"document_type": "chunk",
-	}
-
-	err = g.Vector.DeleteDocuments(ctx, &types.DeleteDocumentOptions{
-		CollectionName: collectionName,
-		Filter:         chunksFilter,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to delete segments for document %s: %w", docID, err)
-	}
-
-	g.Logger.Debugf("Deleted all segments for document %s from vector store", docID)
-	return nil
-}
-
-// removeAllSegmentMetadataFromStore removes all segment metadata for a document from Store
-func (g *GraphRag) removeAllSegmentMetadataFromStore(ctx context.Context, docID string) {
-	if g.Store == nil {
-		return
-	}
-
-	g.Logger.Debugf("Attempting to remove segment metadata for document %s", docID)
-
-	// Parse CollectionID from docID to find the right collection
-	collectionID, _ := utils.ExtractCollectionIDFromDocID(docID)
-	if collectionID == "" {
-		collectionID = "default"
-	}
-
-	// Get collection IDs for this collection
-	collectionIDs, err := utils.GetCollectionIDs(collectionID)
-	if err != nil {
-		g.Logger.Warnf("Failed to get collection IDs for document %s: %v", docID, err)
-		return
-	}
-
-	// Find all segment IDs for this document from vector store
-	segmentIDs, err := g.findSegmentsByDocID(ctx, collectionIDs.Vector, docID)
-	if err != nil {
-		g.Logger.Warnf("Failed to find segments for document %s: %v", docID, err)
-		return
-	}
-
-	if len(segmentIDs) == 0 {
-		g.Logger.Debugf("No segments found for document %s, no Store cleanup needed", docID)
-		return
-	}
-
-	// Delete Store metadata for each segment using the helper function
-	removedCount := 0
-	for _, segmentID := range segmentIDs {
-		// Delete Weight
-		err := g.deleteSegmentValue(segmentID, StoreKeyWeight)
-		if err != nil {
-			g.Logger.Warnf("Failed to delete weight for segment %s: %v", segmentID, err)
-		} else {
-			removedCount++
-		}
-
-		// Delete Score
-		err = g.deleteSegmentValue(segmentID, StoreKeyScore)
-		if err != nil {
-			g.Logger.Warnf("Failed to delete score for segment %s: %v", segmentID, err)
-		} else {
-			removedCount++
-		}
-
-		// Delete Vote
-		err = g.deleteSegmentValue(segmentID, StoreKeyVote)
-		if err != nil {
-			g.Logger.Warnf("Failed to delete vote for segment %s: %v", segmentID, err)
-		} else {
-			removedCount++
-		}
-	}
-
-	g.Logger.Infof("Segment metadata cleanup completed for document %s: removed %d Store entries for %d segments", docID, removedCount, len(segmentIDs))
 }
 
 // UpdateSegments updates segments manually
@@ -631,6 +451,35 @@ func (g *GraphRag) RemoveSegmentsByDocID(ctx context.Context, docID string) (int
 	return segmentCount, nil
 }
 
+// ================================================================================================
+// Query Operations - Exported Methods
+// ================================================================================================
+
+// GetSegment gets a single segment by ID
+func (g *GraphRag) GetSegment(ctx context.Context, docID string, segmentID string) (*types.Segment, error) {
+	if docID == "" {
+		return nil, fmt.Errorf("docID cannot be empty")
+	}
+
+	if segmentID == "" {
+		return nil, fmt.Errorf("segmentID cannot be empty")
+	}
+
+	g.Logger.Debugf("Getting segment by ID: %s for document: %s", segmentID, docID)
+
+	// Get segments using GetSegments
+	segments, err := g.GetSegments(ctx, docID, []string{segmentID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get segment: %w", err)
+	}
+
+	if len(segments) == 0 {
+		return nil, fmt.Errorf("segment %s not found", segmentID)
+	}
+
+	return &segments[0], nil
+}
+
 // GetSegments gets segments by IDs
 func (g *GraphRag) GetSegments(ctx context.Context, docID string, segmentIDs []string) ([]types.Segment, error) {
 	if len(segmentIDs) == 0 {
@@ -780,30 +629,9 @@ func (g *GraphRag) ScrollSegments(ctx context.Context, docID string, options *ty
 	return result, nil
 }
 
-// GetSegment gets a single segment by ID
-func (g *GraphRag) GetSegment(ctx context.Context, docID string, segmentID string) (*types.Segment, error) {
-	if docID == "" {
-		return nil, fmt.Errorf("docID cannot be empty")
-	}
-
-	if segmentID == "" {
-		return nil, fmt.Errorf("segmentID cannot be empty")
-	}
-
-	g.Logger.Debugf("Getting segment by ID: %s for document: %s", segmentID, docID)
-
-	// Get segments using GetSegments
-	segments, err := g.GetSegments(ctx, docID, []string{segmentID})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get segment: %w", err)
-	}
-
-	if len(segments) == 0 {
-		return nil, fmt.Errorf("segment %s not found", segmentID)
-	}
-
-	return &segments[0], nil
-}
+// ================================================================================================
+// Internal Helper Methods - Conversion and Processing
+// ================================================================================================
 
 // convertSegmentTextsToChunks converts SegmentTexts to Chunks for processing
 func (g *GraphRag) convertSegmentTextsToChunks(segmentTexts []types.SegmentText, docID string) ([]*types.Chunk, error) {
@@ -816,43 +644,271 @@ func (g *GraphRag) convertSegmentTextsToChunks(segmentTexts []types.SegmentText,
 			chunkID = utils.GenChunkID()
 		}
 
-		// Create default chunk
+		// Create default chunk with all fields initialized
 		chunk := &types.Chunk{
-			ID:      chunkID,
-			Text:    segmentText.Text,
-			Type:    types.ChunkingTypeText,
-			Depth:   1,
-			Index:   i,
-			Leaf:    true,
-			Root:    true,
-			Status:  types.ChunkingStatusCompleted,
-			Parents: nil,
-			TextPos: nil,
+			ID:        chunkID,
+			Text:      segmentText.Text,
+			Type:      types.ChunkingTypeText,
+			ParentID:  "",
+			Depth:     1,
+			Leaf:      true,
+			Root:      true,
+			Index:     i,
+			Status:    types.ChunkingStatusCompleted,
+			Parents:   nil,
+			TextPos:   nil,
+			MediaPos:  nil,
+			Extracted: nil,
 		}
 
-		// Preserve essential chunk structure from existing metadata
-		if chunkID != "" {
-			existingSegments, err := g.GetSegments(context.Background(), docID, []string{chunkID})
-			if err == nil && len(existingSegments) > 0 {
-				existingSegment := existingSegments[0]
-				if existingSegment.Metadata != nil {
-					// Only preserve the essential chunk structure, let other metadata be handled generically
-					chunk.Depth = utils.SafeExtractInt(utils.ExtractNestedValue(existingSegment.Metadata, "chunk_details.depth", chunk.Depth), chunk.Depth)
-					chunk.Index = utils.SafeExtractInt(utils.ExtractNestedValue(existingSegment.Metadata, "chunk_details.index", chunk.Index), chunk.Index)
-					chunk.Leaf = utils.SafeExtractBool(utils.ExtractNestedValue(existingSegment.Metadata, "chunk_details.is_leaf", chunk.Leaf), chunk.Leaf)
-					chunk.Root = utils.SafeExtractBool(utils.ExtractNestedValue(existingSegment.Metadata, "chunk_details.is_root", chunk.Root), chunk.Root)
+		// Merge metadata from existing segment and new segment
+		var mergedMetadata map[string]interface{}
 
-					if parentID := utils.SafeExtractString(utils.ExtractNestedValue(existingSegment.Metadata, "chunk_details.parent_id", ""), ""); parentID != "" {
-						chunk.ParentID = parentID
-					}
-				}
+		// Step 1: Try to get existing segment metadata if chunkID is provided
+		if chunkID != "" && segmentText.ID != "" {
+			existingSegment, err := g.GetSegment(context.Background(), docID, chunkID)
+			if err == nil && existingSegment != nil {
+				// Step 2: Merge metadata - existing as base, new segmentText.Metadata takes precedence
+				mergedMetadata = types.MergeMetadata(existingSegment.Metadata, segmentText.Metadata)
+
+				// Step 3: Extract and set chunk fields from merged metadata
+				g.applyMetadataToChunk(chunk, mergedMetadata)
+			} else {
+				// No existing segment found, use only new metadata
+				g.applyMetadataToChunk(chunk, segmentText.Metadata)
 			}
+		} else {
+			// No existing segment to merge with, use only new metadata
+			g.applyMetadataToChunk(chunk, segmentText.Metadata)
 		}
 
 		chunks = append(chunks, chunk)
 	}
 
 	return chunks, nil
+}
+
+// applyMetadataToChunk applies metadata to chunk fields
+func (g *GraphRag) applyMetadataToChunk(chunk *types.Chunk, metadata map[string]interface{}) {
+	if metadata == nil {
+		return
+	}
+
+	// Extract chunk structure information from metadata
+	if chunkDetails, ok := metadata["chunk_details"].(map[string]interface{}); ok {
+		chunk.Depth = types.SafeExtractInt(chunkDetails["depth"], chunk.Depth)
+		chunk.Index = types.SafeExtractInt(chunkDetails["index"], chunk.Index)
+		chunk.Leaf = types.SafeExtractBool(chunkDetails["is_leaf"], chunk.Leaf)
+		chunk.Root = types.SafeExtractBool(chunkDetails["is_root"], chunk.Root)
+		if parentID := types.SafeExtractString(chunkDetails["parent_id"], ""); parentID != "" {
+			chunk.ParentID = parentID
+		}
+	}
+
+	// Convert and set position information
+	chunk.TextPos = types.MetadataToTextPosition(metadata)
+	chunk.MediaPos = types.MetadataToMediaPosition(metadata)
+	chunk.Extracted = types.MetadataToExtractionResult(metadata)
+
+	// Set chunk type and status from metadata
+	if chunkType := types.MetadataToChunkingType(metadata); chunkType != "" {
+		chunk.Type = chunkType
+	}
+	if status := types.MetadataToChunkingStatus(metadata); status != "" {
+		chunk.Status = status
+	}
+}
+
+// ================================================================================================
+// Internal Helper Methods - Vector Store Operations
+// ================================================================================================
+
+// removeSegmentsFromVectorStore removes segments from vector database
+func (g *GraphRag) removeSegmentsFromVectorStore(ctx context.Context, collectionName string, segmentIDs []string) error {
+	// Check if collection exists
+	exists, err := g.Vector.CollectionExists(ctx, collectionName)
+	if err != nil {
+		return fmt.Errorf("failed to check collection existence: %w", err)
+	}
+	if !exists {
+		g.Logger.Infof("Vector collection %s does not exist, skipping vector deletion", collectionName)
+		return nil
+	}
+
+	// Delete segments (chunks) by IDs
+	err = g.Vector.DeleteDocuments(ctx, &types.DeleteDocumentOptions{
+		CollectionName: collectionName,
+		IDs:            segmentIDs,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete segments: %w", err)
+	}
+
+	g.Logger.Debugf("Deleted %d segments from vector store", len(segmentIDs))
+	return nil
+}
+
+// removeSegmentsByDocIDFromVectorStore removes all segments for a document from vector store using filter
+func (g *GraphRag) removeSegmentsByDocIDFromVectorStore(ctx context.Context, collectionName string, docID string) error {
+	// Check if collection exists
+	exists, err := g.Vector.CollectionExists(ctx, collectionName)
+	if err != nil {
+		return fmt.Errorf("failed to check collection existence: %w", err)
+	}
+	if !exists {
+		g.Logger.Infof("Vector collection %s does not exist, skipping vector deletion", collectionName)
+		return nil
+	}
+
+	// Delete all chunks (segments) for this document
+	chunksFilter := map[string]interface{}{
+		"doc_id":        docID,
+		"document_type": "chunk",
+	}
+
+	err = g.Vector.DeleteDocuments(ctx, &types.DeleteDocumentOptions{
+		CollectionName: collectionName,
+		Filter:         chunksFilter,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete segments for document %s: %w", docID, err)
+	}
+
+	g.Logger.Debugf("Deleted all segments for document %s from vector store", docID)
+	return nil
+}
+
+// findSegmentsByDocID finds all segment IDs for a given document from vector store
+func (g *GraphRag) findSegmentsByDocID(ctx context.Context, collectionName string, docID string) ([]string, error) {
+	// Check if collection exists
+	exists, err := g.Vector.CollectionExists(ctx, collectionName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check collection existence: %w", err)
+	}
+	if !exists {
+		g.Logger.Infof("Vector collection %s does not exist, no segments to find", collectionName)
+		return []string{}, nil
+	}
+
+	// Use ListDocuments to find all chunks (segments) for this document
+	// We filter by doc_id and document_type = "chunk"
+	listOpts := &types.ListDocumentsOptions{
+		CollectionName: collectionName,
+		Filter: map[string]interface{}{
+			"doc_id":        docID,
+			"document_type": "chunk",
+		},
+		Limit:          1000, // Set a reasonable limit to avoid too much data
+		IncludeVector:  false,
+		IncludePayload: false, // We only need the IDs
+	}
+
+	result, err := g.Vector.ListDocuments(ctx, listOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list segments: %w", err)
+	}
+
+	// Extract segment IDs from the result
+	segmentIDs := make([]string, 0, len(result.Documents))
+	for _, doc := range result.Documents {
+		if doc.ID != "" {
+			segmentIDs = append(segmentIDs, doc.ID)
+		}
+	}
+
+	g.Logger.Debugf("Found %d segments for document %s", len(segmentIDs), docID)
+	return segmentIDs, nil
+}
+
+// ================================================================================================
+// Internal Helper Methods - Store Operations
+// ================================================================================================
+
+// removeSegmentsFromStore removes segment metadata from Store
+func (g *GraphRag) removeSegmentsFromStore(ctx context.Context, docID string, segmentIDs []string) {
+	for _, segmentID := range segmentIDs {
+		// Delete Weight
+		err := g.deleteSegmentValue(segmentID, StoreKeyWeight)
+		if err != nil {
+			g.Logger.Warnf("Failed to delete weight for segment %s: %v", segmentID, err)
+		}
+
+		// Delete Score
+		err = g.deleteSegmentValue(segmentID, StoreKeyScore)
+		if err != nil {
+			g.Logger.Warnf("Failed to delete score for segment %s: %v", segmentID, err)
+		}
+
+		// Delete Vote
+		err = g.deleteSegmentValue(segmentID, StoreKeyVote)
+		if err != nil {
+			g.Logger.Warnf("Failed to delete vote for segment %s: %v", segmentID, err)
+		}
+	}
+}
+
+// removeAllSegmentMetadataFromStore removes all segment metadata for a document from Store
+func (g *GraphRag) removeAllSegmentMetadataFromStore(ctx context.Context, docID string) {
+	if g.Store == nil {
+		return
+	}
+
+	g.Logger.Debugf("Attempting to remove segment metadata for document %s", docID)
+
+	// Parse CollectionID from docID to find the right collection
+	collectionID, _ := utils.ExtractCollectionIDFromDocID(docID)
+	if collectionID == "" {
+		collectionID = "default"
+	}
+
+	// Get collection IDs for this collection
+	collectionIDs, err := utils.GetCollectionIDs(collectionID)
+	if err != nil {
+		g.Logger.Warnf("Failed to get collection IDs for document %s: %v", docID, err)
+		return
+	}
+
+	// Find all segment IDs for this document from vector store
+	segmentIDs, err := g.findSegmentsByDocID(ctx, collectionIDs.Vector, docID)
+	if err != nil {
+		g.Logger.Warnf("Failed to find segments for document %s: %v", docID, err)
+		return
+	}
+
+	if len(segmentIDs) == 0 {
+		g.Logger.Debugf("No segments found for document %s, no Store cleanup needed", docID)
+		return
+	}
+
+	// Delete Store metadata for each segment using the helper function
+	removedCount := 0
+	for _, segmentID := range segmentIDs {
+		// Delete Weight
+		err := g.deleteSegmentValue(segmentID, StoreKeyWeight)
+		if err != nil {
+			g.Logger.Warnf("Failed to delete weight for segment %s: %v", segmentID, err)
+		} else {
+			removedCount++
+		}
+
+		// Delete Score
+		err = g.deleteSegmentValue(segmentID, StoreKeyScore)
+		if err != nil {
+			g.Logger.Warnf("Failed to delete score for segment %s: %v", segmentID, err)
+		} else {
+			removedCount++
+		}
+
+		// Delete Vote
+		err = g.deleteSegmentValue(segmentID, StoreKeyVote)
+		if err != nil {
+			g.Logger.Warnf("Failed to delete vote for segment %s: %v", segmentID, err)
+		} else {
+			removedCount++
+		}
+	}
+
+	g.Logger.Infof("Segment metadata cleanup completed for document %s: removed %d Store entries for %d segments", docID, removedCount, len(segmentIDs))
 }
 
 // storeSegmentMetadataToStore stores segment metadata (Weight, Score, Vote) to Store and/or Vector DB
@@ -890,6 +946,58 @@ func (g *GraphRag) storeSegmentMetadataToStore(ctx context.Context, docID string
 
 	return nil
 }
+
+// updateSegmentMetadataInStore updates segment metadata (Weight, Score, Vote) in Store from user metadata
+func (g *GraphRag) updateSegmentMetadataInStore(ctx context.Context, docID string, segmentTexts []types.SegmentText, userMetadata map[string]interface{}, storeCollectionName string) error {
+	if g.Store == nil {
+		return nil
+	}
+
+	// Check if user metadata contains vote, weight, or score
+	vote, hasVote := userMetadata["vote"]
+	weight, hasWeight := userMetadata["weight"]
+	score, hasScore := userMetadata["score"]
+
+	if !hasVote && !hasWeight && !hasScore {
+		// No relevant metadata to update
+		return nil
+	}
+
+	// Update metadata for each segment
+	for _, segmentText := range segmentTexts {
+		segmentID := segmentText.ID
+
+		// Update Vote if provided
+		if hasVote {
+			err := g.storeSegmentValue(segmentID, StoreKeyVote, vote)
+			if err != nil {
+				g.Logger.Warnf("Failed to update vote for segment %s: %v", segmentID, err)
+			}
+		}
+
+		// Update Weight if provided
+		if hasWeight {
+			err := g.storeSegmentValue(segmentID, StoreKeyWeight, weight)
+			if err != nil {
+				g.Logger.Warnf("Failed to update weight for segment %s: %v", segmentID, err)
+			}
+		}
+
+		// Update Score if provided
+		if hasScore {
+			err := g.storeSegmentValue(segmentID, StoreKeyScore, score)
+			if err != nil {
+				g.Logger.Warnf("Failed to update score for segment %s: %v", segmentID, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// ================================================================================================
+// Internal Helper Methods - Graph Operations
+// ================================================================================================
 
 // removeEntitiesAndRelationshipsForSegments removes entities and relationships associated with specific segments
 func (g *GraphRag) removeEntitiesAndRelationshipsForSegments(ctx context.Context, graphName string, segmentIDs []string) error {
@@ -1058,53 +1166,9 @@ func (g *GraphRag) removeEntitiesAndRelationshipsForSegments(ctx context.Context
 	return nil
 }
 
-// updateSegmentMetadataInStore updates segment metadata (Weight, Score, Vote) in Store from user metadata
-func (g *GraphRag) updateSegmentMetadataInStore(ctx context.Context, docID string, segmentTexts []types.SegmentText, userMetadata map[string]interface{}, storeCollectionName string) error {
-	if g.Store == nil {
-		return nil
-	}
-
-	// Check if user metadata contains vote, weight, or score
-	vote, hasVote := userMetadata["vote"]
-	weight, hasWeight := userMetadata["weight"]
-	score, hasScore := userMetadata["score"]
-
-	if !hasVote && !hasWeight && !hasScore {
-		// No relevant metadata to update
-		return nil
-	}
-
-	// Update metadata for each segment
-	for _, segmentText := range segmentTexts {
-		segmentID := segmentText.ID
-
-		// Update Vote if provided
-		if hasVote {
-			err := g.storeSegmentValue(segmentID, StoreKeyVote, vote)
-			if err != nil {
-				g.Logger.Warnf("Failed to update vote for segment %s: %v", segmentID, err)
-			}
-		}
-
-		// Update Weight if provided
-		if hasWeight {
-			err := g.storeSegmentValue(segmentID, StoreKeyWeight, weight)
-			if err != nil {
-				g.Logger.Warnf("Failed to update weight for segment %s: %v", segmentID, err)
-			}
-		}
-
-		// Update Score if provided
-		if hasScore {
-			err := g.storeSegmentValue(segmentID, StoreKeyScore, score)
-			if err != nil {
-				g.Logger.Warnf("Failed to update score for segment %s: %v", segmentID, err)
-			}
-		}
-	}
-
-	return nil
-}
+// ================================================================================================
+// Internal Helper Methods - Query System
+// ================================================================================================
 
 // segmentQueryOptions represents options for querying segment data
 type segmentQueryOptions struct {
