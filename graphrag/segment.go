@@ -816,22 +816,37 @@ func (g *GraphRag) convertSegmentTextsToChunks(segmentTexts []types.SegmentText,
 			chunkID = utils.GenChunkID()
 		}
 
+		// Create default chunk
 		chunk := &types.Chunk{
 			ID:      chunkID,
 			Text:    segmentText.Text,
 			Type:    types.ChunkingTypeText,
-			Depth:   0,
+			Depth:   1,
 			Index:   i,
 			Leaf:    true,
 			Root:    true,
 			Status:  types.ChunkingStatusCompleted,
-			Parents: []types.Chunk{},
-			TextPos: &types.TextPosition{
-				StartIndex: 0,
-				EndIndex:   len(segmentText.Text),
-				StartLine:  1,
-				EndLine:    1,
-			},
+			Parents: nil,
+			TextPos: nil,
+		}
+
+		// Preserve essential chunk structure from existing metadata
+		if chunkID != "" {
+			existingSegments, err := g.GetSegments(context.Background(), docID, []string{chunkID})
+			if err == nil && len(existingSegments) > 0 {
+				existingSegment := existingSegments[0]
+				if existingSegment.Metadata != nil {
+					// Only preserve the essential chunk structure, let other metadata be handled generically
+					chunk.Depth = utils.SafeExtractInt(utils.ExtractNestedValue(existingSegment.Metadata, "chunk_details.depth", chunk.Depth), chunk.Depth)
+					chunk.Index = utils.SafeExtractInt(utils.ExtractNestedValue(existingSegment.Metadata, "chunk_details.index", chunk.Index), chunk.Index)
+					chunk.Leaf = utils.SafeExtractBool(utils.ExtractNestedValue(existingSegment.Metadata, "chunk_details.is_leaf", chunk.Leaf), chunk.Leaf)
+					chunk.Root = utils.SafeExtractBool(utils.ExtractNestedValue(existingSegment.Metadata, "chunk_details.is_root", chunk.Root), chunk.Root)
+
+					if parentID := utils.SafeExtractString(utils.ExtractNestedValue(existingSegment.Metadata, "chunk_details.parent_id", ""), ""); parentID != "" {
+						chunk.ParentID = parentID
+					}
+				}
+			}
 		}
 
 		chunks = append(chunks, chunk)
