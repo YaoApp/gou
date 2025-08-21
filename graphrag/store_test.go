@@ -70,7 +70,7 @@ func TestUpdateStoreFunctions(t *testing.T) {
 			t.Run("Update_Vote", func(t *testing.T) {
 				// Test with empty arrays
 				votes := []types.SegmentVote{}
-				updatedCount, err := g.UpdateVote(ctx, votes)
+				updatedCount, err := g.UpdateVote(ctx, "test_doc", votes)
 				if err != nil {
 					t.Errorf("Config %s: UpdateVote with empty array should not fail: %v", configName, err)
 				}
@@ -79,7 +79,7 @@ func TestUpdateStoreFunctions(t *testing.T) {
 				}
 
 				// Test with nil array
-				updatedCount, err = g.UpdateVote(ctx, nil)
+				updatedCount, err = g.UpdateVote(ctx, "test_doc", nil)
 				if err != nil {
 					t.Errorf("Config %s: UpdateVote with nil array should not fail: %v", configName, err)
 				}
@@ -93,7 +93,7 @@ func TestUpdateStoreFunctions(t *testing.T) {
 			// Test UpdateScore
 			t.Run("Update_Score", func(t *testing.T) {
 				scores := []types.SegmentScore{}
-				updatedCount, err := g.UpdateScore(ctx, scores)
+				updatedCount, err := g.UpdateScore(ctx, "test_doc", scores)
 				if err != nil {
 					t.Errorf("Config %s: UpdateScore with empty array should not fail: %v", configName, err)
 				}
@@ -102,7 +102,7 @@ func TestUpdateStoreFunctions(t *testing.T) {
 				}
 
 				// Test with nil array
-				updatedCount, err = g.UpdateScore(ctx, nil)
+				updatedCount, err = g.UpdateScore(ctx, "test_doc", nil)
 				if err != nil {
 					t.Errorf("Config %s: UpdateScore with nil array should not fail: %v", configName, err)
 				}
@@ -116,7 +116,7 @@ func TestUpdateStoreFunctions(t *testing.T) {
 			// Test UpdateWeight
 			t.Run("Update_Weight", func(t *testing.T) {
 				weights := []types.SegmentWeight{}
-				updatedCount, err := g.UpdateWeight(ctx, weights)
+				updatedCount, err := g.UpdateWeight(ctx, "test_doc", weights)
 				if err != nil {
 					t.Errorf("Config %s: UpdateWeight with empty array should not fail: %v", configName, err)
 				}
@@ -125,7 +125,7 @@ func TestUpdateStoreFunctions(t *testing.T) {
 				}
 
 				// Test with nil array
-				updatedCount, err = g.UpdateWeight(ctx, nil)
+				updatedCount, err = g.UpdateWeight(ctx, "test_doc", nil)
 				if err != nil {
 					t.Errorf("Config %s: UpdateWeight with nil array should not fail: %v", configName, err)
 				}

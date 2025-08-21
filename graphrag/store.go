@@ -66,7 +66,7 @@ func (g *GraphRag) deleteSegmentValue(segmentID string, keyFormat string) error 
 }
 
 // updateSegmentMetadataInVectorBatch updates multiple segment metadata in vector database in batch
-func (g *GraphRag) updateSegmentMetadataInVectorBatch(ctx context.Context, updates []segmentMetadataUpdate) error {
+func (g *GraphRag) updateSegmentMetadataInVectorBatch(ctx context.Context, docID string, updates []segmentMetadataUpdate) error {
 	if g.Vector == nil {
 		return fmt.Errorf("vector database is not configured")
 	}
@@ -75,23 +75,20 @@ func (g *GraphRag) updateSegmentMetadataInVectorBatch(ctx context.Context, updat
 		return nil
 	}
 
-	// Group updates by collection
-	collectionUpdates := make(map[string][]segmentMetadataUpdate)
-	for _, update := range updates {
-		_, graphName, err := g.getDocIDFromExistingSegments(ctx, []string{update.SegmentID})
-		if err != nil {
-			g.Logger.Warnf("Failed to get document info for segment %s: %v", update.SegmentID, err)
-			continue
-		}
-
-		collectionIDs, err := utils.GetCollectionIDs(graphName)
-		if err != nil {
-			g.Logger.Warnf("Failed to get collection IDs for segment %s: %v", update.SegmentID, err)
-			continue
-		}
-
-		collectionUpdates[collectionIDs.Vector] = append(collectionUpdates[collectionIDs.Vector], update)
+	// Extract graphName from docID
+	graphName, _ := utils.ExtractCollectionIDFromDocID(docID)
+	if graphName == "" {
+		graphName = "default"
 	}
+
+	collectionIDs, err := utils.GetCollectionIDs(graphName)
+	if err != nil {
+		return fmt.Errorf("failed to get collection IDs for document %s: %w", docID, err)
+	}
+
+	// Group updates by collection (all updates should be for the same document/collection)
+	collectionUpdates := make(map[string][]segmentMetadataUpdate)
+	collectionUpdates[collectionIDs.Vector] = updates
 
 	// Process each collection
 	for collectionName, colUpdates := range collectionUpdates {
@@ -174,7 +171,7 @@ type segmentMetadataUpdate struct {
 }
 
 // UpdateVote updates vote for segments
-func (g *GraphRag) UpdateVote(ctx context.Context, segments []types.SegmentVote) (int, error) {
+func (g *GraphRag) UpdateVote(ctx context.Context, docID string, segments []types.SegmentVote) (int, error) {
 	if len(segments) == 0 {
 		return 0, nil
 	}
@@ -191,7 +188,7 @@ func (g *GraphRag) UpdateVote(ctx context.Context, segments []types.SegmentVote)
 			})
 		}
 
-		err := g.updateSegmentMetadataInVectorBatch(ctx, updates)
+		err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
 		if err != nil {
 			return 0, fmt.Errorf("failed to update vote in vector store: %w", err)
 		}
@@ -235,7 +232,7 @@ func (g *GraphRag) UpdateVote(ctx context.Context, segments []types.SegmentVote)
 			})
 		}
 
-		err := g.updateSegmentMetadataInVectorBatch(ctx, updates)
+		err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
 		if err != nil {
 			vectorErr = fmt.Errorf("failed to update vote in vector store: %w", err)
 		}
@@ -265,7 +262,7 @@ func (g *GraphRag) UpdateVote(ctx context.Context, segments []types.SegmentVote)
 }
 
 // UpdateScore updates score for segments
-func (g *GraphRag) UpdateScore(ctx context.Context, segments []types.SegmentScore) (int, error) {
+func (g *GraphRag) UpdateScore(ctx context.Context, docID string, segments []types.SegmentScore) (int, error) {
 	if len(segments) == 0 {
 		return 0, nil
 	}
@@ -282,7 +279,7 @@ func (g *GraphRag) UpdateScore(ctx context.Context, segments []types.SegmentScor
 			})
 		}
 
-		err := g.updateSegmentMetadataInVectorBatch(ctx, updates)
+		err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
 		if err != nil {
 			return 0, fmt.Errorf("failed to update score in vector store: %w", err)
 		}
@@ -326,7 +323,7 @@ func (g *GraphRag) UpdateScore(ctx context.Context, segments []types.SegmentScor
 			})
 		}
 
-		err := g.updateSegmentMetadataInVectorBatch(ctx, updates)
+		err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
 		if err != nil {
 			vectorErr = fmt.Errorf("failed to update score in vector store: %w", err)
 		}
@@ -356,7 +353,7 @@ func (g *GraphRag) UpdateScore(ctx context.Context, segments []types.SegmentScor
 }
 
 // UpdateWeight updates weight for segments
-func (g *GraphRag) UpdateWeight(ctx context.Context, segments []types.SegmentWeight) (int, error) {
+func (g *GraphRag) UpdateWeight(ctx context.Context, docID string, segments []types.SegmentWeight) (int, error) {
 	if len(segments) == 0 {
 		return 0, nil
 	}
@@ -373,7 +370,7 @@ func (g *GraphRag) UpdateWeight(ctx context.Context, segments []types.SegmentWei
 			})
 		}
 
-		err := g.updateSegmentMetadataInVectorBatch(ctx, updates)
+		err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
 		if err != nil {
 			return 0, fmt.Errorf("failed to update weight in vector store: %w", err)
 		}
@@ -417,7 +414,7 @@ func (g *GraphRag) UpdateWeight(ctx context.Context, segments []types.SegmentWei
 			})
 		}
 
-		err := g.updateSegmentMetadataInVectorBatch(ctx, updates)
+		err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
 		if err != nil {
 			vectorErr = fmt.Errorf("failed to update weight in vector store: %w", err)
 		}
