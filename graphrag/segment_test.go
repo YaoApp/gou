@@ -520,7 +520,7 @@ func TestSegmentCURD(t *testing.T) {
 				}
 
 				// Test GetSegments with specific IDs
-				segments, err := g.GetSegments(ctx, []string{"read_segment_001", "read_segment_002"})
+				segments, err := g.GetSegments(ctx, readDocID, []string{"read_segment_001", "read_segment_002"})
 				if err != nil {
 					t.Logf("Failed to get segments by IDs (expected): %v", err)
 					return
@@ -770,7 +770,7 @@ func TestSegmentCURD(t *testing.T) {
 				}
 
 				// Test GetSegment with specific ID
-				segment, err := g.GetSegment(ctx, "single_segment_001")
+				segment, err := g.GetSegment(ctx, singleReadDocID, "single_segment_001")
 				if err != nil {
 					t.Logf("Failed to get single segment (expected): %v", err)
 					return
@@ -798,7 +798,7 @@ func TestSegmentCURD(t *testing.T) {
 			// Step 7e: Test read error handling
 			t.Run("Read_Error_Handling", func(t *testing.T) {
 				// Test GetSegments with empty segment list
-				emptySegments, err := g.GetSegments(ctx, []string{})
+				emptySegments, err := g.GetSegments(ctx, "test_doc", []string{})
 				if err != nil {
 					t.Errorf("GetSegments with empty list should not return error: %v", err)
 				}
@@ -807,7 +807,7 @@ func TestSegmentCURD(t *testing.T) {
 				}
 
 				// Test GetSegments with non-existent segment IDs
-				nonExistentSegments, err := g.GetSegments(ctx, []string{"non_existent_segment"})
+				nonExistentSegments, err := g.GetSegments(ctx, "test_doc", []string{"non_existent_segment"})
 				if err == nil {
 					t.Logf("GetSegments with non-existent IDs handled gracefully: returned %d segments", len(nonExistentSegments))
 				} else {
@@ -830,8 +830,16 @@ func TestSegmentCURD(t *testing.T) {
 					t.Logf("ListSegments with non-existent docID returned error (expected): %v", err)
 				}
 
+				// Test GetSegment with empty docID
+				_, err = g.GetSegment(ctx, "", "test_segment")
+				if err == nil {
+					t.Error("Expected error for GetSegment with empty docID")
+				} else {
+					t.Logf("GetSegment correctly rejected empty docID: %v", err)
+				}
+
 				// Test GetSegment with empty segmentID
-				_, err = g.GetSegment(ctx, "")
+				_, err = g.GetSegment(ctx, "test_doc", "")
 				if err == nil {
 					t.Error("Expected error for GetSegment with empty segmentID")
 				} else {
@@ -839,7 +847,7 @@ func TestSegmentCURD(t *testing.T) {
 				}
 
 				// Test GetSegment with non-existent segmentID
-				nonExistentSegment, err := g.GetSegment(ctx, "non_existent_single_segment")
+				nonExistentSegment, err := g.GetSegment(ctx, "test_doc", "non_existent_single_segment")
 				if err == nil {
 					t.Logf("GetSegment with non-existent ID handled gracefully: returned %v", nonExistentSegment)
 				} else {
@@ -883,7 +891,7 @@ func TestSegmentCURD(t *testing.T) {
 				}
 
 				// Test removing specific segments by IDs
-				removeCount, err := g.RemoveSegments(ctx, []string{"remove_segment_001"})
+				removeCount, err := g.RemoveSegments(ctx, removeDocID, []string{"remove_segment_001"})
 				if err != nil {
 					t.Logf("Failed to remove segments (expected): %v", err)
 					return
@@ -897,7 +905,7 @@ func TestSegmentCURD(t *testing.T) {
 				t.Logf("Successfully removed %d segments by IDs", removeCount)
 
 				// Test removing remaining segments
-				remainingCount, err := g.RemoveSegments(ctx, []string{"remove_segment_002"})
+				remainingCount, err := g.RemoveSegments(ctx, removeDocID, []string{"remove_segment_002"})
 				if err != nil {
 					t.Logf("Failed to remove remaining segments (expected): %v", err)
 					return
@@ -968,7 +976,7 @@ func TestSegmentCURD(t *testing.T) {
 			// Step 10: Test RemoveSegments error handling
 			t.Run("Remove_Segments_Error_Handling", func(t *testing.T) {
 				// Test with empty segment list
-				emptyRemoveCount, err := g.RemoveSegments(ctx, []string{})
+				emptyRemoveCount, err := g.RemoveSegments(ctx, "test_doc", []string{})
 				if err != nil {
 					t.Errorf("RemoveSegments with empty list should not return error: %v", err)
 				}
@@ -977,7 +985,7 @@ func TestSegmentCURD(t *testing.T) {
 				}
 
 				// Test with non-existent segment IDs
-				nonExistentCount, err := g.RemoveSegments(ctx, []string{"non_existent_segment"})
+				nonExistentCount, err := g.RemoveSegments(ctx, "test_doc", []string{"non_existent_segment"})
 				if err == nil {
 					t.Logf("RemoveSegments with non-existent IDs handled gracefully: removed %d", nonExistentCount)
 				} else {

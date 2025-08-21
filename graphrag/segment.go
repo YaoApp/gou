@@ -506,18 +506,21 @@ func (g *GraphRag) UpdateSegments(ctx context.Context, segmentTexts []types.Segm
 }
 
 // RemoveSegments removes segments by IDs
-func (g *GraphRag) RemoveSegments(ctx context.Context, segmentIDs []string) (int, error) {
+func (g *GraphRag) RemoveSegments(ctx context.Context, docID string, segmentIDs []string) (int, error) {
 	if len(segmentIDs) == 0 {
 		return 0, nil
 	}
 
-	g.Logger.Infof("Starting to remove %d segments", len(segmentIDs))
+	if docID == "" {
+		return 0, fmt.Errorf("docID cannot be empty")
+	}
 
-	// Step 1: Get docID and graphName from existing segments
-	// For segments removal, we need to determine which document and graph they belong to
-	docID, graphName, err := g.getDocIDFromExistingSegments(ctx, segmentIDs)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get document info from segments: %w", err)
+	g.Logger.Infof("Starting to remove %d segments for document %s", len(segmentIDs), docID)
+
+	// Extract GraphName from docID
+	graphName, _ := utils.ExtractCollectionIDFromDocID(docID)
+	if graphName == "" {
+		graphName = "default"
 	}
 
 	// Step 2: Get collection IDs for this graph
@@ -629,17 +632,21 @@ func (g *GraphRag) RemoveSegmentsByDocID(ctx context.Context, docID string) (int
 }
 
 // GetSegments gets segments by IDs
-func (g *GraphRag) GetSegments(ctx context.Context, segmentIDs []string) ([]types.Segment, error) {
+func (g *GraphRag) GetSegments(ctx context.Context, docID string, segmentIDs []string) ([]types.Segment, error) {
 	if len(segmentIDs) == 0 {
 		return []types.Segment{}, nil
 	}
 
-	g.Logger.Debugf("Getting %d segments by IDs", len(segmentIDs))
+	if docID == "" {
+		return nil, fmt.Errorf("docID cannot be empty")
+	}
 
-	// Get docID and graphName from existing segments
-	docID, graphName, err := g.getDocIDFromExistingSegments(ctx, segmentIDs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get document info from segments: %w", err)
+	g.Logger.Debugf("Getting %d segments by IDs for document %s", len(segmentIDs), docID)
+
+	// Extract GraphName from docID
+	graphName, _ := utils.ExtractCollectionIDFromDocID(docID)
+	if graphName == "" {
+		graphName = "default"
 	}
 
 	// Query segment data from all configured databases
@@ -774,15 +781,19 @@ func (g *GraphRag) ScrollSegments(ctx context.Context, docID string, options *ty
 }
 
 // GetSegment gets a single segment by ID
-func (g *GraphRag) GetSegment(ctx context.Context, segmentID string) (*types.Segment, error) {
+func (g *GraphRag) GetSegment(ctx context.Context, docID string, segmentID string) (*types.Segment, error) {
+	if docID == "" {
+		return nil, fmt.Errorf("docID cannot be empty")
+	}
+
 	if segmentID == "" {
 		return nil, fmt.Errorf("segmentID cannot be empty")
 	}
 
-	g.Logger.Debugf("Getting segment by ID: %s", segmentID)
+	g.Logger.Debugf("Getting segment by ID: %s for document: %s", segmentID, docID)
 
 	// Get segments using GetSegments
-	segments, err := g.GetSegments(ctx, []string{segmentID})
+	segments, err := g.GetSegments(ctx, docID, []string{segmentID})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get segment: %w", err)
 	}
@@ -863,88 +874,6 @@ func (g *GraphRag) storeSegmentMetadataToStore(ctx context.Context, docID string
 	}
 
 	return nil
-}
-
-// getDocIDFromExistingSegments retrieves doc_id and graph_name from existing segments in vector store
-func (g *GraphRag) getDocIDFromExistingSegments(ctx context.Context, segmentIDs []string) (string, string, error) {
-	if len(segmentIDs) == 0 {
-		return "", "", fmt.Errorf("no segment IDs provided")
-	}
-
-	// We need to search across all possible collections since we don't know the graph name yet
-	// Try to get documents from vector store using the first segment ID
-	firstSegmentID := segmentIDs[0]
-
-	// Since we don't know which collection the segments are in, we need to search
-	// This is a limitation - ideally the user should provide the graphName or we should store it elsewhere
-	// For now, we'll try a few common approaches:
-
-	// Try to extract graphName from segmentID if it follows a pattern
-	graphName := "default" // Default fallback
-
-	// Try to get collection IDs
-	collectionIDs, err := utils.GetCollectionIDs(graphName)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to generate collection IDs: %w", err)
-	}
-
-	// Check if vector collection exists
-	exists, err := g.Vector.CollectionExists(ctx, collectionIDs.Vector)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to check collection existence: %w", err)
-	}
-	if !exists {
-		return "", "", fmt.Errorf("vector collection %s does not exist", collectionIDs.Vector)
-	}
-
-	// Get the first segment document to read metadata
-	getOpts := &types.GetDocumentOptions{
-		CollectionName: collectionIDs.Vector,
-		IncludeVector:  false,
-		IncludePayload: true,
-	}
-
-	docs, err := g.Vector.GetDocuments(ctx, []string{firstSegmentID}, getOpts)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to get segment documents: %w", err)
-	}
-
-	if len(docs) == 0 || docs[0] == nil {
-		return "", "", fmt.Errorf("segment %s not found in vector store", firstSegmentID)
-	}
-
-	doc := docs[0]
-
-	// Extract doc_id from metadata
-	docID, ok := doc.Metadata["doc_id"].(string)
-	if !ok {
-		return "", "", fmt.Errorf("doc_id not found in segment metadata")
-	}
-
-	// Extract collection_id (graph_name) from metadata
-	if collectionID, ok := doc.Metadata["collection_id"].(string); ok {
-		graphName = collectionID
-	}
-
-	// Validate all segments exist
-	allDocs, err := g.Vector.GetDocuments(ctx, segmentIDs, getOpts)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to validate all segments exist: %w", err)
-	}
-
-	for i, segmentID := range segmentIDs {
-		if i >= len(allDocs) || allDocs[i] == nil {
-			return "", "", fmt.Errorf("segment %s not found in vector store", segmentID)
-		}
-
-		// Verify doc_id consistency
-		segmentDocID, ok := allDocs[i].Metadata["doc_id"].(string)
-		if !ok || segmentDocID != docID {
-			return "", "", fmt.Errorf("segment %s has inconsistent doc_id", segmentID)
-		}
-	}
-
-	return docID, graphName, nil
 }
 
 // removeEntitiesAndRelationshipsForSegments removes entities and relationships associated with specific segments

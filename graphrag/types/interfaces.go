@@ -175,17 +175,17 @@ type GraphRag interface {
 	// Segment Management
 	AddSegments(ctx context.Context, docID string, segmentTexts []SegmentText, options *UpsertOptions) ([]string, error) // Add segments to a document manually, return segment IDs
 	UpdateSegments(ctx context.Context, segmentTexts []SegmentText, options *UpsertOptions) (int, error)                 // Update segments manually, return updated count
-	RemoveSegments(ctx context.Context, segmentIDs []string) (int, error)                                                // Remove segments by SegmentIDs, return removed count
+	RemoveSegments(ctx context.Context, docID string, segmentIDs []string) (int, error)                                  // Remove segments by SegmentIDs, return removed count
 	RemoveSegmentsByDocID(ctx context.Context, docID string) (int, error)                                                // Remove all segments of a document, return removed count
-	GetSegments(ctx context.Context, segmentIDs []string) ([]Segment, error)                                             // Get segments by IDs, return segments
-	GetSegment(ctx context.Context, segmentID string) (*Segment, error)                                                  // Get a single segment by ID, return segment
+	GetSegments(ctx context.Context, docID string, segmentIDs []string) ([]Segment, error)                               // Get segments by IDs, return segments
+	GetSegment(ctx context.Context, docID string, segmentID string) (*Segment, error)                                    // Get a single segment by ID, return segment
 	// ListSegments(ctx context.Context, docID string, options *ListSegmentsOptions) (*PaginatedSegmentsResult, error)      // List segments with pagination, return segments Deprecated
 	ScrollSegments(ctx context.Context, docID string, options *ScrollSegmentsOptions) (*SegmentScrollResult, error) // Scroll segments with iterator-style pagination, return segments
 
 	// Segment Voting, Scoring, Weighting
-	UpdateVote(ctx context.Context, segments []SegmentVote) (int, error)     // Vote for segments, return updated count
-	UpdateScore(ctx context.Context, segments []SegmentScore) (int, error)   // Score for segments, return updated count
-	UpdateWeight(ctx context.Context, segments []SegmentWeight) (int, error) // Weight for segments, return updated count
+	UpdateVote(ctx context.Context, docID string, segments []SegmentVote) (int, error)     // Vote for segments, return updated count
+	UpdateScore(ctx context.Context, docID string, segments []SegmentScore) (int, error)   // Score for segments, return updated count
+	UpdateWeight(ctx context.Context, docID string, segments []SegmentWeight) (int, error) // Weight for segments, return updated count
 
 	// Search Management
 	Search(ctx context.Context, options *QueryOptions, callback ...SearcherProgress) ([]Segment, error)                  // Search for segments
