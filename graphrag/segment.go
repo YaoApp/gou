@@ -659,6 +659,7 @@ func (g *GraphRag) convertSegmentTextsToChunks(segmentTexts []types.SegmentText,
 			TextPos:   nil,
 			MediaPos:  nil,
 			Extracted: nil,
+			Metadata:  nil,
 		}
 
 		// Merge metadata from existing segment and new segment
@@ -693,6 +694,9 @@ func (g *GraphRag) applyMetadataToChunk(chunk *types.Chunk, metadata map[string]
 	if metadata == nil {
 		return
 	}
+
+	// Add metadata to chunk
+	chunk.Metadata = metadata
 
 	// Extract chunk structure information from metadata
 	if chunkDetails, ok := metadata["chunk_details"].(map[string]interface{}); ok {

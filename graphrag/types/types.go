@@ -160,6 +160,9 @@ type Chunk struct {
 
 	// Extracted text
 	Extracted *ExtractionResult `json:"extracted,omitempty"` // Extracted text from the chunk
+
+	// Metadata of the chunk
+	Metadata map[string]interface{} `json:"metadata,omitempty"` // Metadata of the chunk
 }
 
 // Embeddings is a slice of EmbeddingResult

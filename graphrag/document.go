@@ -719,6 +719,14 @@ func (g *GraphRag) storeAllDocumentsToVectorStore(ctx context.Context, opts *Sto
 			metadata[k] = v
 		}
 
+		// User set metadata will overwrite this
+		if chunk.Metadata != nil {
+			// Add chunk metadata (User metadata will overwrite this)
+			for k, v := range chunk.Metadata {
+				metadata[k] = v
+			}
+		}
+
 		// Add convert metadata
 		for k, v := range opts.ConvertMetadata {
 			metadata[k] = v
