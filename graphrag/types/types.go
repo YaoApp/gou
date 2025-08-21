@@ -2106,8 +2106,9 @@ type Segment struct {
 
 // SegmentText represents a segment of a document
 type SegmentText struct {
-	ID   string `json:"id,omitempty"`
-	Text string `json:"text"`
+	ID       string                 `json:"id,omitempty"`
+	Text     string                 `json:"text"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // SegmentVote represents a vote for a segment
