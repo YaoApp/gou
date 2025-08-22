@@ -832,19 +832,19 @@ func (g *GraphRag) findSegmentsByDocID(ctx context.Context, collectionName strin
 func (g *GraphRag) removeSegmentsFromStore(ctx context.Context, docID string, segmentIDs []string) {
 	for _, segmentID := range segmentIDs {
 		// Delete Weight
-		err := g.deleteSegmentValue(segmentID, StoreKeyWeight)
+		err := g.deleteSegmentValue(docID, segmentID, StoreKeyWeight)
 		if err != nil {
 			g.Logger.Warnf("Failed to delete weight for segment %s: %v", segmentID, err)
 		}
 
 		// Delete Score
-		err = g.deleteSegmentValue(segmentID, StoreKeyScore)
+		err = g.deleteSegmentValue(docID, segmentID, StoreKeyScore)
 		if err != nil {
 			g.Logger.Warnf("Failed to delete score for segment %s: %v", segmentID, err)
 		}
 
 		// Delete Vote
-		err = g.deleteSegmentValue(segmentID, StoreKeyVote)
+		err = g.deleteSegmentValue(docID, segmentID, StoreKeyVote)
 		if err != nil {
 			g.Logger.Warnf("Failed to delete vote for segment %s: %v", segmentID, err)
 		}
@@ -888,7 +888,7 @@ func (g *GraphRag) removeAllSegmentMetadataFromStore(ctx context.Context, docID 
 	removedCount := 0
 	for _, segmentID := range segmentIDs {
 		// Delete Weight
-		err := g.deleteSegmentValue(segmentID, StoreKeyWeight)
+		err := g.deleteSegmentValue(docID, segmentID, StoreKeyWeight)
 		if err != nil {
 			g.Logger.Warnf("Failed to delete weight for segment %s: %v", segmentID, err)
 		} else {
@@ -896,7 +896,7 @@ func (g *GraphRag) removeAllSegmentMetadataFromStore(ctx context.Context, docID 
 		}
 
 		// Delete Score
-		err = g.deleteSegmentValue(segmentID, StoreKeyScore)
+		err = g.deleteSegmentValue(docID, segmentID, StoreKeyScore)
 		if err != nil {
 			g.Logger.Warnf("Failed to delete score for segment %s: %v", segmentID, err)
 		} else {
@@ -904,7 +904,7 @@ func (g *GraphRag) removeAllSegmentMetadataFromStore(ctx context.Context, docID 
 		}
 
 		// Delete Vote
-		err = g.deleteSegmentValue(segmentID, StoreKeyVote)
+		err = g.deleteSegmentValue(docID, segmentID, StoreKeyVote)
 		if err != nil {
 			g.Logger.Warnf("Failed to delete vote for segment %s: %v", segmentID, err)
 		} else {
@@ -930,19 +930,19 @@ func (g *GraphRag) storeSegmentMetadataToStore(ctx context.Context, docID string
 		segmentID := chunk.ID
 
 		// Store default Weight
-		err := g.storeSegmentValue(segmentID, StoreKeyWeight, 0.0)
+		err := g.storeSegmentValue(docID, segmentID, StoreKeyWeight, 0.0)
 		if err != nil {
 			g.Logger.Warnf("Failed to store weight for segment %s: %v", segmentID, err)
 		}
 
 		// Store default Score
-		err = g.storeSegmentValue(segmentID, StoreKeyScore, 0.0)
+		err = g.storeSegmentValue(docID, segmentID, StoreKeyScore, 0.0)
 		if err != nil {
 			g.Logger.Warnf("Failed to store score for segment %s: %v", segmentID, err)
 		}
 
 		// Store default Vote
-		err = g.storeSegmentValue(segmentID, StoreKeyVote, 0)
+		err = g.storeSegmentValue(docID, segmentID, StoreKeyVote, 0)
 		if err != nil {
 			g.Logger.Warnf("Failed to store vote for segment %s: %v", segmentID, err)
 		}
@@ -973,7 +973,7 @@ func (g *GraphRag) updateSegmentMetadataInStore(ctx context.Context, docID strin
 
 		// Update Vote if provided
 		if hasVote {
-			err := g.storeSegmentValue(segmentID, StoreKeyVote, vote)
+			err := g.storeSegmentValue(docID, segmentID, StoreKeyVote, vote)
 			if err != nil {
 				g.Logger.Warnf("Failed to update vote for segment %s: %v", segmentID, err)
 			}
@@ -981,7 +981,7 @@ func (g *GraphRag) updateSegmentMetadataInStore(ctx context.Context, docID strin
 
 		// Update Weight if provided
 		if hasWeight {
-			err := g.storeSegmentValue(segmentID, StoreKeyWeight, weight)
+			err := g.storeSegmentValue(docID, segmentID, StoreKeyWeight, weight)
 			if err != nil {
 				g.Logger.Warnf("Failed to update weight for segment %s: %v", segmentID, err)
 			}
@@ -989,7 +989,7 @@ func (g *GraphRag) updateSegmentMetadataInStore(ctx context.Context, docID strin
 
 		// Update Score if provided
 		if hasScore {
-			err := g.storeSegmentValue(segmentID, StoreKeyScore, score)
+			err := g.storeSegmentValue(docID, segmentID, StoreKeyScore, score)
 			if err != nil {
 				g.Logger.Warnf("Failed to update score for segment %s: %v", segmentID, err)
 			}
@@ -1813,7 +1813,7 @@ func (g *GraphRag) queryMetadataFromStore(ctx context.Context, opts *segmentQuer
 	// Strategy 2: Query from Store if needed (when Store is configured)
 	var storeDataFromStore map[string]interface{}
 	if g.Store != nil {
-		storeDataFromStore = g.queryMetadataFromStoreOnly(segmentIDs)
+		storeDataFromStore = g.queryMetadataFromStoreOnly(opts.DocID, segmentIDs)
 	}
 
 	// Merge data: prioritize Vector DB data, fallback to Store data
@@ -1927,7 +1927,7 @@ func (g *GraphRag) queryMetadataFromVector(ctx context.Context, opts *segmentQue
 }
 
 // queryMetadataFromStoreOnly queries metadata from Store only
-func (g *GraphRag) queryMetadataFromStoreOnly(segmentIDs []string) map[string]interface{} {
+func (g *GraphRag) queryMetadataFromStoreOnly(docID string, segmentIDs []string) map[string]interface{} {
 	storeData := make(map[string]interface{})
 
 	if g.Store == nil {
@@ -1939,19 +1939,19 @@ func (g *GraphRag) queryMetadataFromStoreOnly(segmentIDs []string) map[string]in
 		segmentData := make(map[string]interface{})
 
 		// Query Weight
-		weight, ok := g.getSegmentValue(segmentID, StoreKeyWeight)
+		weight, ok := g.getSegmentValue(docID, segmentID, StoreKeyWeight)
 		if ok {
 			segmentData["weight"] = weight
 		}
 
 		// Query Score
-		score, ok := g.getSegmentValue(segmentID, StoreKeyScore)
+		score, ok := g.getSegmentValue(docID, segmentID, StoreKeyScore)
 		if ok {
 			segmentData["score"] = score
 		}
 
 		// Query Vote
-		vote, ok := g.getSegmentValue(segmentID, StoreKeyVote)
+		vote, ok := g.getSegmentValue(docID, segmentID, StoreKeyVote)
 		if ok {
 			segmentData["vote"] = vote
 		}

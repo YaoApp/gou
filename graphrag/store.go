@@ -15,12 +15,12 @@ const (
 )
 
 // storeSegmentValue stores a value for a segment with the given key format
-func (g *GraphRag) storeSegmentValue(segmentID string, keyFormat string, value interface{}) error {
+func (g *GraphRag) storeSegmentValue(docID string, segmentID string, keyFormat string, value interface{}) error {
 	if g.Store == nil {
 		return fmt.Errorf("store is not configured")
 	}
 
-	key := fmt.Sprintf(keyFormat, segmentID)
+	key := fmt.Sprintf(keyFormat, docID, segmentID)
 	err := g.Store.Set(key, value, 0)
 	if err != nil {
 		return fmt.Errorf("failed to store %s for segment %s: %w", keyFormat, segmentID, err)
@@ -31,12 +31,12 @@ func (g *GraphRag) storeSegmentValue(segmentID string, keyFormat string, value i
 }
 
 // getSegmentValue retrieves a value for a segment with the given key format
-func (g *GraphRag) getSegmentValue(segmentID string, keyFormat string) (interface{}, bool) {
+func (g *GraphRag) getSegmentValue(docID string, segmentID string, keyFormat string) (interface{}, bool) {
 	if g.Store == nil {
 		return nil, false
 	}
 
-	key := fmt.Sprintf(keyFormat, segmentID)
+	key := fmt.Sprintf(keyFormat, docID, segmentID)
 	value, ok := g.Store.Get(key)
 	if !ok {
 		g.Logger.Debugf("Key %s not found for segment %s", keyFormat, segmentID)
@@ -47,12 +47,12 @@ func (g *GraphRag) getSegmentValue(segmentID string, keyFormat string) (interfac
 }
 
 // deleteSegmentValue deletes a value for a segment with the given key format
-func (g *GraphRag) deleteSegmentValue(segmentID string, keyFormat string) error {
+func (g *GraphRag) deleteSegmentValue(docID string, segmentID string, keyFormat string) error {
 	if g.Store == nil {
 		return nil // No error if store is not configured
 	}
 
-	key := fmt.Sprintf(keyFormat, segmentID)
+	key := fmt.Sprintf(keyFormat, docID, segmentID)
 	err := g.Store.Del(key)
 	if err != nil {
 		return fmt.Errorf("failed to delete %s for segment %s: %w", keyFormat, segmentID, err)
