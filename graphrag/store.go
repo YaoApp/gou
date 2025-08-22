@@ -83,79 +83,44 @@ func (g *GraphRag) updateSegmentMetadataInVectorBatch(ctx context.Context, docID
 		return fmt.Errorf("failed to get collection IDs for document %s: %w", docID, err)
 	}
 
-	// Group updates by collection (all updates should be for the same document/collection)
-	collectionUpdates := make(map[string][]segmentMetadataUpdate)
-	collectionUpdates[collectionIDs.Vector] = updates
+	collectionName := collectionIDs.Vector
 
-	// Process each collection
-	for collectionName, colUpdates := range collectionUpdates {
-		// Check if collection exists
-		exists, err := g.Vector.CollectionExists(ctx, collectionName)
-		if err != nil {
-			g.Logger.Warnf("Failed to check collection existence %s: %v", collectionName, err)
-			continue
-		}
-		if !exists {
-			g.Logger.Warnf("Vector collection %s does not exist", collectionName)
-			continue
-		}
-
-		// Get segment IDs for this collection
-		segmentIDs := make([]string, 0, len(colUpdates))
-		for _, update := range colUpdates {
-			segmentIDs = append(segmentIDs, update.SegmentID)
-		}
-
-		// Get all segment documents
-		getOpts := &types.GetDocumentOptions{
-			CollectionName: collectionName,
-			IncludeVector:  false,
-			IncludePayload: true,
-		}
-
-		docs, err := g.Vector.GetDocuments(ctx, segmentIDs, getOpts)
-		if err != nil {
-			g.Logger.Warnf("Failed to get segment documents from collection %s: %v", collectionName, err)
-			continue
-		}
-
-		// Create a map of segment ID to document
-		docMap := make(map[string]*types.Document)
-		for _, doc := range docs {
-			if doc != nil {
-				docMap[doc.ID] = doc
-			}
-		}
-
-		// Update documents with new metadata
-		var docsToUpdate []*types.Document
-		for _, update := range colUpdates {
-			if doc, exists := docMap[update.SegmentID]; exists {
-				if doc.Metadata == nil {
-					doc.Metadata = make(map[string]interface{})
-				}
-				doc.Metadata[update.MetadataKey] = update.Value
-				docsToUpdate = append(docsToUpdate, doc)
-			}
-		}
-
-		// Batch update documents
-		if len(docsToUpdate) > 0 {
-			addOpts := &types.AddDocumentOptions{
-				CollectionName: collectionName,
-				Documents:      docsToUpdate,
-				Upsert:         true,
-				BatchSize:      50,
-			}
-
-			_, err = g.Vector.AddDocuments(ctx, addOpts)
-			if err != nil {
-				g.Logger.Warnf("Failed to update segment metadata in vector store collection %s: %v", collectionName, err)
-			} else {
-				g.Logger.Debugf("Updated %d segment metadata in vector store collection %s", len(docsToUpdate), collectionName)
-			}
-		}
+	// Check if collection exists
+	exists, err := g.Vector.CollectionExists(ctx, collectionName)
+	if err != nil {
+		return fmt.Errorf("failed to check collection existence %s: %w", collectionName, err)
 	}
+	if !exists {
+		return fmt.Errorf("vector collection %s does not exist", collectionName)
+	}
+
+	// Prepare metadata updates for the new UpdateMetadata method
+	documentUpdates := make([]types.DocumentMetadataUpdate, 0)
+	segmentMetadataMap := make(map[string]map[string]interface{})
+
+	// Group updates by segment ID
+	for _, update := range updates {
+		if segmentMetadataMap[update.SegmentID] == nil {
+			segmentMetadataMap[update.SegmentID] = make(map[string]interface{})
+		}
+		segmentMetadataMap[update.SegmentID][update.MetadataKey] = update.Value
+	}
+
+	// Convert to DocumentMetadataUpdate array
+	for segmentID, metadata := range segmentMetadataMap {
+		documentUpdates = append(documentUpdates, types.DocumentMetadataUpdate{
+			DocumentID: segmentID,
+			Metadata:   metadata,
+		})
+	}
+
+	// Use the new UpdateMetadata method for direct metadata updates
+	err = g.Vector.UpdateMetadata(ctx, collectionName, documentUpdates, nil)
+	if err != nil {
+		return fmt.Errorf("failed to update segment metadata in vector store: %w", err)
+	}
+
+	g.Logger.Debugf("Updated metadata for %d segments in vector store collection %s", len(documentUpdates), collectionName)
 
 	return nil
 }

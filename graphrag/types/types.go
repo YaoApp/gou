@@ -1296,6 +1296,12 @@ type DeleteDocumentOptions struct {
 	DryRun         bool                   `json:"dry_run"`          // Preview what would be deleted
 }
 
+// DocumentMetadataUpdate represents metadata update for a specific document
+type DocumentMetadataUpdate struct {
+	DocumentID string                 `json:"document_id"`        // Document ID to update
+	Metadata   map[string]interface{} `json:"metadata,omitempty"` // Specific metadata for this document (if provided, overrides defaultMetadata)
+}
+
 // ===== Collection Load States =====
 
 // LoadState represents the loading state of a collection

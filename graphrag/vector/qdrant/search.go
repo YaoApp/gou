@@ -259,9 +259,42 @@ func convertScoredPointToSearchDocument(point *qdrant.ScoredPoint, includeVector
 
 		// Extract metadata if requested
 		if includeMetadata {
-			if metadataVal := point.Payload["metadata"]; metadataVal != nil {
-				if metadataStruct := metadataVal.GetStructValue(); metadataStruct != nil {
-					doc.Metadata = convertStructToMap(metadataStruct)
+			// Initialize metadata map
+			doc.Metadata = make(map[string]interface{})
+
+			// Extract all payload fields as metadata (except id and content)
+			for key, fieldVal := range point.Payload {
+				if key == "id" || key == "content" {
+					continue // Skip basic fields
+				}
+
+				if fieldVal != nil {
+					switch v := fieldVal.Kind.(type) {
+					case *qdrant.Value_DoubleValue:
+						doc.Metadata[key] = v.DoubleValue
+					case *qdrant.Value_IntegerValue:
+						doc.Metadata[key] = v.IntegerValue
+					case *qdrant.Value_StringValue:
+						doc.Metadata[key] = v.StringValue
+					case *qdrant.Value_BoolValue:
+						doc.Metadata[key] = v.BoolValue
+					case *qdrant.Value_ListValue:
+						list := make([]interface{}, len(v.ListValue.Values))
+						for i, item := range v.ListValue.Values {
+							if str := item.GetStringValue(); str != "" {
+								list[i] = str
+							} else if num := item.GetDoubleValue(); num != 0 {
+								list[i] = num
+							} else if intVal := item.GetIntegerValue(); intVal != 0 {
+								list[i] = intVal
+							} else if boolVal := item.GetBoolValue(); boolVal {
+								list[i] = boolVal
+							}
+						}
+						doc.Metadata[key] = list
+					case *qdrant.Value_StructValue:
+						doc.Metadata[key] = convertStructToMap(v.StructValue)
+					}
 				}
 			}
 		}

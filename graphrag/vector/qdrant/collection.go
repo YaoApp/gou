@@ -120,14 +120,19 @@ func (s *Store) CreateCollection(ctx context.Context, opts *types.CreateCollecti
 func (s *Store) createIndexes(ctx context.Context, collectionName string) error {
 	// Define integer field indexes for sorting
 	integerFields := []string{
-		"score",
 		"size",
 		"text_length",
-		"vote",
-		"weight",
-		"recall_count",
+		"positive",
+		"negative",
+		"hit",
 		"chunk_details.depth",
 		"chunk_details.index",
+	}
+
+	// Define float field indexes for sorting
+	floatFields := []string{
+		"score",
+		"weight",
 	}
 
 	// Define boolean field indexes
@@ -138,7 +143,7 @@ func (s *Store) createIndexes(ctx context.Context, collectionName string) error 
 
 	// Create indexes for integer fields
 	for _, field := range integerFields {
-		indexName := fmt.Sprintf("metadata.%s", field)
+		indexName := field // Direct field name for root-level fields
 		req := &qdrant.CreateFieldIndexCollection{
 			CollectionName: collectionName,
 			FieldName:      indexName,
@@ -151,9 +156,24 @@ func (s *Store) createIndexes(ctx context.Context, collectionName string) error 
 		}
 	}
 
+	// Create indexes for float fields
+	for _, field := range floatFields {
+		indexName := field // Direct field name for root-level fields
+		req := &qdrant.CreateFieldIndexCollection{
+			CollectionName: collectionName,
+			FieldName:      indexName,
+			FieldType:      qdrant.PtrOf(qdrant.FieldType_FieldTypeFloat),
+		}
+
+		_, err := s.client.CreateFieldIndex(ctx, req)
+		if err != nil {
+			return fmt.Errorf("failed to create index for field %s: %w", field, err)
+		}
+	}
+
 	// Create indexes for boolean fields
 	for _, field := range boolFields {
-		indexName := fmt.Sprintf("metadata.%s", field)
+		indexName := field // Direct field name for root-level fields
 		req := &qdrant.CreateFieldIndexCollection{
 			CollectionName: collectionName,
 			FieldName:      indexName,

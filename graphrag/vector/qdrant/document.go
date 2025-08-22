@@ -40,9 +40,42 @@ func convertRetrievedPointToDocument(point *qdrant.RetrievedPoint, includeVector
 
 		// Extract metadata if requested
 		if includePayload {
-			if metadataVal := point.Payload["metadata"]; metadataVal != nil {
-				if metadataStruct := metadataVal.GetStructValue(); metadataStruct != nil {
-					doc.Metadata = convertStructToMap(metadataStruct)
+			// Initialize metadata map
+			doc.Metadata = make(map[string]interface{})
+
+			// Extract all payload fields as metadata (except id and content)
+			for key, fieldVal := range point.Payload {
+				if key == "id" || key == "content" {
+					continue // Skip basic fields
+				}
+
+				if fieldVal != nil {
+					switch v := fieldVal.Kind.(type) {
+					case *qdrant.Value_DoubleValue:
+						doc.Metadata[key] = v.DoubleValue
+					case *qdrant.Value_IntegerValue:
+						doc.Metadata[key] = v.IntegerValue
+					case *qdrant.Value_StringValue:
+						doc.Metadata[key] = v.StringValue
+					case *qdrant.Value_BoolValue:
+						doc.Metadata[key] = v.BoolValue
+					case *qdrant.Value_ListValue:
+						list := make([]interface{}, len(v.ListValue.Values))
+						for i, item := range v.ListValue.Values {
+							if str := item.GetStringValue(); str != "" {
+								list[i] = str
+							} else if num := item.GetDoubleValue(); num != 0 {
+								list[i] = num
+							} else if intVal := item.GetIntegerValue(); intVal != 0 {
+								list[i] = intVal
+							} else if boolVal := item.GetBoolValue(); boolVal {
+								list[i] = boolVal
+							}
+						}
+						doc.Metadata[key] = list
+					case *qdrant.Value_StructValue:
+						doc.Metadata[key] = convertStructToMap(v.StructValue)
+					}
 				}
 			}
 		}
@@ -76,9 +109,42 @@ func convertScoredPointToDocument(point *qdrant.ScoredPoint, includeVector, incl
 
 		// Extract metadata if requested
 		if includePayload {
-			if metadataVal := point.Payload["metadata"]; metadataVal != nil {
-				if metadataStruct := metadataVal.GetStructValue(); metadataStruct != nil {
-					doc.Metadata = convertStructToMap(metadataStruct)
+			// Initialize metadata map
+			doc.Metadata = make(map[string]interface{})
+
+			// Extract all payload fields as metadata (except id and content)
+			for key, fieldVal := range point.Payload {
+				if key == "id" || key == "content" {
+					continue // Skip basic fields
+				}
+
+				if fieldVal != nil {
+					switch v := fieldVal.Kind.(type) {
+					case *qdrant.Value_DoubleValue:
+						doc.Metadata[key] = v.DoubleValue
+					case *qdrant.Value_IntegerValue:
+						doc.Metadata[key] = v.IntegerValue
+					case *qdrant.Value_StringValue:
+						doc.Metadata[key] = v.StringValue
+					case *qdrant.Value_BoolValue:
+						doc.Metadata[key] = v.BoolValue
+					case *qdrant.Value_ListValue:
+						list := make([]interface{}, len(v.ListValue.Values))
+						for i, item := range v.ListValue.Values {
+							if str := item.GetStringValue(); str != "" {
+								list[i] = str
+							} else if num := item.GetDoubleValue(); num != 0 {
+								list[i] = num
+							} else if intVal := item.GetIntegerValue(); intVal != 0 {
+								list[i] = intVal
+							} else if boolVal := item.GetBoolValue(); boolVal {
+								list[i] = boolVal
+							}
+						}
+						doc.Metadata[key] = list
+					case *qdrant.Value_StructValue:
+						doc.Metadata[key] = convertStructToMap(v.StructValue)
+					}
 				}
 			}
 		}
@@ -225,11 +291,31 @@ func (s *Store) AddDocuments(ctx context.Context, opts *types.AddDocumentOptions
 				"content": qdrant.NewValueString(doc.Content),
 			}
 
-			// Add metadata if provided
+			// Add all metadata from doc.Metadata directly to payload (all fields go to root level)
 			if doc.Metadata != nil {
 				if metadataPayload, err := convertMetadataToPayload(doc.Metadata); err == nil {
-					payload["metadata"] = qdrant.NewValueStruct(&qdrant.Struct{Fields: metadataPayload})
+					// Add all user metadata to payload at root level
+					for key, value := range metadataPayload {
+						payload[key] = value
+					}
 				}
+			}
+
+			// Set default values for required fields if not provided by user
+			if _, exists := payload["score"]; !exists {
+				payload["score"] = qdrant.NewValueDouble(0.0)
+			}
+			if _, exists := payload["weight"]; !exists {
+				payload["weight"] = qdrant.NewValueDouble(0.0)
+			}
+			if _, exists := payload["positive"]; !exists {
+				payload["positive"] = qdrant.NewValueInt(0)
+			}
+			if _, exists := payload["negative"]; !exists {
+				payload["negative"] = qdrant.NewValueInt(0)
+			}
+			if _, exists := payload["hit"]; !exists {
+				payload["hit"] = qdrant.NewValueInt(0)
 			}
 
 			// Create point
@@ -615,7 +701,7 @@ func convertFilterToQdrant(filter map[string]interface{}) (*qdrant.Filter, error
 			condition = &qdrant.Condition{
 				ConditionOneOf: &qdrant.Condition_Field{
 					Field: &qdrant.FieldCondition{
-						Key: fmt.Sprintf("metadata.%s", key), // Access nested metadata field
+						Key: key, // Direct access to root-level field
 						Match: &qdrant.Match{
 							MatchValue: &qdrant.Match_Keyword{
 								Keyword: v,
@@ -638,7 +724,7 @@ func convertFilterToQdrant(filter map[string]interface{}) (*qdrant.Filter, error
 			condition = &qdrant.Condition{
 				ConditionOneOf: &qdrant.Condition_Field{
 					Field: &qdrant.FieldCondition{
-						Key: fmt.Sprintf("metadata.%s", key), // Access nested metadata field
+						Key: key, // Direct access to root-level field
 						Range: &qdrant.Range{
 							Gte: &floatVal,
 							Lte: &floatVal,
@@ -650,7 +736,7 @@ func convertFilterToQdrant(filter map[string]interface{}) (*qdrant.Filter, error
 			condition = &qdrant.Condition{
 				ConditionOneOf: &qdrant.Condition_Field{
 					Field: &qdrant.FieldCondition{
-						Key: fmt.Sprintf("metadata.%s", key), // Access nested metadata field
+						Key: key, // Direct access to root-level field
 						Match: &qdrant.Match{
 							MatchValue: &qdrant.Match_Boolean{
 								Boolean: v,
@@ -831,7 +917,7 @@ func (s *Store) ScrollDocuments(ctx context.Context, opts *types.ScrollOptions) 
 
 		// Set OrderBy for the request
 		req.OrderBy = &qdrant.OrderBy{
-			Key:       fmt.Sprintf("metadata.%s", fieldKey), // Access nested metadata field
+			Key:       fieldKey, // Direct access to root-level field
 			Direction: &direction,
 		}
 	}
@@ -898,4 +984,78 @@ func (s *Store) ScrollDocuments(ctx context.Context, opts *types.ScrollOptions) 
 	}
 
 	return scrollResult, nil
+}
+
+// UpdateMetadata updates metadata for specific documents using Qdrant's SetPayload API
+func (s *Store) UpdateMetadata(ctx context.Context, collectionName string, updates []types.DocumentMetadataUpdate, defaultMetadata map[string]interface{}) error {
+	// Auto connect
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if !s.connected {
+		return fmt.Errorf("not connected to Qdrant server")
+	}
+
+	if len(updates) == 0 {
+		return nil
+	}
+
+	// Process each document update separately to handle individual metadata
+	for _, update := range updates {
+		// Determine which metadata to use
+		var metadataToUse map[string]interface{}
+		if len(update.Metadata) > 0 {
+			// Use document-specific metadata
+			metadataToUse = update.Metadata
+		} else {
+			// Use default metadata
+			metadataToUse = defaultMetadata
+		}
+
+		if len(metadataToUse) == 0 {
+			continue // Skip if no metadata to update
+		}
+
+		// Convert metadata to payload format
+		metadataPayload, err := convertMetadataToPayload(metadataToUse)
+		if err != nil {
+			return fmt.Errorf("failed to convert metadata for document %s: %w", update.DocumentID, err)
+		}
+
+		// Create payload for root-level fields (weight, score, vote, etc.)
+		payload := make(map[string]*qdrant.Value)
+		for key, value := range metadataPayload {
+			// Update root-level fields directly, not nested under metadata
+			payload[key] = value
+		}
+
+		// Convert document ID to Qdrant point ID
+		pointID := qdrant.NewIDNum(stringToUint64ID(update.DocumentID))
+
+		// Use SetPayload to update only the metadata fields for this document
+		req := &qdrant.SetPayloadPoints{
+			CollectionName: collectionName,
+			PointsSelector: &qdrant.PointsSelector{
+				PointsSelectorOneOf: &qdrant.PointsSelector_Points{
+					Points: &qdrant.PointsIdsList{
+						Ids: []*qdrant.PointId{pointID},
+					},
+				},
+			},
+			Payload: payload,
+			Wait:    qdrant.PtrOf(true), // Wait for completion
+		}
+
+		_, err = s.client.SetPayload(ctx, req)
+		if err != nil {
+			return fmt.Errorf("failed to update metadata for document %s: %w", update.DocumentID, err)
+		}
+	}
+
+	return nil
 }
