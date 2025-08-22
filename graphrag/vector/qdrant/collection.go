@@ -138,7 +138,7 @@ func (s *Store) createIndexes(ctx context.Context, collectionName string) error 
 
 	// Create indexes for integer fields
 	for _, field := range integerFields {
-		indexName := fmt.Sprintf("metadata.%s", field)
+		indexName := field // Direct field name for root-level fields
 		req := &qdrant.CreateFieldIndexCollection{
 			CollectionName: collectionName,
 			FieldName:      indexName,
@@ -153,7 +153,7 @@ func (s *Store) createIndexes(ctx context.Context, collectionName string) error 
 
 	// Create indexes for boolean fields
 	for _, field := range boolFields {
-		indexName := fmt.Sprintf("metadata.%s", field)
+		indexName := field // Direct field name for root-level fields
 		req := &qdrant.CreateFieldIndexCollection{
 			CollectionName: collectionName,
 			FieldName:      indexName,

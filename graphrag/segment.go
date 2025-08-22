@@ -669,10 +669,26 @@ func (g *GraphRag) convertSegmentTextsToChunks(segmentTexts []types.SegmentText,
 		if chunkID != "" && segmentText.ID != "" {
 			existingSegment, err := g.GetSegment(context.Background(), docID, chunkID)
 			if err == nil && existingSegment != nil {
-				// Step 2: Merge metadata - existing as base, new segmentText.Metadata takes precedence
-				mergedMetadata = types.MergeMetadata(existingSegment.Metadata, segmentText.Metadata)
+				// Step 2: Restore external fields back to metadata to preserve them
+				existingMetadataWithFields := make(map[string]interface{})
+				// Copy existing metadata
+				if existingSegment.Metadata != nil {
+					for k, v := range existingSegment.Metadata {
+						existingMetadataWithFields[k] = v
+					}
+				}
 
-				// Step 3: Extract and set chunk fields from merged metadata
+				// Add external fields back to metadata so they can be preserved
+				existingMetadataWithFields["weight"] = existingSegment.Weight
+				existingMetadataWithFields["score"] = existingSegment.Score
+				existingMetadataWithFields["positive"] = existingSegment.Positive
+				existingMetadataWithFields["negative"] = existingSegment.Negative
+				existingMetadataWithFields["hit"] = existingSegment.Hit
+
+				// Step 3: Merge metadata - existing as base, new segmentText.Metadata takes precedence
+				mergedMetadata = types.MergeMetadata(existingMetadataWithFields, segmentText.Metadata)
+
+				// Step 4: Extract and set chunk fields from merged metadata
 				g.applyMetadataToChunk(chunk, mergedMetadata)
 			} else {
 				// No existing segment found, use only new metadata
@@ -941,28 +957,24 @@ func (g *GraphRag) storeSegmentMetadataToStore(ctx context.Context, docID string
 			g.Logger.Warnf("Failed to store score for segment %s: %v", segmentID, err)
 		}
 
-		// Store default Vote
-		err = g.storeSegmentValue(docID, segmentID, StoreKeyVote, 0)
-		if err != nil {
-			g.Logger.Warnf("Failed to store vote for segment %s: %v", segmentID, err)
-		}
+		// Note: Vote is not stored as a single value - it's managed as a list via UpdateVotes function
 	}
 
 	return nil
 }
 
-// updateSegmentMetadataInStore updates segment metadata (Weight, Score, Vote) in Store from user metadata
+// updateSegmentMetadataInStore updates segment metadata (Weight, Score) in Store from user metadata
+// Note: Vote is handled separately via UpdateVotes function as it's a list, not a single value
 func (g *GraphRag) updateSegmentMetadataInStore(ctx context.Context, docID string, segmentTexts []types.SegmentText, userMetadata map[string]interface{}, storeCollectionName string) error {
 	if g.Store == nil {
 		return nil
 	}
 
-	// Check if user metadata contains vote, weight, or score
-	vote, hasVote := userMetadata["vote"]
+	// Check if user metadata contains weight or score
 	weight, hasWeight := userMetadata["weight"]
 	score, hasScore := userMetadata["score"]
 
-	if !hasVote && !hasWeight && !hasScore {
+	if !hasWeight && !hasScore {
 		// No relevant metadata to update
 		return nil
 	}
@@ -970,14 +982,6 @@ func (g *GraphRag) updateSegmentMetadataInStore(ctx context.Context, docID strin
 	// Update metadata for each segment
 	for _, segmentText := range segmentTexts {
 		segmentID := segmentText.ID
-
-		// Update Vote if provided
-		if hasVote {
-			err := g.storeSegmentValue(docID, segmentID, StoreKeyVote, vote)
-			if err != nil {
-				g.Logger.Warnf("Failed to update vote for segment %s: %v", segmentID, err)
-			}
-		}
 
 		// Update Weight if provided
 		if hasWeight {
@@ -1901,16 +1905,23 @@ func (g *GraphRag) queryMetadataFromVector(ctx context.Context, opts *segmentQue
 		if doc != nil && doc.Metadata != nil {
 			segmentData := make(map[string]interface{})
 
-			// Extract Vote, Score, Weight from metadata
-			if vote, ok := doc.Metadata["vote"]; ok {
-				segmentData["vote"] = vote
-			}
+			// Extract Score, Weight, Positive, Negative, Hit from metadata
 			if score, ok := doc.Metadata["score"]; ok {
 				segmentData["score"] = score
 			}
 			if weight, ok := doc.Metadata["weight"]; ok {
 				segmentData["weight"] = weight
 			}
+			if positive, ok := doc.Metadata["positive"]; ok {
+				segmentData["positive"] = positive
+			}
+			if negative, ok := doc.Metadata["negative"]; ok {
+				segmentData["negative"] = negative
+			}
+			if hit, ok := doc.Metadata["hit"]; ok {
+				segmentData["hit"] = hit
+			}
+			// Note: vote is not stored in Vector DB - it's a list stored in Store only
 
 			// If Store is not configured, also extract Origin from metadata
 			if g.Store == nil {
@@ -1950,10 +1961,25 @@ func (g *GraphRag) queryMetadataFromStoreOnly(docID string, segmentIDs []string)
 			segmentData["score"] = score
 		}
 
-		// Query Vote
-		vote, ok := g.getSegmentValue(docID, segmentID, StoreKeyVote)
+		// Note: vote is a list (StoreKeyVote), not a single value, so we don't query it here
+		// We only query the statistical counters: positive, negative, hit
+
+		// Query Positive vote count
+		positive, ok := g.getSegmentValue(docID, segmentID, StoreKeyVotePositive)
 		if ok {
-			segmentData["vote"] = vote
+			segmentData["positive"] = positive
+		}
+
+		// Query Negative vote count
+		negative, ok := g.getSegmentValue(docID, segmentID, StoreKeyVoteNegative)
+		if ok {
+			segmentData["negative"] = negative
+		}
+
+		// Query Hit count
+		hit, ok := g.getSegmentValue(docID, segmentID, StoreKeyHitCount)
+		if ok {
+			segmentData["hit"] = hit
 		}
 
 		if len(segmentData) > 0 {
@@ -2022,34 +2048,40 @@ func (g *GraphRag) assembleSegments(data *segmentQueryResult, graphName string, 
 			}
 		}
 
-		// Add metadata from store
+		// Extract weight/score/vote from chunk metadata (Vector DB data) using safe extraction
+		if chunk.Metadata != nil {
+			segment.Weight = types.SafeExtractFloat64(chunk.Metadata["weight"], segment.Weight)
+			segment.Score = types.SafeExtractFloat64(chunk.Metadata["score"], segment.Score)
+			segment.Positive = types.SafeExtractInt(chunk.Metadata["positive"], segment.Positive)
+			segment.Negative = types.SafeExtractInt(chunk.Metadata["negative"], segment.Negative)
+			segment.Hit = types.SafeExtractInt(chunk.Metadata["hit"], segment.Hit)
+
+			// Remove these fields from metadata since they're now in external fields
+			delete(segment.Metadata, "weight")
+			delete(segment.Metadata, "score")
+			delete(segment.Metadata, "positive")
+			delete(segment.Metadata, "negative")
+			delete(segment.Metadata, "hit")
+			// Note: vote is not stored in Vector DB - it's a list stored in Store only
+		}
+
+		// Also add metadata from store (for backward compatibility if Store is configured)
 		if segmentData, ok := data.StoreData[chunk.ID]; ok {
 			if segmentMap, ok := segmentData.(map[string]interface{}); ok {
-				if weight, ok := segmentMap["weight"]; ok {
-					if weightFloat, ok := weight.(float64); ok {
-						segment.Weight = weightFloat
-					}
-				}
-				if score, ok := segmentMap["score"]; ok {
-					if scoreFloat, ok := score.(float64); ok {
-						segment.Score = scoreFloat
-					}
-				}
-				if positive, ok := segmentMap["positive"]; ok {
-					if positiveInt, ok := positive.(int); ok {
-						segment.Positive = positiveInt
-					}
-				}
-				if negative, ok := segmentMap["negative"]; ok {
-					if negativeInt, ok := negative.(int); ok {
-						segment.Negative = negativeInt
-					}
-				}
-				if hit, ok := segmentMap["hit"]; ok {
-					if hitInt, ok := hit.(int); ok {
-						segment.Hit = hitInt
-					}
-				}
+				// Store data takes precedence over Vector DB data if both exist, using safe extraction
+				segment.Weight = types.SafeExtractFloat64(segmentMap["weight"], segment.Weight)
+				segment.Score = types.SafeExtractFloat64(segmentMap["score"], segment.Score)
+				segment.Positive = types.SafeExtractInt(segmentMap["positive"], segment.Positive)
+				segment.Negative = types.SafeExtractInt(segmentMap["negative"], segment.Negative)
+				segment.Hit = types.SafeExtractInt(segmentMap["hit"], segment.Hit)
+
+				// Ensure these fields are not duplicated in metadata
+				delete(segment.Metadata, "weight")
+				delete(segment.Metadata, "score")
+				delete(segment.Metadata, "positive")
+				delete(segment.Metadata, "negative")
+				delete(segment.Metadata, "hit")
+				// Note: vote is not a single value - it's a list stored in Store only
 			}
 		}
 
