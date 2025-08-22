@@ -10,13 +10,13 @@ import (
 )
 
 // StoreKeyVote key format for vote storage (List)
-const StoreKeyVote = "segment_votes_%s" // segment_votes_{segmentID}
+const StoreKeyVote = "doc:%s:segment:votes:%s" // doc:{docID}:segment:votes:{segmentID}
 
 // StoreKeyVotePositive key format for positive vote count storage
-const StoreKeyVotePositive = "segment_positive_%s" // segment_positive_{segmentID}
+const StoreKeyVotePositive = "doc:%s:segment:positive:%s" // doc:{docID}:segment:positive:{segmentID}
 
 // StoreKeyVoteNegative key format for negative vote count storage
-const StoreKeyVoteNegative = "segment_negative_%s" // segment_negative_{segmentID}
+const StoreKeyVoteNegative = "doc:%s:segment:negative:%s" // doc:{docID}:segment:negative:{segmentID}
 
 // UpdateVotes updates vote for segments
 func (g *GraphRag) UpdateVotes(ctx context.Context, docID string, segments []types.SegmentVote, options ...types.UpdateVoteOptions) (int, error) {
@@ -114,7 +114,7 @@ func (g *GraphRag) updateVoteInStoreAndVector(ctx context.Context, docID string,
 			}
 
 			// Add vote to list
-			err = g.Store.Push(fmt.Sprintf(StoreKeyVote, segment.ID), voteMap)
+			err = g.Store.Push(fmt.Sprintf(StoreKeyVote, docID, segment.ID), voteMap)
 			if err != nil {
 				g.Logger.Warnf("Failed to add vote for segment %s to Store list: %v", segment.ID, err)
 				continue
@@ -123,7 +123,7 @@ func (g *GraphRag) updateVoteInStoreAndVector(ctx context.Context, docID string,
 			// Update statistics counters using tagged switch
 			switch segment.Vote {
 			case types.VotePositive:
-				positiveKey := fmt.Sprintf(StoreKeyVotePositive, segment.ID)
+				positiveKey := fmt.Sprintf(StoreKeyVotePositive, docID, segment.ID)
 				count, ok := g.Store.Get(positiveKey)
 				if !ok {
 					count = 0
@@ -137,7 +137,7 @@ func (g *GraphRag) updateVoteInStoreAndVector(ctx context.Context, docID string,
 					g.Logger.Warnf("Failed to increment positive count for segment %s: %v", segment.ID, err)
 				}
 			case types.VoteNegative:
-				negativeKey := fmt.Sprintf(StoreKeyVoteNegative, segment.ID)
+				negativeKey := fmt.Sprintf(StoreKeyVoteNegative, docID, segment.ID)
 				count, ok := g.Store.Get(negativeKey)
 				if !ok {
 					count = 0
@@ -231,7 +231,7 @@ func (g *GraphRag) RemoveVotes(ctx context.Context, docID string, votes []types.
 
 		for segmentID, segmentVotes := range votesBySegment {
 			// Get all votes for the segment
-			voteKey := fmt.Sprintf(StoreKeyVote, segmentID)
+			voteKey := fmt.Sprintf(StoreKeyVote, docID, segmentID)
 			allVotes, err := g.Store.ArrayAll(voteKey)
 			if err != nil {
 				g.Logger.Warnf("Failed to get votes from Store for segment %s: %v", segmentID, err)
@@ -287,7 +287,7 @@ func (g *GraphRag) RemoveVotes(ctx context.Context, docID string, votes []types.
 
 				// Update statistics counters
 				if positiveRemoved > 0 {
-					positiveKey := fmt.Sprintf(StoreKeyVotePositive, segmentID)
+					positiveKey := fmt.Sprintf(StoreKeyVotePositive, docID, segmentID)
 					count, ok := g.Store.Get(positiveKey)
 					if ok {
 						if countInt, ok := count.(int); ok {
@@ -301,7 +301,7 @@ func (g *GraphRag) RemoveVotes(ctx context.Context, docID string, votes []types.
 				}
 
 				if negativeRemoved > 0 {
-					negativeKey := fmt.Sprintf(StoreKeyVoteNegative, segmentID)
+					negativeKey := fmt.Sprintf(StoreKeyVoteNegative, docID, segmentID)
 					count, ok := g.Store.Get(negativeKey)
 					if ok {
 						if countInt, ok := count.(int); ok {
@@ -382,7 +382,7 @@ func (g *GraphRag) RemoveVotesBySegmentID(ctx context.Context, docID string, seg
 		defer wg.Done()
 
 		// Get all votes for the segment
-		voteKey := fmt.Sprintf(StoreKeyVote, segmentID)
+		voteKey := fmt.Sprintf(StoreKeyVote, docID, segmentID)
 		allVotes, err := g.Store.ArrayAll(voteKey)
 		if err != nil {
 			g.Logger.Warnf("Failed to get votes from Store for segment %s: %v", segmentID, err)
@@ -397,8 +397,8 @@ func (g *GraphRag) RemoveVotesBySegmentID(ctx context.Context, docID string, seg
 		g.Store.Del(voteKey)
 
 		// Clear statistics counters
-		positiveKey := fmt.Sprintf(StoreKeyVotePositive, segmentID)
-		negativeKey := fmt.Sprintf(StoreKeyVoteNegative, segmentID)
+		positiveKey := fmt.Sprintf(StoreKeyVotePositive, docID, segmentID)
+		negativeKey := fmt.Sprintf(StoreKeyVoteNegative, docID, segmentID)
 		g.Store.Del(positiveKey)
 		g.Store.Del(negativeKey)
 	}()
@@ -463,12 +463,12 @@ func (g *GraphRag) ScrollVotes(ctx context.Context, docID string, options *types
 		return nil, fmt.Errorf("segment_id is required for listing votes")
 	}
 
-	return g.listVotesForSegment(ctx, options.SegmentID, options)
+	return g.listVotesForSegment(ctx, docID, options.SegmentID, options)
 }
 
 // listVotesForSegment lists votes for a specific segment
-func (g *GraphRag) listVotesForSegment(ctx context.Context, segmentID string, options *types.ScrollVotesOptions) (*types.VoteScrollResult, error) {
-	voteKey := fmt.Sprintf(StoreKeyVote, segmentID)
+func (g *GraphRag) listVotesForSegment(ctx context.Context, docID string, segmentID string, options *types.ScrollVotesOptions) (*types.VoteScrollResult, error) {
+	voteKey := fmt.Sprintf(StoreKeyVote, docID, segmentID)
 
 	// Get all votes for the segment
 	allVotes, err := g.Store.ArrayAll(voteKey)

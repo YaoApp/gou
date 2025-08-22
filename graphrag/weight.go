@@ -10,7 +10,7 @@ import (
 )
 
 // StoreKeyWeight key format for weight storage
-const StoreKeyWeight = "segment_weight_%s" // segment_weight_{segmentID}
+const StoreKeyWeight = "doc:%s:segment:weight:%s" // doc:{docID}:segment:weight:{segmentID}
 
 // UpdateWeights updates weight for segments
 func (g *GraphRag) UpdateWeights(ctx context.Context, docID string, segments []types.SegmentWeight, options ...types.UpdateWeightOptions) (int, error) {
@@ -63,7 +63,7 @@ func (g *GraphRag) UpdateWeights(ctx context.Context, docID string, segments []t
 		defer wg.Done()
 		storeUpdated := 0
 		for _, segment := range segments {
-			err := g.storeSegmentValue(segment.ID, StoreKeyWeight, segment.Weight)
+			err := g.storeSegmentValue(docID, segment.ID, StoreKeyWeight, segment.Weight)
 			if err != nil {
 				g.Logger.Warnf("Failed to update weight for segment %s in Store: %v", segment.ID, err)
 			} else {

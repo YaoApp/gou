@@ -10,10 +10,10 @@ import (
 )
 
 // StoreKeyHit key format for hit storage (List)
-const StoreKeyHit = "segment_hits_%s" // segment_hits_{segmentID}
+const StoreKeyHit = "doc:%s:segment:hits:%s" // doc:{docID}:segment:hits:{segmentID}
 
 // StoreKeyHitCount key format for hit count storage
-const StoreKeyHitCount = "segment_hit_count_%s" // segment_hit_count_{segmentID}
+const StoreKeyHitCount = "doc:%s:segment:hit:count:%s" // doc:{docID}:segment:hit:count:{segmentID}
 
 // UpdateHits updates hit for segments
 func (g *GraphRag) UpdateHits(ctx context.Context, docID string, segments []types.SegmentHit, options ...types.UpdateHitOptions) (int, error) {
@@ -85,14 +85,14 @@ func (g *GraphRag) updateHitInStoreAndVector(ctx context.Context, docID string, 
 			}
 
 			// Add hit to list
-			err = g.Store.Push(fmt.Sprintf(StoreKeyHit, segment.ID), hitMap)
+			err = g.Store.Push(fmt.Sprintf(StoreKeyHit, docID, segment.ID), hitMap)
 			if err != nil {
 				g.Logger.Warnf("Failed to add hit for segment %s to Store list: %v", segment.ID, err)
 				continue
 			}
 
 			// Update hit count
-			hitCountKey := fmt.Sprintf(StoreKeyHitCount, segment.ID)
+			hitCountKey := fmt.Sprintf(StoreKeyHitCount, docID, segment.ID)
 			count, ok := g.Store.Get(hitCountKey)
 			if !ok {
 				count = 0
@@ -183,7 +183,7 @@ func (g *GraphRag) RemoveHits(ctx context.Context, docID string, hits []types.Hi
 
 		for segmentID, segmentHits := range hitsBySegment {
 			// Get all hits for the segment
-			hitKey := fmt.Sprintf(StoreKeyHit, segmentID)
+			hitKey := fmt.Sprintf(StoreKeyHit, docID, segmentID)
 			allHits, err := g.Store.ArrayAll(hitKey)
 			if err != nil {
 				g.Logger.Warnf("Failed to get hits from Store for segment %s: %v", segmentID, err)
@@ -230,7 +230,7 @@ func (g *GraphRag) RemoveHits(ctx context.Context, docID string, hits []types.Hi
 				}
 
 				// Update hit count
-				hitCountKey := fmt.Sprintf(StoreKeyHitCount, segmentID)
+				hitCountKey := fmt.Sprintf(StoreKeyHitCount, docID, segmentID)
 				count, ok := g.Store.Get(hitCountKey)
 				if ok {
 					if countInt, ok := count.(int); ok {
@@ -310,7 +310,7 @@ func (g *GraphRag) RemoveHitsBySegmentID(ctx context.Context, docID string, segm
 		defer wg.Done()
 
 		// Get all hits for the segment
-		hitKey := fmt.Sprintf(StoreKeyHit, segmentID)
+		hitKey := fmt.Sprintf(StoreKeyHit, docID, segmentID)
 		allHits, err := g.Store.ArrayAll(hitKey)
 		if err != nil {
 			g.Logger.Warnf("Failed to get hits from Store for segment %s: %v", segmentID, err)
@@ -325,7 +325,7 @@ func (g *GraphRag) RemoveHitsBySegmentID(ctx context.Context, docID string, segm
 		g.Store.Del(hitKey)
 
 		// Clear hit count
-		hitCountKey := fmt.Sprintf(StoreKeyHitCount, segmentID)
+		hitCountKey := fmt.Sprintf(StoreKeyHitCount, docID, segmentID)
 		g.Store.Del(hitCountKey)
 	}()
 
@@ -389,12 +389,12 @@ func (g *GraphRag) ScrollHits(ctx context.Context, docID string, options *types.
 		return nil, fmt.Errorf("segment_id is required for listing hits")
 	}
 
-	return g.listHitsForSegment(ctx, options.SegmentID, options)
+	return g.listHitsForSegment(ctx, docID, options.SegmentID, options)
 }
 
 // listHitsForSegment lists hits for a specific segment
-func (g *GraphRag) listHitsForSegment(ctx context.Context, segmentID string, options *types.ScrollHitsOptions) (*types.HitScrollResult, error) {
-	hitKey := fmt.Sprintf(StoreKeyHit, segmentID)
+func (g *GraphRag) listHitsForSegment(ctx context.Context, docID string, segmentID string, options *types.ScrollHitsOptions) (*types.HitScrollResult, error) {
+	hitKey := fmt.Sprintf(StoreKeyHit, docID, segmentID)
 
 	// Get all hits for the segment
 	allHits, err := g.Store.ArrayAll(hitKey)

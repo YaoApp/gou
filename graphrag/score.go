@@ -10,10 +10,10 @@ import (
 )
 
 // StoreKeyScore key format for score storage
-const StoreKeyScore = "segment_score_%s" // segment_score_{segmentID}
+const StoreKeyScore = "doc:%s:segment:score:%s" // doc:{docID}:segment:score:{segmentID}
 
 // StoreKeyScoreDimensions key format for score dimensions storage
-const StoreKeyScoreDimensions = "segment_score_dimensions_%s" // segment_score_dimensions_{segmentID}
+const StoreKeyScoreDimensions = "doc:%s:segment:score:dimensions:%s" // doc:{docID}:segment:score:dimensions:{segmentID}
 
 // UpdateScores updates score for segments
 func (g *GraphRag) UpdateScores(ctx context.Context, docID string, segments []types.SegmentScore, options ...types.UpdateScoreOptions) (int, error) {
@@ -79,14 +79,14 @@ func (g *GraphRag) UpdateScores(ctx context.Context, docID string, segments []ty
 		storeUpdated := 0
 		for _, segment := range segments {
 			// Update score
-			err := g.storeSegmentValue(segment.ID, StoreKeyScore, segment.Score)
+			err := g.storeSegmentValue(docID, segment.ID, StoreKeyScore, segment.Score)
 			if err != nil {
 				g.Logger.Warnf("Failed to update score for segment %s in Store: %v", segment.ID, err)
 				continue
 			}
 
 			// Update score dimensions
-			err = g.storeSegmentValue(segment.ID, StoreKeyScoreDimensions, segment.Dimensions)
+			err = g.storeSegmentValue(docID, segment.ID, StoreKeyScoreDimensions, segment.Dimensions)
 			if err != nil {
 				g.Logger.Warnf("Failed to update score dimensions for segment %s in Store: %v", segment.ID, err)
 				continue
