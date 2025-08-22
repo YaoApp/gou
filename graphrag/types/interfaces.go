@@ -187,12 +187,14 @@ type GraphRag interface {
 	RemoveVotes(ctx context.Context, docID string, votes []VoteRemoval) (int, error)                                        // Remove votes by VoteID and update statistics, return removed count
 	RemoveVotesBySegmentID(ctx context.Context, docID string, segmentID string) (int, error)                                // Remove all votes for a segment and clear statistics, return removed count
 	ScrollVotes(ctx context.Context, docID string, options *ScrollVotesOptions) (*VoteScrollResult, error)                  // Scroll votes with pagination support
+	GetVote(ctx context.Context, docID string, segmentID string, voteID string) (*SegmentVote, error)                       // Get a single vote by ID
 	UpdateScores(ctx context.Context, docID string, segments []SegmentScore, options ...UpdateScoreOptions) (int, error)    // Score for segments, return updated count
 	UpdateWeights(ctx context.Context, docID string, segments []SegmentWeight, options ...UpdateWeightOptions) (int, error) // Weight for segments, return updated count
 	UpdateHits(ctx context.Context, docID string, segments []SegmentHit, options ...UpdateHitOptions) (int, error)          // Hit for segments, return updated count
 	RemoveHits(ctx context.Context, docID string, hits []HitRemoval) (int, error)                                           // Remove hits by HitID, return removed count
 	RemoveHitsBySegmentID(ctx context.Context, docID string, segmentID string) (int, error)                                 // Remove all hits for a segment and clear statistics, return removed count
 	ScrollHits(ctx context.Context, docID string, options *ScrollHitsOptions) (*HitScrollResult, error)                     // Scroll hits with pagination support
+	GetHit(ctx context.Context, docID string, segmentID string, hitID string) (*SegmentHit, error)                          // Get a single hit by ID
 
 	// Search Management
 	Search(ctx context.Context, options *QueryOptions, callback ...SearcherProgress) ([]Segment, error)                  // Search for segments

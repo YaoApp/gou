@@ -555,3 +555,32 @@ func (g *GraphRag) paginateVotes(votes []types.SegmentVote, options *types.Scrol
 
 	return result, nil
 }
+
+// GetVote gets a single vote by ID
+func (g *GraphRag) GetVote(ctx context.Context, docID string, segmentID string, voteID string) (*types.SegmentVote, error) {
+	if g.Store == nil {
+		return nil, fmt.Errorf("store is not configured, cannot get vote")
+	}
+
+	// Get all votes for the segment
+	voteKey := fmt.Sprintf(StoreKeyVote, docID, segmentID)
+	allVotes, err := g.Store.ArrayAll(voteKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get votes from Store: %w", err)
+	}
+
+	// Find the specific vote by voteID
+	for _, v := range allVotes {
+		vote, err := mapToSegmentVote(v)
+		if err != nil {
+			g.Logger.Warnf("Failed to convert stored vote to struct: %v", err)
+			continue
+		}
+
+		if vote.VoteID == voteID {
+			return &vote, nil
+		}
+	}
+
+	return nil, fmt.Errorf("vote not found")
+}
