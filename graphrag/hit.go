@@ -476,3 +476,32 @@ func (g *GraphRag) paginateHits(hits []types.SegmentHit, options *types.ScrollHi
 
 	return result, nil
 }
+
+// GetHit gets a single hit by ID
+func (g *GraphRag) GetHit(ctx context.Context, docID string, segmentID string, hitID string) (*types.SegmentHit, error) {
+	if g.Store == nil {
+		return nil, fmt.Errorf("store is not configured, cannot get hit")
+	}
+
+	// Get all hits for the segment
+	hitKey := fmt.Sprintf(StoreKeyHit, docID, segmentID)
+	allHits, err := g.Store.ArrayAll(hitKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get hits from Store: %w", err)
+	}
+
+	// Find the specific hit by hitID
+	for _, h := range allHits {
+		hit, err := mapToSegmentHit(h)
+		if err != nil {
+			g.Logger.Warnf("Failed to convert stored hit to struct: %v", err)
+			continue
+		}
+
+		if hit.HitID == hitID {
+			return &hit, nil
+		}
+	}
+
+	return nil, fmt.Errorf("hit not found")
+}
