@@ -1987,7 +1987,9 @@ func (g *GraphRag) assembleSegments(data *segmentQueryResult, graphName string, 
 			Version:       1,
 			Weight:        0.0,
 			Score:         0.0,
-			Vote:          0,
+			Positive:      0,
+			Negative:      0,
+			Hit:           0,
 		}
 
 		// Set timestamps from metadata if available
@@ -2033,9 +2035,19 @@ func (g *GraphRag) assembleSegments(data *segmentQueryResult, graphName string, 
 						segment.Score = scoreFloat
 					}
 				}
-				if vote, ok := segmentMap["vote"]; ok {
-					if voteInt, ok := vote.(int); ok {
-						segment.Vote = voteInt
+				if positive, ok := segmentMap["positive"]; ok {
+					if positiveInt, ok := positive.(int); ok {
+						segment.Positive = positiveInt
+					}
+				}
+				if negative, ok := segmentMap["negative"]; ok {
+					if negativeInt, ok := negative.(int); ok {
+						segment.Negative = negativeInt
+					}
+				}
+				if hit, ok := segmentMap["hit"]; ok {
+					if hitInt, ok := hit.(int); ok {
+						segment.Hit = hitInt
 					}
 				}
 			}

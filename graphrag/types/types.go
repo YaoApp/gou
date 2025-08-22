@@ -114,6 +114,20 @@ const (
 	ChunkingStatusFailed ChunkingStatus = "failed"
 )
 
+// == Vote Enums ==
+
+// VoteType represents the type of vote
+type VoteType string
+
+const (
+
+	// VotePositive is the type of vote that is positive
+	VotePositive VoteType = "positive"
+
+	// VoteNegative is the type of vote that is negative
+	VoteNegative VoteType = "negative"
+)
+
 // ===== Chunking Types =====
 
 // TextPosition represents position information for text-based content
@@ -2065,6 +2079,65 @@ type QueryOptions struct {
 	Searcher Searcher
 }
 
+// UpdateWeightOptions represents the options for updating weight
+type UpdateWeightOptions struct {
+	Compute  WeightCompute
+	Progress WeightProgress
+}
+
+// UpdateScoreOptions represents the options for updating score
+type UpdateScoreOptions struct {
+	Compute  ScoreCompute
+	Progress ScoreProgress
+}
+
+// UpdateVoteOptions represents the options for updating vote
+type UpdateVoteOptions struct {
+	Compute  VoteCompute
+	Progress VoteProgress
+	Reaction *SegmentReaction
+}
+
+// ScrollVotesOptions represents the options for scrolling votes
+type ScrollVotesOptions struct {
+	SegmentID string   `json:"segment_id,omitempty"` // Filter by segment ID
+	VoteType  VoteType `json:"vote_type,omitempty"`  // Filter by vote type
+	Source    string   `json:"source,omitempty"`     // Filter by reaction source
+	Scenario  string   `json:"scenario,omitempty"`   // Filter by reaction scenario
+	Limit     int      `json:"limit,omitempty"`      // Number of votes per page (default 20, max 100)
+	Cursor    string   `json:"cursor,omitempty"`     // Cursor for pagination
+}
+
+// VoteScrollResult represents the result of vote listing with scroll pagination
+type VoteScrollResult struct {
+	Votes      []SegmentVote `json:"votes"`       // List of votes
+	NextCursor string        `json:"next_cursor"` // Cursor for next page
+	HasMore    bool          `json:"has_more"`    // Whether there are more votes
+	Total      int           `json:"total"`       // Total count (if available)
+}
+
+// UpdateHitOptions represents the options for updating hit
+type UpdateHitOptions struct {
+	Reaction *SegmentReaction
+}
+
+// ScrollHitsOptions represents the options for scrolling hits
+type ScrollHitsOptions struct {
+	SegmentID string `json:"segment_id,omitempty"` // Filter by segment ID
+	Source    string `json:"source,omitempty"`     // Filter by reaction source
+	Scenario  string `json:"scenario,omitempty"`   // Filter by reaction scenario
+	Limit     int    `json:"limit,omitempty"`      // Number of hits per page (default 20, max 100)
+	Cursor    string `json:"cursor,omitempty"`     // Cursor for pagination
+}
+
+// HitScrollResult represents the result of hit listing with scroll pagination
+type HitScrollResult struct {
+	Hits       []SegmentHit `json:"hits"`        // List of hits
+	NextCursor string       `json:"next_cursor"` // Cursor for next page
+	HasMore    bool         `json:"has_more"`    // Whether there are more hits
+	Total      int          `json:"total"`       // Total count (if available)
+}
+
 // Collection represents a collection of documents
 type Collection struct {
 	ID               string                   `json:"id"`
@@ -2104,7 +2177,9 @@ type Segment struct {
 	Version       int                    `json:"version"`
 	Weight        float64                `json:"weight"`
 	Score         float64                `json:"score"`
-	Vote          int                    `json:"vote"`
+	Positive      int                    `json:"positive"` // Positive vote count
+	Negative      int                    `json:"negative"` // Negative vote count
+	Hit           int                    `json:"hit"`      // Hit count for the segment
 }
 
 // SegmentText represents a segment of a document
@@ -2114,16 +2189,35 @@ type SegmentText struct {
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
+// SegmentReaction represents a reaction for a segment
+type SegmentReaction struct {
+	Source    string                 `json:"source,omitempty"`    // Source of the reaction, e.g. "chat", "api", "bot", etc.
+	Scenario  string                 `json:"scenario,omitempty"`  // Scenario of the reaction, e.g. "question", "search", "response", etc.
+	Query     string                 `json:"query,omitempty"`     // Query of the reaction, e.g. "What is the capital of France?", etc.
+	Candidate string                 `json:"candidate,omitempty"` // Candidate of the reaction, e.g. "Paris", etc.
+	Context   map[string]interface{} `json:"context,omitempty"`   // Context of the reaction, e.g. {"user_id": "123", "session_id": "456", "rank": 1, "score": 0.95}
+}
+
 // SegmentVote represents a vote for a segment
 type SegmentVote struct {
-	ID   string `json:"id"`
-	Vote int    `json:"vote,omitempty"`
+	ID     string   `json:"id"`      // Segment ID
+	VoteID string   `json:"vote_id"` // Unique vote ID
+	Vote   VoteType `json:"vote"`    // Vote type, e.g. "positive", "negative"
+	*SegmentReaction
+}
+
+// SegmentHit represents a hit for a segment
+type SegmentHit struct {
+	ID    string `json:"id"`     // Segment ID
+	HitID string `json:"hit_id"` // Unique hit ID
+	*SegmentReaction
 }
 
 // SegmentScore represents a score for a segment
 type SegmentScore struct {
-	ID    string  `json:"id"`
-	Score float64 `json:"score,omitempty"`
+	ID         string             `json:"id"`
+	Score      float64            `json:"score,omitempty"`
+	Dimensions map[string]float64 `json:"dimensions,omitempty"`
 }
 
 // SegmentWeight represents a weight for a segment
