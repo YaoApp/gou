@@ -2121,6 +2121,18 @@ type UpdateHitOptions struct {
 	Reaction *SegmentReaction
 }
 
+// VoteRemoval represents a vote to be removed
+type VoteRemoval struct {
+	SegmentID string `json:"segment_id"` // Segment ID
+	VoteID    string `json:"vote_id"`    // Vote ID to remove
+}
+
+// HitRemoval represents a hit to be removed
+type HitRemoval struct {
+	SegmentID string `json:"segment_id"` // Segment ID
+	HitID     string `json:"hit_id"`     // Hit ID to remove
+}
+
 // ScrollHitsOptions represents the options for scrolling hits
 type ScrollHitsOptions struct {
 	SegmentID string `json:"segment_id,omitempty"` // Filter by segment ID

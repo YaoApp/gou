@@ -15,8 +15,8 @@ const StoreKeyScore = "segment_score_%s" // segment_score_{segmentID}
 // StoreKeyScoreDimensions key format for score dimensions storage
 const StoreKeyScoreDimensions = "segment_score_dimensions_%s" // segment_score_dimensions_{segmentID}
 
-// UpdateScore updates score for segments
-func (g *GraphRag) UpdateScore(ctx context.Context, docID string, segments []types.SegmentScore, options ...types.UpdateScoreOptions) (int, error) {
+// UpdateScores updates score for segments
+func (g *GraphRag) UpdateScores(ctx context.Context, docID string, segments []types.SegmentScore, options ...types.UpdateScoreOptions) (int, error) {
 	if len(segments) == 0 {
 		return 0, nil
 	}

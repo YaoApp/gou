@@ -15,8 +15,8 @@ const StoreKeyHit = "segment_hits_%s" // segment_hits_{segmentID}
 // StoreKeyHitCount key format for hit count storage
 const StoreKeyHitCount = "segment_hit_count_%s" // segment_hit_count_{segmentID}
 
-// UpdateHit updates hit for segments
-func (g *GraphRag) UpdateHit(ctx context.Context, docID string, segments []types.SegmentHit, options ...types.UpdateHitOptions) (int, error) {
+// UpdateHits updates hit for segments
+func (g *GraphRag) UpdateHits(ctx context.Context, docID string, segments []types.SegmentHit, options ...types.UpdateHitOptions) (int, error) {
 	if len(segments) == 0 {
 		return 0, nil
 	}
@@ -155,14 +155,154 @@ func (g *GraphRag) updateHitInStoreAndVector(ctx context.Context, docID string, 
 	return updatedCount, nil
 }
 
-// RemoveHit removes a single hit by HitID and updates statistics
-func (g *GraphRag) RemoveHit(ctx context.Context, docID string, segmentID string, hitID string) error {
+// RemoveHits removes multiple hits by HitID and updates statistics
+func (g *GraphRag) RemoveHits(ctx context.Context, docID string, hits []types.HitRemoval) (int, error) {
+	if len(hits) == 0 {
+		return 0, nil
+	}
+
 	if g.Store == nil {
-		return fmt.Errorf("store is not configured, cannot remove hit")
+		return 0, fmt.Errorf("store is not configured, cannot remove hits")
 	}
 
 	var wg sync.WaitGroup
 	var storeErr, vectorErr error
+	removedCount := 0
+
+	// Group hits by segment ID for efficient processing
+	hitsBySegment := make(map[string][]types.HitRemoval)
+	for _, hit := range hits {
+		hitsBySegment[hit.SegmentID] = append(hitsBySegment[hit.SegmentID], hit)
+	}
+
+	// Remove from Store concurrently
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		storeRemoved := 0
+
+		for segmentID, segmentHits := range hitsBySegment {
+			// Get all hits for the segment
+			hitKey := fmt.Sprintf(StoreKeyHit, segmentID)
+			allHits, err := g.Store.ArrayAll(hitKey)
+			if err != nil {
+				g.Logger.Warnf("Failed to get hits from Store for segment %s: %v", segmentID, err)
+				continue
+			}
+
+			// Create a map of HitID to remove for efficient lookup
+			hitsToRemove := make(map[string]bool)
+			for _, h := range segmentHits {
+				hitsToRemove[h.HitID] = true
+			}
+
+			// Find hits to remove
+			var removedHits []types.SegmentHit
+			var hitsToKeep []interface{}
+
+			for _, h := range allHits {
+				hit, err := mapToSegmentHit(h)
+				if err != nil {
+					g.Logger.Warnf("Failed to convert stored hit to struct: %v", err)
+					hitsToKeep = append(hitsToKeep, h) // Keep invalid hits
+					continue
+				}
+
+				if hitsToRemove[hit.HitID] {
+					// This hit should be removed
+					removedHits = append(removedHits, hit)
+				} else {
+					// Keep this hit
+					hitsToKeep = append(hitsToKeep, h)
+				}
+			}
+
+			// Update the hit list
+			if len(removedHits) > 0 {
+				// Clear the list and re-add remaining hits
+				g.Store.Del(hitKey)
+				if len(hitsToKeep) > 0 {
+					err = g.Store.Push(hitKey, hitsToKeep...)
+				}
+				if err != nil {
+					g.Logger.Warnf("Failed to update hit list for segment %s: %v", segmentID, err)
+					continue
+				}
+
+				// Update hit count
+				hitCountKey := fmt.Sprintf(StoreKeyHitCount, segmentID)
+				count, ok := g.Store.Get(hitCountKey)
+				if ok {
+					if countInt, ok := count.(int); ok {
+						newCount := countInt - len(removedHits)
+						if newCount < 0 {
+							newCount = 0
+						}
+						g.Store.Set(hitCountKey, newCount, 0)
+					}
+				}
+
+				storeRemoved += len(removedHits)
+			}
+		}
+
+		if storeRemoved < len(hits) {
+			storeErr = fmt.Errorf("failed to remove some hits in Store: %d/%d removed", storeRemoved, len(hits))
+		}
+	}()
+
+	// Update Vector DB metadata concurrently
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		var updates []segmentMetadataUpdate
+		for _, hit := range hits {
+			updates = append(updates, segmentMetadataUpdate{
+				SegmentID:   hit.SegmentID,
+				MetadataKey: "hit",
+				Value:       nil, // Remove hit metadata
+			})
+		}
+
+		err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
+		if err != nil {
+			vectorErr = fmt.Errorf("failed to remove hits in vector store: %w", err)
+		}
+	}()
+
+	wg.Wait()
+
+	// Count successful removals (at least one storage succeeded)
+	if storeErr == nil || vectorErr == nil {
+		removedCount = len(hits)
+	}
+
+	// Log any errors but don't fail completely if one storage succeeded
+	if storeErr != nil {
+		g.Logger.Warnf("Store remove error: %v", storeErr)
+	}
+	if vectorErr != nil {
+		g.Logger.Warnf("Vector DB remove error: %v", vectorErr)
+	}
+
+	// Return error only if both failed
+	if storeErr != nil && vectorErr != nil {
+		return 0, fmt.Errorf("failed to remove hits in both Store and Vector DB: Store error: %v, Vector error: %v", storeErr, vectorErr)
+	}
+
+	return removedCount, nil
+}
+
+// RemoveHitsBySegmentID removes all hits for a segment and clears statistics
+func (g *GraphRag) RemoveHitsBySegmentID(ctx context.Context, docID string, segmentID string) (int, error) {
+	if g.Store == nil {
+		return 0, fmt.Errorf("store is not configured, cannot remove hits")
+	}
+
+	var wg sync.WaitGroup
+	var storeErr, vectorErr error
+	removedCount := 0
 
 	// Remove from Store concurrently
 	wg.Add(1)
@@ -171,56 +311,22 @@ func (g *GraphRag) RemoveHit(ctx context.Context, docID string, segmentID string
 
 		// Get all hits for the segment
 		hitKey := fmt.Sprintf(StoreKeyHit, segmentID)
-		hits, err := g.Store.ArrayAll(hitKey)
+		allHits, err := g.Store.ArrayAll(hitKey)
 		if err != nil {
+			g.Logger.Warnf("Failed to get hits from Store for segment %s: %v", segmentID, err)
 			storeErr = fmt.Errorf("failed to get hits from Store: %w", err)
 			return
 		}
 
-		// Find and remove the hit with matching HitID
-		var removedHit *types.SegmentHit
-		var removedHitMap map[string]interface{}
-		for _, h := range hits {
-			hit, err := mapToSegmentHit(h)
-			if err != nil {
-				g.Logger.Warnf("Failed to convert stored hit to struct: %v", err)
-				continue
-			}
-			if hit.HitID == hitID {
-				removedHit = &hit
-				// Convert back to map for Pull operation
-				removedHitMap, err = segmentHitToMap(hit)
-				if err != nil {
-					storeErr = fmt.Errorf("failed to convert hit to map for removal: %w", err)
-					return
-				}
-				break
-			}
-		}
+		// Count hits before removal
+		removedCount = len(allHits)
 
-		if removedHit == nil {
-			storeErr = fmt.Errorf("hit with ID %s not found for segment %s", hitID, segmentID)
-			return
-		}
+		// Clear all hits for the segment
+		g.Store.Del(hitKey)
 
-		// Remove hit from list using the map representation
-		err = g.Store.Pull(hitKey, removedHitMap)
-		if err != nil {
-			storeErr = fmt.Errorf("failed to remove hit from Store list: %w", err)
-			return
-		}
-
-		// Update hit count
+		// Clear hit count
 		hitCountKey := fmt.Sprintf(StoreKeyHitCount, segmentID)
-		count, ok := g.Store.Get(hitCountKey)
-		if ok {
-			if countInt, ok := count.(int); ok && countInt > 0 {
-				err = g.Store.Set(hitCountKey, countInt-1, 0)
-				if err != nil {
-					g.Logger.Warnf("Failed to decrement hit count for segment %s: %v", segmentID, err)
-				}
-			}
-		}
+		g.Store.Del(hitCountKey)
 	}()
 
 	// Update Vector DB metadata concurrently (remove hit metadata)
@@ -238,7 +344,7 @@ func (g *GraphRag) RemoveHit(ctx context.Context, docID string, segmentID string
 
 		err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
 		if err != nil {
-			vectorErr = fmt.Errorf("failed to remove hit in vector store: %w", err)
+			vectorErr = fmt.Errorf("failed to remove hits in vector store: %w", err)
 		}
 	}()
 
@@ -254,10 +360,10 @@ func (g *GraphRag) RemoveHit(ctx context.Context, docID string, segmentID string
 
 	// Return error only if both failed
 	if storeErr != nil && vectorErr != nil {
-		return fmt.Errorf("failed to remove hit in both Store and Vector DB: Store error: %v, Vector error: %v", storeErr, vectorErr)
+		return 0, fmt.Errorf("failed to remove hits in both Store and Vector DB: Store error: %v, Vector error: %v", storeErr, vectorErr)
 	}
 
-	return nil
+	return removedCount, nil
 }
 
 // ScrollHits scrolls hits for a document with pagination support
