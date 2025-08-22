@@ -13,14 +13,21 @@ import (
 	"github.com/yaoapp/gou/application"
 )
 
+// Global connection pool to manage BadgerDB instances
+var (
+	connectionPool = make(map[string]*Badger)
+	poolMutex      = sync.RWMutex{}
+)
+
 // Badger the badger store
 type Badger struct {
-	db   *badger.DB
-	path string
-	mu   sync.RWMutex // Protects operations for concurrency safety
+	db       *badger.DB
+	path     string
+	mu       sync.RWMutex // Protects operations for concurrency safety
+	refCount int          // Reference count for connection pooling
 }
 
-// New create a new badger store
+// New create a new badger store with connection pooling
 func New(path string) (*Badger, error) {
 	// Handle relative and absolute paths
 	var dbPath string
@@ -36,13 +43,29 @@ func New(path string) (*Badger, error) {
 		dbPath = filepath.Join(root, path)
 	}
 
+	// Get absolute path for consistent pooling
+	absPath, err := filepath.Abs(dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute path for %s: %v", dbPath, err)
+	}
+
+	// Check if connection already exists in pool
+	poolMutex.Lock()
+	defer poolMutex.Unlock()
+
+	if existing, exists := connectionPool[absPath]; exists {
+		// Increment reference count and return existing connection
+		existing.refCount++
+		return existing, nil
+	}
+
 	// Create directory if it doesn't exist
-	if err := os.MkdirAll(dbPath, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create directory %s: %v", dbPath, err)
+	if err := os.MkdirAll(absPath, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create directory %s: %v", absPath, err)
 	}
 
 	// Open badger database
-	opts := badger.DefaultOptions(dbPath)
+	opts := badger.DefaultOptions(absPath)
 	opts.Logger = nil // Disable badger logs to avoid noise
 
 	db, err := badger.Open(opts)
@@ -50,15 +73,65 @@ func New(path string) (*Badger, error) {
 		return nil, fmt.Errorf("failed to open badger database: %v", err)
 	}
 
-	return &Badger{
-		db:   db,
-		path: dbPath,
-	}, nil
+	// Create new badger instance
+	badgerInstance := &Badger{
+		db:       db,
+		path:     absPath,
+		refCount: 1,
+	}
+
+	// Add to connection pool
+	connectionPool[absPath] = badgerInstance
+
+	return badgerInstance, nil
 }
 
-// Close close the badger database
+// Close close the badger database with reference counting
 func (b *Badger) Close() error {
-	return b.db.Close()
+	poolMutex.Lock()
+	defer poolMutex.Unlock()
+
+	// Decrement reference count
+	b.refCount--
+
+	// Only close the database if no more references exist
+	if b.refCount <= 0 {
+		// Remove from connection pool
+		delete(connectionPool, b.path)
+
+		// Close the database
+		return b.db.Close()
+	}
+
+	// Still has references, don't close
+	return nil
+}
+
+// GetConnectionInfo returns information about the current connection pool
+func GetConnectionInfo() map[string]int {
+	poolMutex.RLock()
+	defer poolMutex.RUnlock()
+
+	info := make(map[string]int)
+	for path, conn := range connectionPool {
+		info[path] = conn.refCount
+	}
+	return info
+}
+
+// CloseAllConnections closes all connections in the pool (use with caution)
+func CloseAllConnections() error {
+	poolMutex.Lock()
+	defer poolMutex.Unlock()
+
+	var lastErr error
+	for path, conn := range connectionPool {
+		if err := conn.db.Close(); err != nil {
+			lastErr = err
+		}
+		delete(connectionPool, path)
+	}
+	return lastErr
 }
 
 // Key-Value Operations

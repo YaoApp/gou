@@ -182,10 +182,15 @@ type GraphRag interface {
 	// ListSegments(ctx context.Context, docID string, options *ListSegmentsOptions) (*PaginatedSegmentsResult, error)      // List segments with pagination, return segments Deprecated
 	ScrollSegments(ctx context.Context, docID string, options *ScrollSegmentsOptions) (*SegmentScrollResult, error) // Scroll segments with iterator-style pagination, return segments
 
-	// Segment Voting, Scoring, Weighting
-	UpdateVote(ctx context.Context, docID string, segments []SegmentVote) (int, error)     // Vote for segments, return updated count
-	UpdateScore(ctx context.Context, docID string, segments []SegmentScore) (int, error)   // Score for segments, return updated count
-	UpdateWeight(ctx context.Context, docID string, segments []SegmentWeight) (int, error) // Weight for segments, return updated count
+	// Segment Voting, Scoring, Weighting, Hit
+	UpdateVote(ctx context.Context, docID string, segments []SegmentVote, options ...UpdateVoteOptions) (int, error)       // Vote for segments, return updated count
+	RemoveVote(ctx context.Context, docID string, segmentID string, voteID string) error                                   // Remove a single vote by VoteID and update statistics
+	ScrollVotes(ctx context.Context, docID string, options *ScrollVotesOptions) (*VoteScrollResult, error)                 // Scroll votes with pagination support
+	UpdateScore(ctx context.Context, docID string, segments []SegmentScore, options ...UpdateScoreOptions) (int, error)    // Score for segments, return updated count
+	UpdateWeight(ctx context.Context, docID string, segments []SegmentWeight, options ...UpdateWeightOptions) (int, error) // Weight for segments, return updated count
+	UpdateHit(ctx context.Context, docID string, segments []SegmentHit, options ...UpdateHitOptions) (int, error)          // Hit for segments, return updated count
+	RemoveHit(ctx context.Context, docID string, segmentID string, hitID string) error                                     // Remove a single hit by HitID
+	ScrollHits(ctx context.Context, docID string, options *ScrollHitsOptions) (*HitScrollResult, error)                    // Scroll hits with pagination support
 
 	// Search Management
 	Search(ctx context.Context, options *QueryOptions, callback ...SearcherProgress) ([]Segment, error)                  // Search for segments
@@ -221,21 +226,21 @@ type Fetcher interface {
 	Fetch(ctx context.Context, url string, callback ...FetcherProgress) (string, string, error)
 }
 
-// Score interface is used to score segments
-type Score interface {
-	Score(ctx context.Context, segments []Segment, callback ...ScoreProgress) ([]SegmentScore, error)
+// ScoreCompute interface is used to compute score for a segment
+type ScoreCompute interface {
+	Compute(ctx context.Context, docID string, segmentID string, progress ...ScoreProgress) (float64, map[string]float64, error)
 	Name() string
 }
 
-// Weight interface is used to weight segments
-type Weight interface {
-	Weight(ctx context.Context, segments []Segment) ([]SegmentWeight, error)
+// WeightCompute interface is used to compute weight for a segment
+type WeightCompute interface {
+	Compute(ctx context.Context, docID string, segmentID string, progress ...WeightProgress) (float64, error)
 	Name() string
 }
 
-// Vote interface is used to vote segments
-type Vote interface {
-	Vote(ctx context.Context, segments []Segment) ([]SegmentVote, error)
+// VoteCompute interface is used to vote segments
+type VoteCompute interface {
+	Compute(ctx context.Context, docID string, segmentIDs []string, context map[string]interface{}, progress ...VoteProgress) ([]VoteType, error)
 	Name() string
 }
 
