@@ -183,14 +183,16 @@ type GraphRag interface {
 	ScrollSegments(ctx context.Context, docID string, options *ScrollSegmentsOptions) (*SegmentScrollResult, error) // Scroll segments with iterator-style pagination, return segments
 
 	// Segment Voting, Scoring, Weighting, Hit
-	UpdateVote(ctx context.Context, docID string, segments []SegmentVote, options ...UpdateVoteOptions) (int, error)       // Vote for segments, return updated count
-	RemoveVote(ctx context.Context, docID string, segmentID string, voteID string) error                                   // Remove a single vote by VoteID and update statistics
-	ScrollVotes(ctx context.Context, docID string, options *ScrollVotesOptions) (*VoteScrollResult, error)                 // Scroll votes with pagination support
-	UpdateScore(ctx context.Context, docID string, segments []SegmentScore, options ...UpdateScoreOptions) (int, error)    // Score for segments, return updated count
-	UpdateWeight(ctx context.Context, docID string, segments []SegmentWeight, options ...UpdateWeightOptions) (int, error) // Weight for segments, return updated count
-	UpdateHit(ctx context.Context, docID string, segments []SegmentHit, options ...UpdateHitOptions) (int, error)          // Hit for segments, return updated count
-	RemoveHit(ctx context.Context, docID string, segmentID string, hitID string) error                                     // Remove a single hit by HitID
-	ScrollHits(ctx context.Context, docID string, options *ScrollHitsOptions) (*HitScrollResult, error)                    // Scroll hits with pagination support
+	UpdateVotes(ctx context.Context, docID string, segments []SegmentVote, options ...UpdateVoteOptions) (int, error)       // Vote for segments, return updated count
+	RemoveVotes(ctx context.Context, docID string, votes []VoteRemoval) (int, error)                                        // Remove votes by VoteID and update statistics, return removed count
+	RemoveVotesBySegmentID(ctx context.Context, docID string, segmentID string) (int, error)                                // Remove all votes for a segment and clear statistics, return removed count
+	ScrollVotes(ctx context.Context, docID string, options *ScrollVotesOptions) (*VoteScrollResult, error)                  // Scroll votes with pagination support
+	UpdateScores(ctx context.Context, docID string, segments []SegmentScore, options ...UpdateScoreOptions) (int, error)    // Score for segments, return updated count
+	UpdateWeights(ctx context.Context, docID string, segments []SegmentWeight, options ...UpdateWeightOptions) (int, error) // Weight for segments, return updated count
+	UpdateHits(ctx context.Context, docID string, segments []SegmentHit, options ...UpdateHitOptions) (int, error)          // Hit for segments, return updated count
+	RemoveHits(ctx context.Context, docID string, hits []HitRemoval) (int, error)                                           // Remove hits by HitID, return removed count
+	RemoveHitsBySegmentID(ctx context.Context, docID string, segmentID string) (int, error)                                 // Remove all hits for a segment and clear statistics, return removed count
+	ScrollHits(ctx context.Context, docID string, options *ScrollHitsOptions) (*HitScrollResult, error)                     // Scroll hits with pagination support
 
 	// Search Management
 	Search(ctx context.Context, options *QueryOptions, callback ...SearcherProgress) ([]Segment, error)                  // Search for segments

@@ -12,8 +12,8 @@ import (
 // StoreKeyWeight key format for weight storage
 const StoreKeyWeight = "segment_weight_%s" // segment_weight_{segmentID}
 
-// UpdateWeight updates weight for segments
-func (g *GraphRag) UpdateWeight(ctx context.Context, docID string, segments []types.SegmentWeight, options ...types.UpdateWeightOptions) (int, error) {
+// UpdateWeights updates weight for segments
+func (g *GraphRag) UpdateWeights(ctx context.Context, docID string, segments []types.SegmentWeight, options ...types.UpdateWeightOptions) (int, error) {
 	if len(segments) == 0 {
 		return 0, nil
 	}
