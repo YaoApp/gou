@@ -96,81 +96,75 @@ func (g *GraphRag) updateVoteInVectorOnly(ctx context.Context, docID string, seg
 
 // updateVoteInStoreAndVector updates votes in both Store (as List) and Vector DB
 func (g *GraphRag) updateVoteInStoreAndVector(ctx context.Context, docID string, segments []types.SegmentVote) (int, error) {
-	var wg sync.WaitGroup
 	var storeErr, vectorErr error
 	updatedCount := 0
 
-	// Update Store concurrently (using List for votes and counters for statistics)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		storeUpdated := 0
-		for _, segment := range segments {
-			// Convert segment vote to map for Store operations
+	// Group segments by ID for processing
+	segmentsByID := make(map[string][]types.SegmentVote)
+	for _, segment := range segments {
+		segmentsByID[segment.ID] = append(segmentsByID[segment.ID], segment)
+	}
+
+	// Process each unique segment ID
+	finalVoteCounts := make(map[string]map[string]int) // segmentID -> {positive: count, negative: count}
+	storeUpdated := 0
+
+	for segmentID, segmentVotes := range segmentsByID {
+		voteKey := fmt.Sprintf(StoreKeyVote, docID, segmentID)
+		positiveKey := fmt.Sprintf(StoreKeyVotePositive, docID, segmentID)
+		negativeKey := fmt.Sprintf(StoreKeyVoteNegative, docID, segmentID)
+
+		// Add all votes to the list first
+		for _, segment := range segmentVotes {
 			voteMap, err := segmentVoteToMap(segment)
 			if err != nil {
 				g.Logger.Warnf("Failed to convert vote to map for segment %s: %v", segment.ID, err)
 				continue
 			}
 
-			// Add vote to list
-			err = g.Store.Push(fmt.Sprintf(StoreKeyVote, docID, segment.ID), voteMap)
+			err = g.Store.Push(voteKey, voteMap)
 			if err != nil {
 				g.Logger.Warnf("Failed to add vote for segment %s to Store list: %v", segment.ID, err)
 				continue
 			}
-
-			// Update statistics counters using tagged switch
-			switch segment.Vote {
-			case types.VotePositive:
-				positiveKey := fmt.Sprintf(StoreKeyVotePositive, docID, segment.ID)
-				count, ok := g.Store.Get(positiveKey)
-				if !ok {
-					count = 0
-				}
-				if countInt, ok := count.(int); ok {
-					err = g.Store.Set(positiveKey, countInt+1, 0)
-				} else {
-					err = g.Store.Set(positiveKey, 1, 0)
-				}
-				if err != nil {
-					g.Logger.Warnf("Failed to increment positive count for segment %s: %v", segment.ID, err)
-				}
-			case types.VoteNegative:
-				negativeKey := fmt.Sprintf(StoreKeyVoteNegative, docID, segment.ID)
-				count, ok := g.Store.Get(negativeKey)
-				if !ok {
-					count = 0
-				}
-				if countInt, ok := count.(int); ok {
-					err = g.Store.Set(negativeKey, countInt+1, 0)
-				} else {
-					err = g.Store.Set(negativeKey, 1, 0)
-				}
-				if err != nil {
-					g.Logger.Warnf("Failed to increment negative count for segment %s: %v", segment.ID, err)
-				}
-			default:
-				g.Logger.Warnf("Unknown vote type for segment %s: %v", segment.ID, segment.Vote)
-			}
-
 			storeUpdated++
 		}
-		if storeUpdated < len(segments) {
-			storeErr = fmt.Errorf("failed to update some votes in Store: %d/%d updated", storeUpdated, len(segments))
-		}
-	}()
 
-	// Update Vector DB concurrently
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+		// Calculate accurate counts directly from the list
+		actualCounts := g.calculateVoteCountsFromList(voteKey)
+
+		// Update the count caches to match actual records
+		err := g.Store.Set(positiveKey, actualCounts["positive"], 0)
+		if err != nil {
+			g.Logger.Warnf("Failed to update positive count for segment %s: %v", segmentID, err)
+		}
+
+		err = g.Store.Set(negativeKey, actualCounts["negative"], 0)
+		if err != nil {
+			g.Logger.Warnf("Failed to update negative count for segment %s: %v", segmentID, err)
+		}
+
+		// Store the final counts for Vector DB update
+		finalVoteCounts[segmentID] = actualCounts
+	}
+
+	if storeUpdated < len(segments) {
+		storeErr = fmt.Errorf("failed to update some votes in Store: %d/%d updated", storeUpdated, len(segments))
+	}
+
+	// Step 2: Update Vector DB with the accurate counts from Store
+	if len(finalVoteCounts) > 0 {
 		var updates []segmentMetadataUpdate
-		for _, segment := range segments {
+		for segmentID, counts := range finalVoteCounts {
 			updates = append(updates, segmentMetadataUpdate{
-				SegmentID:   segment.ID,
-				MetadataKey: "vote",
-				Value:       segment.Vote,
+				SegmentID:   segmentID,
+				MetadataKey: "positive",
+				Value:       counts["positive"],
+			})
+			updates = append(updates, segmentMetadataUpdate{
+				SegmentID:   segmentID,
+				MetadataKey: "negative",
+				Value:       counts["negative"],
 			})
 		}
 
@@ -178,9 +172,7 @@ func (g *GraphRag) updateVoteInStoreAndVector(ctx context.Context, docID string,
 		if err != nil {
 			vectorErr = fmt.Errorf("failed to update vote in vector store: %w", err)
 		}
-	}()
-
-	wg.Wait()
+	}
 
 	// Count successful updates (at least one storage succeeded)
 	if storeErr == nil || vectorErr == nil {
@@ -201,6 +193,34 @@ func (g *GraphRag) updateVoteInStoreAndVector(ctx context.Context, docID string,
 	}
 
 	return updatedCount, nil
+}
+
+// calculateVoteCountsFromList calculates vote counts by reading all votes from the list
+func (g *GraphRag) calculateVoteCountsFromList(voteKey string) map[string]int {
+	counts := map[string]int{"positive": 0, "negative": 0}
+
+	allVotes, err := g.Store.ArrayAll(voteKey)
+	if err != nil {
+		g.Logger.Warnf("Failed to get votes from Store for counting: %v", err)
+		return counts
+	}
+
+	for _, v := range allVotes {
+		vote, err := mapToSegmentVote(v)
+		if err != nil {
+			g.Logger.Warnf("Failed to convert stored vote to struct for counting: %v", err)
+			continue
+		}
+
+		switch vote.Vote {
+		case types.VotePositive:
+			counts["positive"]++
+		case types.VoteNegative:
+			counts["negative"]++
+		}
+	}
+
+	return counts
 }
 
 // RemoveVotes removes multiple votes by VoteID and updates statistics
@@ -244,11 +264,9 @@ func (g *GraphRag) RemoveVotes(ctx context.Context, docID string, votes []types.
 				votesToRemove[v.VoteID] = true
 			}
 
-			// Find votes to remove and collect statistics
+			// Find votes to remove
 			var removedVotes []types.SegmentVote
 			var votesToKeep []interface{}
-			positiveRemoved := 0
-			negativeRemoved := 0
 
 			for _, v := range allVotes {
 				vote, err := mapToSegmentVote(v)
@@ -261,12 +279,6 @@ func (g *GraphRag) RemoveVotes(ctx context.Context, docID string, votes []types.
 				if votesToRemove[vote.VoteID] {
 					// This vote should be removed
 					removedVotes = append(removedVotes, vote)
-					switch vote.Vote {
-					case types.VotePositive:
-						positiveRemoved++
-					case types.VoteNegative:
-						negativeRemoved++
-					}
 				} else {
 					// Keep this vote
 					votesToKeep = append(votesToKeep, v)
@@ -285,33 +297,21 @@ func (g *GraphRag) RemoveVotes(ctx context.Context, docID string, votes []types.
 					continue
 				}
 
-				// Update statistics counters
-				if positiveRemoved > 0 {
-					positiveKey := fmt.Sprintf(StoreKeyVotePositive, docID, segmentID)
-					count, ok := g.Store.Get(positiveKey)
-					if ok {
-						if countInt, ok := count.(int); ok {
-							newCount := countInt - positiveRemoved
-							if newCount < 0 {
-								newCount = 0
-							}
-							g.Store.Set(positiveKey, newCount, 0)
-						}
-					}
+				// Update vote counts to match actual records after removal
+				positiveKey := fmt.Sprintf(StoreKeyVotePositive, docID, segmentID)
+				negativeKey := fmt.Sprintf(StoreKeyVoteNegative, docID, segmentID)
+				actualCounts := g.calculateVoteCountsFromList(voteKey)
+
+				if actualCounts["positive"] == 0 {
+					g.Store.Del(positiveKey)
+				} else {
+					g.Store.Set(positiveKey, actualCounts["positive"], 0)
 				}
 
-				if negativeRemoved > 0 {
-					negativeKey := fmt.Sprintf(StoreKeyVoteNegative, docID, segmentID)
-					count, ok := g.Store.Get(negativeKey)
-					if ok {
-						if countInt, ok := count.(int); ok {
-							newCount := countInt - negativeRemoved
-							if newCount < 0 {
-								newCount = 0
-							}
-							g.Store.Set(negativeKey, newCount, 0)
-						}
-					}
+				if actualCounts["negative"] == 0 {
+					g.Store.Del(negativeKey)
+				} else {
+					g.Store.Set(negativeKey, actualCounts["negative"], 0)
 				}
 
 				storeRemoved += len(removedVotes)
@@ -328,18 +328,35 @@ func (g *GraphRag) RemoveVotes(ctx context.Context, docID string, votes []types.
 	go func() {
 		defer wg.Done()
 
-		var updates []segmentMetadataUpdate
+		// Group votes by segment ID
+		segmentIDs := make(map[string]bool)
 		for _, vote := range votes {
+			segmentIDs[vote.SegmentID] = true
+		}
+
+		var updates []segmentMetadataUpdate
+		for segmentID := range segmentIDs {
+			// Get actual counts from Store after removal
+			voteKey := fmt.Sprintf(StoreKeyVote, docID, segmentID)
+			actualCounts := g.calculateVoteCountsFromList(voteKey)
+
 			updates = append(updates, segmentMetadataUpdate{
-				SegmentID:   vote.SegmentID,
-				MetadataKey: "vote",
-				Value:       nil, // Remove vote metadata
+				SegmentID:   segmentID,
+				MetadataKey: "positive",
+				Value:       actualCounts["positive"], // Use actual count from Store
+			})
+			updates = append(updates, segmentMetadataUpdate{
+				SegmentID:   segmentID,
+				MetadataKey: "negative",
+				Value:       actualCounts["negative"], // Use actual count from Store
 			})
 		}
 
-		err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
-		if err != nil {
-			vectorErr = fmt.Errorf("failed to remove votes in vector store: %w", err)
+		if len(updates) > 0 {
+			err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
+			if err != nil {
+				vectorErr = fmt.Errorf("failed to update votes in vector store: %w", err)
+			}
 		}
 	}()
 
@@ -403,7 +420,7 @@ func (g *GraphRag) RemoveVotesBySegmentID(ctx context.Context, docID string, seg
 		g.Store.Del(negativeKey)
 	}()
 
-	// Update Vector DB metadata concurrently (remove vote metadata)
+	// Update Vector DB metadata concurrently (clear vote counts)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -411,8 +428,13 @@ func (g *GraphRag) RemoveVotesBySegmentID(ctx context.Context, docID string, seg
 		updates := []segmentMetadataUpdate{
 			{
 				SegmentID:   segmentID,
-				MetadataKey: "vote",
-				Value:       nil, // Remove vote metadata
+				MetadataKey: "positive",
+				Value:       0, // Clear positive count to 0
+			},
+			{
+				SegmentID:   segmentID,
+				MetadataKey: "negative",
+				Value:       0, // Clear negative count to 0
 			},
 		}
 

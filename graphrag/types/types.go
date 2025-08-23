@@ -2218,9 +2218,10 @@ type SegmentReaction struct {
 
 // SegmentVote represents a vote for a segment
 type SegmentVote struct {
-	ID     string   `json:"id"`      // Segment ID
-	VoteID string   `json:"vote_id"` // Unique vote ID
-	Vote   VoteType `json:"vote"`    // Vote type, e.g. "positive", "negative"
+	ID     string   `json:"id"`               // Segment ID
+	VoteID string   `json:"vote_id"`          // Unique vote ID
+	Vote   VoteType `json:"vote"`             // Vote type, e.g. "positive", "negative"
+	HitID  string   `json:"hit_id,omitempty"` // Optional: Hit ID to associate the vote with a specific hit
 	*SegmentReaction
 }
 
