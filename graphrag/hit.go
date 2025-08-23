@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yaoapp/gou/graphrag/types"
+	"github.com/yaoapp/gou/graphrag/utils"
 )
 
 // StoreKeyHit key format for hit storage (List)
@@ -48,12 +49,37 @@ func (g *GraphRag) UpdateHits(ctx context.Context, docID string, segments []type
 
 // updateHitInVectorOnly updates hits in Vector DB metadata only
 func (g *GraphRag) updateHitInVectorOnly(ctx context.Context, docID string, segments []types.SegmentHit) (int, error) {
-	var updates []segmentMetadataUpdate
+	// Group segments by ID to count hits per segment
+	hitCounts := make(map[string]int)
 	for _, segment := range segments {
+		hitCounts[segment.ID]++
+	}
+
+	var updates []segmentMetadataUpdate
+	for segmentID, count := range hitCounts {
+		// Get current hit count from vector metadata
+		currentCount := 0
+		if g.Vector != nil {
+			// Extract graphName from docID
+			graphName, _ := utils.ExtractCollectionIDFromDocID(docID)
+			if graphName == "" {
+				graphName = "default"
+			}
+			collectionIDs, err := utils.GetCollectionIDs(graphName)
+			if err == nil {
+				// Try to get current hit count from vector metadata
+				if metadata, err := g.Vector.GetMetadata(ctx, collectionIDs.Vector, segmentID); err == nil {
+					if hitValue, ok := metadata["hit"]; ok {
+						currentCount = types.SafeExtractInt(hitValue, 0)
+					}
+				}
+			}
+		}
+
 		updates = append(updates, segmentMetadataUpdate{
-			SegmentID:   segment.ID,
+			SegmentID:   segmentID,
 			MetadataKey: "hit",
-			Value:       segment.HitID, // Store HitID as hit metadata
+			Value:       currentCount + count, // Store hit count as metadata
 		})
 	}
 
@@ -67,62 +93,64 @@ func (g *GraphRag) updateHitInVectorOnly(ctx context.Context, docID string, segm
 
 // updateHitInStoreAndVector updates hits in both Store (as List) and Vector DB
 func (g *GraphRag) updateHitInStoreAndVector(ctx context.Context, docID string, segments []types.SegmentHit) (int, error) {
-	var wg sync.WaitGroup
 	var storeErr, vectorErr error
 	updatedCount := 0
 
-	// Update Store concurrently (using List for hits and counters for statistics)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		storeUpdated := 0
-		for _, segment := range segments {
-			// Convert segment hit to map for Store operations
+	// Group segments by ID for processing
+	segmentsByID := make(map[string][]types.SegmentHit)
+	for _, segment := range segments {
+		segmentsByID[segment.ID] = append(segmentsByID[segment.ID], segment)
+	}
+
+	// Process each unique segment ID
+	finalHitCounts := make(map[string]int)
+	storeUpdated := 0
+
+	for segmentID, segmentHits := range segmentsByID {
+		hitKey := fmt.Sprintf(StoreKeyHit, docID, segmentID)
+		hitCountKey := fmt.Sprintf(StoreKeyHitCount, docID, segmentID)
+
+		// Add all hits to the list first
+		for _, segment := range segmentHits {
 			hitMap, err := segmentHitToMap(segment)
 			if err != nil {
 				g.Logger.Warnf("Failed to convert hit to map for segment %s: %v", segment.ID, err)
 				continue
 			}
 
-			// Add hit to list
-			err = g.Store.Push(fmt.Sprintf(StoreKeyHit, docID, segment.ID), hitMap)
+			err = g.Store.Push(hitKey, hitMap)
 			if err != nil {
 				g.Logger.Warnf("Failed to add hit for segment %s to Store list: %v", segment.ID, err)
 				continue
 			}
-
-			// Update hit count
-			hitCountKey := fmt.Sprintf(StoreKeyHitCount, docID, segment.ID)
-			count, ok := g.Store.Get(hitCountKey)
-			if !ok {
-				count = 0
-			}
-			if countInt, ok := count.(int); ok {
-				err = g.Store.Set(hitCountKey, countInt+1, 0)
-			} else {
-				err = g.Store.Set(hitCountKey, 1, 0)
-			}
-			if err != nil {
-				g.Logger.Warnf("Failed to increment hit count for segment %s: %v", segment.ID, err)
-			}
-
 			storeUpdated++
 		}
-		if storeUpdated < len(segments) {
-			storeErr = fmt.Errorf("failed to update some hits in Store: %d/%d updated", storeUpdated, len(segments))
-		}
-	}()
 
-	// Update Vector DB concurrently
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+		// Get the accurate count directly from the list length
+		actualCount := g.Store.ArrayLen(hitKey)
+
+		// Update the count cache to match actual records
+		err := g.Store.Set(hitCountKey, actualCount, 0)
+		if err != nil {
+			g.Logger.Warnf("Failed to update hit count for segment %s: %v", segmentID, err)
+		}
+
+		// Store the final count for Vector DB update
+		finalHitCounts[segmentID] = actualCount
+	}
+
+	if storeUpdated < len(segments) {
+		storeErr = fmt.Errorf("failed to update some hits in Store: %d/%d updated", storeUpdated, len(segments))
+	}
+
+	// Step 2: Update Vector DB with the accurate counts from Store
+	if len(finalHitCounts) > 0 {
 		var updates []segmentMetadataUpdate
-		for _, segment := range segments {
+		for segmentID, actualCount := range finalHitCounts {
 			updates = append(updates, segmentMetadataUpdate{
-				SegmentID:   segment.ID,
+				SegmentID:   segmentID,
 				MetadataKey: "hit",
-				Value:       segment.HitID, // Store HitID as hit metadata
+				Value:       actualCount, // Use the accurate count from ArrayLen
 			})
 		}
 
@@ -130,9 +158,7 @@ func (g *GraphRag) updateHitInStoreAndVector(ctx context.Context, docID string, 
 		if err != nil {
 			vectorErr = fmt.Errorf("failed to update hit in vector store: %w", err)
 		}
-	}()
-
-	wg.Wait()
+	}
 
 	// Count successful updates (at least one storage succeeded)
 	if storeErr == nil || vectorErr == nil {
@@ -229,17 +255,15 @@ func (g *GraphRag) RemoveHits(ctx context.Context, docID string, hits []types.Hi
 					continue
 				}
 
-				// Update hit count
+				// Update hit count to match actual records after removal
 				hitCountKey := fmt.Sprintf(StoreKeyHitCount, docID, segmentID)
-				count, ok := g.Store.Get(hitCountKey)
-				if ok {
-					if countInt, ok := count.(int); ok {
-						newCount := countInt - len(removedHits)
-						if newCount < 0 {
-							newCount = 0
-						}
-						g.Store.Set(hitCountKey, newCount, 0)
-					}
+				hitKey := fmt.Sprintf(StoreKeyHit, docID, segmentID)
+				actualCount := g.Store.ArrayLen(hitKey)
+
+				if actualCount == 0 {
+					g.Store.Del(hitCountKey)
+				} else {
+					g.Store.Set(hitCountKey, actualCount, 0)
 				}
 
 				storeRemoved += len(removedHits)
@@ -256,18 +280,30 @@ func (g *GraphRag) RemoveHits(ctx context.Context, docID string, hits []types.Hi
 	go func() {
 		defer wg.Done()
 
-		var updates []segmentMetadataUpdate
+		// Group hits by segment ID
+		segmentIDs := make(map[string]bool)
 		for _, hit := range hits {
+			segmentIDs[hit.SegmentID] = true
+		}
+
+		var updates []segmentMetadataUpdate
+		for segmentID := range segmentIDs {
+			// Get actual count from Store after removal
+			hitKey := fmt.Sprintf(StoreKeyHit, docID, segmentID)
+			actualCount := g.Store.ArrayLen(hitKey)
+
 			updates = append(updates, segmentMetadataUpdate{
-				SegmentID:   hit.SegmentID,
+				SegmentID:   segmentID,
 				MetadataKey: "hit",
-				Value:       nil, // Remove hit metadata
+				Value:       actualCount, // Use actual count from Store
 			})
 		}
 
-		err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
-		if err != nil {
-			vectorErr = fmt.Errorf("failed to remove hits in vector store: %w", err)
+		if len(updates) > 0 {
+			err := g.updateSegmentMetadataInVectorBatch(ctx, docID, updates)
+			if err != nil {
+				vectorErr = fmt.Errorf("failed to update hits in vector store: %w", err)
+			}
 		}
 	}()
 
@@ -329,7 +365,7 @@ func (g *GraphRag) RemoveHitsBySegmentID(ctx context.Context, docID string, segm
 		g.Store.Del(hitCountKey)
 	}()
 
-	// Update Vector DB metadata concurrently (remove hit metadata)
+	// Update Vector DB metadata concurrently (clear hit count)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -338,7 +374,7 @@ func (g *GraphRag) RemoveHitsBySegmentID(ctx context.Context, docID string, segm
 			{
 				SegmentID:   segmentID,
 				MetadataKey: "hit",
-				Value:       nil, // Remove hit metadata
+				Value:       0, // Clear hit count to 0
 			},
 		}
 

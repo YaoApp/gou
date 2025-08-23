@@ -238,6 +238,44 @@ func convertMetadataToPayload(metadata map[string]interface{}) (map[string]*qdra
 	return payload, nil
 }
 
+// convertQdrantValueToInterface converts Qdrant Value to Go interface{}
+func convertQdrantValueToInterface(value *qdrant.Value) interface{} {
+	if value == nil {
+		return nil
+	}
+
+	switch v := value.Kind.(type) {
+	case *qdrant.Value_StringValue:
+		return v.StringValue
+	case *qdrant.Value_DoubleValue:
+		return v.DoubleValue
+	case *qdrant.Value_IntegerValue:
+		return v.IntegerValue
+	case *qdrant.Value_BoolValue:
+		return v.BoolValue
+	case *qdrant.Value_ListValue:
+		if v.ListValue != nil && len(v.ListValue.Values) > 0 {
+			result := make([]interface{}, len(v.ListValue.Values))
+			for i, item := range v.ListValue.Values {
+				result[i] = convertQdrantValueToInterface(item)
+			}
+			return result
+		}
+		return []interface{}{}
+	case *qdrant.Value_StructValue:
+		if v.StructValue != nil && len(v.StructValue.Fields) > 0 {
+			result := make(map[string]interface{})
+			for key, field := range v.StructValue.Fields {
+				result[key] = convertQdrantValueToInterface(field)
+			}
+			return result
+		}
+		return map[string]interface{}{}
+	default:
+		return nil
+	}
+}
+
 // AddDocuments adds documents to the collection
 func (s *Store) AddDocuments(ctx context.Context, opts *types.AddDocumentOptions) ([]string, error) {
 
@@ -1058,4 +1096,51 @@ func (s *Store) UpdateMetadata(ctx context.Context, collectionName string, updat
 	}
 
 	return nil
+}
+
+// GetMetadata retrieves metadata for a specific document using Qdrant's Retrieve API
+func (s *Store) GetMetadata(ctx context.Context, collectionName string, documentID string) (map[string]interface{}, error) {
+	// Auto connect
+	err := s.tryConnect(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Qdrant server: %w", err)
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if !s.connected {
+		return nil, fmt.Errorf("not connected to Qdrant server")
+	}
+
+	// Use Get API to get document with metadata
+	req := &qdrant.GetPoints{
+		CollectionName: collectionName,
+		Ids:            []*qdrant.PointId{qdrant.NewIDNum(stringToUint64ID(documentID))},
+		WithPayload:    qdrant.NewWithPayload(true),  // Request payload (metadata)
+		WithVectors:    qdrant.NewWithVectors(false), // Don't need vectors
+	}
+
+	points, err := s.client.Get(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get document %s: %w", documentID, err)
+	}
+
+	if len(points) == 0 {
+		return nil, fmt.Errorf("document %s not found", documentID)
+	}
+
+	// Extract payload from the first result
+	point := points[0]
+	if point.Payload == nil {
+		return make(map[string]interface{}), nil
+	}
+
+	// Convert Qdrant payload to map[string]interface{}
+	metadata := make(map[string]interface{})
+	for key, value := range point.Payload {
+		metadata[key] = convertQdrantValueToInterface(value)
+	}
+
+	return metadata, nil
 }
