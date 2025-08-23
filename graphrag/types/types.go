@@ -2181,23 +2181,24 @@ type CollectionConfig struct {
 
 // Segment represents a segment of a document
 type Segment struct {
-	CollectionID  string                 `json:"collection_id"`
-	DocumentID    string                 `json:"document_id"`
-	ID            string                 `json:"id"`
-	Text          string                 `json:"text"`
-	Nodes         []GraphNode            `json:"nodes"`
-	Relationships []GraphRelationship    `json:"relationships"`
-	Parents       []string               `json:"parents"`
-	Children      []string               `json:"children"`
-	Metadata      map[string]interface{} `json:"metadata"`
-	CreatedAt     time.Time              `json:"created_at"`
-	UpdatedAt     time.Time              `json:"updated_at"`
-	Version       int                    `json:"version"`
-	Weight        float64                `json:"weight"`
-	Score         float64                `json:"score"`
-	Positive      int                    `json:"positive"` // Positive vote count
-	Negative      int                    `json:"negative"` // Negative vote count
-	Hit           int                    `json:"hit"`      // Hit count for the segment
+	CollectionID    string                 `json:"collection_id"`
+	DocumentID      string                 `json:"document_id"`
+	ID              string                 `json:"id"`
+	Text            string                 `json:"text"`
+	Nodes           []GraphNode            `json:"nodes"`
+	Relationships   []GraphRelationship    `json:"relationships"`
+	Parents         []string               `json:"parents"`
+	Children        []string               `json:"children"`
+	Metadata        map[string]interface{} `json:"metadata"`
+	CreatedAt       time.Time              `json:"created_at"`
+	UpdatedAt       time.Time              `json:"updated_at"`
+	Version         int                    `json:"version"`
+	Weight          float64                `json:"weight"`
+	Score           float64                `json:"score"`
+	ScoreDimensions map[string]float64     `json:"score_dimensions,omitempty"`
+	Positive        int                    `json:"positive"` // Positive vote count
+	Negative        int                    `json:"negative"` // Negative vote count
+	Hit             int                    `json:"hit"`      // Hit count for the segment
 }
 
 // SegmentText represents a segment of a document

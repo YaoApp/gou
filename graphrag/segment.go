@@ -1961,6 +1961,12 @@ func (g *GraphRag) queryMetadataFromStoreOnly(docID string, segmentIDs []string)
 			segmentData["score"] = score
 		}
 
+		// Query Score Dimensions
+		scoreDimensions, ok := g.getSegmentValue(docID, segmentID, StoreKeyScoreDimensions)
+		if ok {
+			segmentData["score_dimensions"] = scoreDimensions
+		}
+
 		// Note: vote is a list (StoreKeyVote), not a single value, so we don't query it here
 		// We only query the statistical counters: positive, negative, hit
 
@@ -2056,9 +2062,20 @@ func (g *GraphRag) assembleSegments(data *segmentQueryResult, graphName string, 
 			segment.Negative = types.SafeExtractInt(chunk.Metadata["negative"], segment.Negative)
 			segment.Hit = types.SafeExtractInt(chunk.Metadata["hit"], segment.Hit)
 
+			// Extract score dimensions if available
+			if scoreDimensions, ok := chunk.Metadata["score_dimensions"]; ok {
+				if dimensionsMap, ok := scoreDimensions.(map[string]interface{}); ok {
+					segment.ScoreDimensions = make(map[string]float64)
+					for key, value := range dimensionsMap {
+						segment.ScoreDimensions[key] = types.SafeExtractFloat64(value, 0.0)
+					}
+				}
+			}
+
 			// Remove these fields from metadata since they're now in external fields
 			delete(segment.Metadata, "weight")
 			delete(segment.Metadata, "score")
+			delete(segment.Metadata, "score_dimensions")
 			delete(segment.Metadata, "positive")
 			delete(segment.Metadata, "negative")
 			delete(segment.Metadata, "hit")
@@ -2075,9 +2092,20 @@ func (g *GraphRag) assembleSegments(data *segmentQueryResult, graphName string, 
 				segment.Negative = types.SafeExtractInt(segmentMap["negative"], segment.Negative)
 				segment.Hit = types.SafeExtractInt(segmentMap["hit"], segment.Hit)
 
+				// Extract score dimensions from store if available
+				if scoreDimensions, ok := segmentMap["score_dimensions"]; ok {
+					if dimensionsMap, ok := scoreDimensions.(map[string]interface{}); ok {
+						segment.ScoreDimensions = make(map[string]float64)
+						for key, value := range dimensionsMap {
+							segment.ScoreDimensions[key] = types.SafeExtractFloat64(value, 0.0)
+						}
+					}
+				}
+
 				// Ensure these fields are not duplicated in metadata
 				delete(segment.Metadata, "weight")
 				delete(segment.Metadata, "score")
+				delete(segment.Metadata, "score_dimensions")
 				delete(segment.Metadata, "positive")
 				delete(segment.Metadata, "negative")
 				delete(segment.Metadata, "hit")
