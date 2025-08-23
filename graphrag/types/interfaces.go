@@ -27,6 +27,7 @@ type VectorStore interface {
 	GetDocuments(ctx context.Context, ids []string, opts *GetDocumentOptions) ([]*Document, error)
 	DeleteDocuments(ctx context.Context, opts *DeleteDocumentOptions) error
 	UpdateMetadata(ctx context.Context, collectionName string, updates []DocumentMetadataUpdate, defaultMetadata map[string]interface{}) error
+	GetMetadata(ctx context.Context, collectionName string, documentID string) (map[string]interface{}, error)
 
 	// Document Listing and Pagination
 	ListDocuments(ctx context.Context, opts *ListDocumentsOptions) (*PaginatedDocumentsResult, error) // deprecated
