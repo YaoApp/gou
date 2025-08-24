@@ -181,6 +181,7 @@ type GraphRag interface {
 	RemoveSegmentsByDocID(ctx context.Context, docID string) (int, error)                                                // Remove all segments of a document, return removed count
 	GetSegments(ctx context.Context, docID string, segmentIDs []string) ([]Segment, error)                               // Get segments by IDs, return segments
 	GetSegment(ctx context.Context, docID string, segmentID string) (*Segment, error)                                    // Get a single segment by ID, return segment
+	GetSegmentParents(ctx context.Context, docID string, segmentID string) (*SegmentTree, error)                         // Get parent tree of a given segment, return hierarchical tree structure
 	// ListSegments(ctx context.Context, docID string, options *ListSegmentsOptions) (*PaginatedSegmentsResult, error)      // List segments with pagination, return segments Deprecated
 	ScrollSegments(ctx context.Context, docID string, options *ScrollSegmentsOptions) (*SegmentScrollResult, error) // Scroll segments with iterator-style pagination, return segments
 

@@ -2208,6 +2208,13 @@ type SegmentText struct {
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
+// SegmentTree represents a hierarchical tree structure of segment parents
+type SegmentTree struct {
+	Segment *Segment     `json:"segment"`          // The segment node
+	Parent  *SegmentTree `json:"parent,omitempty"` // Parent node (only one in document hierarchy)
+	Depth   int          `json:"depth"`            // Depth in the original document hierarchy (extracted from metadata)
+}
+
 // SegmentReaction represents a reaction for a segment
 type SegmentReaction struct {
 	Source    string                 `json:"source,omitempty"`    // Source of the reaction, e.g. "chat", "api", "bot", etc.

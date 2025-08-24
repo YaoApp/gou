@@ -480,6 +480,34 @@ func (g *GraphRag) GetSegment(ctx context.Context, docID string, segmentID strin
 	return &segments[0], nil
 }
 
+// GetSegmentParents gets parent tree of a given segment
+func (g *GraphRag) GetSegmentParents(ctx context.Context, docID string, segmentID string) (*types.SegmentTree, error) {
+	if docID == "" {
+		return nil, fmt.Errorf("docID cannot be empty")
+	}
+
+	if segmentID == "" {
+		return nil, fmt.Errorf("segmentID cannot be empty")
+	}
+
+	g.Logger.Debugf("Getting parent tree for segment ID: %s in document: %s", segmentID, docID)
+
+	// Get the target segment first
+	segment, err := g.GetSegment(ctx, docID, segmentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get segment: %w", err)
+	}
+
+	// Build the tree structure starting from the target segment
+	tree, err := g.buildSegmentTree(ctx, docID, segment)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build segment tree: %w", err)
+	}
+
+	g.Logger.Debugf("Successfully built parent tree for segment %s", segmentID)
+	return tree, nil
+}
+
 // GetSegments gets segments by IDs
 func (g *GraphRag) GetSegments(ctx context.Context, docID string, segmentIDs []string) ([]types.Segment, error) {
 	if len(segmentIDs) == 0 {
@@ -632,6 +660,106 @@ func (g *GraphRag) ScrollSegments(ctx context.Context, docID string, options *ty
 // ================================================================================================
 // Internal Helper Methods - Conversion and Processing
 // ================================================================================================
+
+// buildSegmentTree recursively builds a tree structure of segment parents using metadata
+func (g *GraphRag) buildSegmentTree(ctx context.Context, docID string, segment *types.Segment) (*types.SegmentTree, error) {
+	// Extract depth from segment metadata
+	segmentDepth := g.extractDepthFromSegment(segment)
+
+	// Create the tree node for the current segment
+	tree := &types.SegmentTree{
+		Segment: segment,
+		Parent:  nil,
+		Depth:   segmentDepth,
+	}
+
+	// Extract parent ID from segment metadata (only one parent in document hierarchy)
+	parentID := g.extractParentIDFromSegment(segment)
+	if parentID == "" {
+		// No parent found, this is a root node
+		return tree, nil
+	}
+
+	// Get the parent segment
+	parentSegment, err := g.GetSegment(ctx, docID, parentID)
+	if err != nil {
+		g.Logger.Warnf("Failed to get parent segment %s: %v", parentID, err)
+		// Return the tree without parent rather than failing completely
+		return tree, nil
+	}
+
+	// Build parent tree recursively
+	parentTree, err := g.buildSegmentTree(ctx, docID, parentSegment)
+	if err != nil {
+		g.Logger.Warnf("Failed to build parent tree for segment %s: %v", parentSegment.ID, err)
+		return tree, nil
+	}
+
+	// Set the parent
+	tree.Parent = parentTree
+
+	return tree, nil
+}
+
+// extractParentIDFromSegment extracts the parent ID from segment metadata
+func (g *GraphRag) extractParentIDFromSegment(segment *types.Segment) string {
+	if segment == nil {
+		return ""
+	}
+
+	// Strategy 1: Check segment's Parents field (take the first one, should only be one)
+	if len(segment.Parents) > 0 {
+		return segment.Parents[0]
+	}
+
+	// Strategy 2: Check chunk_details in metadata for parent_id
+	if segment.Metadata != nil {
+		if chunkDetails, ok := segment.Metadata["chunk_details"].(map[string]interface{}); ok {
+			if parentID := types.SafeExtractString(chunkDetails["parent_id"], ""); parentID != "" {
+				return parentID
+			}
+		}
+
+		// Strategy 3: Check direct parent_id in metadata
+		if parentID := types.SafeExtractString(segment.Metadata["parent_id"], ""); parentID != "" {
+			return parentID
+		}
+	}
+
+	return ""
+}
+
+// extractDepthFromSegment extracts depth value from segment metadata
+func (g *GraphRag) extractDepthFromSegment(segment *types.Segment) int {
+	if segment == nil {
+		return 0
+	}
+
+	// Strategy 1: Check chunk_details in metadata for depth
+	if segment.Metadata != nil {
+		if chunkDetails, ok := segment.Metadata["chunk_details"].(map[string]interface{}); ok {
+			if depth := types.SafeExtractInt(chunkDetails["depth"], 0); depth > 0 {
+				return depth
+			}
+		}
+
+		// Strategy 2: Check direct depth in metadata
+		if depth := types.SafeExtractInt(segment.Metadata["depth"], 0); depth > 0 {
+			return depth
+		}
+	}
+
+	// Strategy 3: Fallback - calculate from parent chain length if available
+	// This is a fallback when depth is not stored in metadata
+	if len(segment.Parents) > 0 {
+		// If we have parents, we're at least depth 1 (not root)
+		// This is a rough estimation, the actual depth should be in metadata
+		return len(segment.Parents)
+	}
+
+	// Default: assume root level (depth 1) if no depth information found
+	return 1
+}
 
 // convertSegmentTextsToChunks converts SegmentTexts to Chunks for processing
 func (g *GraphRag) convertSegmentTextsToChunks(segmentTexts []types.SegmentText, docID string) ([]*types.Chunk, error) {
