@@ -199,6 +199,12 @@ type GraphRag interface {
 	ScrollHits(ctx context.Context, docID string, options *ScrollHitsOptions) (*HitScrollResult, error)                     // Scroll hits with pagination support
 	GetHit(ctx context.Context, docID string, segmentID string, hitID string) (*SegmentHit, error)                          // Get a single hit by ID
 
+	// Segment Graph Management
+	GetSegmentGraph(ctx context.Context, docID string, segmentID string) (*SegmentGraph, error)                                            // Get the graph (entities and relationships) for a specific segment
+	GetSegmentEntities(ctx context.Context, docID string, segmentID string) ([]GraphNode, error)                                           // Get the entities for a specific segment
+	GetSegmentRelationships(ctx context.Context, docID string, segmentID string) ([]GraphRelationship, error)                              // Get the relationships for a specific segment
+	ExtractSegmentGraph(ctx context.Context, docID string, segmentID string, options *ExtractionOptions) (*SegmentExtractionResult, error) // Re-extract entities and relationships for a specific segment
+
 	// Search Management
 	Search(ctx context.Context, options *QueryOptions, callback ...SearcherProgress) ([]Segment, error)                  // Search for segments
 	MultiSearch(ctx context.Context, options []QueryOptions, callback ...SearcherProgress) (map[string][]Segment, error) // Multi-search for segments

@@ -2215,6 +2215,44 @@ type SegmentTree struct {
 	Depth   int          `json:"depth"`            // Depth in the original document hierarchy (extracted from metadata)
 }
 
+// SegmentGraph represents the graph information for a specific segment
+type SegmentGraph struct {
+	DocID         string              `json:"doc_id"`
+	SegmentID     string              `json:"segment_id"`
+	Entities      []GraphNode         `json:"entities"`
+	Relationships []GraphRelationship `json:"relationships"`
+}
+
+// EntityDeduplicationResult contains the result of entity deduplication
+type EntityDeduplicationResult struct {
+	NormalizedID string   `json:"normalized_id"`
+	DocIDs       []string `json:"doc_ids"`
+	IsUpdate     bool     `json:"is_update"`
+}
+
+// RelationshipDeduplicationResult contains the result of relationship deduplication
+type RelationshipDeduplicationResult struct {
+	NormalizedID string   `json:"normalized_id"`
+	DocIDs       []string `json:"doc_ids"`
+	IsUpdate     bool     `json:"is_update"`
+}
+
+// SegmentExtractionResult represents the result of re-extracting entities and relationships for a segment
+type SegmentExtractionResult struct {
+	DocID                            string                                      `json:"doc_id"`
+	SegmentID                        string                                      `json:"segment_id"`
+	Text                             string                                      `json:"text"`
+	ExtractedEntities                []Node                                      `json:"extracted_entities"`
+	ExtractedRelationships           []Relationship                              `json:"extracted_relationships"`
+	ActualEntityIDs                  []string                                    `json:"actual_entity_ids"`
+	ActualRelationshipIDs            []string                                    `json:"actual_relationship_ids"`
+	EntityDeduplicationResults       map[string]*EntityDeduplicationResult       `json:"entity_deduplication_results,omitempty"`
+	RelationshipDeduplicationResults map[string]*RelationshipDeduplicationResult `json:"relationship_deduplication_results,omitempty"`
+	ExtractionModel                  string                                      `json:"extraction_model"`
+	EntitiesCount                    int                                         `json:"entities_count"`
+	RelationshipsCount               int                                         `json:"relationships_count"`
+}
+
 // SegmentReaction represents a reaction for a segment
 type SegmentReaction struct {
 	Source    string                 `json:"source,omitempty"`    // Source of the reaction, e.g. "chat", "api", "bot", etc.
