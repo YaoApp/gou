@@ -578,14 +578,14 @@ func TestUTF8_chunkToUTF8(t *testing.T) {
 
 	// Test with valid UTF-8
 	validUTF8 := []byte("Hello, 世界")
-	result := converter.chunkToUTF8(validUTF8)
+	result := converter.convertChunkToUTF8(validUTF8, nil)
 	if result != string(validUTF8) {
 		t.Error("chunkToUTF8 should return valid UTF-8 as-is")
 	}
 
 	// Test with invalid UTF-8 bytes
 	invalidUTF8 := []byte{0xFF, 0xFE}
-	result = converter.chunkToUTF8(invalidUTF8)
+	result = converter.convertChunkToUTF8(invalidUTF8, nil)
 	if result == "" {
 		t.Error("chunkToUTF8 should handle invalid UTF-8 gracefully")
 	}
@@ -999,7 +999,7 @@ func TestUTF8_All_Internal_Methods_Coverage(t *testing.T) {
 	}
 
 	for i, testCase := range chunkTestCases {
-		result := converter.chunkToUTF8(testCase)
+		result := converter.convertChunkToUTF8(testCase, nil)
 		t.Logf("Chunk test case %d: %d bytes -> %d chars", i, len(testCase), len(result))
 	}
 
