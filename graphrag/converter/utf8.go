@@ -11,6 +11,12 @@ import (
 	"unicode/utf8"
 
 	"github.com/yaoapp/gou/graphrag/types"
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/encoding/korean"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/encoding/traditionalchinese"
 )
 
 const (
@@ -131,6 +137,7 @@ func (c *UTF8) streamToUTF8(ctx context.Context, reader io.Reader, callback ...t
 	var leftover []byte // Handle incomplete UTF-8 sequences at chunk boundaries
 	totalProcessed := 0
 	firstChunk := true
+	var detectedEncoding encoding.Encoding // Store detected encoding for consistent conversion
 
 	bufferedReader := bufio.NewReaderSize(reader, BufferSize)
 
@@ -181,10 +188,15 @@ func (c *UTF8) streamToUTF8(ctx context.Context, reader io.Reader, callback ...t
 		if validEnd > 0 {
 			validChunk := chunk[:validEnd]
 
-			// Check if first chunk is text content (binary detection)
+			// Check if first chunk is text content (binary detection) and detect encoding
 			if firstChunk {
 				if !c.isTextContent(validChunk) {
 					return "", fmt.Errorf("content appears to be binary, not text")
+				}
+
+				// Detect encoding on the first chunk for consistent conversion
+				if !utf8.Valid(validChunk) {
+					detectedEncoding = c.detectEncoding(validChunk)
 				}
 				firstChunk = false
 			}
@@ -196,7 +208,7 @@ func (c *UTF8) streamToUTF8(ctx context.Context, reader io.Reader, callback ...t
 			}
 
 			// Convert chunk to UTF-8
-			text := c.chunkToUTF8(validChunk)
+			text := c.convertChunkToUTF8(validChunk, detectedEncoding)
 			result.WriteString(text)
 		}
 
@@ -213,7 +225,7 @@ func (c *UTF8) streamToUTF8(ctx context.Context, reader io.Reader, callback ...t
 
 	// Process any remaining leftover bytes
 	if len(leftover) > 0 {
-		text := c.chunkToUTF8(leftover)
+		text := c.convertChunkToUTF8(leftover, detectedEncoding)
 		result.WriteString(text)
 	}
 
@@ -238,15 +250,175 @@ func (c *UTF8) findLastValidUTF8Boundary(data []byte) int {
 	return len(data)
 }
 
-// chunkToUTF8 converts a chunk to valid UTF-8
-func (c *UTF8) chunkToUTF8(chunk []byte) string {
+// convertChunkToUTF8 converts a chunk to valid UTF-8 using detected encoding
+func (c *UTF8) convertChunkToUTF8(chunk []byte, detectedEncoding encoding.Encoding) string {
 	// If already valid UTF-8, return as-is
 	if utf8.Valid(chunk) {
 		return string(chunk)
 	}
 
-	// Convert to string, Go will replace invalid UTF-8 with replacement character
+	// If we have a detected encoding, use it
+	if detectedEncoding != nil {
+		decoder := detectedEncoding.NewDecoder()
+		result, err := decoder.Bytes(chunk)
+		if err == nil {
+			return string(result)
+		}
+	}
+
+	// Fallback: try to detect and convert from other encodings
+	if converted, ok := c.detectAndConvert(chunk); ok {
+		return converted
+	}
+
+	// Last resort: Convert to string, Go will replace invalid UTF-8 with replacement character
 	return string(chunk)
+}
+
+// detectEncoding detects the most likely encoding for the given data
+func (c *UTF8) detectEncoding(data []byte) encoding.Encoding {
+	// List of encodings to try, in order of preference
+	encodings := []encoding.Encoding{
+		traditionalchinese.Big5,
+		simplifiedchinese.GBK,
+		simplifiedchinese.GB18030,
+		japanese.ShiftJIS,
+		japanese.EUCJP,
+		korean.EUCKR,
+		charmap.ISO8859_1,
+		charmap.Windows1252,
+		charmap.Windows1251,
+	}
+
+	bestEncoding := encoding.Encoding(nil)
+	bestScore := 0.0
+
+	for _, enc := range encodings {
+		decoder := enc.NewDecoder()
+		result, err := decoder.Bytes(data)
+		if err == nil {
+			resultStr := string(result)
+			score := c.calculateTextScore(resultStr)
+			if score > bestScore {
+				bestScore = score
+				bestEncoding = enc
+			}
+		}
+	}
+
+	// Only return encoding if it has a reasonable score
+	if bestScore > 0.5 {
+		return bestEncoding
+	}
+
+	return nil
+}
+
+// calculateTextScore calculates how "text-like" the converted string is
+func (c *UTF8) calculateTextScore(text string) float64 {
+	if len(text) == 0 {
+		return 0.0
+	}
+
+	totalRunes := 0
+	replacementRunes := 0
+	printableRunes := 0
+	chineseRunes := 0
+
+	for _, r := range text {
+		totalRunes++
+
+		if r == '\uFFFD' { // Unicode replacement character
+			replacementRunes++
+		} else if r >= 32 && r < 127 { // ASCII printable
+			printableRunes++
+		} else if r >= 0x4E00 && r <= 0x9FFF { // CJK Unified Ideographs
+			chineseRunes++
+			printableRunes++
+		} else if r == '\t' || r == '\n' || r == '\r' { // Common whitespace
+			printableRunes++
+		}
+	}
+
+	if totalRunes == 0 {
+		return 0.0
+	}
+
+	// Calculate score based on various factors
+	replacementRatio := float64(replacementRunes) / float64(totalRunes)
+	printableRatio := float64(printableRunes) / float64(totalRunes)
+	chineseRatio := float64(chineseRunes) / float64(totalRunes)
+
+	// Penalize high replacement character ratio
+	score := 1.0 - replacementRatio
+
+	// Bonus for high printable ratio
+	score *= printableRatio
+
+	// Bonus for Chinese characters (since we're dealing with Big5)
+	if chineseRatio > 0.1 {
+		score *= (1.0 + chineseRatio)
+	}
+
+	return score
+}
+
+// detectAndConvert tries to detect the encoding and convert to UTF-8
+func (c *UTF8) detectAndConvert(data []byte) (string, bool) {
+	// List of encodings to try, in order of preference
+	encodings := []struct {
+		name string
+		enc  encoding.Encoding
+	}{
+		{"Big5", traditionalchinese.Big5},
+		{"GBK", simplifiedchinese.GBK},
+		{"GB18030", simplifiedchinese.GB18030},
+		{"Shift_JIS", japanese.ShiftJIS},
+		{"EUC-JP", japanese.EUCJP},
+		{"EUC-KR", korean.EUCKR},
+		{"ISO-8859-1", charmap.ISO8859_1},
+		{"Windows-1252", charmap.Windows1252},
+		{"Windows-1251", charmap.Windows1251},
+	}
+
+	for _, encoding := range encodings {
+		decoder := encoding.enc.NewDecoder()
+		result, err := decoder.Bytes(data)
+		if err == nil {
+			// Check if the result looks reasonable (contains valid characters)
+			resultStr := string(result)
+			if c.isReasonableText(resultStr) {
+				return resultStr, true
+			}
+		}
+	}
+
+	return "", false
+}
+
+// isReasonableText checks if the converted text looks reasonable
+func (c *UTF8) isReasonableText(text string) bool {
+	if len(text) == 0 {
+		return false
+	}
+
+	// Count valid characters vs replacement characters
+	totalRunes := 0
+	replacementRunes := 0
+
+	for _, r := range text {
+		totalRunes++
+		if r == '\uFFFD' { // Unicode replacement character
+			replacementRunes++
+		}
+	}
+
+	// If more than 50% are replacement characters, probably not the right encoding
+	if totalRunes > 0 && replacementRunes > totalRunes/2 {
+		return false
+	}
+
+	return true
 }
 
 // cleanUTF8Boundaries removes broken UTF-8 characters only from start and end
@@ -376,31 +548,7 @@ func (c *UTF8) isTextContent(data []byte) bool {
 		return true
 	}
 
-	// Count control characters and printable characters
-	controlChars := 0
-	printableChars := 0
-
-	for _, b := range data {
-		// Allow common text control characters
-		if b == '\t' || b == '\n' || b == '\r' {
-			printableChars++
-			continue
-		}
-
-		// Count other control characters (0-31, 127-159)
-		if (b < 32) || (b >= 127 && b < 160) {
-			controlChars++
-		} else {
-			printableChars++
-		}
-	}
-
-	// If more than 30% are control characters, likely binary
-	if len(data) > 10 && controlChars > len(data)*3/10 {
-		return false
-	}
-
-	// Check for common binary file signatures
+	// Check for common binary file signatures first
 	if len(data) >= 4 {
 		// Check for common binary signatures
 		signatures := [][]byte{
@@ -411,6 +559,8 @@ func (c *UTF8) isTextContent(data []byte) bool {
 			{0x50, 0x4B, 0x03, 0x04}, // ZIP
 			{0x50, 0x4B, 0x05, 0x06}, // ZIP (empty)
 			{0x50, 0x4B, 0x07, 0x08}, // ZIP (spanned)
+			{0x7F, 0x45, 0x4C, 0x46}, // ELF executable
+			{0x4D, 0x5A},             // PE executable
 		}
 
 		for _, sig := range signatures {
@@ -427,6 +577,86 @@ func (c *UTF8) isTextContent(data []byte) bool {
 				}
 			}
 		}
+	}
+
+	// If it's valid UTF-8, it's very likely to be text
+	if utf8.Valid(data) {
+		// For UTF-8 content, use a more lenient approach
+		return c.isUTF8TextContent(data)
+	}
+
+	// For non-UTF-8 data, use byte-level analysis
+	return c.isByteTextContent(data)
+}
+
+// isUTF8TextContent checks UTF-8 valid data for text characteristics
+func (c *UTF8) isUTF8TextContent(data []byte) bool {
+	if len(data) == 0 {
+		return true
+	}
+
+	// Convert to string and analyze runes instead of bytes
+	text := string(data)
+	totalRunes := 0
+	controlRunes := 0
+	printableRunes := 0
+
+	for _, r := range text {
+		totalRunes++
+
+		// Allow common text control characters
+		if r == '\t' || r == '\n' || r == '\r' || r == '\f' || r == '\v' {
+			printableRunes++
+			continue
+		}
+
+		// Count ASCII control characters (0-31, 127) as control
+		// But be more lenient with extended Unicode ranges
+		if r < 32 || r == 127 {
+			controlRunes++
+		} else {
+			printableRunes++
+		}
+	}
+
+	// For UTF-8 text, allow up to 50% control characters
+	// This is more lenient since UTF-8 can contain various Unicode characters
+	if totalRunes > 10 && controlRunes > totalRunes/2 {
+		return false
+	}
+
+	return true
+}
+
+// isByteTextContent checks non-UTF-8 data using byte-level analysis
+func (c *UTF8) isByteTextContent(data []byte) bool {
+	if len(data) == 0 {
+		return true
+	}
+
+	// Count control characters and printable characters
+	controlChars := 0
+	printableChars := 0
+
+	for _, b := range data {
+		// Allow common text control characters
+		if b == '\t' || b == '\n' || b == '\r' {
+			printableChars++
+			continue
+		}
+
+		// Count control characters (0-31, 127) but be more lenient with extended range
+		// Don't count 127-159 as control chars since they might be valid in other encodings
+		if b < 32 || b == 127 {
+			controlChars++
+		} else {
+			printableChars++
+		}
+	}
+
+	// Use a more lenient threshold for non-UTF-8 content
+	if len(data) > 10 && controlChars > len(data)/2 {
+		return false
 	}
 
 	return true
