@@ -103,10 +103,14 @@ func (g *GraphRag) AddFile(ctx context.Context, file string, options *types.Upse
 		embeddingIndexesMap[chunk] = len(embeddingTexts) - 1
 	}
 
-	// Step 4.3: Extract the root level text (Optional)
-	allEntities, allRelationships, entityIndexMap, relationshipIndexMap, err := g.extractEntitiesAndRelationships(ctx, chunks, options, cb, &embeddingTexts)
+	// Step 4.3: Extract the root level text and store to graph (Optional)
+	var extractionResults []*types.ExtractionResult
+	var entityDeduplicationResults map[string]*EntityDeduplicationResult
+	var relationshipDeduplicationResults map[string]*RelationshipDeduplicationResult
+
+	extractionResults, entityDeduplicationResults, relationshipDeduplicationResults, err = g.extractAndStoreEntitiesAndRelationships(ctx, chunks, options, cb, &embeddingTexts, ids.Graph, docID)
 	if err != nil {
-		return "", fmt.Errorf("failed to extract entities and relationships: %w", err)
+		return "", fmt.Errorf("failed to extract and store entities and relationships: %w", err)
 	}
 
 	// Step 5: Embed all texts (chunks + entities + relationships)
@@ -115,54 +119,40 @@ func (g *GraphRag) AddFile(ctx context.Context, file string, options *types.Upse
 		return "", fmt.Errorf("failed to embed the documents: %w", err)
 	}
 
-	// Step 6: Store entities and relationships to graph store first for deduplication (if available)
-	// Important: We need to do this BEFORE storing to vector database to get the actual deduplicated IDs
-	var actualEntityIDs []string
-	var actualRelationshipIDs []string
-	var entityIDMap = make(map[string]string)       // originalID -> actualID
-	var relationshipIDMap = make(map[string]string) // originalID -> actualID
+	// Step 7: Store all documents to vector store (chunks + entities + relationships)
+	// Extract entities and relationships from extraction results for vector store
+	var allEntities []types.Node
+	var allRelationships []types.Relationship
+	var entityIndexMap map[*types.Node]int = make(map[*types.Node]int)
+	var relationshipIndexMap map[*types.Relationship]int = make(map[*types.Relationship]int)
 
-	// Initialize deduplication results
-	var entityDeduplicationResults map[string]*EntityDeduplicationResult
-	var relationshipDeduplicationResults map[string]*RelationshipDeduplicationResult
+	// Calculate the starting index for entities and relationships in embeddingTexts
+	// embeddingTexts contains: [chunks, entities, relationships]
+	chunksCount := len(chunks)
+	entityStartIndex := chunksCount
 
-	if g.Graph != nil && options.Extraction != nil && (len(allEntities) > 0 || len(allRelationships) > 0) {
-		// Store entities to graph store and get actual IDs after deduplication
-		if len(allEntities) > 0 {
-			actualEntityIDs, entityDeduplicationResults, err = g.storeEntitiesToGraphStore(ctx, allEntities, ids.Graph, docID)
-			if err != nil {
-				return "", fmt.Errorf("failed to store entities to graph store: %w", err)
-			}
-
-			// Create mapping from original IDs to actual IDs
-			for i, entity := range allEntities {
-				if i < len(actualEntityIDs) {
-					entityIDMap[entity.ID] = actualEntityIDs[i]
-				}
-			}
+	// Collect entities and relationships from extraction results
+	entityIndex := entityStartIndex
+	for _, extractionResult := range extractionResults {
+		for i := range extractionResult.Nodes {
+			entity := extractionResult.Nodes[i]
+			allEntities = append(allEntities, entity)
+			entityIndexMap[&extractionResult.Nodes[i]] = entityIndex
+			entityIndex++
 		}
-
-		// Store relationships to graph store and get actual IDs after deduplication
-		if len(allRelationships) > 0 {
-			actualRelationshipIDs, relationshipDeduplicationResults, err = g.storeRelationshipsToGraphStore(ctx, allRelationships, ids.Graph, docID)
-			if err != nil {
-				return "", fmt.Errorf("failed to store relationships to graph store: %w", err)
-			}
-
-			// Create mapping from original IDs to actual IDs
-			for i, relationship := range allRelationships {
-				if i < len(actualRelationshipIDs) {
-					relationshipIDMap[relationship.ID] = actualRelationshipIDs[i]
-				}
-			}
-		}
-
-		// Update chunks with actual IDs from graph database
-		g.updateChunksWithActualIds(chunks, entityIDMap, relationshipIDMap)
 	}
 
-	// Step 7: Store all documents to vector store (chunks + entities + relationships)
-	// Now the chunks contain the actual deduplicated IDs from the graph database
+	relationshipStartIndex := entityIndex
+	relationshipIndex := relationshipStartIndex
+	for _, extractionResult := range extractionResults {
+		for i := range extractionResult.Relationships {
+			relationship := extractionResult.Relationships[i]
+			allRelationships = append(allRelationships, relationship)
+			relationshipIndexMap[&extractionResult.Relationships[i]] = relationshipIndex
+			relationshipIndex++
+		}
+	}
+
 	storeOptions := &StoreDocumentsOptions{
 		Chunks:                           chunks,
 		Entities:                         allEntities,
@@ -1012,290 +1002,11 @@ type EntityDeduplicationResult struct {
 	IsUpdate     bool
 }
 
-// storeEntitiesToGraphStore stores entities to the graph store with doc_ids management
-func (g *GraphRag) storeEntitiesToGraphStore(ctx context.Context, entities []types.Node, graphName string, docID string) ([]string, map[string]*EntityDeduplicationResult, error) {
-	// Step 1: Query existing entities to check for duplicates
-	var entityIDs []string
-	for _, entity := range entities {
-		// Create a normalized entity ID based on name and type for deduplication
-		normalizedID := entity.Name
-		if entity.Type != "" {
-			normalizedID += "_" + entity.Type
-		}
-		entityIDs = append(entityIDs, normalizedID)
-	}
-
-	// Query existing entities
-	getOpts := &types.GetNodesOptions{
-		GraphName:         graphName,
-		IDs:               entityIDs,
-		IncludeProperties: true,
-		IncludeMetadata:   true,
-	}
-
-	existingNodes, err := g.Graph.GetNodes(ctx, getOpts)
-	if err != nil {
-		// If error (e.g., graph doesn't exist yet), proceed with new entities
-		existingNodes = []*types.GraphNode{}
-	}
-
-	// Create a map of existing entities
-	existingEntitiesMap := make(map[string]*types.GraphNode)
-	for _, node := range existingNodes {
-		existingEntitiesMap[node.ID] = node
-	}
-
-	// Step 2: Process entities (merge doc_ids for existing, create new for others)
-	var graphNodes []*types.GraphNode
-	var resultIDs []string
-	entityResults := make(map[string]*EntityDeduplicationResult)
-
-	for i, entity := range entities {
-		normalizedID := entityIDs[i]
-
-		if existingNode, exists := existingEntitiesMap[normalizedID]; exists {
-			// Entity exists - merge doc_ids
-			docIDs := []string{docID}
-			if existingDocIDs, ok := existingNode.Properties["doc_ids"].([]interface{}); ok {
-				for _, id := range existingDocIDs {
-					if idStr, ok := id.(string); ok && idStr != docID {
-						docIDs = append(docIDs, idStr)
-					}
-				}
-			}
-
-			// Store deduplication result
-			entityResults[entity.ID] = &EntityDeduplicationResult{
-				NormalizedID: normalizedID,
-				DocIDs:       docIDs,
-				IsUpdate:     true,
-			}
-
-			// Update existing entity properties
-			properties := existingNode.Properties
-			properties["doc_ids"] = docIDs
-			properties["confidence"] = entity.Confidence // Update with latest confidence
-			properties["updated_at"] = time.Now().Unix()
-
-			updatedNode := &types.GraphNode{
-				ID:         normalizedID,
-				Labels:     existingNode.Labels,
-				Properties: properties,
-				Embedding:  entity.EmbeddingVector, // Update with latest embedding
-				CreatedAt:  existingNode.CreatedAt,
-				UpdatedAt:  time.Now(),
-				Version:    existingNode.Version + 1,
-			}
-			graphNodes = append(graphNodes, updatedNode)
-			resultIDs = append(resultIDs, normalizedID)
-		} else {
-			// New entity - create with initial doc_ids
-			docIDs := []string{docID}
-
-			// Store deduplication result
-			entityResults[entity.ID] = &EntityDeduplicationResult{
-				NormalizedID: normalizedID,
-				DocIDs:       docIDs,
-				IsUpdate:     false,
-			}
-
-			labels := []string{"Entity"}
-			if entity.Type != "" {
-				labels = append(labels, entity.Type)
-			}
-			labels = append(labels, entity.Labels...)
-
-			properties := make(map[string]interface{})
-			for k, v := range entity.Properties {
-				properties[k] = v
-			}
-			properties["name"] = entity.Name
-			properties["type"] = entity.Type
-			properties["description"] = entity.Description
-			properties["confidence"] = entity.Confidence
-			properties["extraction_method"] = string(entity.ExtractionMethod)
-			properties["source_documents"] = entity.SourceDocuments
-			properties["source_chunks"] = entity.SourceChunks
-			properties["status"] = string(entity.Status)
-			properties["version"] = entity.Version
-			properties["doc_ids"] = docIDs // Initialize with current doc_id
-			properties["created_at"] = time.Now().Unix()
-			properties["updated_at"] = time.Now().Unix()
-
-			newNode := &types.GraphNode{
-				ID:         normalizedID,
-				Labels:     labels,
-				Properties: properties,
-				Embedding:  entity.EmbeddingVector,
-				CreatedAt:  time.Now(),
-				UpdatedAt:  time.Now(),
-				Version:    1,
-			}
-			graphNodes = append(graphNodes, newNode)
-			resultIDs = append(resultIDs, normalizedID)
-		}
-	}
-
-	// Step 3: Store/Update entities
-	if len(graphNodes) > 0 {
-		opts := &types.AddNodesOptions{
-			GraphName: graphName,
-			Nodes:     graphNodes,
-			Upsert:    true,
-			BatchSize: 100,
-		}
-
-		_, err := g.Graph.AddNodes(ctx, opts)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	return resultIDs, entityResults, nil
-}
-
 // RelationshipDeduplicationResult contains the result of relationship deduplication
 type RelationshipDeduplicationResult struct {
 	NormalizedID string
 	DocIDs       []string
 	IsUpdate     bool
-}
-
-// storeRelationshipsToGraphStore stores relationships to the graph store with doc_ids management
-func (g *GraphRag) storeRelationshipsToGraphStore(ctx context.Context, relationships []types.Relationship, graphName string, docID string) ([]string, map[string]*RelationshipDeduplicationResult, error) {
-	// Step 1: Query existing relationships to check for duplicates
-	var relationshipIDs []string
-	for _, relationship := range relationships {
-		// Create a normalized relationship ID based on start_node, type, and end_node for deduplication
-		normalizedID := relationship.StartNode + "_" + relationship.Type + "_" + relationship.EndNode
-		relationshipIDs = append(relationshipIDs, normalizedID)
-	}
-
-	// Query existing relationships
-	getOpts := &types.GetRelationshipsOptions{
-		GraphName:         graphName,
-		IDs:               relationshipIDs,
-		IncludeProperties: true,
-		IncludeMetadata:   true,
-	}
-
-	existingRels, err := g.Graph.GetRelationships(ctx, getOpts)
-	if err != nil {
-		// If error (e.g., graph doesn't exist yet), proceed with new relationships
-		existingRels = []*types.GraphRelationship{}
-	}
-
-	// Create a map of existing relationships
-	existingRelsMap := make(map[string]*types.GraphRelationship)
-	for _, rel := range existingRels {
-		existingRelsMap[rel.ID] = rel
-	}
-
-	// Step 2: Process relationships (merge doc_ids for existing, create new for others)
-	var graphRelationships []*types.GraphRelationship
-	var resultIDs []string
-	relationshipResults := make(map[string]*RelationshipDeduplicationResult)
-
-	for i, relationship := range relationships {
-		normalizedID := relationshipIDs[i]
-
-		if existingRel, exists := existingRelsMap[normalizedID]; exists {
-			// Relationship exists - merge doc_ids
-			docIDs := []string{docID}
-			if existingDocIDs, ok := existingRel.Properties["doc_ids"].([]interface{}); ok {
-				for _, id := range existingDocIDs {
-					if idStr, ok := id.(string); ok && idStr != docID {
-						docIDs = append(docIDs, idStr)
-					}
-				}
-			}
-
-			// Store deduplication result
-			relationshipResults[relationship.ID] = &RelationshipDeduplicationResult{
-				NormalizedID: normalizedID,
-				DocIDs:       docIDs,
-				IsUpdate:     true,
-			}
-
-			// Update existing relationship properties
-			properties := existingRel.Properties
-			properties["doc_ids"] = docIDs
-			properties["confidence"] = relationship.Confidence // Update with latest confidence
-			properties["weight"] = relationship.Weight         // Update with latest weight
-			properties["updated_at"] = time.Now().Unix()
-
-			updatedRel := &types.GraphRelationship{
-				ID:         normalizedID,
-				Type:       existingRel.Type,
-				StartNode:  existingRel.StartNode,
-				EndNode:    existingRel.EndNode,
-				Properties: properties,
-				Embedding:  relationship.EmbeddingVector, // Update with latest embedding
-				CreatedAt:  existingRel.CreatedAt,
-				UpdatedAt:  time.Now(),
-				Version:    existingRel.Version + 1,
-			}
-			graphRelationships = append(graphRelationships, updatedRel)
-			resultIDs = append(resultIDs, normalizedID)
-		} else {
-			// New relationship - create with initial doc_ids
-			docIDs := []string{docID}
-
-			// Store deduplication result
-			relationshipResults[relationship.ID] = &RelationshipDeduplicationResult{
-				NormalizedID: normalizedID,
-				DocIDs:       docIDs,
-				IsUpdate:     false,
-			}
-
-			properties := make(map[string]interface{})
-			for k, v := range relationship.Properties {
-				properties[k] = v
-			}
-			properties["description"] = relationship.Description
-			properties["confidence"] = relationship.Confidence
-			properties["weight"] = relationship.Weight
-			properties["extraction_method"] = string(relationship.ExtractionMethod)
-			properties["source_documents"] = relationship.SourceDocuments
-			properties["source_chunks"] = relationship.SourceChunks
-			properties["status"] = string(relationship.Status)
-			properties["version"] = relationship.Version
-			properties["doc_ids"] = docIDs // Initialize with current doc_id
-			properties["created_at"] = time.Now().Unix()
-			properties["updated_at"] = time.Now().Unix()
-
-			newRel := &types.GraphRelationship{
-				ID:         normalizedID,
-				Type:       relationship.Type,
-				StartNode:  relationship.StartNode,
-				EndNode:    relationship.EndNode,
-				Properties: properties,
-				Embedding:  relationship.EmbeddingVector,
-				CreatedAt:  time.Now(),
-				UpdatedAt:  time.Now(),
-				Version:    1,
-			}
-			graphRelationships = append(graphRelationships, newRel)
-			resultIDs = append(resultIDs, normalizedID)
-		}
-	}
-
-	// Step 3: Store/Update relationships
-	if len(graphRelationships) > 0 {
-		opts := &types.AddRelationshipsOptions{
-			GraphName:     graphName,
-			Relationships: graphRelationships,
-			Upsert:        true,
-			BatchSize:     100,
-		}
-
-		_, err := g.Graph.AddRelationships(ctx, opts)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	return resultIDs, relationshipResults, nil
 }
 
 // prepareUpsert prepares the upsert options
@@ -1352,16 +1063,11 @@ func (g *GraphRag) prepareUpsert(file string, options *types.UpsertOptions) erro
 	return nil
 }
 
-// extractEntitiesAndRelationships extracts entities and relationships from root-level chunks
-func (g *GraphRag) extractEntitiesAndRelationships(ctx context.Context, chunks []*types.Chunk, options *types.UpsertOptions, cb types.UpsertCallback, embeddingTexts *[]string) ([]types.Node, []types.Relationship, map[*types.Node]int, map[*types.Relationship]int, error) {
-	var allEntities []types.Node
-	var allRelationships []types.Relationship
-	var entityIndexMap map[*types.Node]int = make(map[*types.Node]int)
-	var relationshipIndexMap map[*types.Relationship]int = make(map[*types.Relationship]int)
-
+// extractAndStoreEntitiesAndRelationships extracts entities and relationships from root-level chunks and stores them using SaveExtractionResults
+func (g *GraphRag) extractAndStoreEntitiesAndRelationships(ctx context.Context, chunks []*types.Chunk, options *types.UpsertOptions, cb types.UpsertCallback, embeddingTexts *[]string, graphName string, docID string) ([]*types.ExtractionResult, map[string]*EntityDeduplicationResult, map[string]*RelationshipDeduplicationResult, error) {
 	// Only proceed if graph store and extraction are available
 	if g.Graph == nil || options.Extraction == nil {
-		return allEntities, allRelationships, entityIndexMap, relationshipIndexMap, nil
+		return []*types.ExtractionResult{}, nil, nil, nil
 	}
 
 	// Find root-level chunks (chunks without parents)
@@ -1376,55 +1082,129 @@ func (g *GraphRag) extractEntitiesAndRelationships(ctx context.Context, chunks [
 
 	// If no root-level chunks found, return empty results
 	if len(extractedTexts) == 0 {
-		return allEntities, allRelationships, entityIndexMap, relationshipIndexMap, nil
+		return []*types.ExtractionResult{}, nil, nil, nil
 	}
 
 	// Extract entities and relationships from root-level chunks
-	results, err := options.Extraction.ExtractDocuments(ctx, extractedTexts, cb.Extraction)
+	extractionResults, err := options.Extraction.ExtractDocuments(ctx, extractedTexts, cb.Extraction)
 	if err != nil {
-		return allEntities, allRelationships, entityIndexMap, relationshipIndexMap, fmt.Errorf("failed to extract the text from the file: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to extract the text from the file: %w", err)
 	}
 
-	// Merge the extracted chunks with the original chunks and collect entities/relationships
-	for i, result := range results {
+	// Set source information for all extracted entities and relationships before saving
+	// Use the chunk's segment ID as the segmentID for source tracking
+	for i, result := range extractionResults {
 		if i < len(extractedChunks) {
+			segmentID := extractedChunks[i].ID
+			g.setSourceInformation([]*types.ExtractionResult{result}, docID, segmentID)
+
+			// Also associate the extraction result with the chunk
 			extractedChunks[i].Extracted = result
-
-			// Collect all entities and relationships for embedding
-			for j := range result.Nodes {
-				entity := &result.Nodes[j]
-				allEntities = append(allEntities, *entity)
-
-				// Create embedding text for entity (name + type + description)
-				entityText := entity.Name
-				if entity.Type != "" {
-					entityText += " (" + entity.Type + ")"
-				}
-				if entity.Description != "" {
-					entityText += ": " + entity.Description
-				}
-
-				*embeddingTexts = append(*embeddingTexts, entityText)
-				entityIndexMap[entity] = len(*embeddingTexts) - 1
-			}
-
-			for j := range result.Relationships {
-				relationship := &result.Relationships[j]
-				allRelationships = append(allRelationships, *relationship)
-
-				// Create embedding text for relationship (StartNode + type + EndNode + description)
-				relationshipText := relationship.StartNode + " " + relationship.Type + " " + relationship.EndNode
-				if relationship.Description != "" {
-					relationshipText += ": " + relationship.Description
-				}
-
-				*embeddingTexts = append(*embeddingTexts, relationshipText)
-				relationshipIndexMap[relationship] = len(*embeddingTexts) - 1
-			}
 		}
 	}
 
-	return allEntities, allRelationships, entityIndexMap, relationshipIndexMap, nil
+	// Save the extraction results to the graph database using SaveExtractionResults
+	var entityDeduplicationResults map[string]*EntityDeduplicationResult
+	var relationshipDeduplicationResults map[string]*RelationshipDeduplicationResult
+
+	if len(extractionResults) > 0 {
+		saveResponse, err := g.Graph.SaveExtractionResults(ctx, graphName, extractionResults)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to save extraction results: %w", err)
+		}
+
+		// Convert SaveExtractionResults response to the expected deduplication results format
+		entityDeduplicationResults = g.convertEntitySaveResponseToDeduplicationResults(saveResponse)
+		relationshipDeduplicationResults = g.convertRelationshipSaveResponseToDeduplicationResults(saveResponse)
+
+		g.Logger.Debugf("Successfully saved extraction results: %d entities, %d relationships",
+			saveResponse.EntitiesCount, saveResponse.RelationshipsCount)
+	}
+
+	// Add embedding texts for entities and relationships
+	for _, result := range extractionResults {
+		for j := range result.Nodes {
+			entity := &result.Nodes[j]
+
+			// Create embedding text for entity (name + type + description)
+			entityText := entity.Name
+			if entity.Type != "" {
+				entityText += " (" + entity.Type + ")"
+			}
+			if entity.Description != "" {
+				entityText += ": " + entity.Description
+			}
+
+			*embeddingTexts = append(*embeddingTexts, entityText)
+		}
+
+		for j := range result.Relationships {
+			relationship := &result.Relationships[j]
+
+			// Create embedding text for relationship (StartNode + type + EndNode + description)
+			relationshipText := relationship.StartNode + " " + relationship.Type + " " + relationship.EndNode
+			if relationship.Description != "" {
+				relationshipText += ": " + relationship.Description
+			}
+
+			*embeddingTexts = append(*embeddingTexts, relationshipText)
+		}
+	}
+
+	// Update chunks with actual IDs from graph database (if needed)
+	// This is handled by the SaveExtractionResults method internally
+
+	return extractionResults, entityDeduplicationResults, relationshipDeduplicationResults, nil
+}
+
+// convertEntitySaveResponseToDeduplicationResults converts SaveExtractionResults response to entity deduplication results
+func (g *GraphRag) convertEntitySaveResponseToDeduplicationResults(saveResponse *types.SaveExtractionResultsResponse) map[string]*EntityDeduplicationResult {
+	if saveResponse == nil || len(saveResponse.SavedEntities) == 0 {
+		return make(map[string]*EntityDeduplicationResult)
+	}
+
+	results := make(map[string]*EntityDeduplicationResult)
+	for _, savedEntity := range saveResponse.SavedEntities {
+		// Extract source documents from properties if available
+		var docIDs []string
+		if sourceDocsInterface, ok := savedEntity.Properties["source_documents"]; ok {
+			if sourceDocs, ok := sourceDocsInterface.([]string); ok {
+				docIDs = sourceDocs
+			}
+		}
+
+		results[savedEntity.ID] = &EntityDeduplicationResult{
+			NormalizedID: savedEntity.ID,
+			DocIDs:       docIDs,
+			IsUpdate:     false, // We don't have this information from SaveExtractionResults
+		}
+	}
+	return results
+}
+
+// convertRelationshipSaveResponseToDeduplicationResults converts SaveExtractionResults response to relationship deduplication results
+func (g *GraphRag) convertRelationshipSaveResponseToDeduplicationResults(saveResponse *types.SaveExtractionResultsResponse) map[string]*RelationshipDeduplicationResult {
+	if saveResponse == nil || len(saveResponse.SavedRelationships) == 0 {
+		return make(map[string]*RelationshipDeduplicationResult)
+	}
+
+	results := make(map[string]*RelationshipDeduplicationResult)
+	for _, savedRelationship := range saveResponse.SavedRelationships {
+		// Extract source documents from properties if available
+		var docIDs []string
+		if sourceDocsInterface, ok := savedRelationship.Properties["source_documents"]; ok {
+			if sourceDocs, ok := sourceDocsInterface.([]string); ok {
+				docIDs = sourceDocs
+			}
+		}
+
+		results[savedRelationship.ID] = &RelationshipDeduplicationResult{
+			NormalizedID: savedRelationship.ID,
+			DocIDs:       docIDs,
+			IsUpdate:     false, // We don't have this information from SaveExtractionResults
+		}
+	}
+	return results
 }
 
 // updateChunksWithActualIds updates chunks with actual IDs from graph database after deduplication
