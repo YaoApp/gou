@@ -2,7 +2,9 @@ package neo4j
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/yaoapp/gou/graphrag/types"
@@ -11,6 +13,7 @@ import (
 // SaveExtractionResults saves the extraction results to the graph database
 // It handles entity deduplication and relationship updates
 // Returns the actual entities and relationships that were saved
+// Collects all errors and returns them after processing all results
 func (s *Store) SaveExtractionResults(ctx context.Context, graphName string, results []*types.ExtractionResult) (*types.SaveExtractionResultsResponse, error) {
 	if len(results) == 0 {
 		return &types.SaveExtractionResultsResponse{}, nil
@@ -22,26 +25,42 @@ func (s *Store) SaveExtractionResults(ctx context.Context, graphName string, res
 
 	var allSavedEntities []types.GraphNode
 	var allSavedRelationships []types.GraphRelationship
+	var allErrors []error
 
-	// Process each extraction result
-	for _, result := range results {
+	// Process each extraction result, collecting all errors
+	for i, result := range results {
 		savedEntities, savedRelationships, err := s.saveExtractionResult(ctx, graphName, result)
 		if err != nil {
-			return nil, fmt.Errorf("failed to save extraction result: %w", err)
+			// Collect error but continue processing other results
+			allErrors = append(allErrors, fmt.Errorf("failed to save extraction result %d: %w", i, err))
+			continue
 		}
 
-		// Collect all saved entities and relationships
+		// Collect successfully saved entities and relationships
 		allSavedEntities = append(allSavedEntities, savedEntities...)
 		allSavedRelationships = append(allSavedRelationships, savedRelationships...)
 	}
 
-	return &types.SaveExtractionResultsResponse{
+	response := &types.SaveExtractionResultsResponse{
 		SavedEntities:      allSavedEntities,
 		SavedRelationships: allSavedRelationships,
 		EntitiesCount:      len(allSavedEntities),
 		RelationshipsCount: len(allSavedRelationships),
 		ProcessedCount:     len(results),
-	}, nil
+	}
+
+	// Return accumulated errors if any occurred
+	if len(allErrors) > 0 {
+		// Combine all errors into a single error message
+		var errorMessages []string
+		for _, err := range allErrors {
+			errorMessages = append(errorMessages, err.Error())
+		}
+		combinedError := fmt.Errorf("encountered %d errors during save: %s", len(allErrors), strings.Join(errorMessages, "; "))
+		return response, combinedError
+	}
+
+	return response, nil
 }
 
 // saveExtractionResult processes a single extraction result
@@ -245,9 +264,19 @@ func (s *Store) updateEntitySources(ctx context.Context, graphName, entityID str
 func (s *Store) convertNodeToGraphNode(node types.Node) *types.GraphNode {
 	properties := make(map[string]interface{})
 
-	// Copy user-defined properties
+	// Copy user-defined properties with type validation
 	for k, v := range node.Properties {
-		properties[k] = v
+		// Only include properties that Neo4j can handle
+		if s.isValidNeo4jPropertyValue(v) {
+			properties[k] = v
+		} else {
+			// Convert complex types to strings or skip them
+			if str, ok := s.convertToString(v); ok {
+				properties[k] = str
+				// Property converted successfully
+			}
+			// If conversion fails, we skip this property to avoid Neo4j errors
+		}
 	}
 
 	// Add GraphRAG-specific properties
@@ -270,6 +299,83 @@ func (s *Store) convertNodeToGraphNode(node types.Node) *types.GraphNode {
 		CreatedAt:   time.Now().UTC(),
 		UpdatedAt:   time.Now().UTC(),
 		Version:     1,
+	}
+}
+
+// isValidNeo4jPropertyValue checks if a value is a valid Neo4j property type
+// Neo4j supports: primitives (bool, int*, uint*, float*, string) and their arrays
+// Neo4j does NOT support: null, nested maps, complex objects
+func (s *Store) isValidNeo4jPropertyValue(value interface{}) bool {
+	if value == nil {
+		return false // Neo4j doesn't support null values as properties
+	}
+
+	switch v := value.(type) {
+	// Primitive types supported by Neo4j
+	case bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string:
+		return true
+	// Primitive array types supported by Neo4j
+	case []bool, []int, []int8, []int16, []int32, []int64, []uint, []uint8, []uint16, []uint32, []uint64, []float32, []float64, []string:
+		return true
+	// Generic slice - check if all elements are primitives
+	case []interface{}:
+		if len(v) == 0 {
+			return true // Empty slice is valid
+		}
+		// All elements must be primitive types (no nested structures)
+		for _, elem := range v {
+			if !s.isPrimitiveType(elem) {
+				return false
+			}
+		}
+		return true
+	// Complex types not supported by Neo4j
+	case map[string]interface{}, []map[string]interface{}:
+		return false
+	default:
+		return false
+	}
+}
+
+// isPrimitiveType checks if a value is a Neo4j primitive type (no arrays)
+func (s *Store) isPrimitiveType(value interface{}) bool {
+	if value == nil {
+		return false
+	}
+	switch value.(type) {
+	case bool, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string:
+		return true
+	default:
+		return false
+	}
+}
+
+// convertToString attempts to convert a value to a string representation
+func (s *Store) convertToString(value interface{}) (string, bool) {
+	if value == nil {
+		return "", false
+	}
+
+	switch v := value.(type) {
+	case string:
+		return v, true
+	case fmt.Stringer:
+		return v.String(), true
+	case map[string]interface{}:
+		// Convert map to JSON string for storage
+		if jsonStr, err := json.Marshal(v); err == nil {
+			return string(jsonStr), true
+		}
+		return "", false
+	case []interface{}:
+		// Convert slice to JSON string for storage
+		if jsonStr, err := json.Marshal(v); err == nil {
+			return string(jsonStr), true
+		}
+		return "", false
+	default:
+		// Try to convert to string using fmt.Sprintf
+		return fmt.Sprintf("%v", v), true
 	}
 }
 
@@ -314,9 +420,19 @@ func (s *Store) updateRelationshipsWithDeduplicatedIDs(relationships []types.Rel
 func (s *Store) convertRelationshipToGraphRelationship(rel types.Relationship, startNodeID, endNodeID string) *types.GraphRelationship {
 	properties := make(map[string]interface{})
 
-	// Copy user-defined properties
+	// Copy user-defined properties with type validation
 	for k, v := range rel.Properties {
-		properties[k] = v
+		// Only include properties that Neo4j can handle
+		if s.isValidNeo4jPropertyValue(v) {
+			properties[k] = v
+		} else {
+			// Convert complex types to strings or skip them
+			if str, ok := s.convertToString(v); ok {
+				properties[k] = str
+				// Property converted successfully
+			}
+			// If conversion fails, we skip this property to avoid Neo4j errors
+		}
 	}
 
 	// Add GraphRAG-specific properties

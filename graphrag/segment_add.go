@@ -60,10 +60,14 @@ func (g *GraphRag) AddSegments(ctx context.Context, docID string, segmentTexts [
 		embeddingIndexesMap[chunk] = len(embeddingTexts) - 1
 	}
 
-	// Step 8: Extract entities and relationships from chunks (equivalent to AddFile step 4.3)
-	allEntities, allRelationships, entityIndexMap, relationshipIndexMap, err := g.extractEntitiesAndRelationships(ctx, chunks, opts, cb, &embeddingTexts)
+	// Step 8: Extract entities and relationships from chunks and store to graph (equivalent to AddFile step 4.3)
+	var extractionResults []*types.ExtractionResult
+	var entityDeduplicationResults map[string]*EntityDeduplicationResult
+	var relationshipDeduplicationResults map[string]*RelationshipDeduplicationResult
+
+	extractionResults, entityDeduplicationResults, relationshipDeduplicationResults, err = g.extractAndStoreEntitiesAndRelationships(ctx, chunks, opts, cb, &embeddingTexts, collectionIDs.Graph, docID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to extract entities and relationships: %w", err)
+		return nil, fmt.Errorf("failed to extract and store entities and relationships: %w", err)
 	}
 
 	// Step 9: Embed all texts (chunks + entities + relationships) (equivalent to AddFile step 5)
@@ -72,51 +76,40 @@ func (g *GraphRag) AddSegments(ctx context.Context, docID string, segmentTexts [
 		return nil, fmt.Errorf("failed to embed the documents: %w", err)
 	}
 
-	// Step 10: Store entities and relationships to graph store first for deduplication (equivalent to AddFile step 6)
-	var actualEntityIDs []string
-	var actualRelationshipIDs []string
-	var entityIDMap = make(map[string]string)
-	var relationshipIDMap = make(map[string]string)
+	// Step 11: Store all documents to vector store (equivalent to AddFile step 7)
+	// Extract entities and relationships from extraction results for vector store
+	var allEntities []types.Node
+	var allRelationships []types.Relationship
+	var entityIndexMap map[*types.Node]int = make(map[*types.Node]int)
+	var relationshipIndexMap map[*types.Relationship]int = make(map[*types.Relationship]int)
 
-	var entityDeduplicationResults map[string]*EntityDeduplicationResult
-	var relationshipDeduplicationResults map[string]*RelationshipDeduplicationResult
+	// Calculate the starting index for entities and relationships in embeddingTexts
+	// embeddingTexts contains: [chunks, entities, relationships]
+	chunksCount := len(chunks)
+	entityStartIndex := chunksCount
 
-	if g.Graph != nil && opts.Extraction != nil && (len(allEntities) > 0 || len(allRelationships) > 0) {
-		// Store entities to graph store
-		if len(allEntities) > 0 {
-			actualEntityIDs, entityDeduplicationResults, err = g.storeEntitiesToGraphStore(ctx, allEntities, collectionIDs.Graph, docID)
-			if err != nil {
-				return nil, fmt.Errorf("failed to store entities to graph store: %w", err)
-			}
-
-			// Create mapping from original IDs to actual IDs
-			for i, entity := range allEntities {
-				if i < len(actualEntityIDs) {
-					entityIDMap[entity.ID] = actualEntityIDs[i]
-				}
-			}
+	// Collect entities and relationships from extraction results
+	entityIndex := entityStartIndex
+	for _, extractionResult := range extractionResults {
+		for i := range extractionResult.Nodes {
+			entity := extractionResult.Nodes[i]
+			allEntities = append(allEntities, entity)
+			entityIndexMap[&extractionResult.Nodes[i]] = entityIndex
+			entityIndex++
 		}
-
-		// Store relationships to graph store
-		if len(allRelationships) > 0 {
-			actualRelationshipIDs, relationshipDeduplicationResults, err = g.storeRelationshipsToGraphStore(ctx, allRelationships, collectionIDs.Graph, docID)
-			if err != nil {
-				return nil, fmt.Errorf("failed to store relationships to graph store: %w", err)
-			}
-
-			// Create mapping from original IDs to actual IDs
-			for i, relationship := range allRelationships {
-				if i < len(actualRelationshipIDs) {
-					relationshipIDMap[relationship.ID] = actualRelationshipIDs[i]
-				}
-			}
-		}
-
-		// Update chunks with actual IDs from graph database
-		g.updateChunksWithActualIds(chunks, entityIDMap, relationshipIDMap)
 	}
 
-	// Step 11: Store all documents to vector store (equivalent to AddFile step 7)
+	relationshipStartIndex := entityIndex
+	relationshipIndex := relationshipStartIndex
+	for _, extractionResult := range extractionResults {
+		for i := range extractionResult.Relationships {
+			relationship := extractionResult.Relationships[i]
+			allRelationships = append(allRelationships, relationship)
+			relationshipIndexMap[&extractionResult.Relationships[i]] = relationshipIndex
+			relationshipIndex++
+		}
+	}
+
 	storeOptions := &StoreDocumentsOptions{
 		Chunks:                           chunks,
 		Entities:                         allEntities,
