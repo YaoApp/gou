@@ -2237,20 +2237,32 @@ type RelationshipDeduplicationResult struct {
 	IsUpdate     bool     `json:"is_update"`
 }
 
-// SegmentExtractionResult represents the result of re-extracting entities and relationships for a segment
+// SegmentExtractionResult represents the result of extracting entities and relationships from a segment
+// Minimal structure containing only statistical information for frontend consumption
 type SegmentExtractionResult struct {
-	DocID                            string                                      `json:"doc_id"`
-	SegmentID                        string                                      `json:"segment_id"`
-	Text                             string                                      `json:"text"`
-	ExtractedEntities                []Node                                      `json:"extracted_entities"`
-	ExtractedRelationships           []Relationship                              `json:"extracted_relationships"`
-	ActualEntityIDs                  []string                                    `json:"actual_entity_ids"`
-	ActualRelationshipIDs            []string                                    `json:"actual_relationship_ids"`
-	EntityDeduplicationResults       map[string]*EntityDeduplicationResult       `json:"entity_deduplication_results,omitempty"`
-	RelationshipDeduplicationResults map[string]*RelationshipDeduplicationResult `json:"relationship_deduplication_results,omitempty"`
-	ExtractionModel                  string                                      `json:"extraction_model"`
-	EntitiesCount                    int                                         `json:"entities_count"`
-	RelationshipsCount               int                                         `json:"relationships_count"`
+	DocID              string `json:"doc_id"`              // Document ID
+	SegmentID          string `json:"segment_id"`          // Segment ID
+	ExtractionModel    string `json:"extraction_model"`    // Model used for extraction
+	EntitiesCount      int    `json:"entities_count"`      // Number of entities extracted
+	RelationshipsCount int    `json:"relationships_count"` // Number of relationships extracted
+	// Removed fields (frontend doesn't need detailed data):
+	// - ExtractedEntities: detailed entity data not needed
+	// - ExtractedRelationships: detailed relationship data not needed
+	// - Text: can be retrieved via GetSegment if needed
+	// - ActualEntityIDs: internal implementation detail
+	// - ActualRelationshipIDs: internal implementation detail
+	// - EntityDeduplicationResults: internal implementation detail
+	// - RelationshipDeduplicationResults: internal implementation detail
+}
+
+// SaveExtractionResultsResponse represents the response from SaveExtractionResults
+// Contains the actual entities and relationships that were saved to the database
+type SaveExtractionResultsResponse struct {
+	SavedEntities      []GraphNode         `json:"saved_entities"`      // Actual entities saved (after deduplication)
+	SavedRelationships []GraphRelationship `json:"saved_relationships"` // Actual relationships saved (with updated node IDs)
+	EntitiesCount      int                 `json:"entities_count"`      // Number of entities saved
+	RelationshipsCount int                 `json:"relationships_count"` // Number of relationships saved
+	ProcessedCount     int                 `json:"processed_count"`     // Number of extraction results processed
 }
 
 // SegmentReaction represents a reaction for a segment

@@ -2,6 +2,7 @@ package graphrag
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/yaoapp/gou/graphrag/types"
@@ -161,13 +162,35 @@ func (g *GraphRag) GetSegmentEntities(ctx context.Context, docID string, segment
 	// Convert result nodes to GraphNodes
 	var entities []types.GraphNode
 	for _, node := range result.Nodes {
+		// Extract logical ID from properties (not Neo4j internal ID)
+		var logicalID string
+		if id, ok := node.Properties["id"].(string); ok {
+			logicalID = id
+		} else {
+			// Fallback to Neo4j internal ID if logical ID not found
+			logicalID = node.ID
+			g.Logger.Warnf("No logical ID found in properties for node %s, using internal ID", node.ID)
+		}
+
 		entity := types.GraphNode{
-			ID:         node.ID,
+			ID:         logicalID, // Use logical ID, not Neo4j internal ID
 			Labels:     node.Labels,
 			Properties: node.Properties,
 		}
+
+		// Extract other fields from properties if available
+		if entityType, ok := node.Properties["entity_type"].(string); ok {
+			entity.EntityType = entityType
+		}
+		if description, ok := node.Properties["description"].(string); ok {
+			entity.Description = description
+		}
+		if confidence, ok := node.Properties["confidence"].(float64); ok {
+			entity.Confidence = confidence
+		}
+
 		entities = append(entities, entity)
-		g.Logger.Debugf("Converted entity: %+v", entity)
+		g.Logger.Debugf("Converted entity with logical ID %s: %+v", logicalID, entity)
 	}
 
 	g.Logger.Debugf("Successfully retrieved %d entities for segment %s from graph database", len(entities), segmentID)
@@ -257,13 +280,29 @@ func (g *GraphRag) GetSegmentRelationships(ctx context.Context, docID string, se
 		g.Logger.Warnf("Failed to execute debug relationship query 3: %v", err)
 	} else {
 		g.Logger.Debugf("Sample relationship source_chunks in graph: %+v", debugResult3.Records)
+
+		// Debug: Check for specific relationship between stargate_project and openai
+		debugQueryOpts4 := &types.GraphQueryOptions{
+			GraphName:  graphName,
+			QueryType:  "cypher",
+			Query:      "MATCH (a {id: 'stargate_project'})-[r]-(b {id: 'openai'}) RETURN r, r.source_chunks",
+			Parameters: map[string]interface{}{},
+		}
+		debugResult4, err := g.Graph.Query(ctx, debugQueryOpts4)
+		if err != nil {
+			g.Logger.Warnf("Failed to execute debug relationship query 4: %v", err)
+		} else {
+			g.Logger.Debugf("Stargate-OpenAI relationships in graph: %+v", debugResult4.Records)
+		}
 	}
 
 	// Query relationships that contain this segmentID in their source_chunks
+	// Also return the connected nodes to get their logical IDs
+	// Use DISTINCT to avoid duplicates and query both directions
 	queryOpts := &types.GraphQueryOptions{
 		GraphName: graphName,
 		QueryType: "cypher",
-		Query:     "MATCH ()-[r]->() WHERE $segmentID IN r.source_chunks RETURN r",
+		Query:     "MATCH (start)-[r]-(end) WHERE $segmentID IN r.source_chunks RETURN DISTINCT r, start.id as start_logical_id, end.id as end_logical_id",
 		Parameters: map[string]interface{}{
 			"segmentID": segmentID,
 		},
@@ -281,25 +320,273 @@ func (g *GraphRag) GetSegmentRelationships(ctx context.Context, docID string, se
 	// Print detailed query results for debugging
 	g.Logger.Debugf("Raw relationship query result: %+v", result)
 	for i, rel := range result.Relationships {
-		g.Logger.Debugf("Relationship %d: ID=%s, Type=%s, StartNode=%s, EndNode=%s, Properties=%+v",
-			i, rel.ID, rel.Type, rel.StartNode, rel.EndNode, rel.Properties)
+		// Extract logical ID for debugging
+		var logicalID string
+		if id, ok := rel.Properties["id"].(string); ok {
+			logicalID = id
+		} else {
+			logicalID = rel.ID
+		}
+		g.Logger.Debugf("Relationship %d: LogicalID=%s, Neo4jID=%s, Type=%s, StartNode=%s, EndNode=%s, Properties=%+v",
+			i, logicalID, rel.ID, rel.Type, rel.StartNode, rel.EndNode, rel.Properties)
 	}
 
 	// Convert result relationships to GraphRelationships
 	var relationships []types.GraphRelationship
-	for _, rel := range result.Relationships {
+	seenRelationships := make(map[string]bool) // Track seen relationship IDs to avoid duplicates
+
+	for i, rel := range result.Relationships {
+		// Extract logical ID from properties (not Neo4j internal ID)
+		var logicalID string
+		if id, ok := rel.Properties["id"].(string); ok {
+			logicalID = id
+		} else {
+			// Fallback to Neo4j internal ID if logical ID not found
+			logicalID = rel.ID
+			g.Logger.Warnf("No logical ID found in properties for relationship %s, using internal ID", rel.ID)
+		}
+
+		// Skip if we've already seen this relationship (avoid duplicates)
+		if seenRelationships[logicalID] {
+			g.Logger.Debugf("Skipping duplicate relationship: %s", logicalID)
+			continue
+		}
+		seenRelationships[logicalID] = true
+
+		// Extract logical node IDs from query results
+		var startLogicalID, endLogicalID string
+		if i < len(result.Records) {
+			if record, ok := result.Records[i].(map[string]interface{}); ok {
+				if startID, ok := record["start_logical_id"].(string); ok {
+					startLogicalID = startID
+				} else {
+					startLogicalID = rel.StartNode // Fallback to internal ID
+					g.Logger.Warnf("No start logical ID found for relationship %s, using internal ID %s", logicalID, rel.StartNode)
+				}
+				if endID, ok := record["end_logical_id"].(string); ok {
+					endLogicalID = endID
+				} else {
+					endLogicalID = rel.EndNode // Fallback to internal ID
+					g.Logger.Warnf("No end logical ID found for relationship %s, using internal ID %s", logicalID, rel.EndNode)
+				}
+			} else {
+				// Fallback if record is not a map
+				startLogicalID = rel.StartNode
+				endLogicalID = rel.EndNode
+				g.Logger.Warnf("Record is not a map for relationship %s, using internal node IDs", logicalID)
+			}
+		} else {
+			// Fallback if records don't match
+			startLogicalID = rel.StartNode
+			endLogicalID = rel.EndNode
+			g.Logger.Warnf("No matching record for relationship %s, using internal node IDs", logicalID)
+		}
+
+		// Extract business relationship type from properties (not Neo4j label)
+		var businessType string
+		if relType, ok := rel.Properties["type"].(string); ok {
+			businessType = relType
+		} else {
+			// Fallback to Neo4j relationship label if business type not found
+			businessType = rel.Type
+			g.Logger.Warnf("No business type found in properties for relationship %s, using Neo4j label %s", logicalID, rel.Type)
+		}
+
 		relationship := types.GraphRelationship{
-			ID:         rel.ID,
-			Type:       rel.Type,
-			StartNode:  rel.StartNode,
-			EndNode:    rel.EndNode,
+			ID:         logicalID,      // Use logical ID, not Neo4j internal ID
+			Type:       businessType,   // Use business type from properties, not Neo4j label
+			StartNode:  startLogicalID, // Use logical node ID
+			EndNode:    endLogicalID,   // Use logical node ID
 			Properties: rel.Properties,
 		}
+
+		// Extract other fields from properties if available
+		if description, ok := rel.Properties["description"].(string); ok {
+			relationship.Description = description
+		}
+		if confidence, ok := rel.Properties["confidence"].(float64); ok {
+			relationship.Confidence = confidence
+		}
+		if weight, ok := rel.Properties["weight"].(float64); ok {
+			relationship.Weight = weight
+		}
+
 		relationships = append(relationships, relationship)
-		g.Logger.Debugf("Converted relationship: %+v", relationship)
+		g.Logger.Debugf("Converted relationship with logical ID %s: start=%s, end=%s", logicalID, startLogicalID, endLogicalID)
 	}
 
 	g.Logger.Debugf("Successfully retrieved %d relationships for segment %s from graph database", len(relationships), segmentID)
+	return relationships, nil
+}
+
+// GetSegmentRelationshipsByEntities gets all relationships connected to entities in this segment
+// This method finds all relationships that involve entities from the segment, regardless of where the relationship was originally extracted
+func (g *GraphRag) GetSegmentRelationshipsByEntities(ctx context.Context, docID string, segmentID string) ([]types.GraphRelationship, error) {
+	if docID == "" {
+		return nil, fmt.Errorf("docID cannot be empty")
+	}
+	if segmentID == "" {
+		return nil, fmt.Errorf("segmentID cannot be empty")
+	}
+
+	g.Logger.Debugf("Getting relationships by entities for segment %s in document %s", segmentID, docID)
+
+	// Query directly from graph database
+	if g.Graph == nil {
+		g.Logger.Debugf("Graph database not configured, returning empty relationships")
+		return []types.GraphRelationship{}, nil
+	}
+
+	// Parse collection ID from docID and get the actual graph name
+	collectionID, _ := utils.ExtractCollectionIDFromDocID(docID)
+	if collectionID == "" {
+		collectionID = "default"
+	}
+
+	// Get the actual graph name using GetCollectionIDs
+	ids, err := utils.GetCollectionIDs(collectionID)
+	if err != nil {
+		g.Logger.Warnf("Failed to generate collection IDs for %s: %v", collectionID, err)
+		return []types.GraphRelationship{}, nil
+	}
+	graphName := ids.Graph
+	g.Logger.Debugf("Using collection ID: %s, graph name: %s", collectionID, graphName)
+
+	// Check if graph exists
+	exists, err := g.Graph.GraphExists(ctx, graphName)
+	if err != nil {
+		g.Logger.Warnf("Failed to check graph existence: %v", err)
+		return []types.GraphRelationship{}, nil
+	}
+	if !exists {
+		g.Logger.Debugf("Graph %s does not exist, returning empty relationships", graphName)
+		return []types.GraphRelationship{}, nil
+	}
+
+	// First, get all entities in this segment
+	entities, err := g.GetSegmentEntities(ctx, docID, segmentID)
+	if err != nil {
+		g.Logger.Warnf("Failed to get entities for segment: %v", err)
+		return []types.GraphRelationship{}, nil
+	}
+
+	if len(entities) == 0 {
+		g.Logger.Debugf("No entities found for segment %s, returning empty relationships", segmentID)
+		return []types.GraphRelationship{}, nil
+	}
+
+	// Build list of entity IDs
+	entityIDs := make([]string, len(entities))
+	for i, entity := range entities {
+		entityIDs[i] = entity.ID
+	}
+	g.Logger.Debugf("Found %d entities in segment: %v", len(entityIDs), entityIDs)
+
+	// Query all relationships that involve any of these entities
+	// Use DISTINCT to avoid duplicates and query both directions
+	queryOpts := &types.GraphQueryOptions{
+		GraphName: graphName,
+		QueryType: "cypher",
+		Query:     "MATCH (start)-[r]-(end) WHERE start.id IN $entityIDs OR end.id IN $entityIDs RETURN DISTINCT r, start.id as start_logical_id, end.id as end_logical_id",
+		Parameters: map[string]interface{}{
+			"entityIDs": entityIDs,
+		},
+	}
+
+	g.Logger.Debugf("Executing entity-based relationship query: %s with entityIDs: %v", queryOpts.Query, entityIDs)
+	result, err := g.Graph.Query(ctx, queryOpts)
+	if err != nil {
+		g.Logger.Warnf("Failed to query relationships by entities from graph database: %v", err)
+		return []types.GraphRelationship{}, nil
+	}
+
+	g.Logger.Debugf("Entity-based relationship query returned %d relationships", len(result.Relationships))
+
+	// Convert result relationships to GraphRelationships (reuse the same logic)
+	var relationships []types.GraphRelationship
+	seenRelationships := make(map[string]bool) // Track seen relationship IDs to avoid duplicates
+
+	for i, rel := range result.Relationships {
+		// Extract logical ID from properties (not Neo4j internal ID)
+		var logicalID string
+		if id, ok := rel.Properties["id"].(string); ok {
+			logicalID = id
+		} else {
+			// Fallback to Neo4j internal ID if logical ID not found
+			logicalID = rel.ID
+			g.Logger.Warnf("No logical ID found in properties for relationship %s, using internal ID", rel.ID)
+		}
+
+		// Skip if we've already seen this relationship (avoid duplicates)
+		if seenRelationships[logicalID] {
+			g.Logger.Debugf("Skipping duplicate relationship: %s", logicalID)
+			continue
+		}
+		seenRelationships[logicalID] = true
+
+		// Extract logical node IDs from query results
+		var startLogicalID, endLogicalID string
+		if i < len(result.Records) {
+			if record, ok := result.Records[i].(map[string]interface{}); ok {
+				if startID, ok := record["start_logical_id"].(string); ok {
+					startLogicalID = startID
+				} else {
+					startLogicalID = rel.StartNode // Fallback to internal ID
+					g.Logger.Warnf("No start logical ID found for relationship %s, using internal ID %s", logicalID, rel.StartNode)
+				}
+				if endID, ok := record["end_logical_id"].(string); ok {
+					endLogicalID = endID
+				} else {
+					endLogicalID = rel.EndNode // Fallback to internal ID
+					g.Logger.Warnf("No end logical ID found for relationship %s, using internal ID %s", logicalID, rel.EndNode)
+				}
+			} else {
+				// Fallback if record is not a map
+				startLogicalID = rel.StartNode
+				endLogicalID = rel.EndNode
+				g.Logger.Warnf("Record is not a map for relationship %s, using internal node IDs", logicalID)
+			}
+		} else {
+			// Fallback if records don't match
+			startLogicalID = rel.StartNode
+			endLogicalID = rel.EndNode
+			g.Logger.Warnf("No matching record for relationship %s, using internal node IDs", logicalID)
+		}
+
+		// Extract business relationship type from properties (not Neo4j label)
+		var businessType string
+		if relType, ok := rel.Properties["type"].(string); ok {
+			businessType = relType
+		} else {
+			// Fallback to Neo4j relationship label if business type not found
+			businessType = rel.Type
+			g.Logger.Warnf("No business type found in properties for relationship %s, using Neo4j label %s", logicalID, rel.Type)
+		}
+
+		relationship := types.GraphRelationship{
+			ID:         logicalID,      // Use logical ID, not Neo4j internal ID
+			Type:       businessType,   // Use business type from properties, not Neo4j label
+			StartNode:  startLogicalID, // Use logical node ID
+			EndNode:    endLogicalID,   // Use logical node ID
+			Properties: rel.Properties,
+		}
+
+		// Extract other fields from properties if available
+		if description, ok := rel.Properties["description"].(string); ok {
+			relationship.Description = description
+		}
+		if confidence, ok := rel.Properties["confidence"].(float64); ok {
+			relationship.Confidence = confidence
+		}
+		if weight, ok := rel.Properties["weight"].(float64); ok {
+			relationship.Weight = weight
+		}
+
+		relationships = append(relationships, relationship)
+		g.Logger.Debugf("Converted entity-based relationship with logical ID %s: start=%s, end=%s", logicalID, startLogicalID, endLogicalID)
+	}
+
+	g.Logger.Debugf("Successfully retrieved %d entity-based relationships for segment %s from graph database", len(relationships), segmentID)
 	return relationships, nil
 }
 
@@ -372,101 +659,35 @@ func (g *GraphRag) ExtractSegmentGraph(ctx context.Context, docID string, segmen
 		return nil, fmt.Errorf("no extraction results returned")
 	}
 
+	// Set source information for all extracted entities and relationships before saving
+	g.setSourceInformation(extractionResults, docID, segmentID)
+
+	// Save the extraction results to the graph database
+	saveResponse, err := g.Graph.SaveExtractionResults(ctx, graphName, extractionResults)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save extraction results: %w", err)
+	}
+
+	// --- DEGUG Print Extraction Results ---
+	raw, _ := json.Marshal(extractionResults)
+	fmt.Printf("Extraction Results: ---\n %s\n ---\n", string(raw))
+
 	result := extractionResults[0]
 
-	// Set SourceChunks for all extracted entities and relationships
-	for i := range result.Nodes {
-		if result.Nodes[i].SourceChunks == nil {
-			result.Nodes[i].SourceChunks = []string{}
-		}
-		result.Nodes[i].SourceChunks = append(result.Nodes[i].SourceChunks, segmentID)
-		g.Logger.Debugf("Set SourceChunks for entity %s: %v", result.Nodes[i].ID, result.Nodes[i].SourceChunks)
-	}
-
-	for i := range result.Relationships {
-		if result.Relationships[i].SourceChunks == nil {
-			result.Relationships[i].SourceChunks = []string{}
-		}
-		result.Relationships[i].SourceChunks = append(result.Relationships[i].SourceChunks, segmentID)
-		g.Logger.Debugf("Set SourceChunks for relationship %s: %v", result.Relationships[i].ID, result.Relationships[i].SourceChunks)
-	}
-
-	// Get collection IDs for graph store
-	collectionIDs, err := utils.GetCollectionIDs(graphName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get collection IDs: %w", err)
-	}
-
-	// Store entities to graph store with deduplication
-	var actualEntityIDs []string
-	var entityDeduplicationResults map[string]*types.EntityDeduplicationResult
-	if len(result.Nodes) > 0 {
-		// Convert Node to types.Node for storage
-		entities := make([]types.Node, len(result.Nodes))
-		copy(entities, result.Nodes)
-
-		var oldEntityDeduplicationResults map[string]*EntityDeduplicationResult
-		actualEntityIDs, oldEntityDeduplicationResults, err = g.storeEntitiesToGraphStore(ctx, entities, collectionIDs.Graph, docID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to store entities to graph store: %w", err)
-		}
-
-		// Convert old type to new type
-		entityDeduplicationResults = make(map[string]*types.EntityDeduplicationResult)
-		for k, v := range oldEntityDeduplicationResults {
-			entityDeduplicationResults[k] = &types.EntityDeduplicationResult{
-				NormalizedID: v.NormalizedID,
-				DocIDs:       v.DocIDs,
-				IsUpdate:     v.IsUpdate,
-			}
-		}
-	}
-
-	// Store relationships to graph store with deduplication
-	var actualRelationshipIDs []string
-	var relationshipDeduplicationResults map[string]*types.RelationshipDeduplicationResult
-	if len(result.Relationships) > 0 {
-		// Convert Relationship to types.Relationship for storage
-		relationships := make([]types.Relationship, len(result.Relationships))
-		copy(relationships, result.Relationships)
-
-		var oldRelationshipDeduplicationResults map[string]*RelationshipDeduplicationResult
-		actualRelationshipIDs, oldRelationshipDeduplicationResults, err = g.storeRelationshipsToGraphStore(ctx, relationships, collectionIDs.Graph, docID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to store relationships to graph store: %w", err)
-		}
-
-		// Convert old type to new type
-		relationshipDeduplicationResults = make(map[string]*types.RelationshipDeduplicationResult)
-		for k, v := range oldRelationshipDeduplicationResults {
-			relationshipDeduplicationResults[k] = &types.RelationshipDeduplicationResult{
-				NormalizedID: v.NormalizedID,
-				DocIDs:       v.DocIDs,
-				IsUpdate:     v.IsUpdate,
-			}
-		}
-	}
-
 	// Update the segment in vector database with new extracted entities and relationships
-	err = g.updateSegmentWithExtraction(ctx, docID, segmentID, result, collectionIDs.Vector)
+	// Reuse the ids from earlier call to avoid duplicate GetCollectionIDs
+	err = g.updateSegmentWithExtraction(ctx, docID, segmentID, result, ids.Vector)
 	if err != nil {
 		g.Logger.Warnf("Failed to update segment in vector database: %v", err)
 	}
 
-	// Create extraction result
+	// Create extraction result with only statistical information
 	extractionResult := &types.SegmentExtractionResult{
-		DocID:                            docID,
-		SegmentID:                        segmentID,
-		Text:                             segment.Text,
-		ExtractedEntities:                result.Nodes,
-		ExtractedRelationships:           result.Relationships,
-		ActualEntityIDs:                  actualEntityIDs,
-		ActualRelationshipIDs:            actualRelationshipIDs,
-		EntityDeduplicationResults:       entityDeduplicationResults,
-		RelationshipDeduplicationResults: relationshipDeduplicationResults,
-		ExtractionModel:                  result.Model,
-		EntitiesCount:                    len(result.Nodes),
-		RelationshipsCount:               len(result.Relationships),
+		DocID:              docID,
+		SegmentID:          segmentID,
+		ExtractionModel:    result.Model,
+		EntitiesCount:      saveResponse.EntitiesCount,      // Actual count from database
+		RelationshipsCount: saveResponse.RelationshipsCount, // Actual count from database
 	}
 
 	g.Logger.Infof("Successfully re-extracted graph for segment %s: %d entities, %d relationships",
@@ -574,4 +795,68 @@ func (g *GraphRag) updateSegmentWithExtraction(ctx context.Context, docID string
 
 	g.Logger.Debugf("Successfully updated segment %s in vector database", segmentID)
 	return nil
+}
+
+// setSourceInformation sets source documents and chunks for all extracted entities and relationships
+// This ensures proper tracking of where each entity/relationship was extracted from
+func (g *GraphRag) setSourceInformation(extractionResults []*types.ExtractionResult, docID, segmentID string) {
+	for _, result := range extractionResults {
+		// Set source information for all entities
+		for i := range result.Nodes {
+			node := &result.Nodes[i]
+
+			// Set SourceDocuments with deduplication
+			if node.SourceDocuments == nil {
+				node.SourceDocuments = []string{}
+			}
+			if !g.containsString(node.SourceDocuments, docID) {
+				node.SourceDocuments = append(node.SourceDocuments, docID)
+			}
+
+			// Set SourceChunks with deduplication
+			if node.SourceChunks == nil {
+				node.SourceChunks = []string{}
+			}
+			if !g.containsString(node.SourceChunks, segmentID) {
+				node.SourceChunks = append(node.SourceChunks, segmentID)
+			}
+
+			g.Logger.Debugf("Set source info for entity %s: docs=%v, chunks=%v",
+				node.ID, node.SourceDocuments, node.SourceChunks)
+		}
+
+		// Set source information for all relationships
+		for i := range result.Relationships {
+			relationship := &result.Relationships[i]
+
+			// Set SourceDocuments with deduplication
+			if relationship.SourceDocuments == nil {
+				relationship.SourceDocuments = []string{}
+			}
+			if !g.containsString(relationship.SourceDocuments, docID) {
+				relationship.SourceDocuments = append(relationship.SourceDocuments, docID)
+			}
+
+			// Set SourceChunks with deduplication
+			if relationship.SourceChunks == nil {
+				relationship.SourceChunks = []string{}
+			}
+			if !g.containsString(relationship.SourceChunks, segmentID) {
+				relationship.SourceChunks = append(relationship.SourceChunks, segmentID)
+			}
+
+			g.Logger.Debugf("Set source info for relationship %s: docs=%v, chunks=%v",
+				relationship.ID, relationship.SourceDocuments, relationship.SourceChunks)
+		}
+	}
+}
+
+// containsString checks if a string slice contains a specific string
+func (g *GraphRag) containsString(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }

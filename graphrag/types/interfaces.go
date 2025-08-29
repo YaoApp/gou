@@ -129,6 +129,9 @@ type GraphStore interface {
 	GetRelationships(ctx context.Context, opts *GetRelationshipsOptions) ([]*GraphRelationship, error)
 	DeleteRelationships(ctx context.Context, opts *DeleteRelationshipsOptions) error
 
+	// Save the extraction results and return the actual saved data
+	SaveExtractionResults(ctx context.Context, graphName string, results []*ExtractionResult) (*SaveExtractionResultsResponse, error)
+
 	// Query Operations (flexible query interface)
 	Query(ctx context.Context, opts *GraphQueryOptions) (*GraphResult, error)               // General-purpose graph query with Cypher, traversal, etc.
 	Communities(ctx context.Context, opts *CommunityDetectionOptions) ([]*Community, error) // Community detection and analysis
@@ -202,7 +205,8 @@ type GraphRag interface {
 	// Segment Graph Management
 	GetSegmentGraph(ctx context.Context, docID string, segmentID string) (*SegmentGraph, error)                                            // Get the graph (entities and relationships) for a specific segment
 	GetSegmentEntities(ctx context.Context, docID string, segmentID string) ([]GraphNode, error)                                           // Get the entities for a specific segment
-	GetSegmentRelationships(ctx context.Context, docID string, segmentID string) ([]GraphRelationship, error)                              // Get the relationships for a specific segment
+	GetSegmentRelationships(ctx context.Context, docID string, segmentID string) ([]GraphRelationship, error)                              // Get the relationships for a specific segment (filtered by segmentID in source_chunks)
+	GetSegmentRelationshipsByEntities(ctx context.Context, docID string, segmentID string) ([]GraphRelationship, error)                    // Get all relationships connected to entities in this segment (regardless of relationship source_chunks)
 	ExtractSegmentGraph(ctx context.Context, docID string, segmentID string, options *ExtractionOptions) (*SegmentExtractionResult, error) // Re-extract entities and relationships for a specific segment
 
 	// Search Management
