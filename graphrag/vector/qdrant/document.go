@@ -1144,3 +1144,42 @@ func (s *Store) GetMetadata(ctx context.Context, collectionName string, document
 
 	return metadata, nil
 }
+
+// Count returns the number of documents in a collection that match the given filter
+func (s *Store) Count(ctx context.Context, collectionName string, filter map[string]interface{}) (int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if !s.connected {
+		return 0, fmt.Errorf("not connected to Qdrant")
+	}
+
+	if collectionName == "" {
+		return 0, fmt.Errorf("collection name is required")
+	}
+
+	// Convert filter to Qdrant filter format
+	var qdrantFilter *qdrant.Filter
+	if len(filter) > 0 {
+		convertedFilter, err := convertFilterToQdrant(filter)
+		if err != nil {
+			return 0, fmt.Errorf("failed to convert filter: %w", err)
+		}
+		qdrantFilter = convertedFilter
+	}
+
+	// Create count request
+	countReq := &qdrant.CountPoints{
+		CollectionName: collectionName,
+		Filter:         qdrantFilter,
+		Exact:          qdrant.PtrOf(true), // Use exact count for accuracy
+	}
+
+	// Execute count query
+	countResult, err := s.client.Count(ctx, countReq)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count documents in collection %s: %w", collectionName, err)
+	}
+
+	return int64(countResult), nil
+}
