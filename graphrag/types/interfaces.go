@@ -32,6 +32,7 @@ type VectorStore interface {
 	// Document Listing and Pagination
 	ListDocuments(ctx context.Context, opts *ListDocumentsOptions) (*PaginatedDocumentsResult, error) // deprecated
 	ScrollDocuments(ctx context.Context, opts *ScrollOptions) (*ScrollResult, error)
+	Count(ctx context.Context, collectionName string, filter map[string]interface{}) (int64, error) // Count documents with filter
 
 	// Vector Search Operations (core functionality)
 	SearchSimilar(ctx context.Context, opts *SearchOptions) (*SearchResult, error)
@@ -187,6 +188,7 @@ type GraphRag interface {
 	GetSegmentParents(ctx context.Context, docID string, segmentID string) (*SegmentTree, error)                         // Get parent tree of a given segment, return hierarchical tree structure
 	// ListSegments(ctx context.Context, docID string, options *ListSegmentsOptions) (*PaginatedSegmentsResult, error)      // List segments with pagination, return segments Deprecated
 	ScrollSegments(ctx context.Context, docID string, options *ScrollSegmentsOptions) (*SegmentScrollResult, error) // Scroll segments with iterator-style pagination, return segments
+	SegmentCount(ctx context.Context, docID string) (int, error)                                                    // Get segment count for a document
 
 	// Segment Voting, Scoring, Weighting, Hit
 	UpdateVotes(ctx context.Context, docID string, segments []SegmentVote, options ...UpdateVoteOptions) (int, error)       // Vote for segments, return updated count

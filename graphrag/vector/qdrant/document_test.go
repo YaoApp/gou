@@ -2949,3 +2949,137 @@ func TestCollectionUsesNamedVectors(t *testing.T) {
 		}
 	})
 }
+
+func TestCount(t *testing.T) {
+	t.Run("count documents in collection", func(t *testing.T) {
+		withDocumentTestEnvironment(t, func(env *DocumentTestEnvironment) {
+			ctx := context.Background()
+
+			// Test count on empty collection
+			count, err := env.Store.Count(ctx, env.CollectionName, nil)
+			if err != nil {
+				t.Errorf("Count() on empty collection failed: %v", err)
+			}
+			if count != 0 {
+				t.Errorf("Count() on empty collection expected 0, got %d", count)
+			}
+
+			// Add some test documents with specific metadata
+			docs := []*types.Document{
+				{
+					ID:      "doc1",
+					Content: "test document 1",
+					Vector:  generateTestVector(128),
+					Metadata: map[string]interface{}{
+						"doc_id": "doc1",
+						"type":   "chunk",
+						"source": "test",
+					},
+				},
+				{
+					ID:      "doc2",
+					Content: "test document 2",
+					Vector:  generateTestVector(128),
+					Metadata: map[string]interface{}{
+						"doc_id": "doc2",
+						"type":   "chunk",
+						"source": "test",
+					},
+				},
+				{
+					ID:      "doc3",
+					Content: "test document 3",
+					Vector:  generateTestVector(128),
+					Metadata: map[string]interface{}{
+						"doc_id": "doc3",
+						"type":   "entity",
+						"source": "test",
+					},
+				},
+			}
+
+			_, err = env.Store.AddDocuments(ctx, &types.AddDocumentOptions{
+				CollectionName: env.CollectionName,
+				Documents:      docs,
+			})
+			if err != nil {
+				t.Fatalf("Failed to add documents: %v", err)
+			}
+
+			// Test count all documents
+			count, err = env.Store.Count(ctx, env.CollectionName, nil)
+			if err != nil {
+				t.Errorf("Count() all documents failed: %v", err)
+			}
+			if count != 3 {
+				t.Errorf("Count() all documents expected 3, got %d", count)
+			}
+
+			// Test count with filter by type
+			filter := map[string]interface{}{
+				"type": "chunk",
+			}
+			count, err = env.Store.Count(ctx, env.CollectionName, filter)
+			if err != nil {
+				t.Errorf("Count() with type filter failed: %v", err)
+			}
+			if count != 2 {
+				t.Errorf("Count() with type=chunk expected 2, got %d", count)
+			}
+
+			// Test count with filter by doc_id
+			filter = map[string]interface{}{
+				"doc_id": "doc1",
+			}
+			count, err = env.Store.Count(ctx, env.CollectionName, filter)
+			if err != nil {
+				t.Errorf("Count() with doc_id filter failed: %v", err)
+			}
+			if count != 1 {
+				t.Errorf("Count() with doc_id=doc1 expected 1, got %d", count)
+			}
+
+			// Test count with non-matching filter
+			filter = map[string]interface{}{
+				"doc_id": "nonexistent",
+			}
+			count, err = env.Store.Count(ctx, env.CollectionName, filter)
+			if err != nil {
+				t.Errorf("Count() with non-matching filter failed: %v", err)
+			}
+			if count != 0 {
+				t.Errorf("Count() with non-matching filter expected 0, got %d", count)
+			}
+		})
+	})
+
+	t.Run("count with invalid parameters", func(t *testing.T) {
+		withDocumentTestEnvironment(t, func(env *DocumentTestEnvironment) {
+			ctx := context.Background()
+
+			// Test count with empty collection name
+			_, err := env.Store.Count(ctx, "", nil)
+			if err == nil {
+				t.Error("Count() with empty collection name should return error")
+			}
+
+			// Test count with non-existent collection
+			_, err = env.Store.Count(ctx, "nonexistent_collection", nil)
+			if err == nil {
+				t.Error("Count() with non-existent collection should return error")
+			}
+		})
+	})
+
+	t.Run("count with disconnected store", func(t *testing.T) {
+		unconnectedStore := NewStore()
+		defer func() {
+			_ = unconnectedStore.Disconnect(context.Background())
+		}()
+
+		_, err := unconnectedStore.Count(context.Background(), "test_collection", nil)
+		if err == nil {
+			t.Error("Count() expected error for not connected store, got nil")
+		}
+	})
+}
