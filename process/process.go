@@ -215,6 +215,12 @@ func (process *Process) WithRuntime(runtime Runtime) *Process {
 	return process
 }
 
+// WithCallback set the callback function
+func (process *Process) WithCallback(callback CallbackFunc) *Process {
+	process.Callback = callback
+	return process
+}
+
 // String the process as string
 func (process Process) String() string {
 	args, _ := jsoniter.MarshalToString(process.Args)
