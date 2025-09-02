@@ -29,6 +29,7 @@ func NewWithContext(ctx context.Context, name string, args ...interface{}) *Proc
 	if err != nil {
 		exception.New("%s", 500, err.Error()).Throw()
 	}
+	process.Context = ctx
 	return process
 }
 
