@@ -15,8 +15,8 @@ type Process struct {
 	Global   map[string]interface{} // Global vars
 	Sid      string                 // Session ID
 	Context  context.Context        // Context
-	Runtime  Runtime                // Runtime
-	Callback CallbackFunc           // Callback
+	Runtime  Runtime                `json:"-"` // Runtime
+	Callback CallbackFunc           `json:"-"` // Callback
 	_val     *interface{}           // Value // The result of the process
 }
 
