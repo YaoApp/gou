@@ -97,19 +97,6 @@ func LoadSource(source []byte, id string, file string) (*Model, error) {
 		})
 	}
 
-	for i, column := range mod.MetaData.Columns {
-		mod.MetaData.Columns[i].model = mod
-		columns[column.Name] = &mod.MetaData.Columns[i]
-		columnNames = append(columnNames, column.Name)
-		if strings.ToLower(column.Type) == "id" || column.Primary == true {
-			PrimaryKey = column.Name
-		}
-
-		if column.Unique || column.Primary {
-			uniqueColumns = append(uniqueColumns, columns[column.Name])
-		}
-	}
-
 	// Add permission columns if enabled
 	if mod.MetaData.Option.Permission {
 		mod.MetaData.Columns = append(mod.MetaData.Columns,
@@ -148,31 +135,20 @@ func LoadSource(source []byte, id string, file string) (*Model, error) {
 				Length:   128,
 				Index:    true,
 			},
-			Column{
-				Label:    "::Public Read",
-				Name:     "__yao_public_read",
-				Type:     "boolean",
-				Comment:  "::Public Read Permission",
-				Nullable: false,
-				Default:  false,
-			},
-			Column{
-				Label:    "::Public Write",
-				Name:     "__yao_public_write",
-				Type:     "boolean",
-				Comment:  "::Public Write Permission",
-				Nullable: false,
-				Default:  false,
-			},
-			Column{
-				Label:    "::Inherit From",
-				Name:     "__yao_inherit_from",
-				Type:     "string",
-				Comment:  "::Inherit Permission From Parent Resource ID",
-				Nullable: true,
-				Length:   128,
-			},
 		)
+	}
+
+	for i, column := range mod.MetaData.Columns {
+		mod.MetaData.Columns[i].model = mod
+		columns[column.Name] = &mod.MetaData.Columns[i]
+		columnNames = append(columnNames, column.Name)
+		if strings.ToLower(column.Type) == "id" || column.Primary == true {
+			PrimaryKey = column.Name
+		}
+
+		if column.Unique || column.Primary {
+			uniqueColumns = append(uniqueColumns, columns[column.Name])
+		}
 	}
 
 	// Process unique indexes (avoid duplicates)

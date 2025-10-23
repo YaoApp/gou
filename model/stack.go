@@ -169,6 +169,21 @@ func (stack *QueryStack) Paginate(page int, pagesize int) maps.MapStrAny {
 	return response
 }
 
+// Count 统计记录数
+func (stack *QueryStack) Count() (int64, error) {
+	if len(stack.Builders) == 0 {
+		return 0, nil
+	}
+
+	builder := stack.Builders[0]
+	count, err := builder.Query.Count()
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (stack *QueryStack) paginate(page int, pagesize int, res *[][]maps.MapStrAny, builder QueryStackBuilder, param QueryStackParam) xun.P {
 
 	rows := []xun.R{}

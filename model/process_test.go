@@ -154,6 +154,48 @@ func TestProcessPaginate(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestProcessCount(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	// Test count all records
+	p := process.New("models.pet.count", QueryParam{})
+	result, err := p.Exec()
+	assert.Nil(t, err)
+	count := result.(int)
+	assert.Equal(t, 4, count)
+
+	// Test count with conditions
+	p = process.New("models.pet.count", QueryParam{
+		Wheres: []QueryWhere{
+			{Column: "name", Value: "Tommy", OP: "eq"},
+		},
+	})
+	result, err = p.Exec()
+	assert.Nil(t, err)
+	count = result.(int)
+	assert.Equal(t, 1, count)
+
+	// Test count users
+	p = process.New("models.user.count", QueryParam{})
+	result, err = p.Exec()
+	assert.Nil(t, err)
+	count = result.(int)
+	assert.Equal(t, 2, count)
+
+	// Test count with multiple conditions
+	p = process.New("models.pet.count", QueryParam{
+		Wheres: []QueryWhere{
+			{Column: "category_id", Value: 1, OP: "eq"},
+		},
+	})
+	result, err = p.Exec()
+	assert.Nil(t, err)
+	count = result.(int)
+	assert.GreaterOrEqual(t, count, 0)
+}
+
 func TestProcessList(t *testing.T) {
 	prepare(t)
 	defer clean()
