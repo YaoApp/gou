@@ -19,6 +19,7 @@ var ModelHandlers = map[string]process.Handler{
 	"find":                processFind,
 	"get":                 processGet,
 	"paginate":            processPaginate,
+	"count":               processCount,
 	"create":              processCreate,
 	"update":              processUpdate,
 	"save":                processSave,
@@ -218,6 +219,17 @@ func processPaginate(process *process.Process) interface{} {
 	page := any.Of(process.Args[1]).CInt()
 	pagesize := any.Of(process.Args[2]).CInt()
 	return mod.MustPaginate(params, page, pagesize)
+}
+
+// processCount 运行模型 MustCount
+func processCount(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	mod := Select(process.ID)
+	params, ok := AnyToQueryParam(process.Args[0])
+	if !ok {
+		exception.New("第1个查询参数错误 %v", 400, process.Args[0]).Throw()
+	}
+	return mod.MustCount(params)
 }
 
 // processCreate 运行模型 MustCreate

@@ -195,3 +195,11 @@ type IEncryptor interface {
 	Decode(value string) (string, error)
 	Validate(hash string, value string) bool
 }
+
+// AccessScope the data access scope for permission filtering
+type AccessScope struct {
+	CreatedBy string `json:"__yao_created_by,omitempty"` // The user ID who created the record
+	UpdatedBy string `json:"__yao_updated_by,omitempty"` // The user ID who updated the record
+	TeamID    string `json:"__yao_team_id,omitempty"`    // The team ID
+	TenantID  string `json:"__yao_tenant_id,omitempty"`  // The tenant ID
+}

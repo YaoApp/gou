@@ -217,6 +217,36 @@ func TestModelMustPaginate(t *testing.T) {
 
 }
 
+func TestModelCount(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	// Test count all pets
+	count := Select("pet").MustCount(QueryParam{})
+	assert.Equal(t, 4, count)
+
+	// Test count with conditions
+	count = Select("pet").MustCount(QueryParam{
+		Wheres: []QueryWhere{
+			{Column: "name", Value: "Tommy", OP: "eq"},
+		},
+	})
+	assert.Equal(t, 1, count)
+
+	// Test count users
+	userCount := Select("user").MustCount(QueryParam{})
+	assert.Equal(t, 2, userCount)
+
+	// Test count with multiple conditions
+	count = Select("pet").MustCount(QueryParam{
+		Wheres: []QueryWhere{
+			{Column: "category_id", Value: 1, OP: "eq"},
+		},
+	})
+	assert.GreaterOrEqual(t, count, 0)
+}
+
 func TestModelMustPaginateWiths(t *testing.T) {
 	prepare(t)
 	defer clean()

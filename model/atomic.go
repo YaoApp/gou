@@ -73,6 +73,23 @@ func (mod *Model) MustPaginate(param QueryParam, page int, pagesize int) maps.Ma
 	return res
 }
 
+// Count count records with the given conditions
+func (mod *Model) Count(param QueryParam) (int, error) {
+	param.Model = mod.Name
+	stack := NewQueryStack(param)
+	count, err := stack.Count()
+	return int(count), err
+}
+
+// MustCount count records with the given conditions, throw exception on error
+func (mod *Model) MustCount(param QueryParam) int {
+	count, err := mod.Count(param)
+	if err != nil {
+		exception.Err(err, 500).Throw()
+	}
+	return count
+}
+
 // Create 创建单条数据, 返回新创建数据ID
 func (mod *Model) Create(row maps.MapStrAny) (int, error) {
 
