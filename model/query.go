@@ -341,11 +341,19 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 
 	// Sub wheres
 	if where.Wheres != nil {
-		qb.Where(func(sub query.Query) {
+		callback := func(sub query.Query) {
 			for _, subwhere := range where.Wheres {
 				param.Where(subwhere, sub, m)
 			}
-		})
+		}
+
+		// Use the parent's method to determine and/or
+		switch strings.ToLower(where.Method) {
+		case "orwhere":
+			qb.OrWhere(callback)
+		default:
+			qb.Where(callback)
+		}
 		return
 	}
 
