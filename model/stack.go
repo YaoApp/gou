@@ -186,6 +186,11 @@ func (stack *QueryStack) Count() (int64, error) {
 
 func (stack *QueryStack) paginate(page int, pagesize int, res *[][]maps.MapStrAny, builder QueryStackBuilder, param QueryStackParam) xun.P {
 
+	// Debug mode Log SQL
+	if param.QueryParam.Debug {
+		defer log.With(log.F{"page": page, "pagesize": pagesize, "bindings": builder.Query.GetBindings()}).Trace(builder.Query.ToSQL())
+	}
+
 	rows := []xun.R{}
 	pageRes := builder.Query.MustPaginate(pagesize, page)
 	for _, item := range pageRes.Items {
@@ -218,11 +223,12 @@ func (stack *QueryStack) run(res *[][]maps.MapStrAny, builder QueryStackBuilder,
 		limit = param.QueryParam.Limit
 	}
 
-	defer log.
-		With(log.F{
+	if param.QueryParam.Debug {
+		defer log.With(log.F{
 			"sql":      builder.Query.Limit(limit).ToSQL(),
 			"bindings": builder.Query.Limit(limit).GetBindings()}).
-		Trace("QueryStack run()")
+			Trace("QueryStack run()")
+	}
 
 	rows := builder.Query.Limit(limit).MustGet()
 	fmtRows := []maps.MapStr{}
@@ -243,6 +249,13 @@ func (stack *QueryStack) run(res *[][]maps.MapStrAny, builder QueryStackBuilder,
 }
 
 func (stack *QueryStack) runHasMany(res *[][]maps.MapStrAny, builder QueryStackBuilder, param QueryStackParam) {
+
+	if param.QueryParam.Debug {
+		defer log.With(log.F{
+			"sql":      builder.Query.ToSQL(),
+			"bindings": builder.Query.GetBindings()}).
+			Trace("QueryStack runHasMany()")
+	}
 
 	// 获取上次查询结果，拼接结果集ID
 	rel := stack.Relation()

@@ -144,6 +144,7 @@ type ExportData struct {
 
 // QueryParam 数据查询器参数
 type QueryParam struct {
+	Debug    bool            `json:"debug,omitempty"` // Whether to debug the query.
 	Model    string          `json:"model,omitempty"`
 	Table    string          `json:"table,omitempty"`
 	Alias    string          `json:"alias,omitempty"`
