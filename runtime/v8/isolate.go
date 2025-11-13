@@ -2,6 +2,7 @@ package v8
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	atobT "github.com/yaoapp/gou/runtime/v8/functions/atob"
@@ -26,6 +27,11 @@ import (
 )
 
 var isoReady chan *store.Isolate
+
+// thirdPartyObjects third party objects
+var keepWords = []string{"log", "time", "http", "Exception", "FS", "Job", "Store", "Plan", "Query", "WebSocket", "$L", "Process", "Eval"}
+var thirdPartyObjects map[string]*ThirdPartyObject = make(map[string]*ThirdPartyObject)
+var thirdPartyFunctions map[string]*ThirdPartyFunction = make(map[string]*ThirdPartyFunction)
 
 // initialize create a new Isolate
 // in performance mode, the minSize isolates will be created
@@ -54,12 +60,49 @@ func release() {
 	}
 }
 
+// RegisterObject register a third party object
+func RegisterObject(name string, object EmbedObject, attributes ...v8go.PropertyAttribute) error {
+
+	// Validate the name
+	if slices.Contains(keepWords, name) {
+		log.Error("[V8] Register object %s failed: %s", name, "The name is reserved")
+		return fmt.Errorf("the name is reserved")
+	}
+
+	syncLock.Lock()
+	defer syncLock.Unlock()
+	thirdPartyObjects[name] = &ThirdPartyObject{
+		Name:       name,
+		Object:     object,
+		Attributes: attributes,
+	}
+	return nil
+}
+
+// RegisterFunction register a third party function
+func RegisterFunction(name string, function EmbedFunction, attributes ...v8go.PropertyAttribute) error {
+
+	// Validate the name
+	if slices.Contains(keepWords, name) {
+		log.Error("[V8] Register function %s failed: %s", name, "The name is reserved")
+		return fmt.Errorf("the name is reserved")
+	}
+
+	syncLock.Lock()
+	defer syncLock.Unlock()
+	thirdPartyFunctions[name] = &ThirdPartyFunction{
+		Name:       name,
+		Function:   function,
+		Attributes: attributes,
+	}
+	return nil
+}
+
 // precompile compile the loaded scirpts
 // it cost too much time and memory to compile all scripts
 // ignore the error
-func precompile(iso *store.Isolate) {
-	return
-}
+// func precompile(iso *store.Isolate) {
+// }
 
 // MakeTemplate make a new template
 func MakeTemplate(iso *v8go.Isolate) *v8go.ObjectTemplate {
@@ -88,6 +131,23 @@ func MakeTemplate(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	// Window object (std functions)
 	template.Set("atob", atobT.ExportFunction(iso))
 	template.Set("btoa", btoaT.ExportFunction(iso))
+
+	// Register third party objects
+	for name, object := range thirdPartyObjects {
+		err := template.Set(name, object.Object(iso), object.Attributes...)
+		if err != nil {
+			log.Error("[V8] Register object %s failed: %s", name, err.Error())
+		}
+	}
+
+	// Register third party functions
+	for name, function := range thirdPartyFunctions {
+		err := template.Set(name, function.Function(iso), function.Attributes...)
+		if err != nil {
+			log.Error("[V8] Register function %s failed: %s", name, err.Error())
+		}
+	}
+
 	return template
 }
 

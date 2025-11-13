@@ -499,6 +499,108 @@ func SelectRoot(id string) (*Script, error) {
 	return script, nil
 }
 
+// Call call the function directly
+func Call(options CallOptions, source string, args ...interface{}) (interface{}, error) {
+	timeout := options.Timeout
+	if timeout == 0 {
+		timeout = time.Duration(runtimeOption.ContextTimeout) * time.Millisecond
+	}
+
+	name := extractFunctionName(source)
+	source = reFuncHead.ReplaceAllString(source, "($2) => {")
+	var instance *v8go.UnboundScript
+
+	// The performance mode
+	var ctx *v8go.Context
+	var err error
+	defer func() {
+		if ctx != nil {
+			ctx.Close()
+			ctx = nil
+		}
+	}()
+
+	if runtimeOption.Mode == "performance" {
+
+		runner, err := dispatcher.Select(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
+		if err != nil {
+			return nil, err
+		}
+
+		runner.global = options.Global
+		runner.sid = options.Sid
+		ctx, err = runner.Context()
+		if err != nil {
+			return nil, err
+		}
+
+		instance, err = ctx.Isolate().CompileUnboundScript(source, name, v8go.CompileOptions{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	iso, err := SelectIsoStandard(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx = v8go.NewContext(iso, iso.Template)
+	instance, err = iso.CompileUnboundScript(source, name, v8go.CompileOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	fn, err := instance.Run(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer fn.Release()
+
+	global := ctx.Global()
+	global.Set(name, fn)
+	defer global.Delete(name)
+
+	// Set the global data
+	err = bridge.SetShareData(ctx, global, &bridge.Share{
+		Sid:    options.Sid,
+		Root:   false,
+		Global: options.Global,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// console.log("foo", "bar", 1, 2, 3, 4)
+	err = console.New(runtimeOption.ConsoleMode).Set("console", ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Run the method
+	jsArgs, err := bridge.JsValues(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	defer bridge.FreeJsValues(jsArgs)
+
+	jsRes, err := global.MethodCall(name, bridge.Valuers(jsArgs)...)
+	if err != nil {
+		if e, ok := err.(*v8go.JSError); ok {
+			PrintException(name, args, e, nil)
+		}
+		log.Error("%s %s", name, err.Error())
+		return nil, err
+	}
+
+	goRes, err := bridge.GoValue(jsRes, ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return goRes, nil
+}
+
 // NewContext create a new context
 func (script *Script) NewContext(sid string, global map[string]interface{}) (*Context, error) {
 
