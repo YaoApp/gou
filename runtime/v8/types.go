@@ -36,6 +36,33 @@ type Option struct {
 
 }
 
+// EmbedFunction embed function
+type EmbedFunction func(iso *v8go.Isolate) *v8go.FunctionTemplate
+
+// EmbedObject embed object
+type EmbedObject func(iso *v8go.Isolate) *v8go.ObjectTemplate
+
+// ThirdPartyObject third party object
+type ThirdPartyObject struct {
+	Name       string
+	Object     EmbedObject
+	Attributes []v8go.PropertyAttribute
+}
+
+// ThirdPartyFunction third party function
+type ThirdPartyFunction struct {
+	Name       string
+	Function   EmbedFunction
+	Attributes []v8go.PropertyAttribute
+}
+
+// CallOptions call options
+type CallOptions struct {
+	Sid     string
+	Global  map[string]interface{}
+	Timeout time.Duration
+}
+
 // TSConfig TypeScript config
 type TSConfig struct {
 	CompilerOptions *TSConfigCompilerOptions `json:"compilerOptions,omitempty"`

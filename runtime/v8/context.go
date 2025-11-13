@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/google/uuid"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/runtime/v8/objects/console"
 	"github.com/yaoapp/kun/log"
@@ -68,9 +67,9 @@ func (context *Context) Call(method string, args ...interface{}) (interface{}, e
 // CallAnonymous call the script function with anonymous function
 func (context *Context) CallAnonymous(source string, args ...interface{}) (interface{}, error) {
 
-	// Remove the function name from the source, if it exists regex
+	// Extract function name for debugging, then remove it from source
+	name := extractFunctionName(source)
 	source = reFuncHead.ReplaceAllString(source, "")
-	name := fmt.Sprintf("__anonymous_%s", uuid.New().String())
 
 	script, err := context.Isolate.CompileUnboundScript(source, name, v8go.CompileOptions{})
 	if err != nil {
@@ -94,11 +93,22 @@ func (context *Context) CallAnonymous(source string, args ...interface{}) (inter
 	return res, nil
 }
 
+// extractFunctionName extracts the function name from source code
+// If the source contains a named function (e.g., "function foo(arg)"), it returns the name
+// Otherwise, returns "<anonymous>"
+func extractFunctionName(source string) string {
+	matches := reFuncHead.FindStringSubmatch(source)
+	if len(matches) > 1 && matches[1] != "" {
+		return matches[1]
+	}
+	return "<anonymous>"
+}
+
 // CallAnonymousWith call the script function with anonymous function
 func (context *Context) CallAnonymousWith(ctx context.Context, source string, args ...interface{}) (interface{}, error) {
 
+	name := extractFunctionName(source)
 	source = reFuncHead.ReplaceAllString(source, "($2) => {")
-	name := fmt.Sprintf("__anonymous_%s", uuid.New().String())
 
 	script, err := context.Isolate.CompileUnboundScript(source, name, v8go.CompileOptions{})
 	if err != nil {

@@ -62,19 +62,15 @@ func JsError(ctx *v8go.Context, err interface{}) *v8go.Value {
 	switch v := err.(type) {
 	case string:
 		message = v
-		break
 
 	case error:
 		message = exception.Trim(v)
-		break
 
 	case *exception.Exception:
 		message = exception.Trim(fmt.Errorf("%s", v.Message))
-		break
 
 	case exception.Exception:
 		message = exception.Trim(fmt.Errorf("%s", v.Message))
-		break
 
 	default:
 		message = fmt.Sprintf("%v", err)
@@ -169,7 +165,7 @@ func GoValues(jsValues []*v8go.Value, ctx *v8go.Context) ([]interface{}, error) 
 // * | ✅ | io.WriteCloser          | object(external)          |
 // * | ✅ | *gin.Context            | object(external)          |
 // * | ✅ | *gin.ResponseWriter     | object(external)          |
-// * | ✅ | bridge.Valuer           | custom value interface     |
+// * | ✅ | bridge.Valuer           | custom value interface    |
 // * |-----------------------------------------------------------
 func JsValue(ctx *v8go.Context, value interface{}) (*v8go.Value, error) {
 
