@@ -55,6 +55,7 @@ func (context *Context) Call(method string, args ...interface{}) (interface{}, e
 		log.Error("%s.%s %s", context.ID, method, err.Error())
 		return nil, err
 	}
+	defer jsRes.Release() // Release the js value
 
 	goRes, err := bridge.GoValue(jsRes, context.Context)
 	if err != nil {
@@ -197,6 +198,7 @@ func (context *Context) CallWith(ctx context.Context, method string, args ...int
 				errChan <- err
 				return
 			}
+			defer jsRes.Release() // Release the js value
 
 			goRes, err := bridge.GoValue(jsRes, context.Context)
 			if err != nil {
