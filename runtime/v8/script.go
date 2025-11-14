@@ -630,6 +630,7 @@ func (script *Script) NewContext(sid string, global map[string]interface{}) (*Co
 			Data:        global,
 			Root:        script.Root,
 			Timeout:     timeout,
+			script:      script,
 			Runner:      runner,
 			Context:     ctx,
 			SourceRoots: script.SourceRoots,
@@ -703,23 +704,96 @@ func (script *Script) execPerformance(process *process.Process) interface{} {
 
 // execStandard execute the script in standard mode
 func (script *Script) execStandard(process *process.Process) interface{} {
+	// Check if there's a shared V8 context from parent call
+	if process.V8Context != nil {
+		if v8ctx, ok := process.V8Context.(*v8go.Context); ok {
+			// Use shared context, no resource cleanup
+			return script.execStandardWithSharedContext(v8ctx, process)
+		}
+	}
 
+	// No shared context, create new isolate and context with full resource management
+	return script.execStandardStandalone(process)
+}
+
+// execStandardWithSharedContext execute script with shared V8 context (no resource cleanup)
+func (script *Script) execStandardWithSharedContext(ctx *v8go.Context, process *process.Process) interface{} {
+
+	// Create instance of the script
+	instance, err := ctx.Isolate().CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})
+	if err != nil {
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
+	v, err := instance.Run(ctx)
+	if err != nil {
+		return err
+	}
+	defer v.Release()
+
+	// Set the global data
+	global := ctx.Global()
+	err = bridge.SetShareData(ctx, global, &bridge.Share{
+		Sid:    process.Sid,
+		Root:   script.Root,
+		Global: process.Global,
+	})
+	if err != nil {
+		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
+
+	// console.log("foo", "bar", 1, 2, 3, 4)
+	err = console.New(runtimeOption.ConsoleMode).Set("console", ctx)
+	if err != nil {
+		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
+		return nil
+	}
+
+	// Run the method
+	jsArgs, err := bridge.JsValues(ctx, process.Args)
+	if err != nil {
+		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
+		exception.New(err.Error(), 500).Throw()
+		return nil
+	}
+	defer bridge.FreeJsValues(jsArgs)
+
+	jsRes, err := global.MethodCall(process.Method, bridge.Valuers(jsArgs)...)
+	if err != nil {
+		// Debug output the error stack
+		if e, ok := err.(*v8go.JSError); ok {
+			PrintException(process.Method, process.Args, e, script.SourceRoots)
+		}
+
+		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
+		exception.Err(err, 500).Throw()
+		return nil
+	}
+
+	goRes, err := bridge.GoValue(jsRes, ctx)
+	if err != nil {
+		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
+		exception.New(err.Error(), 500).Throw()
+		return nil
+	}
+
+	return goRes
+}
+
+// execStandardStandalone execute script as standalone (creates and cleans up own isolate)
+func (script *Script) execStandardStandalone(process *process.Process) interface{} {
 	iso, err := SelectIsoStandard(time.Duration(runtimeOption.DefaultTimeout) * time.Millisecond)
 	if err != nil {
 		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
 		return nil
 	}
+	
 	defer iso.Dispose()
 
 	ctx := v8go.NewContext(iso, iso.Template)
 	defer ctx.Close()
-
-	// Next Version will support this, snapshot will be used in the next version
-	// ctx, err := iso.Context()
-	// if err != nil {
-	// 	exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
-	// 	return nil
-	// }
 
 	// Create instance of the script
 	instance, err := iso.CompileUnboundScript(script.Source, script.File, v8go.CompileOptions{})

@@ -122,6 +122,7 @@ type Context struct {
 	Root        bool
 	Timeout     time.Duration // terminate the execution after this time
 	SourceRoots interface{}   // the script source root mappping
+	script      *Script       // the script instance (for performance mode)
 	*Runner
 	*store.Isolate
 	*v8go.UnboundScript
