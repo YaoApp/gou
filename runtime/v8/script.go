@@ -789,7 +789,7 @@ func (script *Script) execStandardStandalone(process *process.Process) interface
 		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
 		return nil
 	}
-	
+
 	defer iso.Dispose()
 
 	ctx := v8go.NewContext(iso, iso.Template)
