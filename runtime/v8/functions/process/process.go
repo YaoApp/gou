@@ -39,14 +39,22 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		}
 	}
 
-	goRes, err := process.New(jsArgs[0].String(), goArgs...).
+	// Create process with V8 context to maintain thread affinity
+	proc := process.New(jsArgs[0].String(), goArgs...).
 		WithGlobal(share.Global).
 		WithSID(share.Sid).
-		Exec()
+		WithV8Context(info.Context())
 
+	// Execute synchronously in current thread (V8 callback must not create goroutines)
+	// This ensures thread affinity for V8 isolate and avoids signal stack issues
+	err = proc.ExecuteSync()
 	if err != nil {
 		return bridge.JsException(info.Context(), err)
 	}
+
+	// Get the result and release resources
+	goRes := proc.Value()
+	defer proc.Release()
 
 	jsRes, err := bridge.JsValue(info.Context(), goRes)
 	if err != nil {

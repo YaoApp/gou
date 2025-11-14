@@ -3,6 +3,7 @@ package v8
 import (
 	"fmt"
 	"slices"
+	"sync"
 	"time"
 
 	atobT "github.com/yaoapp/gou/runtime/v8/functions/atob"
@@ -27,6 +28,7 @@ import (
 )
 
 var isoReady chan *store.Isolate
+var isoCreateLock sync.Mutex // Protects concurrent isolate creation to avoid V8 allocator contention
 
 // thirdPartyObjects third party objects
 var keepWords = []string{"log", "time", "http", "Exception", "FS", "Job", "Store", "Plan", "Query", "WebSocket", "$L", "Process", "Eval"}
@@ -163,7 +165,13 @@ func makeIsolate() *store.Isolate {
 	// 	return nil
 	// }
 
+	// Protect concurrent isolate creation to avoid V8 allocator contention
+	// V8's default_allocator is shared across all isolates and can experience
+	// contention under high concurrency (100+ simultaneous creations)
+	isoCreateLock.Lock()
 	iso := v8go.YaoNewIsolate()
+	isoCreateLock.Unlock()
+
 	return &store.Isolate{
 		Isolate:  iso,
 		Template: MakeTemplate(iso),
@@ -171,25 +179,11 @@ func makeIsolate() *store.Isolate {
 	}
 }
 
-// SelectIsoStandard one ready isolate ( the max size is 2 )
+// SelectIsoStandard creates a new isolate synchronously for each request
+// Standard mode design: create on-demand, use immediately, dispose after use
 func SelectIsoStandard(timeout time.Duration) (*store.Isolate, error) {
-
-	go func() {
-		// Create a new isolate
-		iso := makeIsolate()
-		isoReady <- iso
-	}()
-
-	// make a timer
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
-	select {
-	case <-timer.C:
-		log.Error("[V8] Select isolate timeout %v", timeout)
-		return nil, fmt.Errorf("Select isolate timeout %v", timeout)
-
-	case iso := <-isoReady:
-		return iso, nil
-	}
+	// Create isolate synchronously in the current goroutine
+	// This avoids channel congestion and goroutine leaks under high concurrency
+	iso := makeIsolate()
+	return iso, nil
 }

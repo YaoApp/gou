@@ -79,6 +79,29 @@ func (process *Process) Execute() (err error) {
 	}
 }
 
+// ExecuteSync execute the process synchronously in current thread (for V8 context sharing)
+// This method is designed for calls from JavaScript with shared V8 context
+// It executes in the current thread without creating goroutines to maintain thread affinity
+func (process *Process) ExecuteSync() (err error) {
+	var hd Handler
+	hd, err = process.handler()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		recovered := recover()
+		err = exception.Catch(recovered)
+		if err != nil {
+			exception.DebugPrint(err, "%s", process)
+		}
+	}()
+
+	value := hd(process)
+	process._val = &value
+	return nil
+}
+
 // Release the value of the process
 func (process *Process) Release() {
 	process._val = nil
@@ -219,6 +242,12 @@ func (process *Process) WithRuntime(runtime Runtime) *Process {
 // WithCallback set the callback function
 func (process *Process) WithCallback(callback CallbackFunc) *Process {
 	process.Callback = callback
+	return process
+}
+
+// WithV8Context set the V8 context for thread affinity
+func (process *Process) WithV8Context(v8ctx interface{}) *Process {
+	process.V8Context = v8ctx
 	return process
 }
 

@@ -7,7 +7,7 @@ import (
 
 func init() {
 	process.Register("scripts", processScripts)
-	process.Register("studio", processStudio)
+	// process.Register("studio", processStudio) // Deprecated
 }
 
 // processScripts
@@ -23,13 +23,13 @@ func processScripts(process *process.Process) interface{} {
 }
 
 // processScripts scripts.ID.Method
-func processStudio(process *process.Process) interface{} {
+// func processStudio(process *process.Process) interface{} {
 
-	script, err := SelectRoot(process.ID)
-	if err != nil {
-		exception.New("studio.%s not loaded", 404, process.ID).Throw()
-		return nil
-	}
-	return script.Exec(process)
+// 	script, err := SelectRoot(process.ID)
+// 	if err != nil {
+// 		exception.New("studio.%s not loaded", 404, process.ID).Throw()
+// 		return nil
+// 	}
+// 	return script.Exec(process)
 
-}
+// }
