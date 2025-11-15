@@ -17,13 +17,16 @@ type Connector struct {
 	types.MetaInfo
 }
 
-// Options the redis connector option
+// Options the openai connector option
 type Options struct {
-	Proxy string `json:"proxy,omitempty"`
-	Model string `json:"model,omitempty"`
-	Key   string `json:"key"`
-	Azure string `json:"azure,omitempty"` // "true" or "false"
+	Host  string `json:"host,omitempty"`  // API endpoint, e.g. "https://api.openai.com" or custom endpoint
+	Proxy string `json:"proxy,omitempty"` // (Deprecated) API endpoint, use Host instead. For backward compatibility only.
+	Model string `json:"model,omitempty"` // Model name, e.g. "gpt-4o"
+	Key   string `json:"key"`             // API key
+	Azure string `json:"azure,omitempty"` // "true" or "false" for Azure OpenAI
 }
+
+// Note: HTTP proxy (HTTPS_PROXY, HTTP_PROXY environment variables) is handled by http.GetTransport automatically
 
 // Register the connections from dsl
 func (o *Connector) Register(file string, id string, dsl []byte) error {
@@ -34,6 +37,7 @@ func (o *Connector) Register(file string, id string, dsl []byte) error {
 		return err
 	}
 
+	o.Options.Host = helper.EnvString(o.Options.Host)
 	o.Options.Proxy = helper.EnvString(o.Options.Proxy)
 	o.Options.Model = helper.EnvString(o.Options.Model)
 	o.Options.Key = helper.EnvString(o.Options.Key)
@@ -69,11 +73,18 @@ func (o *Connector) Close() error {
 // Setting get the connection setting
 func (o *Connector) Setting() map[string]interface{} {
 
+	// Determine API endpoint
+	// Priority: Host > Proxy (backward compatibility) > default
 	host := "https://api.openai.com"
-	if o.Options.Proxy != "" {
+	if o.Options.Host != "" {
+		host = o.Options.Host
+	} else if o.Options.Proxy != "" {
+		// Backward compatibility: use Proxy as API endpoint
 		host = o.Options.Proxy
 	}
 
+	// Note: HTTP proxy is handled via HTTPS_PROXY/HTTP_PROXY environment variables
+	// by http.GetTransport, not configured here
 	return map[string]interface{}{
 		"host":  host,
 		"key":   o.Options.Key,
