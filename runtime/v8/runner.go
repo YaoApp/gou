@@ -311,6 +311,7 @@ func (runner *Runner) _exec() {
 		runner.chResp <- err
 		return
 	}
+	defer bridge.FreeJsValue(jsRes)
 
 	goRes, err := bridge.GoValue(jsRes, runner.ctx)
 	if err != nil {
