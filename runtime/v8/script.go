@@ -592,6 +592,7 @@ func Call(options CallOptions, source string, args ...interface{}) (interface{},
 		log.Error("%s %s", name, err.Error())
 		return nil, err
 	}
+	defer bridge.FreeJsValue(jsRes)
 
 	goRes, err := bridge.GoValue(jsRes, ctx)
 	if err != nil {
@@ -771,6 +772,7 @@ func (script *Script) execStandardWithSharedContext(ctx *v8go.Context, process *
 		exception.Err(err, 500).Throw()
 		return nil
 	}
+	defer bridge.FreeJsValue(jsRes)
 
 	goRes, err := bridge.GoValue(jsRes, ctx)
 	if err != nil {
@@ -849,6 +851,7 @@ func (script *Script) execStandardStandalone(process *process.Process) interface
 		exception.Err(err, 500).Throw()
 		return nil
 	}
+	defer bridge.FreeJsValue(jsRes)
 
 	goRes, err := bridge.GoValue(jsRes, ctx)
 	if err != nil {
