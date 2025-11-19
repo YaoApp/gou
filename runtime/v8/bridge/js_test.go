@@ -10,7 +10,7 @@ import (
 
 func TestValueOfNull(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ValueOfNull", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -20,7 +20,7 @@ func TestValueOfNull(t *testing.T) {
 
 func TestValueOfUndefined(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ValueOfUndefined", Undefined)
 	if err != nil {
 		t.Fatal(err)
@@ -30,7 +30,7 @@ func TestValueOfUndefined(t *testing.T) {
 
 func TestValueOfBoolean(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ValueOfBoolean", true)
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +46,7 @@ func TestValueOfBoolean(t *testing.T) {
 
 func TestValueOfNumberInt(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 
 	values := []interface{}{
 		99, int(99), int8(99), int16(99), int32(99),
@@ -65,7 +65,7 @@ func TestValueOfNumberInt(t *testing.T) {
 
 func TestValueOfNumberFloat(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 
 	values := []interface{}{0.618, float32(0.618), float64(0.618)}
 
@@ -80,7 +80,7 @@ func TestValueOfNumberFloat(t *testing.T) {
 
 func TestValueOfBigInt(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 
 	values := []interface{}{big.NewInt(99)}
 
@@ -95,7 +95,7 @@ func TestValueOfBigInt(t *testing.T) {
 
 func TestValueOfString(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ValueOfString", "hello world")
 	if err != nil {
 		t.Fatal(err)
@@ -105,7 +105,7 @@ func TestValueOfString(t *testing.T) {
 
 func TestValueOfObject(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 
 	value := map[string]interface{}{
 		"string": "foo",
@@ -128,7 +128,7 @@ func TestValueOfObject(t *testing.T) {
 
 func TestValueOfArray(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	value := []interface{}{}
 	vMap := map[string]interface{}{
 		"string": "foo",
@@ -155,7 +155,7 @@ func TestValueOfArray(t *testing.T) {
 
 func TestValueUint8Array(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 
 	value := []byte{0x1a, 0x2a}
 	res, err := call(ctx, "ValueUint8Array", value)
@@ -167,7 +167,7 @@ func TestValueUint8Array(t *testing.T) {
 
 func TestValueOfStruct(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 
 	type Basic struct {
 		String string
@@ -190,7 +190,7 @@ func TestValueOfStruct(t *testing.T) {
 
 func TestValueOfFunction(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 
 	cb, err := call(ctx, "ReturnFunction")
 	if err != nil {
@@ -206,7 +206,7 @@ func TestValueOfFunction(t *testing.T) {
 }
 func TestValueOfPromise(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 
 	promise, err := call(ctx, "ReturnPromiseString", "hello")
 	if err != nil {

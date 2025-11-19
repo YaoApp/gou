@@ -58,7 +58,7 @@ func prepare(t *testing.T) *v8go.Context {
 	return ctx
 }
 
-func close(ctx *v8go.Context) {
+func closeContext(ctx *v8go.Context) {
 	ctx.Close()
 	ctx.Isolate().Dispose()
 }
