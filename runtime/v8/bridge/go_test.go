@@ -10,7 +10,7 @@ import (
 
 func TestReturnNull(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnNull")
 	if err != nil {
 		t.Fatal(err)
@@ -20,7 +20,7 @@ func TestReturnNull(t *testing.T) {
 
 func TestReturnUndefined(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnUndefined")
 	if err != nil {
 		t.Fatal(err)
@@ -30,7 +30,7 @@ func TestReturnUndefined(t *testing.T) {
 
 func TestReturnBoolean(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnBoolean")
 	if err != nil {
 		t.Fatal(err)
@@ -40,7 +40,7 @@ func TestReturnBoolean(t *testing.T) {
 
 func TestReturnNumberInt(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnNumberInt")
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +50,7 @@ func TestReturnNumberInt(t *testing.T) {
 
 func TestReturnNumberFloat(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnNumberFloat")
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func TestReturnNumberFloat(t *testing.T) {
 
 func TestReturnBigInt(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnBigInt")
 	if err != nil {
 		t.Fatal(err)
@@ -70,7 +70,7 @@ func TestReturnBigInt(t *testing.T) {
 
 func TestReturnString(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnString")
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +80,7 @@ func TestReturnString(t *testing.T) {
 
 func TestReturnUint8Array(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnUint8Array")
 	if err != nil {
 		t.Fatal(err)
@@ -91,7 +91,7 @@ func TestReturnUint8Array(t *testing.T) {
 
 func TestReturnSharedArrayBuffer(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnSharedArrayBuffer")
 	if err != nil {
 		t.Fatal(err)
@@ -102,7 +102,7 @@ func TestReturnSharedArrayBuffer(t *testing.T) {
 
 func TestReturnObject(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnObject")
 	if err != nil {
 		t.Fatal(err)
@@ -124,7 +124,7 @@ func TestReturnObject(t *testing.T) {
 
 func TestReturnArray(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnArray")
 	if err != nil {
 		t.Fatal(err)
@@ -152,7 +152,7 @@ func TestReturnArray(t *testing.T) {
 
 func TestReturnFunction(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnFunction")
 	if err != nil {
 		t.Fatal(err)
@@ -171,7 +171,7 @@ func TestReturnFunction(t *testing.T) {
 
 func TestReturnPromise(t *testing.T) {
 	ctx := prepare(t)
-	defer close(ctx)
+	defer closeContext(ctx)
 	res, err := call(ctx, "ReturnPromiseString", "hello")
 	if err != nil {
 		t.Fatal(err)
