@@ -54,21 +54,21 @@ func (store *Store) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Cache args: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		var name = args[0].String()
 		if _, has := kv.Pools[name]; !has {
 			msg := fmt.Sprintf("Cache %s does not loaded", name)
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		this, err := object.NewInstance(info.Context())
 		if err != nil {
 			msg := fmt.Sprintf("Cache: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -83,21 +83,21 @@ func (store *Store) set(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Set: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 2 {
 			msg := fmt.Sprintf("Cache Set: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		v, err := bridge.GoValue(args[1], info.Context())
 		if err != nil {
 			msg := fmt.Sprintf("Cache Set: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -116,21 +116,21 @@ func (store *Store) getSet(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Cache GetSet: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 2 {
 			msg := fmt.Sprintf("Cache GetSet: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		fn, err := args[1].AsFunction()
 		if err != nil {
 			msg := fmt.Sprintf("Cache GetSet: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -156,14 +156,14 @@ func (store *Store) getSet(iso *v8go.Isolate) *v8go.FunctionTemplate {
 
 		if err != nil {
 			msg := fmt.Sprintf("Cache GetSet: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		res, err := bridge.JsValue(info.Context(), value)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Get: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -176,14 +176,14 @@ func (store *Store) get(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Get: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Cache Get: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -195,7 +195,7 @@ func (store *Store) get(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		res, err := bridge.JsValue(info.Context(), value)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Get: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -208,14 +208,14 @@ func (store *Store) getDel(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Get: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Cache Get: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -227,7 +227,7 @@ func (store *Store) getDel(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		res, err := bridge.JsValue(info.Context(), value)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Get: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -240,14 +240,14 @@ func (store *Store) del(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Del: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Cache Del: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		c.Del(args[0].String())
@@ -260,14 +260,14 @@ func (store *Store) has(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Has: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Cache Has: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -276,7 +276,7 @@ func (store *Store) has(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		res, err := v8go.NewValue(info.Context().Isolate(), has)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Has: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return res
@@ -288,7 +288,7 @@ func (store *Store) len(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Len: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -296,7 +296,7 @@ func (store *Store) len(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		res, err := v8go.NewValue(info.Context().Isolate(), int32(len))
 		if err != nil {
 			msg := fmt.Sprintf("Cache Len: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return res
@@ -308,7 +308,7 @@ func (store *Store) keys(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Keys: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -316,7 +316,7 @@ func (store *Store) keys(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		res, err := bridge.JsValue(info.Context(), keys)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Keys: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return res
@@ -328,7 +328,7 @@ func (store *Store) clear(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Cache Clear: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		c.Clear()
@@ -355,14 +355,14 @@ func (store *Store) push(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Store Push: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 2 {
 			msg := fmt.Sprintf("Store Push: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -372,7 +372,7 @@ func (store *Store) push(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			v, err := bridge.GoValue(arg, info.Context())
 			if err != nil {
 				msg := fmt.Sprintf("Store Push: %s", err.Error())
-				log.Error(msg)
+				log.Error("%s", msg)
 				return bridge.JsException(info.Context(), msg)
 			}
 			values[i] = v
@@ -381,7 +381,7 @@ func (store *Store) push(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		err = c.Push(key, values...)
 		if err != nil {
 			msg := fmt.Sprintf("Store Push: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return v8go.Undefined(iso)
@@ -393,14 +393,14 @@ func (store *Store) pop(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Store Pop: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 2 {
 			msg := fmt.Sprintf("Store Pop: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -410,14 +410,14 @@ func (store *Store) pop(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		value, err := c.Pop(key, position)
 		if err != nil {
 			msg := fmt.Sprintf("Store Pop: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		res, err := bridge.JsValue(info.Context(), value)
 		if err != nil {
 			msg := fmt.Sprintf("Store Pop: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return res
@@ -429,14 +429,14 @@ func (store *Store) pull(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Store Pull: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 2 {
 			msg := fmt.Sprintf("Store Pull: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -444,14 +444,14 @@ func (store *Store) pull(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		value, err := bridge.GoValue(args[1], info.Context())
 		if err != nil {
 			msg := fmt.Sprintf("Store Pull: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		err = c.Pull(key, value)
 		if err != nil {
 			msg := fmt.Sprintf("Store Pull: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return v8go.Undefined(iso)
@@ -463,14 +463,14 @@ func (store *Store) pullAll(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Store PullAll: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 2 {
 			msg := fmt.Sprintf("Store PullAll: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -480,7 +480,7 @@ func (store *Store) pullAll(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			v, err := bridge.GoValue(arg, info.Context())
 			if err != nil {
 				msg := fmt.Sprintf("Store PullAll: %s", err.Error())
-				log.Error(msg)
+				log.Error("%s", msg)
 				return bridge.JsException(info.Context(), msg)
 			}
 			values[i] = v
@@ -489,7 +489,7 @@ func (store *Store) pullAll(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		err = c.PullAll(key, values)
 		if err != nil {
 			msg := fmt.Sprintf("Store PullAll: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return v8go.Undefined(iso)
@@ -501,14 +501,14 @@ func (store *Store) addToSet(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Store AddToSet: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 2 {
 			msg := fmt.Sprintf("Store AddToSet: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -518,7 +518,7 @@ func (store *Store) addToSet(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			v, err := bridge.GoValue(arg, info.Context())
 			if err != nil {
 				msg := fmt.Sprintf("Store AddToSet: %s", err.Error())
-				log.Error(msg)
+				log.Error("%s", msg)
 				return bridge.JsException(info.Context(), msg)
 			}
 			values[i] = v
@@ -527,7 +527,7 @@ func (store *Store) addToSet(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		err = c.AddToSet(key, values...)
 		if err != nil {
 			msg := fmt.Sprintf("Store AddToSet: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return v8go.Undefined(iso)
@@ -539,14 +539,14 @@ func (store *Store) arrayLen(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArrayLen: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Store ArrayLen: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -556,7 +556,7 @@ func (store *Store) arrayLen(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		res, err := v8go.NewValue(iso, int32(length))
 		if err != nil {
 			msg := fmt.Sprintf("Store ArrayLen: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return res
@@ -568,14 +568,14 @@ func (store *Store) arrayGet(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArrayGet: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 2 {
 			msg := fmt.Sprintf("Store ArrayGet: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -585,14 +585,14 @@ func (store *Store) arrayGet(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		value, err := c.ArrayGet(key, index)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArrayGet: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		res, err := bridge.JsValue(info.Context(), value)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArrayGet: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return res
@@ -604,14 +604,14 @@ func (store *Store) arraySet(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArraySet: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 3 {
 			msg := fmt.Sprintf("Store ArraySet: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -620,14 +620,14 @@ func (store *Store) arraySet(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		value, err := bridge.GoValue(args[2], info.Context())
 		if err != nil {
 			msg := fmt.Sprintf("Store ArraySet: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		err = c.ArraySet(key, index, value)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArraySet: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return v8go.Undefined(iso)
@@ -639,14 +639,14 @@ func (store *Store) arraySlice(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArraySlice: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 3 {
 			msg := fmt.Sprintf("Store ArraySlice: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -657,14 +657,14 @@ func (store *Store) arraySlice(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		values, err := c.ArraySlice(key, skip, limit)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArraySlice: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		res, err := bridge.JsValue(info.Context(), values)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArraySlice: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return res
@@ -676,14 +676,14 @@ func (store *Store) arrayPage(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArrayPage: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 3 {
 			msg := fmt.Sprintf("Store ArrayPage: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -694,14 +694,14 @@ func (store *Store) arrayPage(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		values, err := c.ArrayPage(key, page, pageSize)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArrayPage: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		res, err := bridge.JsValue(info.Context(), values)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArrayPage: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return res
@@ -713,14 +713,14 @@ func (store *Store) arrayAll(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		c, err := store.getLRU(info)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArrayAll: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Store ArrayAll: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -728,14 +728,14 @@ func (store *Store) arrayAll(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		values, err := c.ArrayAll(key)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArrayAll: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		res, err := bridge.JsValue(info.Context(), values)
 		if err != nil {
 			msg := fmt.Sprintf("Store ArrayAll: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 		return res

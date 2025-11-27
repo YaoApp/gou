@@ -69,14 +69,14 @@ func (ws *WSClient) Open() error {
 
 	if ws.status == CONNECTING {
 		err := fmt.Errorf("WebSocket Open: %s:%v is connecting", ws.option.URL, ws.option.Protocols)
-		log.With(log.F{"option": ws.option}).Error(err.Error())
+		log.With(log.F{"option": ws.option}).Error("%v", err)
 		ws.emitError(err)
 		return err
 	}
 
 	if ws.status == CONNECTED {
 		err := fmt.Errorf("WebSocket Open: %s:%v was connected", ws.option.URL, ws.option.Protocols)
-		log.With(log.F{"option": ws.option}).Error(err.Error())
+		log.With(log.F{"option": ws.option}).Error("%v", err)
 		ws.emitError(err)
 		return err
 	}

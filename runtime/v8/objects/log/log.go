@@ -38,7 +38,7 @@ func (obj *Object) run(iso *v8go.Isolate, level log.Level) *v8go.FunctionTemplat
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Log: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -49,7 +49,7 @@ func (obj *Object) run(iso *v8go.Isolate, level log.Level) *v8go.FunctionTemplat
 			values, err = bridge.GoValues(args[1:], info.Context())
 			if err != nil {
 				msg := fmt.Sprintf("Log: %s", err.Error())
-				log.Error(msg)
+				log.Error("%s", msg)
 				return bridge.JsException(info.Context(), msg)
 			}
 		}

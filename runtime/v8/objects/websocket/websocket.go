@@ -25,32 +25,32 @@ func (ws *WebSocket) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 		jsURL, err := info.This().Get("url")
 		if err != nil {
 			msg := fmt.Sprintf("WebSocket url: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		if !jsURL.IsString() {
 			msg := fmt.Sprintf("WebSocket url: %s", "is not a string")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		if len(info.Args()) < 1 {
 			msg := fmt.Sprintf("WebSocket args: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		jsMessage := info.Args()[0]
 		if err != nil {
 			msg := fmt.Sprintf("WebSocket message: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		if !jsMessage.IsString() {
 			msg := fmt.Sprintf("WebSocket message: %s", "is not a string")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -59,7 +59,7 @@ func (ws *WebSocket) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 			jsProtocols, err := info.This().Get("protocols")
 			if err != nil {
 				msg := fmt.Sprintf("WebSocket protocols: %s", err.Error())
-				log.Error(msg)
+				log.Error("%s", msg)
 				return bridge.JsException(info.Context(), msg)
 			}
 
@@ -75,14 +75,14 @@ func (ws *WebSocket) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 		conn, err := websocket.NewWebSocket(jsURL.String(), protocols)
 		if err != nil {
 			msg := fmt.Sprintf("WebSocket connection: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		err = websocket.Push(conn, jsMessage.String())
 		if err != nil {
 			msg := fmt.Sprintf("WebSocket push: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -98,14 +98,14 @@ func (ws *WebSocket) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("WebSocket args: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		this, err := object.NewInstance(info.Context())
 		if err != nil {
 			msg := fmt.Sprintf("WebSocket: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 

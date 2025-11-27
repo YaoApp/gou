@@ -188,7 +188,7 @@ func (stack *QueryStack) paginate(page int, pagesize int, res *[][]maps.MapStrAn
 
 	// Debug mode Log SQL
 	if param.QueryParam.Debug {
-		defer log.With(log.F{"page": page, "pagesize": pagesize, "bindings": builder.Query.GetBindings()}).Trace(builder.Query.ToSQL())
+		defer log.With(log.F{"page": page, "pagesize": pagesize, "bindings": builder.Query.GetBindings()}).Trace("%s", builder.Query.ToSQL())
 	}
 
 	rows := []xun.R{}

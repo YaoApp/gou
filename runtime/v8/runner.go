@@ -85,7 +85,7 @@ func (runner *Runner) Start(ready chan bool) error {
 	// Set the status to free
 	if runner.status != RunnerStatusInit {
 		err := fmt.Errorf("[runner] you can't start a runner with status: [%d]", runner.status)
-		log.Error(err.Error())
+		log.Error("[runner] you can't start a runner with status: [%d]", runner.status)
 		return err
 	}
 
@@ -137,7 +137,7 @@ func (runner *Runner) Start(ready chan bool) error {
 func (runner *Runner) Destroy(cb func()) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Debug(fmt.Sprintf("[%s] Recovered from panic in Destroy: %v", runner.id, r))
+			log.Debug("[%s] Recovered from panic in Destroy: %v", runner.id, r)
 		}
 	}()
 	if runner.status != RunnerStatusDestroy {
@@ -149,7 +149,7 @@ func (runner *Runner) Destroy(cb func()) {
 func (runner *Runner) Reset() {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Debug(fmt.Sprintf("[%s] Recovered from panic in Reset: %v", runner.id, r))
+			log.Debug("[%s] Recovered from panic in Reset: %v", runner.id, r)
 		}
 	}()
 	if runner.status != RunnerStatusDestroy {
@@ -161,7 +161,7 @@ func (runner *Runner) Reset() {
 func (runner *Runner) Exec(script *Script) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error(fmt.Sprintf("[%s] Recovered from panic in Exec: %v", runner.id, r))
+			log.Error("[%s] Recovered from panic in Exec: %v", runner.id, r)
 		}
 	}()
 
@@ -172,7 +172,7 @@ func (runner *Runner) Exec(script *Script) interface{} {
 	runner.status = RunnerStatusRunning
 	runner.script = script
 	runner.chResp = make(chan interface{})
-	log.Debug(fmt.Sprintf("2.  [%s] Exec script %s.%s. status:%d, keepalive:%v, signal:%d", runner.id, script.ID, runner.method, runner.status, runner.keepalive, len(runner.signal)))
+	log.Debug("2.  [%s] Exec script %s.%s. status:%d, keepalive:%v, signal:%d", runner.id, script.ID, runner.method, runner.status, runner.keepalive, len(runner.signal))
 
 	runner.signal <- RunnerCommandExec
 	select {
@@ -185,7 +185,7 @@ func (runner *Runner) Exec(script *Script) interface{} {
 func (runner *Runner) ExecWithContext(ctx context.Context, script *Script) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error(fmt.Sprintf("[%s] Recovered from panic in ExecWithContext: %v", runner.id, r))
+			log.Error("[%s] Recovered from panic in ExecWithContext: %v", runner.id, r)
 		}
 	}()
 
@@ -196,7 +196,7 @@ func (runner *Runner) ExecWithContext(ctx context.Context, script *Script) inter
 	runner.status = RunnerStatusRunning
 	runner.script = script
 	runner.chResp = make(chan interface{})
-	log.Debug(fmt.Sprintf("2.  [%s] ExecWithContext script %s.%s. status:%d, keepalive:%v, signal:%d", runner.id, script.ID, runner.method, runner.status, runner.keepalive, len(runner.signal)))
+	log.Debug("2.  [%s] ExecWithContext script %s.%s. status:%d, keepalive:%v, signal:%d", runner.id, script.ID, runner.method, runner.status, runner.keepalive, len(runner.signal))
 
 	// Start monitoring goroutine for context cancellation
 	done := make(chan struct{})
@@ -205,7 +205,7 @@ func (runner *Runner) ExecWithContext(ctx context.Context, script *Script) inter
 		case <-ctx.Done():
 			// Context cancelled, terminate V8 execution
 			runner.iso.TerminateExecution()
-			log.Debug(fmt.Sprintf("[%s] Context cancelled, TerminateExecution called", runner.id))
+			log.Debug("[%s] Context cancelled, TerminateExecution called", runner.id)
 		case <-done:
 			// Normal completion
 		}
@@ -233,26 +233,26 @@ func (runner *Runner) exec() {
 			// Protect against sending to closed channel
 			defer func() {
 				if r := recover(); r != nil {
-					log.Debug(fmt.Sprintf("3.x [%s] Recovered from panic while sending signal: %v", runner.id, r))
+					log.Debug("3.x [%s] Recovered from panic while sending signal: %v", runner.id, r)
 				}
 			}()
 
 			// Check runner status before sending signal
 			if runner.status == RunnerStatusDestroy {
-				log.Debug(fmt.Sprintf("3.x [%s] Runner already destroyed, skipping signal", runner.id))
+				log.Debug("3.x [%s] Runner already destroyed, skipping signal", runner.id)
 				return
 			}
 
 			if !runner.keepalive {
-				log.Debug(fmt.Sprintf("3.1 [%s] Send a destroy signal to the v8 runner. status:%d, keepalive:%v", runner.id, runner.status, runner.keepalive))
+				log.Debug("3.1 [%s] Send a destroy signal to the v8 runner. status:%d, keepalive:%v", runner.id, runner.status, runner.keepalive)
 				runner.signal <- RunnerCommandDestroy
-				log.Debug(fmt.Sprintf("3.2 [%s] Send a destroy signal to the v8 runner. sstatus:%d, keepalive:%v (done)", runner.id, runner.status, runner.keepalive))
+				log.Debug("3.2 [%s] Send a destroy signal to the v8 runner. sstatus:%d, keepalive:%v (done)", runner.id, runner.status, runner.keepalive)
 				return
 			}
 
-			log.Debug(fmt.Sprintf("3.1 [%s] Send a reset signal to the v8 runner. status:%d, keepalive:%v", runner.id, runner.status, runner.keepalive))
+			log.Debug("3.1 [%s] Send a reset signal to the v8 runner. status:%d, keepalive:%v", runner.id, runner.status, runner.keepalive)
 			runner.signal <- RunnerCommandReset
-			log.Debug(fmt.Sprintf("3.2 [%s] Send a reset signal to the v8 runner. status:%d, keepalive:%v (done)", runner.id, runner.status, runner.keepalive))
+			log.Debug("3.2 [%s] Send a reset signal to the v8 runner. status:%d, keepalive:%v (done)", runner.id, runner.status, runner.keepalive)
 		}()
 	}()
 
@@ -325,8 +325,8 @@ func (runner *Runner) _exec() {
 // destroy the runner
 func (runner *Runner) destroy() {
 
-	log.Debug(fmt.Sprintf("4.  [%s] destroy the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive))
-	log.Debug(fmt.Sprintf("--- [%s] end -----------------", runner.id))
+	log.Debug("4.  [%s] destroy the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive)
+	log.Debug("--- [%s] end -----------------", runner.id)
 
 	dispatcher.total--
 	runner.status = RunnerStatusDestroy
@@ -346,8 +346,8 @@ func (runner *Runner) destroy() {
 // reset the runner
 func (runner *Runner) reset() {
 
-	log.Debug(fmt.Sprintf("4.  [%s] reset the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive))
-	log.Debug(fmt.Sprintf("--- [%s] end -----------------", runner.id))
+	log.Debug("4.  [%s] reset the runner. status:%d, keepalive:%v ", runner.id, runner.status, runner.keepalive)
+	log.Debug("--- [%s] end -----------------", runner.id)
 	runner.status = RunnerStatusCleaning
 
 	runner.ctx.Close()
