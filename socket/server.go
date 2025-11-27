@@ -1,7 +1,6 @@
 package socket
 
 import (
-	"fmt"
 	"io"
 	"net"
 
@@ -19,7 +18,7 @@ func Start(proto string, host string, port string, bufferSize int, KeepAlive int
 
 // tcpStart start socket server with TCP/IP using TCP/IP protocol
 func tcpStart(host string, port string, bufferSize int, KeepAlive int, handler func([]byte, int, error) ([]byte, error)) error {
-	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%s", host, port))
+	listen, err := net.Listen("tcp", net.JoinHostPort(host, port))
 	if err != nil {
 		log.Error("Start error: %s", err)
 		return err

@@ -30,7 +30,7 @@ func (client *Client) Open() error {
 		return client.tcpOpen()
 	}
 	err := fmt.Errorf("Socket Open: protocol %s does not support", client.Option.Protocol)
-	log.With(log.F{"option": client.Option}).Error(err.Error())
+	log.With(log.F{"option": client.Option}).Error("Socket Open: protocol %s does not support", client.Option.Protocol)
 	return err
 }
 
@@ -40,14 +40,14 @@ func (client *Client) tcpOpen() error {
 	option := client.Option
 	if client.Status == CONNECTING {
 		err := fmt.Errorf("Socket Open: %s:%s is connecting", option.Host, option.Port)
-		log.With(log.F{"option": client.Option}).Error(err.Error())
+		log.With(log.F{"option": client.Option}).Error("Socket Open: %s:%s is connecting", option.Host, option.Port)
 		client.emitError(err)
 		return err
 	}
 
 	if client.Status == CONNECTED {
 		err := fmt.Errorf("Socket Open: %s:%s was connected", option.Host, option.Port)
-		log.With(log.F{"option": client.Option}).Error(err.Error())
+		log.With(log.F{"option": client.Option}).Error("Socket Open: %s:%s was connected", option.Host, option.Port)
 		client.emitError(err)
 		return err
 	}
@@ -69,7 +69,7 @@ func (client *Client) tcpOpen() error {
 	}()
 
 	// Connecting
-	conn, err := dial.Dial("tcp", fmt.Sprintf("%s:%s", option.Host, option.Port))
+	conn, err := dial.Dial("tcp", net.JoinHostPort(option.Host, option.Port))
 	if err != nil {
 		log.With(log.F{"option": option}).Error("Socket Open: %s", err)
 		client.emitError(err)
@@ -221,7 +221,7 @@ func tcpConnect(host string, port string, timeout time.Duration, bufferSize int,
 	}
 
 	log.With(log.F{"host": host, "port": port, "bufferSize": bufferSize, "KeepAlive": KeepAlive}).Trace("Connecting")
-	conn, err := dial.Dial("tcp", fmt.Sprintf("%s:%s", host, port))
+	conn, err := dial.Dial("tcp", net.JoinHostPort(host, port))
 	if err != nil {
 		log.With(log.F{"host": host, "port": port}).Error("Connection: %s", err)
 		return err

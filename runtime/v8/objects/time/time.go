@@ -51,7 +51,7 @@ func (obj *Object) after(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		args := info.Args()
 		if len(args) < 2 {
 			msg := fmt.Sprintf("time.After: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -64,7 +64,7 @@ func (obj *Object) after(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			args, err := bridge.GoValues(jsArgs, info.Context())
 			if err != nil {
 				msg := fmt.Sprintf("time.After: %s", err.Error())
-				log.Error(msg)
+				log.Error("%s", msg)
 				return bridge.JsException(info.Context(), msg)
 			}
 			goArgs = args
@@ -103,7 +103,7 @@ func (obj *Object) sleep(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("time.Sleep: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 

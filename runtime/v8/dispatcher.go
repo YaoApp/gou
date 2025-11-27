@@ -102,8 +102,8 @@ func (dispatcher *Dispatcher) Select(timeout time.Duration) (*Runner, error) {
 			break
 
 		case runner := <-dispatcher.availables:
-			log.Debug(fmt.Sprintf("--- [%s] -----------------", runner.id))
-			log.Debug(fmt.Sprintf("1.  [%s] Select a free v8 runner. availables=%d", runner.id, len(dispatcher.availables)))
+			log.Debug("--- [%s] -----------------", runner.id)
+			log.Debug("1.  [%s] Select a free v8 runner. availables=%d", runner.id, len(dispatcher.availables))
 			return runner, nil
 
 		}

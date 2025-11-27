@@ -49,14 +49,14 @@ func (obj *Object) ExportFunction(iso *v8go.Isolate) *v8go.FunctionTemplate {
 
 		if _, has := query.Engines[name]; !has {
 			msg := fmt.Sprintf("Query Engine %s does not loaded", name)
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		this, err := object.NewInstance(info.Context())
 		if err != nil {
 			msg := fmt.Sprintf("Query Engine: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -71,14 +71,14 @@ func (obj *Object) get(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Query: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		data, err := obj.runQueryGet(iso, info, args[0])
 		if err != nil {
 			msg := fmt.Sprintf("Query: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -91,14 +91,14 @@ func (obj *Object) first(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Query: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		data, err := obj.runQueryFirst(iso, info, args[0])
 		if err != nil {
 			msg := fmt.Sprintf("Query: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -111,14 +111,14 @@ func (obj *Object) paginate(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Query: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		data, err := obj.runQueryPaginate(iso, info, args[0])
 		if err != nil {
 			msg := fmt.Sprintf("Query: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -131,14 +131,14 @@ func (obj *Object) run(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		args := info.Args()
 		if len(args) < 1 {
 			msg := fmt.Sprintf("Query: %s", "Missing parameters")
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
 		data, err := obj.runQueryRun(iso, info, args[0])
 		if err != nil {
 			msg := fmt.Sprintf("Query: %s", err.Error())
-			log.Error(msg)
+			log.Error("%s", msg)
 			return bridge.JsException(info.Context(), msg)
 		}
 
@@ -151,7 +151,7 @@ func (obj *Object) runQueryGet(iso *v8go.Isolate, info *v8go.FunctionCallbackInf
 	dsl, input, err := obj.getQueryDSL(info, param)
 	if err != nil {
 		msg := fmt.Sprintf("Query: %s", err.Error())
-		log.Error(msg)
+		log.Error("%s", msg)
 		return nil, err
 	}
 	data = dsl.Get(input)
@@ -163,7 +163,7 @@ func (obj *Object) runQueryPaginate(iso *v8go.Isolate, info *v8go.FunctionCallba
 	dsl, input, err := obj.getQueryDSL(info, param)
 	if err != nil {
 		msg := fmt.Sprintf("Query: %s", err.Error())
-		log.Error(msg)
+		log.Error("%s", msg)
 		return nil, err
 	}
 	data = dsl.Paginate(input)
@@ -175,7 +175,7 @@ func (obj *Object) runQueryFirst(iso *v8go.Isolate, info *v8go.FunctionCallbackI
 	dsl, input, err := obj.getQueryDSL(info, param)
 	if err != nil {
 		msg := fmt.Sprintf("Query: %s", err.Error())
-		log.Error(msg)
+		log.Error("%s", msg)
 		return nil, err
 	}
 	data = dsl.First(input)
@@ -187,7 +187,7 @@ func (obj *Object) runQueryRun(iso *v8go.Isolate, info *v8go.FunctionCallbackInf
 	dsl, input, err := obj.getQueryDSL(info, param)
 	if err != nil {
 		msg := fmt.Sprintf("Query: %s", err.Error())
-		log.Error(msg)
+		log.Error("%s", msg)
 		return nil, err
 	}
 	data = dsl.Run(input)
@@ -198,7 +198,7 @@ func (obj *Object) response(iso *v8go.Isolate, info *v8go.FunctionCallbackInfo, 
 	res, err := bridge.JsValue(info.Context(), data)
 	if err != nil {
 		msg := fmt.Sprintf("Query: %s", err.Error())
-		log.Error(msg)
+		log.Error("%s", msg)
 		return bridge.JsException(info.Context(), msg)
 	}
 	return res
@@ -217,7 +217,7 @@ func (obj *Object) getQueryDSL(info *v8go.FunctionCallbackInfo, param *v8go.Valu
 	engine, err := obj.getEngine(info)
 	if err != nil {
 		msg := fmt.Sprintf("Query: %s", err.Error())
-		log.Error(msg)
+		log.Error("%s", msg)
 		return nil, nil, err
 	}
 

@@ -46,7 +46,7 @@ func (sock Socket) Start(args ...interface{}) {
 	Start(sock.Protocol, sock.Host, sock.Port, sock.BufferSize, sock.KeepAlive, func(data []byte, _ int, err error) ([]byte, error) {
 		res, err := process.New(sock.Event.Data, hex.EncodeToString(data)).Exec()
 		if err != nil {
-			log.Error(err.Error())
+			log.Error("socket event data process error: %v", err)
 			return nil, err
 		}
 		switch res.(type) {

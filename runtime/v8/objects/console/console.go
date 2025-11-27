@@ -119,7 +119,7 @@ func (obj *Object) dump(info *v8go.FunctionCallbackInfo, method func(...interfac
 	args := info.Args()
 	if len(args) < 1 {
 		msg := fmt.Sprintf("console: Missing parameters")
-		log.Error(msg)
+		log.Error("%s", msg)
 		return bridge.JsException(info.Context(), msg)
 	}
 
@@ -128,7 +128,7 @@ func (obj *Object) dump(info *v8go.FunctionCallbackInfo, method func(...interfac
 	goArgs, err = bridge.GoValues(args, info.Context())
 	if err != nil {
 		msg := fmt.Sprintf("console: %s", err.Error())
-		log.Error(msg)
+		log.Error("%s", msg)
 		return bridge.JsException(info.Context(), msg)
 	}
 	method(goArgs...)
