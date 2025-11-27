@@ -259,24 +259,18 @@ func UpdateMapping(clientID string, tools map[string]*types.ToolSchema, resource
 	}
 
 	// Update tools
-	if tools != nil {
-		for name, tool := range tools {
-			mapping.Tools[name] = tool
-		}
+	for name, tool := range tools {
+		mapping.Tools[name] = tool
 	}
 
 	// Update resources
-	if resources != nil {
-		for name, resource := range resources {
-			mapping.Resources[name] = resource
-		}
+	for name, resource := range resources {
+		mapping.Resources[name] = resource
 	}
 
 	// Update prompts
-	if prompts != nil {
-		for name, prompt := range prompts {
-			mapping.Prompts[name] = prompt
-		}
+	for name, prompt := range prompts {
+		mapping.Prompts[name] = prompt
 	}
 
 	return nil
