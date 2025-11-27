@@ -7,6 +7,7 @@ import (
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/mcp/client"
+	"github.com/yaoapp/gou/mcp/process"
 	"github.com/yaoapp/gou/mcp/types"
 	"github.com/yaoapp/kun/exception"
 )
@@ -30,8 +31,8 @@ func LoadServerSource(server, id string) (Server, error) {
 	return nil, nil
 }
 
-// LoadClientSource load the mcp client source
-func LoadClientSource(dsl, id string) (Client, error) {
+// LoadClientSource load the mcp client source with optional mapping data
+func LoadClientSource(dsl, id string, mappingData ...*types.MappingData) (Client, error) {
 	if id == "" {
 		return nil, fmt.Errorf("client id is required")
 	}
@@ -55,6 +56,7 @@ func LoadClientSource(dsl, id string) (Client, error) {
 
 	// Process environment variables
 	clientDSL.URL = helper.EnvString(clientDSL.URL)
+	clientDSL.Endpoint = helper.EnvString(clientDSL.Endpoint)
 	clientDSL.AuthorizationToken = helper.EnvString(clientDSL.AuthorizationToken)
 	clientDSL.Command = helper.EnvString(clientDSL.Command)
 
@@ -72,10 +74,41 @@ func LoadClientSource(dsl, id string) (Client, error) {
 		}
 	}
 
-	// Create client instance
-	mcpClient, err := client.New(&clientDSL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create MCP client: %w", err)
+	// Yao Process
+	var mcpClient Client
+	switch clientDSL.Transport {
+
+	// Yao Process based client
+	case types.TransportProcess:
+		// Load mapping data for process-based client
+		var mapping *types.MappingData
+		if len(mappingData) > 0 && mappingData[0] != nil {
+			mapping = mappingData[0]
+		} else {
+			// Try to load from filesystem
+			mapping, err = process.LoadMappingFromSource(id, &clientDSL, nil)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load mapping data: %w", err)
+			}
+		}
+
+		// Store mapping in global registry
+		process.SetMapping(id, mapping)
+
+		// Create client
+		mcpClient, err = process.New(&clientDSL)
+		if err != nil {
+			// Clean up mapping on error
+			process.RemoveMapping(id)
+			return nil, fmt.Errorf("failed to create MCP client: %w", err)
+		}
+
+	// HTTP, SSE, STDIO based client
+	default:
+		mcpClient, err = client.New(&clientDSL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create MCP client: %w", err)
+		}
 	}
 
 	// Store client in the global map with write lock
@@ -94,7 +127,31 @@ func LoadClient(file, id string) (Client, error) {
 		return nil, fmt.Errorf("failed to read MCP client file %s: %w", file, err)
 	}
 
-	// Call LoadClientSource
+	// Parse DSL to check if it's a process-based client
+	var clientDSL types.ClientDSL
+	err = application.Parse(file, data, &clientDSL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse MCP client DSL: %w", err)
+	}
+
+	// If it's a process-based client, try to load mapping from filesystem
+	if clientDSL.Transport == types.TransportProcess {
+		// Try to load mapping data based on file path
+		// Expected: mcps/xxx.mcp.yao -> mcps/mapping/xxx/
+		mapping, err := process.LoadMappingFromFile(file, id, &clientDSL)
+		if err != nil {
+			// If mapping load fails but tools/resources/prompts are defined, return error
+			if clientDSL.Tools != nil || clientDSL.Resources != nil || clientDSL.Prompts != nil {
+				return nil, fmt.Errorf("failed to load mapping data: %w", err)
+			}
+			// Otherwise, continue with empty mapping (no tools/resources/prompts)
+		}
+
+		// Call LoadClientSource with mapping data
+		return LoadClientSource(string(data), id, mapping)
+	}
+
+	// For non-process clients, call LoadClientSource without mapping
 	return LoadClientSource(string(data), id)
 }
 
@@ -140,6 +197,9 @@ func UnloadClient(id string) {
 	defer clientsLock.Unlock()
 
 	delete(clients, id)
+
+	// Also remove mapping if it's a process-based client
+	process.RemoveMapping(id)
 }
 
 // ListClients list all loaded clients
@@ -152,4 +212,48 @@ func ListClients() []string {
 		keys = append(keys, id)
 	}
 	return keys
+}
+
+// UpdateClientMapping updates the mapping data for a process-based MCP client
+func UpdateClientMapping(id string, tools map[string]*types.ToolSchema, resources map[string]*types.ResourceSchema, prompts map[string]*types.PromptSchema) error {
+	clientsLock.RLock()
+	_, exists := clients[id]
+	clientsLock.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("MCP client %s not found", id)
+	}
+
+	return process.UpdateMapping(id, tools, resources, prompts)
+}
+
+// RemoveClientMappingItems removes specific tools/resources/prompts from a process-based MCP client
+func RemoveClientMappingItems(id string, toolNames []string, resourceNames []string, promptNames []string) error {
+	clientsLock.RLock()
+	_, exists := clients[id]
+	clientsLock.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("MCP client %s not found", id)
+	}
+
+	return process.RemoveMappingItems(id, toolNames, resourceNames, promptNames)
+}
+
+// GetClientMapping returns the mapping data for a process-based MCP client
+func GetClientMapping(id string) (*types.MappingData, error) {
+	clientsLock.RLock()
+	_, exists := clients[id]
+	clientsLock.RUnlock()
+
+	if !exists {
+		return nil, fmt.Errorf("MCP client %s not found", id)
+	}
+
+	mapping, exists := process.GetMapping(id)
+	if !exists {
+		return nil, fmt.Errorf("no mapping data found for client %s", id)
+	}
+
+	return mapping, nil
 }
