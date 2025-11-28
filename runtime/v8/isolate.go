@@ -11,6 +11,7 @@ import (
 	evalT "github.com/yaoapp/gou/runtime/v8/functions/eval"
 	langT "github.com/yaoapp/gou/runtime/v8/functions/lang"
 	processT "github.com/yaoapp/gou/runtime/v8/functions/process"
+	useT "github.com/yaoapp/gou/runtime/v8/functions/use"
 	exceptionT "github.com/yaoapp/gou/runtime/v8/objects/exception"
 	fsT "github.com/yaoapp/gou/runtime/v8/objects/fs"
 	httpT "github.com/yaoapp/gou/runtime/v8/objects/http"
@@ -23,6 +24,7 @@ import (
 	websocketT "github.com/yaoapp/gou/runtime/v8/objects/websocket"
 	"github.com/yaoapp/gou/runtime/v8/store"
 
+	mcpJsapi "github.com/yaoapp/gou/mcp/jsapi"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
 )
@@ -125,6 +127,10 @@ func MakeTemplate(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	template.Set("$L", langT.ExportFunction(iso))
 	template.Set("Process", processT.ExportFunction(iso))
 	template.Set("Eval", evalT.ExportFunction(iso))
+	template.Set("Use", useT.ExportFunction(iso))
+
+	// MCP Client Constructor
+	template.Set("MCP", mcpJsapi.NewMCP(iso))
 
 	// Deprecated Studio and Require
 	// template.Set("Studio", studioT.ExportFunction(iso))
