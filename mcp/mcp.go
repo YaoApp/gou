@@ -137,7 +137,7 @@ func LoadClient(file, id string) (Client, error) {
 	// If it's a process-based client, try to load mapping from filesystem
 	if clientDSL.Transport == types.TransportProcess {
 		// Try to load mapping data based on file path
-		// Expected: mcps/xxx.mcp.yao -> mcps/mapping/xxx/
+		// LoadMappingFromFile will extract ID from file path if not provided
 		mapping, err := process.LoadMappingFromFile(file, id, &clientDSL)
 		if err != nil {
 			// If mapping load fails but tools/resources/prompts are defined, return error
@@ -147,12 +147,54 @@ func LoadClient(file, id string) (Client, error) {
 			// Otherwise, continue with empty mapping (no tools/resources/prompts)
 		}
 
+		// If id is not provided, extract from file path
+		if id == "" {
+			id = extractClientIDFromPath(file)
+		}
+
 		// Call LoadClientSource with mapping data
 		return LoadClientSource(string(data), id, mapping)
 	}
 
+	// For non-process clients, if id is not provided, extract from file path
+	if id == "" {
+		id = extractClientIDFromPath(file)
+	}
+
 	// For non-process clients, call LoadClientSource without mapping
 	return LoadClientSource(string(data), id)
+}
+
+// extractClientIDFromPath extracts client ID from file path
+// Examples:
+//
+//	mcps/dsl.mcp.yao -> dsl
+//	mcps/foo/bar.mcp.yao -> foo.bar
+func extractClientIDFromPath(filePath string) string {
+	// Remove .mcp.yao extension
+	if len(filePath) < 8 || filePath[len(filePath)-8:] != ".mcp.yao" {
+		return ""
+	}
+
+	pathWithoutExt := filePath[:len(filePath)-8]
+
+	// Remove "mcps/" prefix if present
+	if len(pathWithoutExt) > 5 && pathWithoutExt[:5] == "mcps/" {
+		pathWithoutExt = pathWithoutExt[5:]
+	}
+
+	// Normalize path separators and replace with dots
+	// Example: "foo/bar" -> "foo.bar"
+	pathWithoutExt = fmt.Sprintf("%s", pathWithoutExt)
+	clientID := ""
+	for i := 0; i < len(pathWithoutExt); i++ {
+		if pathWithoutExt[i] == '/' || pathWithoutExt[i] == '\\' {
+			clientID += "."
+		} else {
+			clientID += string(pathWithoutExt[i])
+		}
+	}
+	return clientID
 }
 
 // Select select the mcp client or server
