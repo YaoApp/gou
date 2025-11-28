@@ -9,8 +9,21 @@ import (
 
 // CancelRequest cancels a specific request
 func (c *Client) CancelRequest(ctx context.Context, requestID interface{}) error {
-	// TODO: Implement process-based cancel request
-	// This will call a Yao process like: process.New("mcp.client.request.cancel", clientID, requestID)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Find the cancel function for this request
+	cancelFunc, exists := c.activeRequests[requestID]
+	if !exists {
+		return fmt.Errorf("request %v not found or already completed", requestID)
+	}
+
+	// Call the cancel function
+	cancelFunc()
+
+	// Remove from active requests
+	delete(c.activeRequests, requestID)
+
 	return nil
 }
 

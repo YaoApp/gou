@@ -29,13 +29,14 @@ type Client interface {
 	// Tool operations
 	ListTools(ctx context.Context, cursor string) (*types.ListToolsResponse, error)
 	CallTool(ctx context.Context, name string, arguments interface{}) (*types.CallToolResponse, error)
-	CallToolsBatch(ctx context.Context, tools []types.ToolCall) (*types.CallToolsBatchResponse, error)
+	CallTools(ctx context.Context, tools []types.ToolCall) (*types.CallToolsResponse, error)
+	CallToolsParallel(ctx context.Context, tools []types.ToolCall) (*types.CallToolsResponse, error)
 
 	// Prompt operations
 	ListPrompts(ctx context.Context, cursor string) (*types.ListPromptsResponse, error)
 	GetPrompt(ctx context.Context, name string, arguments map[string]interface{}) (*types.GetPromptResponse, error)
 
-	// Sampling operations (if supported by server)
+	// Sampling operations (if supported by server) | Will be changed
 	CreateSampling(ctx context.Context, request types.SamplingRequest) (*types.SamplingResponse, error)
 
 	// Logging operations

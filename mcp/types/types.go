@@ -267,9 +267,12 @@ type CallToolsBatchRequest struct {
 	Tools []ToolCall `json:"tools"`
 }
 
-type CallToolsBatchResponse struct {
+type CallToolsResponse struct {
 	Results []CallToolResponse `json:"results"`
 }
+
+// Deprecated: Use CallToolsResponse instead
+type CallToolsBatchResponse = CallToolsResponse
 
 // Prompt types
 type Prompt struct {
@@ -489,9 +492,10 @@ const (
 type ToolSchema struct {
 	Name         string          `json:"name"`
 	Description  string          `json:"description,omitempty"`
-	Process      string          `json:"process"`                // Yao process name
-	InputSchema  json.RawMessage `json:"inputSchema"`            // JSON Schema for input
-	OutputSchema json.RawMessage `json:"outputSchema,omitempty"` // Optional JSON Schema for output
+	Process      string          `json:"process"`                  // Yao process name
+	InputSchema  json.RawMessage `json:"inputSchema"`              // JSON Schema for input
+	OutputSchema json.RawMessage `json:"outputSchema,omitempty"`   // Optional JSON Schema for output
+	ProcessArgs  []string        `json:"x-process-args,omitempty"` // Mapping from MCP arguments to Process positional args
 }
 
 // ResourceSchema represents a resource definition
@@ -503,6 +507,7 @@ type ResourceSchema struct {
 	MimeType    string                 `json:"mimeType,omitempty"`
 	Parameters  []ResourceParameter    `json:"parameters,omitempty"` // URI parameters
 	Meta        map[string]interface{} `json:"meta,omitempty"`
+	ProcessArgs []string               `json:"x-process-args,omitempty"` // Mapping from URI/parameters to Process positional args
 }
 
 // ResourceParameter defines a parameter for a resource URI
