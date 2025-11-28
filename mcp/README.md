@@ -54,7 +54,7 @@ graph TB
     end
 
     subgraph "External MCP Servers"
-        ExtMCP1[OpenAI MCP Server<br/>HTTPS]
+        ExtMCP1[GitHub MCP Server<br/>HTTPS]
         ExtMCP2[Local MCP Server<br/>stdio]
     end
 
@@ -132,9 +132,9 @@ sequenceDiagram
     HTTP-->>AI: JSON Response
 
     Note over AI,ExtMCP: Scenario 2: External AI → External MCP (Proxied)
-    AI->>HTTP: POST /v1/mcps/openai<br/>(CallTool: analyze)
+    AI->>HTTP: POST /v1/mcps/github<br/>(CallTool: search_repos)
     HTTP->>SDK: Internal SDK Call<br/>(with auth, logging)
-    SDK->>ExtMCP: HTTP/SSE to OpenAI<br/>(with API key from config)
+    SDK->>ExtMCP: HTTP/SSE to GitHub MCP<br/>(with token from config)
     ExtMCP-->>SDK: MCP Response
     SDK-->>HTTP: MCP Response
     HTTP-->>AI: JSON Response
@@ -176,16 +176,16 @@ sequenceDiagram
 
 Connect to external MCP servers via HTTP, SSE, or STDIO:
 
-**SSE Transport - Internal Use** (`mcps/openai-internal.mcp.yao`):
+**SSE Transport - Internal Use** (`mcps/github-internal.mcp.yao`):
 
 ```json
 {
-  "label": "OpenAI MCP Server",
-  "description": "Connect to OpenAI's MCP server (internal use only)",
+  "label": "GitHub MCP Server",
+  "description": "Connect to GitHub's MCP server (internal use only)",
   "transport": "sse",
-  "url": "https://api.openai.com/mcp",
+  "url": "https://github.com/mcp/api",
   "headers": {
-    "Authorization": "Bearer $ENV.OPENAI_API_KEY"
+    "Authorization": "Bearer $ENV.GITHUB_TOKEN"
   },
   "capabilities": {
     "tools": { "listChanged": false },
@@ -196,17 +196,17 @@ Connect to external MCP servers via HTTP, SSE, or STDIO:
 
 Only accessible via Go API / JS API within Yao application.
 
-**SSE Transport - Proxied for External Clients** (`mcps/openai.mcp.yao`):
+**SSE Transport - Proxied for External Clients** (`mcps/github.mcp.yao`):
 
 ```json
 {
-  "label": "OpenAI MCP Server",
-  "description": "Proxied OpenAI MCP server with centralized auth",
+  "label": "GitHub MCP Server",
+  "description": "Proxied GitHub MCP server with centralized auth",
   "transport": "sse",
-  "url": "https://api.openai.com/mcp",
-  "endpoint": "/openai",
+  "url": "https://github.com/mcp/api",
+  "endpoint": "/github",
   "headers": {
-    "Authorization": "Bearer $ENV.OPENAI_API_KEY"
+    "Authorization": "Bearer $ENV.GITHUB_TOKEN"
   },
   "capabilities": {
     "tools": { "listChanged": false },
@@ -215,12 +215,12 @@ Only accessible via Go API / JS API within Yao application.
 }
 ```
 
-With `endpoint: "/openai"`:
+With `endpoint: "/github"`:
 
-- **Internal Access**: Via Go API / JS API (calls OpenAI directly)
-- **External Access**: Exposed at `http://your-yao-app/v1/mcps/openai`
+- **Internal Access**: Via Go API / JS API (calls GitHub MCP directly)
+- **External Access**: Exposed at `http://your-yao-app/v1/mcps/github`
 - **Benefits**:
-  - External clients don't need OpenAI API keys
+  - External clients don't need GitHub tokens
   - Centralized authentication, rate limiting, and logging
   - Can add custom authorization logic in Yao
 
