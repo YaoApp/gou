@@ -150,66 +150,25 @@ sequenceDiagram
 
 ### When to Use Each Approach
 
-**1. Process Transport (Internal)**
+| Scenario                           | Key Configuration                                                    | Internal Access<br/>(Go/JS) | External Access<br/>(HTTP/SSE) | Use Case                                                                        |
+| ---------------------------------- | -------------------------------------------------------------------- | --------------------------- | ------------------------------ | ------------------------------------------------------------------------------- |
+| **Process<br/>Internal Only**      | `transport: "process"`<br/>No `endpoint`                             | ✅                          | ❌                             | Access Yao Processes from code<br/>Best performance, no network                 |
+| **Process<br/>Exposed**            | `transport: "process"`<br/>`endpoint: "/myapp"`                      | ✅                          | ✅                             | Expose Yao Processes externally<br/>Available at `/v1/mcps/myapp`               |
+| **External SSE<br/>Internal Only** | `transport: "sse"`<br/>`url: "https://..."`<br/>No `endpoint`        | ✅                          | ❌                             | Call external MCP from Yao code<br/>E.g., connect to GitHub MCP, filesystem MCP |
+| **External SSE<br/>Proxy Mode**    | `transport: "sse"`<br/>`url: "https://..."`<br/>`endpoint: "/proxy"` | ✅                          | ✅                             | Proxy external MCP servers<br/>Hide API keys, unified auth                      |
+| **STDIO<br/>Local Server**         | `transport: "stdio"`<br/>`command: "node ..."`                       | ✅                          | ⭕<br/>(optional)              | Connect to local MCP servers<br/>Good for development                           |
 
-```json
-{ "transport": "process", "tools": { "my_tool": "scripts.myapp.Function" } }
-```
+**Key Difference**:
 
-- ✅ Access Yao Processes from internal code (Go/JS)
-- ✅ No network overhead
-- ✅ Best performance
-- ❌ Not accessible from external clients
+- **No `endpoint`** = Only accessible within Yao application (via Go API or JS API)
+- **With `endpoint`** = Also exposed at `/v1/mcps/{endpoint}` for external AI clients (like Claude Desktop)
 
-**2. Process Transport (Exposed)**
+**Typical Use Cases**:
 
-```json
-{ "transport": "process", "endpoint": "/myapp", "tools": {...} }
-```
-
-- ✅ Access Yao Processes from internal code (Go/JS)
-- ✅ Also exposed at `/v1/mcps/myapp` for external AI clients
-- ✅ Single configuration for both internal and external access
-- ⚠️ Consider security - external clients can call these tools
-
-**3. External MCP Server (SSE) - Internal Only**
-
-```json
-{ "transport": "sse", "url": "https://api.example.com/mcp", "headers": {...} }
-```
-
-- ✅ Connect to remote MCP servers from internal code
-- ✅ Access external AI capabilities
-- ❌ Not accessible from external clients
-- ❌ Network latency
-
-**4. External MCP Server (SSE) - Proxied**
-
-```json
-{
-  "transport": "sse",
-  "url": "https://api.example.com/mcp",
-  "endpoint": "/openai",
-  "headers": { "Authorization": "Bearer $ENV.OPENAI_KEY" }
-}
-```
-
-- ✅ Proxy external MCP server through Yao
-- ✅ Exposed at `/v1/mcps/openai` for external clients
-- ✅ Centralized auth (hide API keys from clients)
-- ✅ Add rate limiting, logging, monitoring
-- ✅ Single access point for both internal and external
-
-**5. External MCP Server (STDIO)**
-
-```json
-{ "transport": "stdio", "command": "node", "args": ["server.js"] }
-```
-
-- ✅ Connect to local MCP servers
-- ✅ Good for development/testing
-- ⚠️ Process management required
-- ⚠️ Can also be proxied with `endpoint` for external access
+1. **Process Internal Only**: Call Yao Processes from Flows or Scripts within your application
+2. **Process Exposed**: Let Claude Desktop directly access your Yao application features (customer management, data processing, etc.)
+3. **External SSE Internal**: Connect to external MCP servers (GitHub, Slack, filesystem) from your Yao code
+4. **External SSE Proxy**: Proxy external MCP servers through Yao - useful for adding authentication, rate limiting, or providing unified access to multiple MCP servers
 
 ## Configuration
 
