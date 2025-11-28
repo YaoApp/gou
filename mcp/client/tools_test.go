@@ -57,8 +57,12 @@ func TestToolsComplete(t *testing.T) {
 				testCallToolWithArgumentsCore(ctx, t, client)
 			})
 
-			t.Run("CallToolsBatch", func(t *testing.T) {
-				testCallToolsBatchCore(ctx, t, client)
+			t.Run("CallTools", func(t *testing.T) {
+				testCallToolsCore(ctx, t, client)
+			})
+
+			t.Run("CallToolsParallel", func(t *testing.T) {
+				testCallToolsParallelCore(ctx, t, client)
 			})
 
 			t.Run("ToolsPagination", func(t *testing.T) {
@@ -252,7 +256,7 @@ func testCallToolWithArgumentsCore(ctx context.Context, t *testing.T, client *Cl
 	}
 }
 
-func testCallToolsBatchCore(ctx context.Context, t *testing.T, client *Client) {
+func testCallToolsCore(ctx context.Context, t *testing.T, client *Client) {
 	t.Helper()
 
 	// First, get available tools
@@ -297,31 +301,105 @@ func testCallToolsBatchCore(ctx context.Context, t *testing.T, client *Client) {
 		})
 	}
 
-	logTestInfo(t, "Testing CallToolsBatch with %d tools", len(toolCalls))
+	logTestInfo(t, "Testing CallTools with %d tools", len(toolCalls))
 
-	// Test batch call
-	batchResponse, err := client.CallToolsBatch(ctx, toolCalls)
+	// Test sequential call
+	response, err := client.CallTools(ctx, toolCalls)
 	if err != nil {
-		logTestInfo(t, "CallToolsBatch failed (may be expected): %v", err)
+		logTestInfo(t, "CallTools failed (may be expected): %v", err)
 		return
 	}
 
 	// Verify response structure
-	if batchResponse == nil {
-		t.Errorf("Expected non-nil batch response")
+	if response == nil {
+		t.Errorf("Expected non-nil response")
 		return
 	}
 
-	if len(batchResponse.Results) != len(toolCalls) {
-		t.Errorf("Expected %d results, got %d", len(toolCalls), len(batchResponse.Results))
+	if len(response.Results) != len(toolCalls) {
+		t.Errorf("Expected %d results, got %d", len(toolCalls), len(response.Results))
 		return
 	}
 
-	logTestInfo(t, "CallToolsBatch succeeded, got %d results", len(batchResponse.Results))
+	logTestInfo(t, "CallTools succeeded, got %d results", len(response.Results))
 
 	// Verify each result
-	for i, result := range batchResponse.Results {
-		logTestInfo(t, "Batch result %d: %d content items, isError: %v",
+	for i, result := range response.Results {
+		logTestInfo(t, "Result %d: %d content items, isError: %v",
+			i, len(result.Content), result.IsError)
+	}
+}
+
+func testCallToolsParallelCore(ctx context.Context, t *testing.T, client *Client) {
+	t.Helper()
+
+	// First, get available tools
+	listResponse, err := client.ListTools(ctx, "")
+	if err != nil {
+		if strings.Contains(err.Error(), "server does not support tools") {
+			logTestInfo(t, "Server does not support tools (expected): %v", err)
+			return
+		}
+		logTestInfo(t, "ListTools failed, skipping CallToolsParallel test: %v", err)
+		return
+	}
+
+	if len(listResponse.Tools) == 0 {
+		logTestInfo(t, "No tools available for parallel calling")
+		return
+	}
+
+	// Create a batch of tool calls (limit to 2-3 tools to avoid overwhelming)
+	maxBatchSize := 3
+	if len(listResponse.Tools) < maxBatchSize {
+		maxBatchSize = len(listResponse.Tools)
+	}
+
+	toolCalls := make([]types.ToolCall, 0, maxBatchSize)
+	for i := 0; i < maxBatchSize; i++ {
+		tool := listResponse.Tools[i]
+		var args interface{}
+
+		// Set appropriate arguments based on tool name
+		if strings.Contains(strings.ToLower(tool.Name), "echo") {
+			args = map[string]interface{}{"message": fmt.Sprintf("Parallel message %d", i)}
+		} else if strings.Contains(strings.ToLower(tool.Name), "add") {
+			args = map[string]interface{}{"a": i, "b": i + 1}
+		} else {
+			args = map[string]interface{}{}
+		}
+
+		toolCalls = append(toolCalls, types.ToolCall{
+			Name:      tool.Name,
+			Arguments: args,
+		})
+	}
+
+	logTestInfo(t, "Testing CallToolsParallel with %d tools", len(toolCalls))
+
+	// Test parallel call
+	response, err := client.CallToolsParallel(ctx, toolCalls)
+	if err != nil {
+		logTestInfo(t, "CallToolsParallel failed (may be expected): %v", err)
+		return
+	}
+
+	// Verify response structure
+	if response == nil {
+		t.Errorf("Expected non-nil response")
+		return
+	}
+
+	if len(response.Results) != len(toolCalls) {
+		t.Errorf("Expected %d results, got %d", len(toolCalls), len(response.Results))
+		return
+	}
+
+	logTestInfo(t, "CallToolsParallel succeeded, got %d results", len(response.Results))
+
+	// Verify each result (results should maintain input order)
+	for i, result := range response.Results {
+		logTestInfo(t, "Parallel result %d: %d content items, isError: %v",
 			i, len(result.Content), result.IsError)
 	}
 }
@@ -447,9 +525,16 @@ func testToolsWithoutInitialization(t *testing.T, testCase TransportTestCase) {
 			},
 		},
 		{
-			name: "CallToolsBatch",
+			name: "CallTools",
 			fn: func() error {
-				_, err := client.CallToolsBatch(ctx, []types.ToolCall{{Name: "test_tool"}})
+				_, err := client.CallTools(ctx, []types.ToolCall{{Name: "test_tool"}})
+				return err
+			},
+		},
+		{
+			name: "CallToolsParallel",
+			fn: func() error {
+				_, err := client.CallToolsParallel(ctx, []types.ToolCall{{Name: "test_tool"}})
 				return err
 			},
 		},
@@ -497,9 +582,16 @@ func testToolsWithoutConnection(t *testing.T, testCase TransportTestCase) {
 			},
 		},
 		{
-			name: "CallToolsBatch",
+			name: "CallTools",
 			fn: func() error {
-				_, err := client.CallToolsBatch(ctx, []types.ToolCall{{Name: "test_tool"}})
+				_, err := client.CallTools(ctx, []types.ToolCall{{Name: "test_tool"}})
+				return err
+			},
+		},
+		{
+			name: "CallToolsParallel",
+			fn: func() error {
+				_, err := client.CallToolsParallel(ctx, []types.ToolCall{{Name: "test_tool"}})
 				return err
 			},
 		},

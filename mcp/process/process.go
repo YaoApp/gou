@@ -1,6 +1,7 @@
 package process
 
 import (
+	"context"
 	"sync"
 
 	"github.com/yaoapp/gou/mcp/types"
@@ -20,6 +21,10 @@ type Client struct {
 	notificationHandlers map[string][]types.NotificationHandler
 	errorHandlers        []types.ErrorHandler
 	nextProgressToken    uint64
+
+	// Request cancellation support
+	activeRequests map[interface{}]context.CancelFunc
+	nextRequestID  uint64
 
 	// Mutex for thread safety
 	mu sync.RWMutex
@@ -41,6 +46,8 @@ func New(dsl *types.ClientDSL) (*Client, error) {
 		notificationHandlers: make(map[string][]types.NotificationHandler),
 		errorHandlers:        []types.ErrorHandler{},
 		nextProgressToken:    1,
+		activeRequests:       make(map[interface{}]context.CancelFunc),
+		nextRequestID:        1,
 	}
 
 	return client, nil
