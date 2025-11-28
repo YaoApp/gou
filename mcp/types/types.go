@@ -27,6 +27,15 @@ const (
 	ProtocolVersion = "2025-06-18"
 )
 
+// SampleItemType represents the type of item for samples
+type SampleItemType string
+
+// Sample item types
+const (
+	SampleTool     SampleItemType = "tool"
+	SampleResource SampleItemType = "resource"
+)
+
 // Message types
 const (
 	TypeRequest      = "request"
@@ -355,7 +364,28 @@ type EmbeddedResource struct {
 	Blob     string `json:"blob,omitempty"` // base64-encoded binary data
 }
 
-// Sampling types
+// Sample types - for training/example data from .jsonl files
+type SampleData struct {
+	Index    int    `json:"index"`               // Auto-generated index (set by loader)
+	Name     string `json:"name,omitempty"`      // Optional sample name
+	ItemName string `json:"item_name,omitempty"` // Tool/Resource name (set by loader)
+
+	// Multi-purpose fields (semantics depend on item type)
+	Input  map[string]interface{} `json:"input,omitempty"`  // For tools: input args; For resources: parsed from URI
+	Output interface{}            `json:"output,omitempty"` // For tools: expected output; Not used for resources
+	URI    string                 `json:"uri,omitempty"`    // For resources: full URI with params
+	Data   interface{}            `json:"data,omitempty"`   // For resources: response data
+
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`  // Optional metadata (e.g., description)
+	Timestamp string                 `json:"timestamp,omitempty"` // Optional timestamp
+}
+
+type ListSamplesResponse struct {
+	Samples []SampleData `json:"samples"`
+	Total   int          `json:"total"`
+}
+
+// Sampling types (LLM text generation - MCP protocol standard)
 type SamplingRequest struct {
 	Model          string                 `json:"model"`
 	Messages       []SamplingMessage      `json:"messages"`

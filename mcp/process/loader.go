@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/yaoapp/gou/application"
 	gouJSON "github.com/yaoapp/gou/json"
@@ -61,8 +62,11 @@ func loadToolSchema(clientID, toolName, processName, basePath string) (*types.To
 		Process: processName,
 	}
 
+	// Convert clientID dots to slashes (e.g., "foo.bar" → "foo/bar")
+	clientPath := strings.ReplaceAll(clientID, ".", "/")
+
 	// Load input schema (required)
-	inputPath := filepath.Join(basePath, clientID, "schemes", toolName+".in.yao")
+	inputPath := filepath.Join(basePath, clientPath, "schemes", toolName+".in.yao")
 	inputData, err := application.App.Read(inputPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read input schema %s: %w", inputPath, err)
@@ -92,7 +96,7 @@ func loadToolSchema(clientID, toolName, processName, basePath string) (*types.To
 	}
 
 	// Load output schema (optional)
-	outputPath := filepath.Join(basePath, clientID, "schemes", toolName+".out.yao")
+	outputPath := filepath.Join(basePath, clientPath, "schemes", toolName+".out.yao")
 	outputData, err := application.App.Read(outputPath)
 	if err == nil {
 		var outputSchema map[string]interface{}
@@ -126,8 +130,11 @@ func loadResourceSchema(clientID, resourceName, processName, basePath string) (*
 		Process: processName,
 	}
 
+	// Convert clientID dots to slashes (e.g., "foo.bar" → "foo/bar")
+	clientPath := strings.ReplaceAll(clientID, ".", "/")
+
 	// Load resource definition
-	resourcePath := filepath.Join(basePath, clientID, "resources", resourceName+".res.yao")
+	resourcePath := filepath.Join(basePath, clientPath, "resources", resourceName+".res.yao")
 	resourceData, err := application.App.Read(resourcePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read resource schema %s: %w", resourcePath, err)
@@ -161,8 +168,11 @@ func loadPromptSchema(clientID, promptName, processName, basePath string) (*type
 		Name: promptName,
 	}
 
+	// Convert clientID dots to slashes (e.g., "foo.bar" → "foo/bar")
+	clientPath := strings.ReplaceAll(clientID, ".", "/")
+
 	// Load prompt template
-	promptPath := filepath.Join(basePath, clientID, "prompts", promptName+".pmt.yao")
+	promptPath := filepath.Join(basePath, clientPath, "prompts", promptName+".pmt.yao")
 	promptData, err := application.App.Read(promptPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read prompt template %s: %w", promptPath, err)
@@ -189,7 +199,10 @@ func loadPromptSchema(clientID, promptName, processName, basePath string) (*type
 }
 
 // LoadMappingFromFile loads mapping data based on MCP client file path
-// Example: mcps/dsl.mcp.yao -> mcps/mapping/dsl/
+// Examples:
+//
+//	mcps/dsl.mcp.yao -> clientID: "dsl", mapping: mcps/mapping/dsl/
+//	mcps/foo/bar.mcp.yao -> clientID: "foo.bar", mapping: mcps/mapping/foo/bar/
 func LoadMappingFromFile(filePath string, clientID string, dsl *types.ClientDSL) (*types.MappingData, error) {
 	// If no tools/resources/prompts defined, return empty mapping
 	if dsl.Tools == nil && dsl.Resources == nil && dsl.Prompts == nil {
@@ -200,22 +213,32 @@ func LoadMappingFromFile(filePath string, clientID string, dsl *types.ClientDSL)
 		}, nil
 	}
 
-	// Determine mapping base path from file path
-	// Expected patterns:
-	// 1. mcps/xxx.mcp.yao -> mcps/mapping/xxx/
-	// 2. mcps/subdir/xxx.mcp.yao -> mcps/mapping/xxx/
 	mappingBasePath := "mcps/mapping"
 
 	// Extract client ID from file path if not provided
 	if clientID == "" {
-		// Get filename without extension
-		base := filepath.Base(filePath)
+		// Parse file path to extract client ID
+		// Examples:
+		//   mcps/dsl.mcp.yao -> dsl
+		//   mcps/foo/bar.mcp.yao -> foo.bar
+		//   mcps/a/b/c.mcp.yao -> a.b.c
+
 		// Remove .mcp.yao extension
-		if len(base) > 8 && base[len(base)-8:] == ".mcp.yao" {
-			clientID = base[:len(base)-8]
-		} else {
+		if len(filePath) < 8 || filePath[len(filePath)-8:] != ".mcp.yao" {
 			return nil, fmt.Errorf("invalid MCP client file name: %s", filePath)
 		}
+
+		pathWithoutExt := filePath[:len(filePath)-8]
+
+		// Remove "mcps/" prefix if present
+		if len(pathWithoutExt) > 5 && pathWithoutExt[:5] == "mcps/" {
+			pathWithoutExt = pathWithoutExt[5:]
+		}
+
+		// Normalize path separators and replace with dots
+		// Example: "foo/bar" -> "foo.bar"
+		pathWithoutExt = filepath.ToSlash(pathWithoutExt)
+		clientID = strings.ReplaceAll(pathWithoutExt, "/", ".")
 	}
 
 	// Load mapping from standard path
