@@ -544,8 +544,11 @@ func Call(options CallOptions, source string, args ...interface{}) (interface{},
 	if err != nil {
 		return nil, err
 	}
+	defer iso.Dispose() // Always dispose isolate to prevent memory leak
 
 	ctx = v8go.NewContext(iso, iso.Template)
+	defer ctx.Close() // Always close context to prevent memory leak
+
 	instance, err = iso.CompileUnboundScript(source, name, v8go.CompileOptions{})
 	if err != nil {
 		return nil, err

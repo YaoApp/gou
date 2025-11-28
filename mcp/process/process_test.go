@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 	// Initialize application for all process tests
 	testAppRoot = os.Getenv("GOU_TEST_APPLICATION")
 	if testAppRoot == "" {
-		testAppRoot = "../../../gou-dev-app" // Default relative path from process package
+		testAppRoot = "../../gou-dev-app" // Default: two levels up from process package
 	}
 
 	diskApp, err := disk.Open(testAppRoot)
