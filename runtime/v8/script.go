@@ -94,6 +94,68 @@ func MakeScript(source []byte, file string, timeout time.Duration, isroot ...boo
 	return script, nil
 }
 
+// MakeScriptInMemory creates a script from source code without file system access.
+// This is useful for scripts stored in database or generated dynamically.
+// Supports TypeScript syntax but NOT imports (since there's no file to resolve).
+// For scripts with imports, use MakeScript with a real file path.
+func MakeScriptInMemory(source []byte, virtualFile string, timeout time.Duration, isroot ...bool) (*Script, error) {
+	syncLock.Lock()
+	defer syncLock.Unlock()
+
+	var jsCode []byte
+
+	// Transform TypeScript to JavaScript if needed
+	if strings.HasSuffix(virtualFile, ".ts") {
+		// Remove export statements and transform TS to JS
+		tsCode := removeExports(string(source))
+
+		result := api.Transform(tsCode, api.TransformOptions{
+			Loader:     api.LoaderTS,
+			Target:     api.ESNext,
+			Sourcefile: virtualFile,
+		})
+
+		if len(result.Errors) > 0 {
+			errors := []string{}
+			for _, e := range result.Errors {
+				errors = append(errors, e.Text)
+			}
+			return nil, fmt.Errorf("transform error: %s\n%s", strings.Join(errors, "\n"), string(source))
+		}
+		jsCode = result.Code
+	} else {
+		// For .js files, just remove export statements
+		jsCode = []byte(removeExports(string(source)))
+	}
+
+	script := NewScript(virtualFile, virtualFile, timeout)
+	script.Source = string(jsCode)
+	script.Root = false
+	if len(isroot) > 0 {
+		script.Root = isroot[0]
+	}
+
+	return script, nil
+}
+
+// removeExports removes export keywords from source code
+// Handles: export function, export class, export const, export var, export let, export default
+func removeExports(source string) string {
+	// Handle "export default function/class" -> "function/class"
+	source = regexp.MustCompile(`export\s+default\s+(function|class)\s+`).ReplaceAllString(source, "$1 ")
+
+	// Handle "export default" alone (for expressions) -> remove the line or make it a variable
+	// For simplicity, just remove "export default " for non-function/class cases
+	source = regexp.MustCompile(`export\s+default\s+`).ReplaceAllString(source, "")
+
+	// Handle "export function/class/const/var/let" -> "function/class/const/var/let"
+	source = exportRe.ReplaceAllStringFunc(source, func(m string) string {
+		return strings.ReplaceAll(m, "export ", "")
+	})
+
+	return source
+}
+
 // Exists check if the script exists
 func Exists(id string) bool {
 	if strings.HasPrefix(id, "scripts.") {
