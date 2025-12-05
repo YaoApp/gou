@@ -30,6 +30,22 @@ type Client struct {
 	mu sync.RWMutex
 }
 
+// Info returns basic client information
+func (c *Client) Info() *types.ClientInfo {
+	if c.DSL == nil {
+		return &types.ClientInfo{}
+	}
+	return &types.ClientInfo{
+		ID:          c.DSL.ID,
+		Name:        c.DSL.Name,
+		Version:     c.DSL.Version,
+		Type:        c.DSL.Type,
+		Transport:   c.DSL.Transport,
+		Label:       c.DSL.Label,
+		Description: c.DSL.Description,
+	}
+}
+
 // New creates a new Process-based MCP Client
 func New(dsl *types.ClientDSL) (*Client, error) {
 	if dsl == nil {

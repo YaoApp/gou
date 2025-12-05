@@ -52,6 +52,7 @@ type ClientDSL struct {
 	ID        string        `json:"id,omitempty"`      // The ID of the MCP Client (required)
 	Name      string        `json:"name"`              // The name of the MCP Client (required)
 	Version   string        `json:"version,omitempty"` // The version of the MCP Client
+	Type      string        `json:"type,omitempty"`    // The type of the MCP Client (e.g., "standard", "agent", "system")
 	Transport TransportType `json:"transport"`         // One of the TransportType (required)
 
 	types.MetaInfo
@@ -125,8 +126,13 @@ type InitializeResponse struct {
 
 // Client and Server info
 type ClientInfo struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
+	ID          string        `json:"id,omitempty"`          // Client ID
+	Name        string        `json:"name"`                  // Client name
+	Version     string        `json:"version,omitempty"`     // Client version
+	Type        string        `json:"type,omitempty"`        // Client type (standard, agent, system)
+	Transport   TransportType `json:"transport,omitempty"`   // Transport type
+	Label       string        `json:"label,omitempty"`       // Display label
+	Description string        `json:"description,omitempty"` // Description
 }
 
 type ServerInfo struct {
