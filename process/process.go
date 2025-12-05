@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -13,6 +14,9 @@ import (
 
 // Handlers ProcessHanlders
 var Handlers = map[string]Handler{}
+
+// handlerMutex protects Handlers map for thread-safe operations
+var handlerMutex sync.RWMutex
 
 // New make a new process
 func New(name string, args ...interface{}) *Process {
@@ -182,6 +186,55 @@ func (process *Process) Exec() (value interface{}, err error) {
 func Register(name string, handler Handler) {
 	name = strings.ToLower(name)
 	Handlers[name] = handler
+}
+
+// RegisterDynamic dynamically registers a process handler in a thread-safe manner
+func RegisterDynamic(name string, handler Handler) {
+	name = strings.ToLower(name)
+	handlerMutex.Lock()
+	defer handlerMutex.Unlock()
+	Handlers[name] = handler
+}
+
+// Unregister removes a process handler in a thread-safe manner
+// Returns true if the handler was found and removed, false otherwise
+func Unregister(name string) bool {
+	name = strings.ToLower(name)
+	handlerMutex.Lock()
+	defer handlerMutex.Unlock()
+	if _, exists := Handlers[name]; exists {
+		delete(Handlers, name)
+		return true
+	}
+	return false
+}
+
+// RegisterDynamicGroup dynamically registers a process handler group in a thread-safe manner
+func RegisterDynamicGroup(name string, group map[string]Handler) {
+	handlerMutex.Lock()
+	defer handlerMutex.Unlock()
+	for method, handler := range group {
+		id := fmt.Sprintf("%s.%s", strings.ToLower(name), strings.ToLower(method))
+		Handlers[id] = handler
+	}
+}
+
+// UnregisterGroup removes all handlers in a group in a thread-safe manner
+// Returns the number of handlers removed
+func UnregisterGroup(name string) int {
+	name = strings.ToLower(name)
+	prefix := name + "."
+	handlerMutex.Lock()
+	defer handlerMutex.Unlock()
+
+	count := 0
+	for key := range Handlers {
+		if strings.HasPrefix(key, prefix) {
+			delete(Handlers, key)
+			count++
+		}
+	}
+	return count
 }
 
 // RegisterGroup register a process handler group
