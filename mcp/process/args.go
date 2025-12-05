@@ -12,13 +12,17 @@ import (
 //   - "$args.nested.field" - extract nested field using dot notation
 //   - ":arguments" - pass entire arguments object
 //   - other strings - pass as constant values
-func extractProcessArgs(processArgs []string, arguments interface{}) ([]interface{}, error) {
+//
+// extraArgs will be appended to the result after the mapped arguments
+func extractProcessArgs(processArgs []string, arguments interface{}, extraArgs ...interface{}) ([]interface{}, error) {
 	// Default behavior: no mapping, pass entire arguments object
 	if len(processArgs) == 0 {
-		return []interface{}{arguments}, nil
+		result := []interface{}{arguments}
+		result = append(result, extraArgs...)
+		return result, nil
 	}
 
-	result := make([]interface{}, 0, len(processArgs))
+	result := make([]interface{}, 0, len(processArgs)+len(extraArgs))
 
 	for _, argSpec := range processArgs {
 		value, err := extractArgValue(argSpec, arguments)
@@ -27,6 +31,9 @@ func extractProcessArgs(processArgs []string, arguments interface{}) ([]interfac
 		}
 		result = append(result, value)
 	}
+
+	// Append extra arguments
+	result = append(result, extraArgs...)
 
 	return result, nil
 }

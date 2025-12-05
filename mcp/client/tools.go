@@ -69,7 +69,8 @@ func (c *Client) ListTools(ctx context.Context, cursor string) (*types.ListTools
 }
 
 // CallTool invokes a specific tool on the server
-func (c *Client) CallTool(ctx context.Context, name string, arguments interface{}) (*types.CallToolResponse, error) {
+// extraArgs are ignored for HTTP/SSE/STDIO transports (only used for Process transport)
+func (c *Client) CallTool(ctx context.Context, name string, arguments interface{}, extraArgs ...interface{}) (*types.CallToolResponse, error) {
 	if c.MCPClient == nil {
 		return nil, fmt.Errorf("MCP client not initialized")
 	}
@@ -83,6 +84,9 @@ func (c *Client) CallTool(ctx context.Context, name string, arguments interface{
 	if initResult.Capabilities.Tools == nil {
 		return nil, fmt.Errorf("server does not support tools")
 	}
+
+	// Note: extraArgs are not used in HTTP/SSE/STDIO transports
+	// They are only relevant for Process-based transport
 
 	// Create call tool request
 	request := mcp.CallToolRequest{
@@ -135,7 +139,8 @@ func (c *Client) CallTool(ctx context.Context, name string, arguments interface{
 
 // CallTools calls multiple tools in sequence
 // Tools are executed one by one, ensuring order and avoiding race conditions
-func (c *Client) CallTools(ctx context.Context, tools []types.ToolCall) (*types.CallToolsResponse, error) {
+// extraArgs are ignored for HTTP/SSE/STDIO transports (only used for Process transport)
+func (c *Client) CallTools(ctx context.Context, tools []types.ToolCall, extraArgs ...interface{}) (*types.CallToolsResponse, error) {
 	if c.MCPClient == nil {
 		return nil, fmt.Errorf("MCP client not initialized")
 	}
@@ -149,6 +154,9 @@ func (c *Client) CallTools(ctx context.Context, tools []types.ToolCall) (*types.
 	if initResult.Capabilities.Tools == nil {
 		return nil, fmt.Errorf("server does not support tools")
 	}
+
+	// Note: extraArgs are not used - standard MCP protocol doesn't support them
+	// They are only used in Process-based transport
 
 	// Call each tool individually (sequential processing)
 	results := make([]types.CallToolResponse, len(tools))
@@ -178,7 +186,8 @@ func (c *Client) CallTools(ctx context.Context, tools []types.ToolCall) (*types.
 // CallToolsParallel calls multiple tools concurrently
 // All tools are executed in parallel for better performance
 // Note: Results order matches the input order, but execution is concurrent
-func (c *Client) CallToolsParallel(ctx context.Context, tools []types.ToolCall) (*types.CallToolsResponse, error) {
+// extraArgs are ignored for HTTP/SSE/STDIO transports (only used for Process transport)
+func (c *Client) CallToolsParallel(ctx context.Context, tools []types.ToolCall, extraArgs ...interface{}) (*types.CallToolsResponse, error) {
 	if c.MCPClient == nil {
 		return nil, fmt.Errorf("MCP client not initialized")
 	}
@@ -192,6 +201,9 @@ func (c *Client) CallToolsParallel(ctx context.Context, tools []types.ToolCall) 
 	if initResult.Capabilities.Tools == nil {
 		return nil, fmt.Errorf("server does not support tools")
 	}
+
+	// Note: extraArgs are not used - standard MCP protocol doesn't support them
+	// They are only used in Process-based transport
 
 	// Call tools concurrently
 	results := make([]types.CallToolResponse, len(tools))
