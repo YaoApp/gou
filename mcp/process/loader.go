@@ -203,6 +203,7 @@ func loadPromptSchema(clientID, promptName, processName, basePath string) (*type
 //
 //	mcps/dsl.mcp.yao -> clientID: "dsl", mapping: mcps/mapping/dsl/
 //	mcps/foo/bar.mcp.yao -> clientID: "foo.bar", mapping: mcps/mapping/foo/bar/
+//	assistants/expense/mcps/tools.mcp.yao -> clientID: "tools", mapping: assistants/expense/mcps/mapping/tools/
 func LoadMappingFromFile(filePath string, clientID string, dsl *types.ClientDSL) (*types.MappingData, error) {
 	// If no tools/resources/prompts defined, return empty mapping
 	if dsl.Tools == nil && dsl.Resources == nil && dsl.Prompts == nil {
@@ -213,36 +214,73 @@ func LoadMappingFromFile(filePath string, clientID string, dsl *types.ClientDSL)
 		}, nil
 	}
 
+	// Determine mapping base path based on file location
 	mappingBasePath := "mcps/mapping"
 
-	// Extract client ID from file path if not provided
-	if clientID == "" {
+	// Normalize path separators
+	normalizedPath := filepath.ToSlash(filePath)
+
+	// Check if this is an assistant MCP (contains /mcps/ in path)
+	// Pattern: <prefix>/mcps/<filename>.mcp.yao
+	if strings.Contains(normalizedPath, "/mcps/") {
+		// Extract the directory containing mcps/
+		parts := strings.Split(normalizedPath, "/mcps/")
+		if len(parts) == 2 {
+			// Use the parent directory + mcps/mapping as base
+			// e.g., "assistants/expense/mcps/tools.mcp.yao" -> "assistants/expense/mcps/mapping"
+			mappingBasePath = parts[0] + "/mcps/mapping"
+		}
+	}
+
+	// Extract mapping lookup ID from file path
+	// For assistants, we want just the filename without path
+	// For standard mcps, we want the full path under mcps/
+	mappingLookupID := clientID
+	if mappingLookupID == "" {
 		// Parse file path to extract client ID
 		// Examples:
 		//   mcps/dsl.mcp.yao -> dsl
 		//   mcps/foo/bar.mcp.yao -> foo.bar
-		//   mcps/a/b/c.mcp.yao -> a.b.c
+		//   assistants/expense/mcps/tools.mcp.yao -> tools
 
-		// Remove .mcp.yao extension
-		if len(filePath) < 8 || filePath[len(filePath)-8:] != ".mcp.yao" {
-			return nil, fmt.Errorf("invalid MCP client file name: %s", filePath)
+		// Remove extensions
+		pathWithoutExt := normalizedPath
+		pathWithoutExt = strings.TrimSuffix(pathWithoutExt, ".mcp.yao")
+		pathWithoutExt = strings.TrimSuffix(pathWithoutExt, ".mcp.json")
+		pathWithoutExt = strings.TrimSuffix(pathWithoutExt, ".mcp.jsonc")
+
+		// Extract just the filename part after last /mcps/
+		if strings.Contains(pathWithoutExt, "/mcps/") {
+			parts := strings.Split(pathWithoutExt, "/mcps/")
+			if len(parts) == 2 {
+				mappingLookupID = parts[1]
+			}
+		} else if strings.HasPrefix(pathWithoutExt, "mcps/") {
+			// Remove "mcps/" prefix for standard mcps
+			mappingLookupID = pathWithoutExt[5:]
+		} else {
+			mappingLookupID = filepath.Base(pathWithoutExt)
 		}
 
-		pathWithoutExt := filePath[:len(filePath)-8]
-
-		// Remove "mcps/" prefix if present
-		if len(pathWithoutExt) > 5 && pathWithoutExt[:5] == "mcps/" {
-			pathWithoutExt = pathWithoutExt[5:]
+		// Replace slashes with dots for nested paths
+		mappingLookupID = strings.ReplaceAll(mappingLookupID, "/", ".")
+	} else if strings.Contains(normalizedPath, "/mcps/") {
+		// If clientID was provided but this is an assistant MCP,
+		// extract the path after /mcps/ for mapping lookup
+		// e.g., "assistants/tests/mcpload/mcps/nested/tool.mcp.yao" -> "nested.tool"
+		parts := strings.Split(normalizedPath, "/mcps/")
+		if len(parts) == 2 {
+			filename := parts[1]
+			filename = strings.TrimSuffix(filename, ".mcp.yao")
+			filename = strings.TrimSuffix(filename, ".mcp.json")
+			filename = strings.TrimSuffix(filename, ".mcp.jsonc")
+			// Support nested paths: "nested/tool" -> "nested.tool"
+			mappingLookupID = strings.ReplaceAll(filename, "/", ".")
 		}
-
-		// Normalize path separators and replace with dots
-		// Example: "foo/bar" -> "foo.bar"
-		pathWithoutExt = filepath.ToSlash(pathWithoutExt)
-		clientID = strings.ReplaceAll(pathWithoutExt, "/", ".")
 	}
 
-	// Load mapping from standard path
-	return LoadMapping(clientID, dsl, mappingBasePath)
+	// Load mapping from the determined path
+	return LoadMapping(mappingLookupID, dsl, mappingBasePath)
 }
 
 // LoadMappingFromSource loads mapping data from in-memory DSL and optional mapping data
