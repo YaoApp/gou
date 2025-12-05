@@ -382,15 +382,10 @@ func (process *Process) make() error {
 			return fmt.Errorf("Exception|404:%s not found", process.Name)
 		}
 
-		// add scripts to the beginning of the fields
-		fields = append([]string{"scripts"}, fields...)
-		process.Group = "scripts"
-		fields[1] = "assistants"
-
-		// agents.foo.Bar
-		process.Handler = strings.ToLower(process.Group)
-		process.ID = strings.ToLower(strings.ToLower(strings.Join(fields[1:len(fields)-1], ".")))
+		// agents.foo.bar.Baz -> handler: agents.foo.bar, method: Baz
 		process.Method = fields[len(fields)-1]
+		process.Handler = strings.ToLower(strings.Join(fields[0:len(fields)-1], "."))
+		process.ID = strings.ToLower(strings.Join(fields[1:len(fields)-1], "."))
 
 	// the scripts under the scripts directory, or plugins under the plugins directory
 	case "scripts", "studio", "plugins":
