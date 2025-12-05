@@ -33,6 +33,11 @@ func LoadServerSource(server, id string) (Server, error) {
 
 // LoadClientSource load the mcp client source with optional mapping data
 func LoadClientSource(dsl, id string, mappingData ...*types.MappingData) (Client, error) {
+	return LoadClientSourceWithType(dsl, id, "", mappingData...)
+}
+
+// LoadClientSourceWithType load the mcp client source with type and optional mapping data
+func LoadClientSourceWithType(dsl, id, clientType string, mappingData ...*types.MappingData) (Client, error) {
 	if id == "" {
 		return nil, fmt.Errorf("client id is required")
 	}
@@ -47,6 +52,11 @@ func LoadClientSource(dsl, id string, mappingData ...*types.MappingData) (Client
 	// Set ID if not provided in DSL
 	if clientDSL.ID == "" {
 		clientDSL.ID = id
+	}
+
+	// Set Type if provided and not already set
+	if clientType != "" && clientDSL.Type == "" {
+		clientDSL.Type = clientType
 	}
 
 	// Set Name if not provided in DSL
@@ -120,16 +130,21 @@ func LoadClientSource(dsl, id string, mappingData ...*types.MappingData) (Client
 }
 
 // LoadClient load the mcp client
-func LoadClient(file, id string) (Client, error) {
+func LoadClient(path, id string) (Client, error) {
+	return LoadClientWithType(path, id, "")
+}
+
+// LoadClientWithType load the mcp client from file with a specific type
+func LoadClientWithType(path, id, clientType string) (Client, error) {
 	// Read file content
-	data, err := application.App.Read(file)
+	data, err := application.App.Read(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read MCP client file %s: %w", file, err)
+		return nil, fmt.Errorf("failed to read MCP client file %s: %w", path, err)
 	}
 
 	// Parse DSL to check if it's a process-based client
 	var clientDSL types.ClientDSL
-	err = application.Parse(file, data, &clientDSL)
+	err = application.Parse(path, data, &clientDSL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse MCP client DSL: %w", err)
 	}
@@ -137,32 +152,30 @@ func LoadClient(file, id string) (Client, error) {
 	// If it's a process-based client, try to load mapping from filesystem
 	if clientDSL.Transport == types.TransportProcess {
 		// Try to load mapping data based on file path
-		// LoadMappingFromFile will extract ID from file path if not provided
-		mapping, err := process.LoadMappingFromFile(file, id, &clientDSL)
+		mapping, err := process.LoadMappingFromFile(path, id, &clientDSL)
 		if err != nil {
 			// If mapping load fails but tools/resources/prompts are defined, return error
 			if clientDSL.Tools != nil || clientDSL.Resources != nil || clientDSL.Prompts != nil {
 				return nil, fmt.Errorf("failed to load mapping data: %w", err)
 			}
-			// Otherwise, continue with empty mapping (no tools/resources/prompts)
 		}
 
 		// If id is not provided, extract from file path
 		if id == "" {
-			id = extractClientIDFromPath(file)
+			id = extractClientIDFromPath(path)
 		}
 
-		// Call LoadClientSource with mapping data
-		return LoadClientSource(string(data), id, mapping)
+		// Call LoadClientSourceWithType with mapping data
+		return LoadClientSourceWithType(string(data), id, clientType, mapping)
 	}
 
 	// For non-process clients, if id is not provided, extract from file path
 	if id == "" {
-		id = extractClientIDFromPath(file)
+		id = extractClientIDFromPath(path)
 	}
 
-	// For non-process clients, call LoadClientSource without mapping
-	return LoadClientSource(string(data), id)
+	// For non-process clients
+	return LoadClientSourceWithType(string(data), id, clientType)
 }
 
 // extractClientIDFromPath extracts client ID from file path

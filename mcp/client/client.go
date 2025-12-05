@@ -24,6 +24,22 @@ type Client struct {
 	nextProgressToken    uint64
 }
 
+// Info returns basic client information
+func (c *Client) Info() *types.ClientInfo {
+	if c.DSL == nil {
+		return &types.ClientInfo{}
+	}
+	return &types.ClientInfo{
+		ID:          c.DSL.ID,
+		Name:        c.DSL.Name,
+		Version:     c.DSL.Version,
+		Type:        c.DSL.Type,
+		Transport:   c.DSL.Transport,
+		Label:       c.DSL.Label,
+		Description: c.DSL.Description,
+	}
+}
+
 // New create a new MCP Client (without establishing connection)
 func New(dsl *types.ClientDSL) (*Client, error) {
 	// Validate DSL

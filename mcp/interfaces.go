@@ -10,6 +10,9 @@ import (
 
 // Client the MCP client interface
 type Client interface {
+	// Client information
+	Info() *types.ClientInfo
+
 	// Connection management
 	Connect(ctx context.Context, options ...types.ConnectionOptions) error
 	Disconnect(ctx context.Context) error
