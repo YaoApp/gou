@@ -37,7 +37,8 @@ func (c *Client) ListTools(ctx context.Context, cursor string) (*types.ListTools
 }
 
 // CallTool invokes a specific tool by calling the mapped Yao process
-func (c *Client) CallTool(ctx context.Context, name string, arguments interface{}) (*types.CallToolResponse, error) {
+// extraArgs are optional additional arguments that will be appended to the process call
+func (c *Client) CallTool(ctx context.Context, name string, arguments interface{}, extraArgs ...interface{}) (*types.CallToolResponse, error) {
 	// Get mapping data from registry
 	mapping, ok := GetMapping(c.DSL.ID)
 	if !ok {
@@ -73,7 +74,8 @@ func (c *Client) CallTool(ctx context.Context, name string, arguments interface{
 	}()
 
 	// Extract process arguments based on x-process-args mapping
-	procArgs, err := extractProcessArgs(toolSchema.ProcessArgs, arguments)
+	// extraArgs will be appended after the mapped arguments
+	procArgs, err := extractProcessArgs(toolSchema.ProcessArgs, arguments, extraArgs...)
 	if err != nil {
 		return &types.CallToolResponse{
 			Content: []types.ToolContent{
@@ -130,10 +132,11 @@ func (c *Client) CallTool(ctx context.Context, name string, arguments interface{
 
 // CallTools calls multiple tools in sequence
 // Tools are executed one by one, ensuring order and avoiding race conditions
-func (c *Client) CallTools(ctx context.Context, tools []types.ToolCall) (*types.CallToolsResponse, error) {
+// extraArgs are optional additional arguments that will be appended to each tool's process call
+func (c *Client) CallTools(ctx context.Context, tools []types.ToolCall, extraArgs ...interface{}) (*types.CallToolsResponse, error) {
 	results := make([]types.CallToolResponse, len(tools))
 	for i, tool := range tools {
-		result, err := c.CallTool(ctx, tool.Name, tool.Arguments)
+		result, err := c.CallTool(ctx, tool.Name, tool.Arguments, extraArgs...)
 		if err != nil {
 			// Create error response for failed tool call
 			results[i] = types.CallToolResponse{
@@ -158,7 +161,8 @@ func (c *Client) CallTools(ctx context.Context, tools []types.ToolCall) (*types.
 // CallToolsParallel calls multiple tools concurrently
 // All tools are executed in parallel for better performance
 // Note: Results order matches the input order, but execution is concurrent
-func (c *Client) CallToolsParallel(ctx context.Context, tools []types.ToolCall) (*types.CallToolsResponse, error) {
+// extraArgs are optional additional arguments that will be appended to each tool's process call
+func (c *Client) CallToolsParallel(ctx context.Context, tools []types.ToolCall, extraArgs ...interface{}) (*types.CallToolsResponse, error) {
 	results := make([]types.CallToolResponse, len(tools))
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -168,7 +172,7 @@ func (c *Client) CallToolsParallel(ctx context.Context, tools []types.ToolCall) 
 		go func(idx int, t types.ToolCall) {
 			defer wg.Done()
 
-			result, err := c.CallTool(ctx, t.Name, t.Arguments)
+			result, err := c.CallTool(ctx, t.Name, t.Arguments, extraArgs...)
 
 			mu.Lock()
 			defer mu.Unlock()

@@ -31,9 +31,9 @@ type Client interface {
 
 	// Tool operations
 	ListTools(ctx context.Context, cursor string) (*types.ListToolsResponse, error)
-	CallTool(ctx context.Context, name string, arguments interface{}) (*types.CallToolResponse, error)
-	CallTools(ctx context.Context, tools []types.ToolCall) (*types.CallToolsResponse, error)
-	CallToolsParallel(ctx context.Context, tools []types.ToolCall) (*types.CallToolsResponse, error)
+	CallTool(ctx context.Context, name string, arguments interface{}, extraArgs ...interface{}) (*types.CallToolResponse, error)
+	CallTools(ctx context.Context, tools []types.ToolCall, extraArgs ...interface{}) (*types.CallToolsResponse, error)
+	CallToolsParallel(ctx context.Context, tools []types.ToolCall, extraArgs ...interface{}) (*types.CallToolsResponse, error)
 
 	// Prompt operations
 	ListPrompts(ctx context.Context, cursor string) (*types.ListPromptsResponse, error)
@@ -139,7 +139,8 @@ type ToolProvider interface {
 	// List all available tools
 	ListTools(ctx context.Context, cursor string) ([]types.Tool, string, error)
 	// Execute a tool with given arguments
-	CallTool(ctx context.Context, name string, arguments interface{}) ([]types.ToolContent, error)
+	// extraArgs are optional additional arguments that will be appended to the process call
+	CallTool(ctx context.Context, name string, arguments interface{}, extraArgs ...interface{}) ([]types.ToolContent, error)
 	// Check if tool exists
 	HasTool(ctx context.Context, name string) bool
 	// Get tool schema
