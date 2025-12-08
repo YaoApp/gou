@@ -120,3 +120,84 @@ func TestExecStandard(t *testing.T) {
 	assert.Len(t, data, 3)
 	assert.Contains(t, data[0], "Hello")
 }
+
+func TestContextWithAuthorized(t *testing.T) {
+	option := option()
+	option.Mode = "standard"
+	prepare(t, option)
+	defer Stop()
+
+	// Create a test script
+	script := &Script{
+		ID:   "test.context.authorized",
+		Root: true,
+	}
+
+	// Create context with authorized information
+	authorized := map[string]interface{}{
+		"user_id": "user123",
+		"team_id": "team456",
+		"scope":   "read write",
+		"constraints": map[string]interface{}{
+			"team_only": true,
+		},
+	}
+
+	ctx, err := script.NewContext("test-session", map[string]interface{}{"key": "value"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ctx.Close()
+
+	// Set authorized info
+	ctx.WithAuthorized(authorized)
+
+	// Verify authorized is set
+	assert.NotNil(t, ctx.Authorized)
+	assert.Equal(t, "user123", ctx.Authorized["user_id"])
+	assert.Equal(t, "team456", ctx.Authorized["team_id"])
+	assert.Equal(t, "read write", ctx.Authorized["scope"])
+
+	constraints, ok := ctx.Authorized["constraints"].(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, true, constraints["team_only"])
+}
+
+func TestContextCloseCleanupAuthorized(t *testing.T) {
+	option := option()
+	option.Mode = "standard"
+	prepare(t, option)
+	defer Stop()
+
+	// Create a test script
+	script := &Script{
+		ID:   "test.context.cleanup",
+		Root: false,
+	}
+
+	// Create context with authorized information
+	authorized := map[string]interface{}{
+		"user_id": "user999",
+	}
+
+	ctx, err := script.NewContext("test-session-2", map[string]interface{}{"key": "value"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx.WithAuthorized(authorized)
+
+	// Verify authorized is set
+	assert.NotNil(t, ctx.Authorized)
+	assert.Equal(t, "user999", ctx.Authorized["user_id"])
+
+	// Close context
+	err = ctx.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify authorized is cleaned up
+	assert.Nil(t, ctx.Authorized)
+	assert.Nil(t, ctx.Data)
+}

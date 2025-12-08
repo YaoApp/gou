@@ -119,6 +119,7 @@ type Context struct {
 	ID          string                 // the script id
 	Sid         string                 // set the session id
 	Data        map[string]interface{} // set the global data
+	Authorized  map[string]interface{} // authorized information (optional)
 	Root        bool
 	Timeout     time.Duration // terminate the execution after this time
 	SourceRoots interface{}   // the script source root mappping
