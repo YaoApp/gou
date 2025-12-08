@@ -22,20 +22,21 @@ func (id ID) String() string {
 
 // Runner is the v8 runner
 type Runner struct {
-	id        ID
-	iso       *v8go.Isolate
-	ctx       *v8go.Context
-	tmpl      *v8go.ObjectTemplate
-	status    uint8
-	signal    chan uint8
-	chResp    chan interface{}
-	keepalive bool
-	script    *Script
-	method    string
-	sid       string
-	args      []interface{}
-	global    map[string]interface{}
-	caches    map[string]*v8go.Object
+	id         ID
+	iso        *v8go.Isolate
+	ctx        *v8go.Context
+	tmpl       *v8go.ObjectTemplate
+	status     uint8
+	signal     chan uint8
+	chResp     chan interface{}
+	keepalive  bool
+	script     *Script
+	method     string
+	sid        string
+	args       []interface{}
+	global     map[string]interface{}
+	authorized map[string]interface{} // Authorized information
+	caches     map[string]*v8go.Object
 }
 
 const (
@@ -285,9 +286,10 @@ func (runner *Runner) _exec() {
 	// Set the global data
 	global := runner.ctx.Global()
 	err = bridge.SetShareData(runner.ctx, global, &bridge.Share{
-		Sid:    runner.sid,
-		Root:   runner.script.Root,
-		Global: runner.global,
+		Sid:        runner.sid,
+		Root:       runner.script.Root,
+		Global:     runner.global,
+		Authorized: runner.authorized,
 	})
 	if err != nil {
 		runner.chResp <- err

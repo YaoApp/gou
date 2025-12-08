@@ -304,6 +304,127 @@ func (process *Process) WithV8Context(v8ctx interface{}) *Process {
 	return process
 }
 
+// WithAuthorized set the authorized information
+// Accepts either *AuthorizedInfo or map[string]interface{}
+func (process *Process) WithAuthorized(authorized interface{}) *Process {
+	if authorized == nil {
+		return process
+	}
+
+	switch v := authorized.(type) {
+	case *AuthorizedInfo:
+		process.Authorized = v
+	case map[string]interface{}:
+		// Convert map to AuthorizedInfo
+		info := &AuthorizedInfo{}
+		if subject, ok := v["sub"].(string); ok {
+			info.Subject = subject
+		}
+		if clientID, ok := v["client_id"].(string); ok {
+			info.ClientID = clientID
+		}
+		if scope, ok := v["scope"].(string); ok {
+			info.Scope = scope
+		}
+		if sessionID, ok := v["session_id"].(string); ok {
+			info.SessionID = sessionID
+		}
+		if userID, ok := v["user_id"].(string); ok {
+			info.UserID = userID
+		}
+		if teamID, ok := v["team_id"].(string); ok {
+			info.TeamID = teamID
+		}
+		if tenantID, ok := v["tenant_id"].(string); ok {
+			info.TenantID = tenantID
+		}
+		if rememberMe, ok := v["remember_me"].(bool); ok {
+			info.RememberMe = rememberMe
+		}
+
+		// Handle constraints if present
+		if constraints, ok := v["constraints"].(map[string]interface{}); ok {
+			if ownerOnly, ok := constraints["owner_only"].(bool); ok {
+				info.Constraints.OwnerOnly = ownerOnly
+			}
+			if creatorOnly, ok := constraints["creator_only"].(bool); ok {
+				info.Constraints.CreatorOnly = creatorOnly
+			}
+			if editorOnly, ok := constraints["editor_only"].(bool); ok {
+				info.Constraints.EditorOnly = editorOnly
+			}
+			if teamOnly, ok := constraints["team_only"].(bool); ok {
+				info.Constraints.TeamOnly = teamOnly
+			}
+			if extra, ok := constraints["extra"].(map[string]interface{}); ok {
+				info.Constraints.Extra = extra
+			}
+		}
+
+		process.Authorized = info
+	}
+
+	return process
+}
+
+// AuthorizedToMap converts AuthorizedInfo to map[string]interface{}
+// This is useful for passing authorized information to runtime bridges (e.g., V8)
+func (auth *AuthorizedInfo) AuthorizedToMap() map[string]interface{} {
+	if auth == nil {
+		return nil
+	}
+
+	result := make(map[string]interface{})
+
+	if auth.Subject != "" {
+		result["sub"] = auth.Subject
+	}
+	if auth.ClientID != "" {
+		result["client_id"] = auth.ClientID
+	}
+	if auth.Scope != "" {
+		result["scope"] = auth.Scope
+	}
+	if auth.SessionID != "" {
+		result["session_id"] = auth.SessionID
+	}
+	if auth.UserID != "" {
+		result["user_id"] = auth.UserID
+	}
+	if auth.TeamID != "" {
+		result["team_id"] = auth.TeamID
+	}
+	if auth.TenantID != "" {
+		result["tenant_id"] = auth.TenantID
+	}
+	if auth.RememberMe {
+		result["remember_me"] = auth.RememberMe
+	}
+
+	// Add constraints if any are set
+	if auth.Constraints.OwnerOnly || auth.Constraints.CreatorOnly || auth.Constraints.EditorOnly || auth.Constraints.TeamOnly || len(auth.Constraints.Extra) > 0 {
+		constraints := make(map[string]interface{})
+		if auth.Constraints.OwnerOnly {
+			constraints["owner_only"] = true
+		}
+		if auth.Constraints.CreatorOnly {
+			constraints["creator_only"] = true
+		}
+		if auth.Constraints.EditorOnly {
+			constraints["editor_only"] = true
+		}
+		if auth.Constraints.TeamOnly {
+			constraints["team_only"] = true
+		}
+		if len(auth.Constraints.Extra) > 0 {
+			constraints["extra"] = auth.Constraints.Extra
+		}
+		result["constraints"] = constraints
+	}
+
+	return result
+}
+
 // String the process as string
 func (process Process) String() string {
 	args, _ := jsoniter.MarshalToString(process.Args)
@@ -343,12 +464,10 @@ func (process *Process) make() error {
 		process.Method = fields[len(fields)-1]
 		process.ID = strings.ToLower(strings.Join(fields[1:len(fields)-1], "."))
 		process.Handler = strings.ToLower(fmt.Sprintf("%s.%s", process.Group, process.Method))
-		break
 
 	case "flows", "pipes":
 		process.Handler = process.Group
 		process.ID = strings.ToLower(strings.Join(fields[1:], "."))
-		break
 
 	case "aigcs":
 		if len(fields) < 2 {
@@ -357,7 +476,6 @@ func (process *Process) make() error {
 		// aigcs.translate
 		process.Handler = strings.ToLower(process.Group)
 		process.ID = strings.ToLower(strings.ToLower(strings.Join(fields[1:], ".")))
-		break
 
 	// The services scripts under the services directory
 	case "services":
@@ -374,7 +492,6 @@ func (process *Process) make() error {
 		process.Handler = strings.ToLower(process.Group)
 		process.ID = strings.ToLower(strings.ToLower(strings.Join(fields[1:len(fields)-1], ".")))
 		process.Method = fields[len(fields)-1]
-		break
 
 	// The assistants scripts under the assistants directory
 	case "agents", "assistants", "ai":
@@ -396,22 +513,18 @@ func (process *Process) make() error {
 		process.Handler = strings.ToLower(process.Group)
 		process.ID = strings.ToLower(strings.ToLower(strings.Join(fields[1:len(fields)-1], ".")))
 		process.Method = fields[len(fields)-1]
-		break
 
 	case "session", "http":
 		process.Method = fields[len(fields)-1]
 		process.Handler = strings.ToLower(fmt.Sprintf("%s.%s", process.Group, process.Method))
-		break
 
 	case "widgets":
 		process.Method = fields[len(fields)-1]
 		process.ID = strings.ToLower(strings.Join(fields[1:len(fields)-1], "."))
 		process.Handler = strings.ToLower(fmt.Sprintf("widgets.%s.%s", process.ID, process.Method))
-		break
 
 	default:
 		process.Handler = strings.ToLower(process.Name)
-		break
 	}
 
 	return nil

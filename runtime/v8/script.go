@@ -765,6 +765,9 @@ func (script *Script) execPerformance(process *process.Process) interface{} {
 	runner.args = process.Args
 	runner.global = process.Global
 	runner.sid = process.Sid
+	if process.Authorized != nil {
+		runner.authorized = process.Authorized.AuthorizedToMap()
+	}
 	return runner.Exec(script)
 }
 
@@ -799,11 +802,16 @@ func (script *Script) execStandardWithSharedContext(ctx *v8go.Context, process *
 
 	// Set the global data
 	global := ctx.Global()
-	err = bridge.SetShareData(ctx, global, &bridge.Share{
+	share := &bridge.Share{
 		Sid:    process.Sid,
 		Root:   script.Root,
 		Global: process.Global,
-	})
+	}
+	if process.Authorized != nil {
+		share.Authorized = process.Authorized.AuthorizedToMap()
+	}
+
+	err = bridge.SetShareData(ctx, global, share)
 	if err != nil {
 		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
 		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
@@ -876,11 +884,16 @@ func (script *Script) execStandardStandalone(process *process.Process) interface
 
 	// Set the global data
 	global := ctx.Global()
-	err = bridge.SetShareData(ctx, global, &bridge.Share{
+	share := &bridge.Share{
 		Sid:    process.Sid,
 		Root:   script.Root,
 		Global: process.Global,
-	})
+	}
+	if process.Authorized != nil {
+		share.Authorized = process.Authorized.AuthorizedToMap()
+	}
+
+	err = bridge.SetShareData(ctx, global, share)
 	if err != nil {
 		log.Error("scripts.%s.%s %s", script.ID, process.Method, err.Error())
 		exception.New("scripts.%s.%s %s", 500, script.ID, process.Method, err.Error()).Throw()
