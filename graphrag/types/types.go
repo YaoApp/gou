@@ -532,19 +532,19 @@ func (c *VectorStoreConfig) Validate() error {
 // CreateCollectionOptions represents configuration for creating a collection
 type CreateCollectionOptions struct {
 	// Collection Basic Configuration
-	CollectionName string         `json:"collection_name" yaml:"collection_name"`   // Collection/Table name
-	Dimension      int            `json:"dimension" yaml:"dimension"`               // Vector dimension (e.g., 1536 for OpenAI embeddings)
-	Distance       DistanceMetric `json:"distance" yaml:"distance"`                 // Distance metric
-	IndexType      IndexType      `json:"index_type" yaml:"index_type"`             // Index type
+	CollectionName string         `json:"collection_name" yaml:"collection_name"` // Collection/Table name
+	Dimension      int            `json:"dimension" yaml:"dimension"`             // Vector dimension (e.g., 1536 for OpenAI embeddings)
+	Distance       DistanceMetric `json:"distance" yaml:"distance"`               // Distance metric
+	IndexType      IndexType      `json:"index_type" yaml:"index_type"`           // Index type
 
 	// Index Parameters (for HNSW)
-	M              int `json:"m,omitempty" yaml:"m,omitempty"`                               // Number of bidirectional links for each node (HNSW)
-	EfConstruction int `json:"ef_construction,omitempty" yaml:"ef_construction,omitempty"`   // Size of dynamic candidate list (HNSW)
-	EfSearch       int `json:"ef_search,omitempty" yaml:"ef_search,omitempty"`               // Size of dynamic candidate list for search (HNSW)
+	M              int `json:"m,omitempty" yaml:"m,omitempty"`                             // Number of bidirectional links for each node (HNSW)
+	EfConstruction int `json:"ef_construction,omitempty" yaml:"ef_construction,omitempty"` // Size of dynamic candidate list (HNSW)
+	EfSearch       int `json:"ef_search,omitempty" yaml:"ef_search,omitempty"`             // Size of dynamic candidate list for search (HNSW)
 
 	// Index Parameters (for IVF)
-	NumLists  int `json:"num_lists,omitempty" yaml:"num_lists,omitempty"`     // Number of clusters (IVF)
-	NumProbes int `json:"num_probes,omitempty" yaml:"num_probes,omitempty"`   // Number of clusters to search (IVF)
+	NumLists  int `json:"num_lists,omitempty" yaml:"num_lists,omitempty"`   // Number of clusters (IVF)
+	NumProbes int `json:"num_probes,omitempty" yaml:"num_probes,omitempty"` // Number of clusters to search (IVF)
 
 	// Sparse Vector Configuration (for hybrid search)
 	EnableSparseVectors bool   `json:"enable_sparse_vectors,omitempty" yaml:"enable_sparse_vectors,omitempty"` // Enable sparse vector support for hybrid retrieval
