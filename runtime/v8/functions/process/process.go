@@ -45,6 +45,11 @@ func exec(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		WithSID(share.Sid).
 		WithV8Context(info.Context())
 
+	// Set authorized info if available
+	if share.Authorized != nil {
+		proc = proc.WithAuthorized(share.Authorized)
+	}
+
 	// Execute synchronously in current thread (V8 callback must not create goroutines)
 	// This ensures thread affinity for V8 isolate and avoids signal stack issues
 	err = proc.ExecuteSync()

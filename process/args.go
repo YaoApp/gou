@@ -255,9 +255,9 @@ func (process *Process) ArgsRecords(index int) []map[string]interface{} {
 		exception.New("参数错误: 第%d个参数不能为空值", 400, index+1).Ctx(fmt.Sprintf("%#v", process.Args[index])).Throw()
 	}
 
-	switch args.(type) {
+	switch args := args.(type) {
 	case []interface{}:
-		for _, v := range args.([]interface{}) {
+		for _, v := range args {
 			value, ok := v.(map[string]interface{})
 			if ok {
 				records = append(records, value)
@@ -268,24 +268,19 @@ func (process *Process) ArgsRecords(index int) []map[string]interface{} {
 			}
 			exception.New("参数错误: 第%d个参数不是数组", 400, index+1).Ctx(fmt.Sprintf("%#v", process.Args[index])).Throw()
 		}
-		break
 	case []maps.MapStrAny:
-		for _, v := range args.([]maps.MapStrAny) {
+		for _, v := range args {
 			records = append(records, v)
 		}
-		break
 	case []share.Record:
-		for _, v := range args.([]share.Record) {
+		for _, v := range args {
 			records = append(records, v)
 		}
-		break
 	case []map[string]interface{}:
-		records = args.([]map[string]interface{})
-		break
+		records = args
 	default:
 		fmt.Printf("%#v %s\n", args, reflect.TypeOf(args).Kind())
 		exception.New("参数错误: 第%d个参数不是数组", 400, index+1).Ctx(fmt.Sprintf("%#v", process.Args[index])).Throw()
-		break
 	}
 	return records
 }
@@ -305,15 +300,12 @@ func (process *Process) ArgsStrings(index int) []string {
 			}
 			exception.New("参数错误: 第%d个参数不是字符串数组", 400, index+1).Ctx(process.Args[index]).Throw()
 		}
-		break
 
 	case []string:
 		columns = values
-		break
 
 	default:
 		exception.New("参数错误: 第%d个参数不是字符串数组", 400, index+1).Ctx(process.Args[index]).Throw()
-		break
 	}
 	return columns
 }
@@ -322,4 +314,12 @@ func (process *Process) ArgsStrings(index int) []string {
 func (process *Process) ArgsArray(index int) []interface{} {
 	process.ValidateArgNums(index + 1)
 	return any.Of(process.Args[index]).CArray()
+}
+
+// GetAuthorized returns the authorized information from the process
+func (process *Process) GetAuthorized() *AuthorizedInfo {
+	if process.Authorized == nil {
+		return &AuthorizedInfo{}
+	}
+	return process.Authorized
 }
