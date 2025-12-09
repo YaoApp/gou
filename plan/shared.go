@@ -22,6 +22,8 @@ type Space interface {
 	ClearNotify() error
 	Subscribe(key string, callback func(key string, value interface{})) error
 	Unsubscribe(key string) error
+	Snapshot() map[string]interface{}          // Returns a copy of all key-value pairs
+	Restore(data map[string]interface{}) error // Restores multiple key-value pairs from a snapshot
 }
 
 // NewMemorySharedSpace creates a new MemorySharedSpace instance
@@ -119,5 +121,45 @@ func (m *MemorySharedSpace) Unsubscribe(key string) error {
 	defer m.subMu.Unlock()
 
 	delete(m.subscribers, key)
+	return nil
+}
+
+// Snapshot returns a copy of all key-value pairs in the shared space
+// Used for persisting space state for recovery purposes
+func (m *MemorySharedSpace) Snapshot() map[string]interface{} {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	snapshot := make(map[string]interface{}, len(m.data))
+	for k, v := range m.data {
+		snapshot[k] = v
+	}
+	return snapshot
+}
+
+// Restore sets multiple key-value pairs from a snapshot
+// Used for recovering space state after interruption
+func (m *MemorySharedSpace) Restore(data map[string]interface{}) error {
+	if data == nil {
+		return nil
+	}
+
+	m.mu.Lock()
+	for k, v := range data {
+		m.data[k] = v
+	}
+	m.mu.Unlock()
+
+	// Notify subscribers of restored values
+	m.subMu.RLock()
+	for key, value := range data {
+		if callbacks, exists := m.subscribers[key]; exists {
+			for _, callback := range callbacks {
+				callback(key, value)
+			}
+		}
+	}
+	m.subMu.RUnlock()
+
 	return nil
 }
