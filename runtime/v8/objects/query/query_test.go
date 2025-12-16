@@ -121,6 +121,178 @@ func TestQueryObject(t *testing.T) {
 	assert.Equal(t, 1, len(res.([]interface{})))
 }
 
+func TestQueryLint(t *testing.T) {
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	queryObj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("Query", queryObj.ExportFunction(iso))
+
+	// Register a dummy query engine for Lint test
+	if _, has := query.Engines["lint-test"]; !has {
+		query.Register("lint-test", &gou.Query{
+			Query: nil,
+			GetTableName: func(s string) string {
+				return s
+			},
+		})
+	}
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// ===== Test valid DSL
+	v, err := ctx.RunScript(`
+	function LintValid() {
+		var q = new Query("lint-test")
+		var result = q.Lint('{"select":["id","name"],"from":"users"}')
+		return result
+	}
+	LintValid()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result := res.(map[string]interface{})
+	assert.Equal(t, true, result["valid"])
+	diagnostics := result["diagnostics"].([]interface{})
+	assert.Equal(t, 0, len(diagnostics))
+	assert.NotNil(t, result["dsl"])
+
+	// ===== Test invalid DSL - missing select
+	v, err = ctx.RunScript(`
+	function LintMissingSelect() {
+		var q = new Query("lint-test")
+		var result = q.Lint('{"from":"users"}')
+		return result
+	}
+	LintMissingSelect()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result = res.(map[string]interface{})
+	assert.Equal(t, false, result["valid"])
+	diagnostics = result["diagnostics"].([]interface{})
+	assert.Greater(t, len(diagnostics), 0)
+
+	// Check first diagnostic
+	firstDiag := diagnostics[0].(map[string]interface{})
+	assert.Equal(t, "error", firstDiag["severity"])
+	assert.Contains(t, firstDiag["message"], "select")
+
+	// ===== Test invalid JSON syntax
+	v, err = ctx.RunScript(`
+	function LintInvalidJSON() {
+		var q = new Query("lint-test")
+		var result = q.Lint('{"select":["id",}')
+		return result
+	}
+	LintInvalidJSON()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result = res.(map[string]interface{})
+	assert.Equal(t, false, result["valid"])
+	diagnostics = result["diagnostics"].([]interface{})
+	assert.Greater(t, len(diagnostics), 0)
+
+	// ===== Test DSL with wheres
+	v, err = ctx.RunScript(`
+	function LintWithWheres() {
+		var q = new Query("lint-test")
+		var result = q.Lint('{"select":["id","name"],"from":"users","wheres":[{"field":"status","op":"=","value":"active"}]}')
+		return result
+	}
+	LintWithWheres()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result = res.(map[string]interface{})
+	assert.Equal(t, true, result["valid"])
+
+	// ===== Test DSL with invalid operator
+	v, err = ctx.RunScript(`
+	function LintInvalidOp() {
+		var q = new Query("lint-test")
+		var result = q.Lint('{"select":["id"],"from":"users","wheres":[{"field":"id","op":"invalid_op","value":1}]}')
+		return result
+	}
+	LintInvalidOp()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result = res.(map[string]interface{})
+	assert.Equal(t, false, result["valid"])
+	diagnostics = result["diagnostics"].([]interface{})
+	assert.Greater(t, len(diagnostics), 0)
+
+	firstDiag = diagnostics[0].(map[string]interface{})
+	assert.Contains(t, firstDiag["message"], "invalid_op")
+
+	// ===== Test diagnostic position info
+	v, err = ctx.RunScript(`
+	function LintCheckPosition() {
+		var q = new Query("lint-test")
+		var result = q.Lint('{"from":"users"}')
+		return result.diagnostics[0].position
+	}
+	LintCheckPosition()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	position := res.(map[string]interface{})
+	assert.NotNil(t, position["line"])
+	assert.NotNil(t, position["column"])
+}
+
 func initTestEngine() {
 
 	if capsule.Global == nil {

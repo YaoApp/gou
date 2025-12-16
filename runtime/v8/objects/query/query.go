@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/yaoapp/gou/query"
+	"github.com/yaoapp/gou/query/linter"
 	"github.com/yaoapp/gou/query/share"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/kun/exception"
@@ -26,12 +27,14 @@ func New() *Object {
 // query.Paginate({"select":["id"], "from":"user"})
 // query.First({"select":["id"], "from":"user"})
 // query.Run({"stmt":"show version"})
+// query.Lint('{"select":["id"], "from":"user"}') // Validate DSL
 func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl := v8go.NewObjectTemplate(iso)
 	tmpl.Set("Get", obj.get(iso))
 	tmpl.Set("Run", obj.run(iso))
 	tmpl.Set("Paginate", obj.paginate(iso))
 	tmpl.Set("First", obj.first(iso))
+	tmpl.Set("Lint", obj.lint(iso))
 	return tmpl
 }
 
@@ -144,6 +147,62 @@ func (obj *Object) run(iso *v8go.Isolate) *v8go.FunctionTemplate {
 
 		return obj.response(iso, info, data)
 	})
+}
+
+// lint validates a QueryDSL string and returns diagnostics
+// query.Lint('{"select":["id"], "from":"user"}')
+// Returns: { valid: bool, diagnostics: [...], dsl: {...} }
+func (obj *Object) lint(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			msg := "Query.Lint: Missing DSL parameter"
+			log.Error("%s", msg)
+			return bridge.JsException(info.Context(), msg)
+		}
+
+		// Get the DSL source string
+		source := args[0].String()
+
+		// Run linter
+		dsl, result := linter.Parse(source)
+
+		// Build response
+		response := map[string]interface{}{
+			"valid":       result.Valid,
+			"diagnostics": obj.formatDiagnostics(result.Diagnostics),
+		}
+
+		// Include parsed DSL if valid
+		if dsl != nil {
+			response["dsl"] = dsl
+		}
+
+		return obj.response(iso, info, response)
+	})
+}
+
+// formatDiagnostics converts linter diagnostics to a JS-friendly format
+func (obj *Object) formatDiagnostics(diagnostics []linter.Diagnostic) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(diagnostics))
+	for i, d := range diagnostics {
+		result[i] = map[string]interface{}{
+			"severity": d.Severity.String(),
+			"message":  d.Message,
+			"code":     d.Code,
+			"path":     d.Path,
+			"position": map[string]interface{}{
+				"line":       d.Position.Line,
+				"column":     d.Position.Column,
+				"end_line":   d.Position.EndLine,
+				"end_column": d.Position.EndColumn,
+			},
+		}
+		if d.Source != "" {
+			result[i]["source"] = d.Source
+		}
+	}
+	return result
 }
 
 func (obj *Object) runQueryGet(iso *v8go.Isolate, info *v8go.FunctionCallbackInfo, param *v8go.Value) (data interface{}, err error) {

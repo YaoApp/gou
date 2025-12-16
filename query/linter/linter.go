@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/yaoapp/gou/query/gou"
+	"github.com/yaoapp/kun/exception"
 )
 
 // Severity represents the severity level of a diagnostic
@@ -156,6 +157,10 @@ func Parse(source string) (dsl *gou.QueryDSL, result *LintResult) {
 				errMsg = v
 			case error:
 				errMsg = v.Error()
+			case exception.Exception:
+				errMsg = v.Message
+			case *exception.Exception:
+				errMsg = v.Message
 			default:
 				errMsg = fmt.Sprintf("%v", v)
 			}
