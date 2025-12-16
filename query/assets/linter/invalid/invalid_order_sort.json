@@ -1,0 +1,10 @@
+{
+  "select": ["id", "name"],
+  "from": "users",
+  "orders": [
+    { "field": "created_at", "sort": "descending" },
+    { "field": "name", "sort": "up" },
+    { "sort": "desc" }
+  ]
+}
+

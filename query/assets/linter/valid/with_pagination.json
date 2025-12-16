@@ -1,0 +1,9 @@
+{
+  "comment": "Query with pagination",
+  "select": ["id", "name", "email", "created_at"],
+  "from": "users",
+  "wheres": [{ "field": "status", "op": "=", "value": "active" }],
+  "orders": [{ "field": "created_at", "sort": "desc" }],
+  "page": 1,
+  "pagesize": 20
+}

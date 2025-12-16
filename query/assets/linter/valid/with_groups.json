@@ -1,0 +1,23 @@
+{
+  "comment": "Query with groups and havings",
+  "select": [
+    "category",
+    ":COUNT(id) as count",
+    ":SUM(amount) as total_amount",
+    ":AVG(price) as avg_price"
+  ],
+  "from": "orders",
+  "wheres": [
+    { "field": "status", "op": "=", "value": "completed" }
+  ],
+  "groups": [
+    { "field": "category" }
+  ],
+  "havings": [
+    { "field": ":COUNT(id)", "op": ">", "value": 10 }
+  ],
+  "orders": [
+    { "field": "total_amount", "sort": "desc" }
+  ]
+}
+

@@ -1,0 +1,23 @@
+{
+  "select": [
+    "id",
+    "name with space",
+    ""
+  ],
+  "wheres": [
+    { "op": "=", "value": "active" },
+    { "field": "age", "op": "invalid_op", "value": 18 },
+    { "field": "status", "op": "is", "value": "invalid" }
+  ],
+  "orders": [
+    { "sort": "desc" },
+    { "field": "name", "sort": "invalid" }
+  ],
+  "havings": [
+    { "field": ":COUNT(id)", "op": ">", "value": 10 }
+  ],
+  "joins": [
+    { "from": "orders" }
+  ]
+}
+

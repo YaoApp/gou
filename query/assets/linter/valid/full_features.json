@@ -1,0 +1,37 @@
+{
+  "comment": "Full-featured query with all supported clauses",
+  "select": [
+    "id",
+    "name as user_name",
+    "email",
+    ":COUNT(id) as total",
+    ":SUM(amount) as sum_amount",
+    "profile$.avatar as avatar",
+    "tags[*] as all_tags",
+    "scores[0] as first_score"
+  ],
+  "from": "$user as u",
+  "wheres": [
+    { "field": "status", "op": "=", "value": "active" },
+    { "field": "age", "op": ">=", "value": 18 },
+    { "field": "name", "op": "like", "value": "%test%" },
+    { "field": "role", "op": "in", "value": ["admin", "user"] },
+    { "field": "deleted_at", "op": "is", "value": "null" },
+    {
+      "field": "type",
+      "op": "=",
+      "value": "premium",
+      "or": true,
+      "wheres": [
+        { "field": "level", "op": ">", "value": 5 },
+        { "field": "vip", "op": "=", "value": true, "or": true }
+      ]
+    }
+  ],
+  "orders": [
+    { "field": "created_at", "sort": "desc" },
+    { "field": "name", "sort": "asc" }
+  ],
+  "limit": 100,
+  "offset": 0
+}

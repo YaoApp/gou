@@ -1,0 +1,10 @@
+{
+  "select": [
+    "id",
+    "name with space",
+    ":INVALID_FUNC(",
+    ""
+  ],
+  "from": "users"
+}
+

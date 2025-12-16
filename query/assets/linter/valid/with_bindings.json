@@ -1,0 +1,19 @@
+{
+  "comment": "Query with dynamic bindings",
+  "select": [
+    "id",
+    "name",
+    "?:custom_field as custom"
+  ],
+  "from": "users",
+  "wheres": [
+    { "field": "status", "op": "=", "value": "?:status" },
+    { "field": "type", "op": "in", "value": "?:types" }
+  ],
+  "orders": [
+    { "field": "?:sort_field", "sort": "desc" }
+  ],
+  "limit": "?:limit",
+  "offset": "?:offset"
+}
+

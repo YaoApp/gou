@@ -1,0 +1,13 @@
+{
+  "select": ["id", "name"],
+  "from": "admins",
+  "unions": [
+    {
+      "from": "users"
+    },
+    {
+      "select": ["id", "name"]
+    }
+  ]
+}
+

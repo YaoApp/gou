@@ -1,0 +1,10 @@
+{
+  "select": ["id", "name"],
+  "from": "users",
+  "wheres": [
+    { "field": "deleted_at", "op": "is", "value": "empty" },
+    { "field": "updated_at", "op": "is", "value": true },
+    { "field": "created_at", "op": "is" }
+  ]
+}
+

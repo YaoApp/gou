@@ -1,0 +1,9 @@
+{
+  "comment": "Query with raw SQL",
+  "sql": {
+    "stmt": "SELECT id, name, email FROM users WHERE status = ? AND age >= ? ORDER BY created_at DESC LIMIT 10",
+    "args": ["active", 18],
+    "comment": "Raw SQL query for complex cases"
+  }
+}
+
