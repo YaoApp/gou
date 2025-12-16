@@ -1,0 +1,149 @@
+{
+  "description": "Linter test cases for QueryDSL validation",
+  "valid": {
+    "description": "These files should pass validation without errors",
+    "cases": [
+      {
+        "file": "valid/simple.json",
+        "description": "Simple query with basic select, from, wheres, orders"
+      },
+      {
+        "file": "valid/full_features.json",
+        "description": "Full-featured query with all supported clauses"
+      },
+      {
+        "file": "valid/with_groups.json",
+        "description": "Query with groups and havings"
+      },
+      {
+        "file": "valid/with_joins.json",
+        "description": "Query with table joins"
+      },
+      {
+        "file": "valid/with_unions.json",
+        "description": "Query with unions"
+      },
+      {
+        "file": "valid/with_subquery.json",
+        "description": "Query with subquery"
+      },
+      {
+        "file": "valid/with_sql.json",
+        "description": "Query with raw SQL"
+      },
+      {
+        "file": "valid/with_pagination.json",
+        "description": "Query with pagination"
+      },
+      {
+        "file": "valid/with_model.json",
+        "description": "Query using data model instead of table"
+      },
+      {
+        "file": "valid/with_bindings.json",
+        "description": "Query with dynamic bindings"
+      }
+    ]
+  },
+  "invalid": {
+    "description": "These files should fail validation with specific errors",
+    "cases": [
+      {
+        "file": "invalid/json_syntax_error.json",
+        "description": "Invalid JSON syntax",
+        "expected_errors": ["E001"],
+        "expected_count": 1
+      },
+      {
+        "file": "invalid/missing_select.json",
+        "description": "Missing required select field",
+        "expected_errors": ["E100"],
+        "expected_count": 1
+      },
+      {
+        "file": "invalid/missing_from.json",
+        "description": "Missing required from field",
+        "expected_errors": ["E110"],
+        "expected_count": 1
+      },
+      {
+        "file": "invalid/invalid_expression.json",
+        "description": "Invalid field expressions (causes parse panic)",
+        "expected_errors": ["E002"],
+        "expected_count": 1
+      },
+      {
+        "file": "invalid/invalid_where_missing_field.json",
+        "description": "Where conditions missing required fields",
+        "expected_errors": ["E120"],
+        "expected_count_min": 3
+      },
+      {
+        "file": "invalid/invalid_where_operator.json",
+        "description": "Where conditions with invalid operators",
+        "expected_errors": ["E120"],
+        "expected_count": 3
+      },
+      {
+        "file": "invalid/invalid_where_is_value.json",
+        "description": "Where 'is' operator with invalid value",
+        "expected_errors": ["E120"],
+        "expected_count_min": 2
+      },
+      {
+        "file": "invalid/invalid_order_sort.json",
+        "description": "Orders with invalid sort values",
+        "expected_errors": ["E130"],
+        "expected_count_min": 2
+      },
+      {
+        "file": "invalid/invalid_group_missing_field.json",
+        "description": "Groups missing field (causes parse panic)",
+        "expected_errors": ["E002"],
+        "expected_count": 1
+      },
+      {
+        "file": "invalid/having_without_groups.json",
+        "description": "Havings without groups",
+        "expected_errors": ["E150"],
+        "expected_count": 1
+      },
+      {
+        "file": "invalid/invalid_join_missing_fields.json",
+        "description": "Joins missing required fields",
+        "expected_errors": ["E170", "E171", "E172"],
+        "expected_count_min": 3
+      },
+      {
+        "file": "invalid/invalid_sql_missing_stmt.json",
+        "description": "SQL missing stmt field",
+        "expected_errors": ["E180"],
+        "expected_count": 1
+      },
+      {
+        "file": "invalid/invalid_table_name.json",
+        "description": "Invalid table name format",
+        "expected_errors": ["E111"],
+        "expected_count": 1
+      },
+      {
+        "file": "invalid/invalid_nested_wheres.json",
+        "description": "Nested wheres with errors",
+        "expected_errors": ["E120"],
+        "expected_count_min": 2
+      },
+      {
+        "file": "invalid/invalid_union_subquery.json",
+        "description": "Invalid union subqueries",
+        "expected_errors": ["E160"],
+        "expected_count_min": 2
+      },
+      {
+        "file": "invalid/multiple_errors.json",
+        "description": "Multiple different errors (may cause parse panic)",
+        "expected_count_min": 1
+      }
+    ]
+  }
+}
+

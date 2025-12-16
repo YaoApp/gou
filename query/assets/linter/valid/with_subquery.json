@@ -1,0 +1,21 @@
+{
+  "comment": "Query with subquery",
+  "select": ["id", "name", "total_orders"],
+  "query": {
+    "name": "sub",
+    "select": ["u.id", "u.name", ":COUNT(o.id) as total_orders"],
+    "from": "users as u",
+    "joins": [
+      {
+        "from": "orders as o",
+        "key": "u.id",
+        "foreign": "o.user_id",
+        "left": true
+      }
+    ],
+    "groups": [{ "field": "u.id" }, { "field": "u.name" }]
+  },
+  "wheres": [{ "field": "total_orders", "op": ">", "value": 5 }],
+  "orders": [{ "field": "total_orders", "sort": "desc" }],
+  "limit": 10
+}

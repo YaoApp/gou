@@ -1,0 +1,8 @@
+{
+  "select": ["category", ":COUNT(id) as count"],
+  "from": "products",
+  "havings": [
+    { "field": ":COUNT(id)", "op": ">", "value": 10 }
+  ]
+}
+

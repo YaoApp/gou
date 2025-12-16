@@ -1,0 +1,17 @@
+{
+  "select": ["id", "name"],
+  "from": "users",
+  "wheres": [
+    { "field": "status", "op": "=", "value": "active" },
+    {
+      "field": "type",
+      "op": "=",
+      "value": "premium",
+      "wheres": [
+        { "op": ">", "value": 5 },
+        { "field": "level", "value": 10 }
+      ]
+    }
+  ]
+}
+

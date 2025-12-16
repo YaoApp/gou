@@ -1,0 +1,10 @@
+{
+  "select": ["id", "name"],
+  "from": "users",
+  "wheres": [
+    { "field": "status", "op": "===", "value": "active" },
+    { "field": "age", "op": "between", "value": [18, 30] },
+    { "field": "name", "op": "regex", "value": "^test" }
+  ]
+}
+

@@ -1,0 +1,21 @@
+{
+  "comment": "Query with table joins",
+  "select": ["u.id", "u.name", "o.order_no", "o.amount", "p.product_name"],
+  "from": "users as u",
+  "joins": [
+    {
+      "from": "orders as o",
+      "key": "id",
+      "foreign": "o.user_id",
+      "left": true
+    },
+    {
+      "from": "products as p",
+      "key": "o.product_id",
+      "foreign": "p.id"
+    }
+  ],
+  "wheres": [{ "field": "u.status", "op": "=", "value": "active" }],
+  "orders": [{ "field": "o.created_at", "sort": "desc" }],
+  "limit": 50
+}

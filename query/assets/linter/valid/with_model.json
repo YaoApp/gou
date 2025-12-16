@@ -1,0 +1,13 @@
+{
+  "comment": "Query using data model instead of table",
+  "select": [
+    "$user.id",
+    "$user.name",
+    "$user.profile$.avatar as avatar",
+    "$user.settings$.theme as theme"
+  ],
+  "from": "$user",
+  "wheres": [{ "field": "$user.status", "op": "=", "value": "active" }],
+  "orders": [{ "field": "$user.created_at", "sort": "desc" }],
+  "limit": 10
+}

@@ -1,0 +1,19 @@
+{
+  "comment": "Query with unions",
+  "select": ["id", "name", "type"],
+  "from": "admins",
+  "wheres": [{ "field": "status", "op": "=", "value": "active" }],
+  "unions": [
+    {
+      "select": ["id", "name", "'user' as type"],
+      "from": "users",
+      "wheres": [{ "field": "status", "op": "=", "value": "active" }]
+    },
+    {
+      "select": ["id", "name", "'guest' as type"],
+      "from": "guests",
+      "wheres": [{ "field": "status", "op": "=", "value": "active" }]
+    }
+  ],
+  "orders": [{ "field": "name", "sort": "asc" }]
+}

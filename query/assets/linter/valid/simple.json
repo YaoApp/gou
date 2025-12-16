@@ -1,0 +1,7 @@
+{
+  "select": ["id", "name", "status"],
+  "from": "users",
+  "wheres": [{ "field": "status", "op": "=", "value": "active" }],
+  "orders": [{ "field": "created_at", "sort": "desc" }],
+  "limit": 10
+}
