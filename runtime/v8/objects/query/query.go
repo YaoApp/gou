@@ -28,6 +28,8 @@ func New() *Object {
 // query.First({"select":["id"], "from":"user"})
 // query.Run({"stmt":"show version"})
 // query.Lint('{"select":["id"], "from":"user"}') // Validate DSL
+// query.Schema() // Get JSON Schema
+// query.Validate({"select":["id"], "from":"user"}) // Validate against JSON Schema
 func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl := v8go.NewObjectTemplate(iso)
 	tmpl.Set("Get", obj.get(iso))
@@ -35,6 +37,8 @@ func (obj *Object) ExportObject(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	tmpl.Set("Paginate", obj.paginate(iso))
 	tmpl.Set("First", obj.first(iso))
 	tmpl.Set("Lint", obj.lint(iso))
+	tmpl.Set("Schema", obj.schema(iso))
+	tmpl.Set("Validate", obj.validate(iso))
 	return tmpl
 }
 
@@ -205,6 +209,63 @@ func (obj *Object) formatDiagnostics(diagnostics []linter.Diagnostic) []map[stri
 	return result
 }
 
+// schema returns the JSON Schema for QueryDSL
+// query.Schema() returns the schema as object
+// query.Schema("json") returns the schema as JSON string
+func (obj *Object) schema(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+
+		// If "json" argument is passed, return as string
+		if len(args) > 0 && args[0].String() == "json" {
+			res, err := v8go.NewValue(iso, linter.QueryDSLSchemaJSON)
+			if err != nil {
+				msg := fmt.Sprintf("Query.Schema: %s", err.Error())
+				log.Error("%s", msg)
+				return bridge.JsException(info.Context(), msg)
+			}
+			return res
+		}
+
+		// Return as object
+		return obj.response(iso, info, linter.QueryDSLSchema())
+	})
+}
+
+// validate validates data against the QueryDSL JSON Schema
+// query.Validate({"select":["id"], "from":"user"})
+// Returns: { valid: bool, error?: string }
+func (obj *Object) validate(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		args := info.Args()
+		if len(args) < 1 {
+			msg := "Query.Validate: Missing data parameter"
+			log.Error("%s", msg)
+			return bridge.JsException(info.Context(), msg)
+		}
+
+		// Convert JS value to Go value
+		data, err := bridge.GoValue(args[0], info.Context())
+		if err != nil {
+			msg := fmt.Sprintf("Query.Validate: %s", err.Error())
+			log.Error("%s", msg)
+			return bridge.JsException(info.Context(), msg)
+		}
+
+		// Validate against schema
+		response := map[string]interface{}{
+			"valid": true,
+		}
+
+		if err := linter.ValidateSchema(data); err != nil {
+			response["valid"] = false
+			response["error"] = err.Error()
+		}
+
+		return obj.response(iso, info, response)
+	})
+}
+
 func (obj *Object) runQueryGet(iso *v8go.Isolate, info *v8go.FunctionCallbackInfo, param *v8go.Value) (data interface{}, err error) {
 	defer func() { err = exception.Catch(recover()) }()
 	dsl, input, err := obj.getQueryDSL(info, param)
@@ -285,14 +346,14 @@ func (obj *Object) getQueryDSL(info *v8go.FunctionCallbackInfo, param *v8go.Valu
 		return nil, nil, err
 	}
 
-	switch v.(type) {
+	switch val := v.(type) {
 	case map[string]interface{}:
-		var params = maps.Of(v.(map[string]interface{}))
+		var params = maps.Of(val)
 		dsl, err := engine.Load(params) // should be cached
 		if err != nil {
 			return nil, nil, err
 		}
 		return dsl, params, nil
 	}
-	return nil, nil, fmt.Errorf("Query: %s", "parameters fomart error")
+	return nil, nil, fmt.Errorf("Query: %s", "parameters format error")
 }
