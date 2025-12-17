@@ -293,6 +293,293 @@ func TestQueryLint(t *testing.T) {
 	assert.NotNil(t, position["column"])
 }
 
+func TestQuerySchema(t *testing.T) {
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	queryObj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("Query", queryObj.ExportFunction(iso))
+
+	// Register a dummy query engine for Schema test
+	if _, has := query.Engines["schema-test"]; !has {
+		query.Register("schema-test", &gou.Query{
+			Query: nil,
+			GetTableName: func(s string) string {
+				return s
+			},
+		})
+	}
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// ===== Test Schema() returns object
+	v, err := ctx.RunScript(`
+	function SchemaObject() {
+		var q = new Query("schema-test")
+		var schema = q.Schema()
+		return schema
+	}
+	SchemaObject()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	schema := res.(map[string]interface{})
+	assert.Equal(t, "QueryDSL", schema["title"])
+	assert.Equal(t, "http://json-schema.org/draft-07/schema#", schema["$schema"])
+	assert.NotNil(t, schema["definitions"])
+	assert.NotNil(t, schema["properties"])
+
+	// ===== Test Schema("json") returns string
+	v, err = ctx.RunScript(`
+	function SchemaJSON() {
+		var q = new Query("schema-test")
+		var schema = q.Schema("json")
+		return typeof schema
+	}
+	SchemaJSON()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "string", res)
+
+	// ===== Test Schema("json") is valid JSON
+	v, err = ctx.RunScript(`
+	function SchemaJSONParse() {
+		var q = new Query("schema-test")
+		var schemaStr = q.Schema("json")
+		var parsed = JSON.parse(schemaStr)
+		return parsed.title
+	}
+	SchemaJSONParse()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "QueryDSL", res)
+}
+
+func TestQueryValidate(t *testing.T) {
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	queryObj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("Query", queryObj.ExportFunction(iso))
+
+	// Register a dummy query engine for Validate test
+	if _, has := query.Engines["validate-test"]; !has {
+		query.Register("validate-test", &gou.Query{
+			Query: nil,
+			GetTableName: func(s string) string {
+				return s
+			},
+		})
+	}
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	// ===== Test valid data
+	v, err := ctx.RunScript(`
+	function ValidateValid() {
+		var q = new Query("validate-test")
+		var result = q.Validate({"select": ["id", "name"], "from": "users"})
+		return result
+	}
+	ValidateValid()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result := res.(map[string]interface{})
+	assert.Equal(t, true, result["valid"])
+	assert.Nil(t, result["error"])
+
+	// ===== Test invalid data - select should be array
+	v, err = ctx.RunScript(`
+	function ValidateInvalidSelect() {
+		var q = new Query("validate-test")
+		var result = q.Validate({"select": "id,name", "from": "users"})
+		return result
+	}
+	ValidateInvalidSelect()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result = res.(map[string]interface{})
+	assert.Equal(t, false, result["valid"])
+	assert.NotNil(t, result["error"])
+
+	// ===== Test valid data with wheres
+	v, err = ctx.RunScript(`
+	function ValidateWithWheres() {
+		var q = new Query("validate-test")
+		var result = q.Validate({
+			"select": ["id", "name"],
+			"from": "users",
+			"wheres": [{"field": "status", "op": "=", "value": "active"}]
+		})
+		return result
+	}
+	ValidateWithWheres()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result = res.(map[string]interface{})
+	assert.Equal(t, true, result["valid"])
+
+	// ===== Test valid data with condition shorthand
+	v, err = ctx.RunScript(`
+	function ValidateConditionShorthand() {
+		var q = new Query("validate-test")
+		var result = q.Validate({
+			"select": ["id"],
+			"from": "users",
+			"wheres": [{"field": "status", "=": "active"}]
+		})
+		return result
+	}
+	ValidateConditionShorthand()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result = res.(map[string]interface{})
+	assert.Equal(t, true, result["valid"])
+
+	// ===== Test valid data with joins
+	v, err = ctx.RunScript(`
+	function ValidateWithJoins() {
+		var q = new Query("validate-test")
+		var result = q.Validate({
+			"select": ["id", "name"],
+			"from": "users",
+			"joins": [{"from": "orders", "key": "user_id", "foreign": "users.id", "left": true}]
+		})
+		return result
+	}
+	ValidateWithJoins()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result = res.(map[string]interface{})
+	assert.Equal(t, true, result["valid"])
+
+	// ===== Test valid data with sql
+	v, err = ctx.RunScript(`
+	function ValidateWithSQL() {
+		var q = new Query("validate-test")
+		var result = q.Validate({
+			"sql": {"stmt": "SELECT * FROM users WHERE id = ?", "args": [1]}
+		})
+		return result
+	}
+	ValidateWithSQL()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result = res.(map[string]interface{})
+	assert.Equal(t, true, result["valid"])
+
+	// ===== Test invalid data - wheres should be array
+	v, err = ctx.RunScript(`
+	function ValidateInvalidWheres() {
+		var q = new Query("validate-test")
+		var result = q.Validate({
+			"select": ["id"],
+			"from": "users",
+			"wheres": "invalid"
+		})
+		return result
+	}
+	ValidateInvalidWheres()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err = bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result = res.(map[string]interface{})
+	assert.Equal(t, false, result["valid"])
+	assert.NotNil(t, result["error"])
+}
+
 func initTestEngine() {
 
 	if capsule.Global == nil {
@@ -304,10 +591,8 @@ func initTestEngine() {
 		switch TestDriver {
 		case "sqlite3":
 			capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
-			break
 		default:
 			capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
-			break
 		}
 	}
 
