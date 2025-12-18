@@ -279,6 +279,17 @@ func Select(id string) *Model {
 	return mod
 }
 
+// Get gets a model by id, returns error if not found (instead of panic)
+func Get(id string) (*Model, error) {
+	rwlock.RLock()
+	defer rwlock.RUnlock()
+	mod, has := Models[id]
+	if !has {
+		return nil, fmt.Errorf("model %s not found", id)
+	}
+	return mod, nil
+}
+
 // Exists checks if model exists
 func Exists(id string) bool {
 	rwlock.RLock()
