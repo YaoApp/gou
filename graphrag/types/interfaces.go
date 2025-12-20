@@ -212,8 +212,14 @@ type GraphRag interface {
 	ExtractSegmentGraph(ctx context.Context, docID string, segmentID string, options *ExtractionOptions) (*SegmentExtractionResult, error) // Re-extract entities and relationships for a specific segment
 
 	// Search Management
-	Search(ctx context.Context, options *QueryOptions, callback ...SearcherProgress) ([]Segment, error)                  // Search for segments
+	Search(ctx context.Context, options *QueryOptions, callback ...SearcherProgress) ([]Segment, error)                  // Search for segments (vector + optional graph enrichment)
 	MultiSearch(ctx context.Context, options []QueryOptions, callback ...SearcherProgress) (map[string][]Segment, error) // Multi-search for segments
+
+	// Pure Vector Search (for application-side orchestration)
+	SearchVector(ctx context.Context, options *VectorSearchOptions, callback ...SearcherProgress) (*VectorSearchResult, error) // Pure vector similarity search
+
+	// Pure Graph Search (for application-side orchestration)
+	SearchGraph(ctx context.Context, options *GraphSearchOptions, callback ...SearcherProgress) (*GraphSearchResult, error) // Pure graph/knowledge search
 
 	// Collection Backup and Restore
 	Backup(ctx context.Context, writer io.Writer, id string) error  // Backup a collection

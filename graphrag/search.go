@@ -465,3 +465,458 @@ func (g *GraphRag) reportSearchProgress(callback []types.SearcherProgress, statu
 		})
 	}
 }
+
+// ================================================================================================
+// Pure Vector Search
+// ================================================================================================
+
+// SearchVector performs pure vector similarity search without graph enrichment
+// This is useful for application-side orchestration where vector and graph searches are composed separately
+func (g *GraphRag) SearchVector(ctx context.Context, options *types.VectorSearchOptions, callback ...types.SearcherProgress) (*types.VectorSearchResult, error) {
+	if options == nil {
+		return nil, fmt.Errorf("vector search options cannot be nil")
+	}
+
+	// Validate collection ID
+	if options.CollectionID == "" {
+		return nil, fmt.Errorf("collection ID is required")
+	}
+
+	// Validate query
+	if options.Query == "" && len(options.QueryVector) == 0 {
+		return nil, fmt.Errorf("either query text or query vector is required")
+	}
+
+	g.reportSearchProgress(callback, types.SearchStatusPending, "Starting vector search...", 0)
+
+	// Get collection IDs
+	collectionIDs, err := utils.GetCollectionIDs(options.CollectionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get collection IDs: %w", err)
+	}
+
+	// Determine query vector
+	var queryVector []float64
+	if len(options.QueryVector) > 0 {
+		// Use pre-computed vector
+		queryVector = options.QueryVector
+	} else {
+		// Generate embedding
+		if options.Embedding == nil {
+			return nil, fmt.Errorf("embedding function is required when query vector is not provided")
+		}
+
+		g.reportSearchProgress(callback, types.SearchStatusPending, "Generating embedding...", 20)
+
+		embeddingResult, err := options.Embedding.EmbedQuery(ctx, options.Query)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate query embedding: %w", err)
+		}
+
+		queryVector = embeddingResult.Embedding
+		if len(queryVector) == 0 {
+			return nil, fmt.Errorf("embedding returned empty vector")
+		}
+	}
+
+	g.reportSearchProgress(callback, types.SearchStatusPending, "Searching vector database...", 40)
+
+	// Prepare search options
+	k := options.K
+	if k <= 0 {
+		k = defaultSearchK
+	}
+
+	searchOpts := &types.SearchOptions{
+		CollectionName:  collectionIDs.Vector,
+		QueryVector:     queryVector,
+		K:               k,
+		Filter:          options.Filter,
+		MinScore:        options.MinScore,
+		IncludeMetadata: true,
+		IncludeContent:  true,
+	}
+
+	// Add document filter if specified
+	if options.DocumentID != "" {
+		if searchOpts.Filter == nil {
+			searchOpts.Filter = make(map[string]interface{})
+		}
+		searchOpts.Filter["doc_id"] = options.DocumentID
+	}
+
+	// Execute search
+	searchResult, err := g.Vector.SearchSimilar(ctx, searchOpts)
+	if err != nil {
+		return nil, fmt.Errorf("vector search failed: %w", err)
+	}
+
+	g.reportSearchProgress(callback, types.SearchStatusPending, "Converting results...", 80)
+
+	// Convert to segments
+	segments := g.convertSearchResultsToSegments(searchResult, options.CollectionID, options.DocumentID)
+
+	// Apply reranking if configured
+	if options.Reranker != nil {
+		g.reportSearchProgress(callback, types.SearchStatusPending, "Reranking results...", 90)
+		segments, err = options.Reranker.Rerank(ctx, segments)
+		if err != nil {
+			g.Logger.Warnf("Reranking failed: %v, using original order", err)
+		}
+	}
+
+	g.reportSearchProgress(callback, types.SearchStatusSuccess, fmt.Sprintf("Vector search completed, found %d segments", len(segments)), 100)
+
+	return &types.VectorSearchResult{
+		Segments: segments,
+		Total:    len(segments),
+	}, nil
+}
+
+// ================================================================================================
+// Pure Graph Search
+// ================================================================================================
+
+// SearchGraph performs pure graph/knowledge search without vector similarity
+// This is useful for application-side orchestration where vector and graph searches are composed separately
+func (g *GraphRag) SearchGraph(ctx context.Context, options *types.GraphSearchOptions, callback ...types.SearcherProgress) (*types.GraphSearchResult, error) {
+	if options == nil {
+		return nil, fmt.Errorf("graph search options cannot be nil")
+	}
+
+	// Validate collection ID
+	if options.CollectionID == "" {
+		return nil, fmt.Errorf("collection ID is required")
+	}
+
+	// Check if graph store is available
+	if g.Graph == nil || !g.Graph.IsConnected() {
+		return nil, fmt.Errorf("graph store is not available or not connected")
+	}
+
+	g.reportSearchProgress(callback, types.SearchStatusPending, "Starting graph search...", 0)
+
+	// Get collection IDs
+	collectionIDs, err := utils.GetCollectionIDs(options.CollectionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get collection IDs: %w", err)
+	}
+
+	// Check if graph exists
+	exists, err := g.Graph.GraphExists(ctx, collectionIDs.Graph)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check graph existence: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("graph %s does not exist", collectionIDs.Graph)
+	}
+
+	var result *types.GraphSearchResult
+
+	// Determine search mode
+	if options.Cypher != "" {
+		// Custom Cypher query
+		g.reportSearchProgress(callback, types.SearchStatusPending, "Executing Cypher query...", 30)
+		result, err = g.executeGraphCypherSearch(ctx, collectionIDs.Graph, options)
+	} else if len(options.EntityIDs) > 0 {
+		// Search by entity IDs
+		g.reportSearchProgress(callback, types.SearchStatusPending, "Searching by entity IDs...", 30)
+		result, err = g.executeGraphEntityIDSearch(ctx, collectionIDs.Graph, options)
+	} else if len(options.Entities) > 0 {
+		// Search by entity names
+		g.reportSearchProgress(callback, types.SearchStatusPending, "Searching by entity names...", 30)
+		result, err = g.executeGraphEntityNameSearch(ctx, collectionIDs.Graph, options)
+	} else if options.Query != "" {
+		// Natural language query - extract entities first
+		g.reportSearchProgress(callback, types.SearchStatusPending, "Extracting entities from query...", 20)
+		result, err = g.executeGraphNLQuerySearch(ctx, collectionIDs.Graph, options, callback)
+	} else {
+		return nil, fmt.Errorf("at least one of Cypher, EntityIDs, Entities, or Query is required")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Optionally fetch related segments
+	if len(result.Nodes) > 0 {
+		g.reportSearchProgress(callback, types.SearchStatusPending, "Fetching related segments...", 80)
+		result.Segments = g.fetchSegmentsForNodes(ctx, collectionIDs.Vector, options.CollectionID, result.Nodes)
+	}
+
+	g.reportSearchProgress(callback, types.SearchStatusSuccess, fmt.Sprintf("Graph search completed, found %d nodes, %d relationships", len(result.Nodes), len(result.Relationships)), 100)
+
+	return result, nil
+}
+
+// executeGraphCypherSearch executes a custom Cypher query
+func (g *GraphRag) executeGraphCypherSearch(ctx context.Context, graphName string, options *types.GraphSearchOptions) (*types.GraphSearchResult, error) {
+	queryOpts := &types.GraphQueryOptions{
+		GraphName:  graphName,
+		QueryType:  "cypher",
+		Query:      options.Cypher,
+		Parameters: options.Parameters,
+		Limit:      options.Limit,
+		ReturnType: "all",
+		ReadOnly:   true,
+	}
+
+	graphResult, err := g.Graph.Query(ctx, queryOpts)
+	if err != nil {
+		return nil, fmt.Errorf("cypher query failed: %w", err)
+	}
+
+	return g.convertGraphResultToSearchResult(graphResult), nil
+}
+
+// executeGraphEntityIDSearch searches by entity IDs
+func (g *GraphRag) executeGraphEntityIDSearch(ctx context.Context, graphName string, options *types.GraphSearchOptions) (*types.GraphSearchResult, error) {
+	// Build Cypher query to find nodes by IDs and their relationships
+	limit := options.Limit
+	if limit <= 0 {
+		limit = 100
+	}
+	maxDepth := options.MaxDepth
+	if maxDepth <= 0 {
+		maxDepth = 2
+	}
+
+	query := `
+		MATCH (n)
+		WHERE n.id IN $entity_ids
+		OPTIONAL MATCH (n)-[r*1..` + fmt.Sprintf("%d", maxDepth) + `]-(m)
+		RETURN n, r, m
+		LIMIT $limit
+	`
+
+	queryOpts := &types.GraphQueryOptions{
+		GraphName: graphName,
+		QueryType: "cypher",
+		Query:     query,
+		Parameters: map[string]interface{}{
+			"entity_ids": options.EntityIDs,
+			"limit":      limit,
+		},
+		ReturnType: "all",
+		ReadOnly:   true,
+	}
+
+	graphResult, err := g.Graph.Query(ctx, queryOpts)
+	if err != nil {
+		return nil, fmt.Errorf("entity ID search failed: %w", err)
+	}
+
+	return g.convertGraphResultToSearchResult(graphResult), nil
+}
+
+// executeGraphEntityNameSearch searches by entity names
+func (g *GraphRag) executeGraphEntityNameSearch(ctx context.Context, graphName string, options *types.GraphSearchOptions) (*types.GraphSearchResult, error) {
+	limit := options.Limit
+	if limit <= 0 {
+		limit = 100
+	}
+	maxDepth := options.MaxDepth
+	if maxDepth <= 0 {
+		maxDepth = 2
+	}
+
+	// Build Cypher query to find nodes by name (case-insensitive)
+	query := `
+		MATCH (n)
+		WHERE any(name IN $entity_names WHERE toLower(n.name) CONTAINS toLower(name))
+		OPTIONAL MATCH (n)-[r*1..` + fmt.Sprintf("%d", maxDepth) + `]-(m)
+		RETURN n, r, m
+		LIMIT $limit
+	`
+
+	queryOpts := &types.GraphQueryOptions{
+		GraphName: graphName,
+		QueryType: "cypher",
+		Query:     query,
+		Parameters: map[string]interface{}{
+			"entity_names": options.Entities,
+			"limit":        limit,
+		},
+		ReturnType: "all",
+		ReadOnly:   true,
+	}
+
+	graphResult, err := g.Graph.Query(ctx, queryOpts)
+	if err != nil {
+		return nil, fmt.Errorf("entity name search failed: %w", err)
+	}
+
+	return g.convertGraphResultToSearchResult(graphResult), nil
+}
+
+// executeGraphNLQuerySearch extracts entities from natural language query and searches
+func (g *GraphRag) executeGraphNLQuerySearch(ctx context.Context, graphName string, options *types.GraphSearchOptions, callback []types.SearcherProgress) (*types.GraphSearchResult, error) {
+	if options.Extraction == nil {
+		return nil, fmt.Errorf("extraction function is required for natural language query")
+	}
+
+	// Extract entities from query
+	extractResult, err := options.Extraction.ExtractQuery(ctx, options.Query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract entities from query: %w", err)
+	}
+
+	if len(extractResult.Nodes) == 0 {
+		g.Logger.Debugf("No entities extracted from query: %s", options.Query)
+		return &types.GraphSearchResult{
+			Nodes:         []types.GraphNode{},
+			Relationships: []types.GraphRelationship{},
+			Paths:         []types.GraphPath{},
+			Segments:      []types.Segment{},
+		}, nil
+	}
+
+	// Extract entity names
+	entityNames := make([]string, len(extractResult.Nodes))
+	for i, node := range extractResult.Nodes {
+		entityNames[i] = node.Name
+	}
+
+	g.Logger.Debugf("Extracted %d entities from query: %v", len(entityNames), entityNames)
+	g.reportSearchProgress(callback, types.SearchStatusPending, fmt.Sprintf("Found %d entities, searching graph...", len(entityNames)), 50)
+
+	// Search by extracted entity names
+	searchOpts := &types.GraphSearchOptions{
+		CollectionID:  options.CollectionID,
+		DocumentID:    options.DocumentID,
+		Entities:      entityNames,
+		MaxDepth:      options.MaxDepth,
+		RelationTypes: options.RelationTypes,
+		EntityTypes:   options.EntityTypes,
+		Limit:         options.Limit,
+	}
+
+	return g.executeGraphEntityNameSearch(ctx, graphName, searchOpts)
+}
+
+// convertGraphResultToSearchResult converts GraphResult to GraphSearchResult
+func (g *GraphRag) convertGraphResultToSearchResult(result *types.GraphResult) *types.GraphSearchResult {
+	// Convert nodes
+	nodes := make([]types.GraphNode, len(result.Nodes))
+	for i, node := range result.Nodes {
+		nodes[i] = convertNodeToGraphNode(node)
+	}
+
+	// Convert relationships
+	relationships := make([]types.GraphRelationship, len(result.Relationships))
+	for i, rel := range result.Relationships {
+		relationships[i] = convertRelationshipToGraphRelationship(rel)
+	}
+
+	// Convert paths
+	paths := make([]types.GraphPath, len(result.Paths))
+	for i, path := range result.Paths {
+		pathNodes := make([]types.GraphNode, len(path.Nodes))
+		for j, node := range path.Nodes {
+			pathNodes[j] = convertNodeToGraphNode(node)
+		}
+		pathRels := make([]types.GraphRelationship, len(path.Relationships))
+		for j, rel := range path.Relationships {
+			pathRels[j] = convertRelationshipToGraphRelationship(rel)
+		}
+		paths[i] = types.GraphPath{
+			Nodes:         pathNodes,
+			Relationships: pathRels,
+			Length:        len(pathRels),
+		}
+	}
+
+	return &types.GraphSearchResult{
+		Nodes:         nodes,
+		Relationships: relationships,
+		Paths:         paths,
+		Segments:      []types.Segment{}, // Will be populated by caller if needed
+	}
+}
+
+// fetchSegmentsForNodes fetches segments related to the given nodes
+func (g *GraphRag) fetchSegmentsForNodes(ctx context.Context, vectorCollectionName string, collectionID string, nodes []types.GraphNode) []types.Segment {
+	if len(nodes) == 0 {
+		return []types.Segment{}
+	}
+
+	// Collect all source chunk IDs from nodes
+	chunkIDSet := make(map[string]bool)
+	for _, node := range nodes {
+		if props := node.Properties; props != nil {
+			if chunks, ok := props["source_chunks"]; ok {
+				switch c := chunks.(type) {
+				case []string:
+					for _, chunk := range c {
+						chunkIDSet[chunk] = true
+					}
+				case []interface{}:
+					for _, chunk := range c {
+						if chunkStr, ok := chunk.(string); ok {
+							chunkIDSet[chunkStr] = true
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if len(chunkIDSet) == 0 {
+		return []types.Segment{}
+	}
+
+	// Convert to slice
+	chunkIDs := make([]string, 0, len(chunkIDSet))
+	for id := range chunkIDSet {
+		chunkIDs = append(chunkIDs, id)
+	}
+
+	// Fetch documents by IDs
+	getOpts := &types.GetDocumentOptions{
+		CollectionName: vectorCollectionName,
+		IncludePayload: true,
+		IncludeVector:  false,
+	}
+
+	docs, err := g.Vector.GetDocuments(ctx, chunkIDs, getOpts)
+	if err != nil {
+		g.Logger.Warnf("Failed to fetch segments for nodes: %v", err)
+		return []types.Segment{}
+	}
+
+	// Convert to segments
+	segments := make([]types.Segment, 0, len(docs))
+	for _, doc := range docs {
+		if doc == nil {
+			continue
+		}
+
+		// Extract document ID from metadata
+		documentID := ""
+		if doc.Metadata != nil {
+			if metaDocID, ok := doc.Metadata["doc_id"].(string); ok {
+				documentID = metaDocID
+			}
+		}
+
+		segment := types.Segment{
+			CollectionID: collectionID,
+			DocumentID:   documentID,
+			ID:           doc.ID,
+			Text:         doc.Content,
+			Metadata:     doc.Metadata,
+		}
+
+		// Extract additional fields from metadata
+		if doc.Metadata != nil {
+			segment.Weight = types.SafeExtractFloat64(doc.Metadata["weight"], 0.0)
+			segment.Positive = types.SafeExtractInt(doc.Metadata["positive"], 0)
+			segment.Negative = types.SafeExtractInt(doc.Metadata["negative"], 0)
+			segment.Hit = types.SafeExtractInt(doc.Metadata["hit"], 0)
+		}
+
+		segments = append(segments, segment)
+	}
+
+	return segments
+}
