@@ -487,6 +487,15 @@ func (g *GraphRag) SearchVector(ctx context.Context, options *types.VectorSearch
 		return nil, fmt.Errorf("either query text or query vector is required")
 	}
 
+	// Connect to vector store if not already connected
+	if g.Vector != nil && !g.Vector.IsConnected() {
+		err := g.Vector.Connect(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to vector store: %w", err)
+		}
+		g.Logger.Infof("Connected to vector store")
+	}
+
 	g.reportSearchProgress(callback, types.SearchStatusPending, "Starting vector search...", 0)
 
 	// Get collection IDs
@@ -587,6 +596,15 @@ func (g *GraphRag) SearchGraph(ctx context.Context, options *types.GraphSearchOp
 	// Validate collection ID
 	if options.CollectionID == "" {
 		return nil, fmt.Errorf("collection ID is required")
+	}
+
+	// Connect to graph store if not already connected
+	if g.Graph != nil && !g.Graph.IsConnected() {
+		err := g.Graph.Connect(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to graph store: %w", err)
+		}
+		g.Logger.Infof("Connected to graph store")
 	}
 
 	// Check if graph store is available
