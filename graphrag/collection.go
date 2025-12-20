@@ -189,15 +189,6 @@ func (g *GraphRag) RemoveCollection(ctx context.Context, id string) (bool, error
 		g.Logger.Infof("Connected to graph store")
 	}
 
-	// Check if collection exists
-	exists, err := g.CollectionExists(ctx, id)
-	if err != nil {
-		return false, fmt.Errorf("failed to check collection existence: %w", err)
-	}
-	if !exists {
-		return false, nil // Collection doesn't exist, return false (nothing deleted)
-	}
-
 	// Get IDs for vector, graph, and store components
 	ids, err := utils.GetCollectionIDs(id)
 	if err != nil {
@@ -208,6 +199,7 @@ func (g *GraphRag) RemoveCollection(ctx context.Context, id string) (bool, error
 	removed := false
 
 	// Remove vector collection if it exists
+	// Always try to remove, even if metadata doesn't exist (handles orphaned collections)
 	if g.Vector != nil {
 		vectorExists, err := g.Vector.CollectionExists(ctx, ids.Vector)
 		if err != nil {
@@ -218,11 +210,13 @@ func (g *GraphRag) RemoveCollection(ctx context.Context, id string) (bool, error
 				errors = append(errors, fmt.Sprintf("failed to drop vector collection: %v", err))
 			} else {
 				g.Logger.Infof("Dropped vector collection: %s", ids.Vector)
+				removed = true
 			}
 		}
 	}
 
 	// Remove graph if it exists and graph store is connected
+	// Always try to remove, even if metadata doesn't exist (handles orphaned graphs)
 	if g.Graph != nil && g.Graph.IsConnected() {
 		graphExists, err := g.Graph.GraphExists(ctx, ids.Graph)
 		if err != nil {
@@ -233,19 +227,21 @@ func (g *GraphRag) RemoveCollection(ctx context.Context, id string) (bool, error
 				errors = append(errors, fmt.Sprintf("failed to drop graph: %v", err))
 			} else {
 				g.Logger.Infof("Dropped graph: %s", ids.Graph)
+				removed = true
 			}
 		}
 	}
 
 	// Remove collection metadata (Store has priority)
-	metadataRemoved := false
 	if g.Store != nil {
-		err = g.Store.Del(id)
-		if err != nil {
-			errors = append(errors, fmt.Sprintf("failed to delete collection metadata from Store: %v", err))
-		} else {
-			g.Logger.Infof("Removed collection metadata from Store: %s", id)
-			metadataRemoved = true
+		if g.Store.Has(id) {
+			err = g.Store.Del(id)
+			if err != nil {
+				errors = append(errors, fmt.Sprintf("failed to delete collection metadata from Store: %v", err))
+			} else {
+				g.Logger.Infof("Removed collection metadata from Store: %s", id)
+				removed = true
+			}
 		}
 	} else if g.Vector != nil {
 		// Try to remove from System Collection
@@ -255,27 +251,25 @@ func (g *GraphRag) RemoveCollection(ctx context.Context, id string) (bool, error
 		}
 		err = g.Vector.DeleteDocuments(ctx, opts)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("failed to delete collection metadata from System Collection: %v", err))
+			// Only log as warning, not an error (metadata might not exist)
+			g.Logger.Debugf("Could not delete collection metadata from System Collection: %v", err)
 		} else {
 			g.Logger.Infof("Removed collection metadata from System Collection: %s", id)
-			metadataRemoved = true
+			removed = true
 		}
 	}
 
-	// If there were any errors, return them but still indicate success if metadata was removed
+	// If there were any errors, return them but still indicate success if something was removed
 	if len(errors) > 0 {
 		g.Logger.Warnf("Some errors occurred while removing collection %s: %v", id, errors)
-		// If we successfully removed the metadata, consider it a success
-		if metadataRemoved {
-			removed = true
-		}
 		return removed, fmt.Errorf("partial removal completed with errors: %v", errors)
 	}
 
-	// Successfully removed
-	removed = metadataRemoved
+	// Log result
 	if removed {
 		g.Logger.Infof("Successfully removed collection: %s", id)
+	} else {
+		g.Logger.Debugf("Collection %s did not exist in any store", id)
 	}
 	return removed, nil
 }
