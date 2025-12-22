@@ -76,7 +76,6 @@ require (
 )
 
 require (
-	github.com/dgraph-io/badger/v4 v4.7.0
 	github.com/evanw/esbuild v0.25.4
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible
 	github.com/google/uuid v1.6.0
@@ -86,6 +85,7 @@ require (
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.1
 	github.com/pdfcpu/pdfcpu v0.11.0
 	github.com/qdrant/go-client v1.14.0
+	github.com/redis/go-redis/v9 v9.17.2
 	github.com/sergi/go-diff v1.3.1
 	golang.org/x/image v0.29.0
 )
@@ -95,14 +95,10 @@ require (
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
-	github.com/dgraph-io/ristretto/v2 v2.2.0 // indirect
-	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-json-experiment/json v0.0.0-20251027170946-4849db3c2f7e // indirect
-	github.com/go-logr/logr v1.4.2 // indirect
-	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
-	github.com/google/flatbuffers v25.2.10+incompatible // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/hhrutter/lzw v1.0.0 // indirect
 	github.com/hhrutter/pkcs7 v0.2.0 // indirect
 	github.com/hhrutter/tiff v1.0.2 // indirect
@@ -114,15 +110,15 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/spf13/cast v1.9.2 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
-	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel v1.35.0 // indirect
-	go.opentelemetry.io/otel/metric v1.35.0 // indirect
-	go.opentelemetry.io/otel/trace v1.35.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.35.0 // indirect
 	golang.org/x/arch v0.17.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250519155744-55703ea1f237 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 

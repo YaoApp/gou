@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/helper"
-	"github.com/yaoapp/gou/store/badger"
 	"github.com/yaoapp/gou/store/lru"
 	"github.com/yaoapp/gou/store/mongo"
 	"github.com/yaoapp/gou/store/redis"
+	"github.com/yaoapp/gou/store/xun"
 	"github.com/yaoapp/kun/exception"
 )
 
@@ -51,7 +52,7 @@ func LoadSource(data []byte, id string, file string) (Store, error) {
 	}
 
 	typ := strings.ToLower(inst.Type)
-	if typ == "lru" || typ == "badger" {
+	if typ == "lru" || typ == "xun" {
 		stor, err := New(nil, inst.Option)
 		if err != nil {
 			return nil, err
@@ -96,12 +97,12 @@ func Get(name string) (Store, error) {
 func New(c connector.Connector, option Option) (Store, error) {
 
 	if c == nil {
-		// Check if this is a badger store request
 		if option != nil {
-			if path, has := option["path"]; has {
-				// This is a badger store
-				pathStr := helper.EnvString(path, "./data/badger")
-				return badger.New(pathStr)
+			// Check if this is a xun store request
+			if typ, has := option["type"]; has {
+				if typStr, ok := typ.(string); ok && strings.ToLower(typStr) == "xun" {
+					return NewXunStore(option)
+				}
 			}
 		}
 
@@ -123,4 +124,35 @@ func New(c connector.Connector, option Option) (Store, error) {
 
 	return nil, fmt.Errorf("the connector does not support")
 
+}
+
+// NewXunStore create a new xun store from option
+func NewXunStore(option Option) (Store, error) {
+	xunOption := xun.Option{}
+
+	if table, has := option["table"]; has {
+		xunOption.Table = helper.EnvString(table, xun.DefaultTableName)
+	}
+
+	if conn, has := option["connector"]; has {
+		xunOption.Connector = helper.EnvString(conn, "default")
+	}
+
+	if cacheSize, has := option["cache_size"]; has {
+		xunOption.CacheSize = helper.EnvInt(cacheSize, xun.DefaultCacheSize)
+	}
+
+	if interval, has := option["cleanup_interval"]; has {
+		if intervalInt := helper.EnvInt(interval, int(xun.DefaultCleanupInterval/time.Minute)); intervalInt > 0 {
+			xunOption.CleanupInterval = time.Duration(intervalInt) * time.Minute
+		}
+	}
+
+	if interval, has := option["persist_interval"]; has {
+		if intervalInt := helper.EnvInt(interval, int(xun.DefaultPersistInterval/time.Second)); intervalInt > 0 {
+			xunOption.PersistInterval = time.Duration(intervalInt) * time.Second
+		}
+	}
+
+	return xun.New(xunOption)
 }
