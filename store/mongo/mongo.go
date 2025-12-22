@@ -19,21 +19,34 @@ import (
 func New(c connector.Connector) (*Store, error) {
 	mongodb, ok := c.(*mongodb.Connector)
 	if !ok {
-		return nil, fmt.Errorf("the connector was not a *redis.Connector")
+		return nil, fmt.Errorf("the connector was not a *mongodb.Connector")
 	}
 
 	// coll
 	coll := mongodb.Database.Collection(mongodb.ID())
 
-	// Create indexes
-	indexModel := mongo.IndexModel{
+	// Create unique index on key
+	keyIndex := mongo.IndexModel{
 		Keys:    bson.D{{Key: "key", Value: -1}},
 		Options: options.Index().SetUnique(true),
 	}
 
-	_, err := coll.Indexes().CreateOne(context.TODO(), indexModel)
+	_, err := coll.Indexes().CreateOne(context.TODO(), keyIndex)
 	if err != nil {
 		return nil, err
+	}
+
+	// Create TTL index on expired_at field
+	// MongoDB will automatically delete documents when expired_at time is reached
+	ttlIndex := mongo.IndexModel{
+		Keys:    bson.D{{Key: "expired_at", Value: 1}},
+		Options: options.Index().SetExpireAfterSeconds(0), // 0 means delete at the exact expired_at time
+	}
+
+	_, err = coll.Indexes().CreateOne(context.TODO(), ttlIndex)
+	if err != nil {
+		// TTL index might already exist, log warning but don't fail
+		log.Warn("Store mongo TTL index: %s", err.Error())
 	}
 
 	return &Store{Database: mongodb.Database, Collection: coll}, nil
@@ -67,6 +80,17 @@ func (store *Store) Get(key string) (value interface{}, ok bool) {
 		return nil, false
 	}
 
+	// Check if expired for immediate consistency
+	if expiredAt, has := result["expired_at"]; has && expiredAt != nil {
+		if t, ok := expiredAt.(primitive.DateTime); ok {
+			if time.Now().After(t.Time()) {
+				// Expired, delete and return not found
+				store.Del(key)
+				return nil, false
+			}
+		}
+	}
+
 	value, has := result["value"]
 	if !has {
 		return nil, false
@@ -79,7 +103,17 @@ func (store *Store) Get(key string) (value interface{}, ok bool) {
 // Set adds a value to the store.
 func (store *Store) Set(key string, value interface{}, ttl time.Duration) error {
 	filter := bson.D{{Key: "key", Value: key}}
+
+	// Build document with optional TTL
 	doc := bson.D{{Key: "key", Value: key}, {Key: "value", Value: value}}
+	if ttl > 0 {
+		expiredAt := time.Now().Add(ttl)
+		doc = append(doc, bson.E{Key: "expired_at", Value: expiredAt})
+	} else {
+		// No TTL - set expired_at to nil to clear any previous expiration
+		doc = append(doc, bson.E{Key: "expired_at", Value: nil})
+	}
+
 	opts := options.FindOneAndReplace().SetUpsert(true)
 	res := store.Collection.FindOneAndReplace(context.TODO(), filter, doc, opts)
 	err := res.Err()
@@ -104,21 +138,24 @@ func (store *Store) Del(key string) error {
 
 // Has check if the store is exist ( without updating recency or frequency )
 func (store *Store) Has(key string) bool {
-	filter := bson.D{{Key: "key", Value: key}}
-	result, err := store.Collection.CountDocuments(context.TODO(), filter)
-	if err != nil {
-		log.Error("Store mongo Has: %s", err.Error())
-		return false
-	}
-
-	return int(result) == 1
+	// Use Get to check existence (includes TTL check)
+	_, ok := store.Get(key)
+	return ok
 }
 
 // Len returns the number of stored entries (**not O(1)**)
 func (store *Store) Len() int {
-	result, err := store.Collection.CountDocuments(context.TODO(), bson.D{})
+	// Count only non-expired documents
+	filter := bson.D{
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "expired_at", Value: nil}},
+			bson.D{{Key: "expired_at", Value: bson.D{{Key: "$exists", Value: false}}}},
+			bson.D{{Key: "expired_at", Value: bson.D{{Key: "$gt", Value: time.Now()}}}},
+		}},
+	}
+	result, err := store.Collection.CountDocuments(context.TODO(), filter)
 	if err != nil {
-		log.Error("Store mongo Has: %s", err.Error())
+		log.Error("Store mongo Len: %s", err.Error())
 		return 0
 	}
 	return int(result)
@@ -126,10 +163,20 @@ func (store *Store) Len() int {
 
 // Keys returns all the cached keys
 func (store *Store) Keys() []string {
-	cursor, err := store.Collection.Find(context.TODO(), bson.D{})
-	if err != nil {
-		panic(err)
+	// Filter out expired documents
+	filter := bson.D{
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "expired_at", Value: nil}},
+			bson.D{{Key: "expired_at", Value: bson.D{{Key: "$exists", Value: false}}}},
+			bson.D{{Key: "expired_at", Value: bson.D{{Key: "$gt", Value: time.Now()}}}},
+		}},
 	}
+	cursor, err := store.Collection.Find(context.TODO(), filter)
+	if err != nil {
+		log.Error("Store mongo Keys: %s", err.Error())
+		return []string{}
+	}
+	defer cursor.Close(context.TODO())
 
 	keys := []string{}
 	for cursor.Next(context.TODO()) {

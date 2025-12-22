@@ -4,21 +4,21 @@ The Store package provides a unified interface for key-value storage with suppor
 
 ## Features
 
-- **Unified Interface**: Consistent API across LRU cache, Redis, MongoDB, and Badger implementations
+- **Unified Interface**: Consistent API across LRU cache, Redis, MongoDB, and Xun implementations
 - **Complete API**: 25+ methods covering key-value and list operations
 - **MongoDB-style API**: Familiar operations for developers using MongoDB
 - **List Operations**: Full support for array/list data structures
 - **Pagination Support**: Built-in pagination with `ArrayPage` and `ArraySlice`
 - **Thread Safety**: Full concurrency support with comprehensive stress testing
 - **Type Safety**: Strongly typed interface with Go generics support
-- **Embedded Storage**: Badger support for applications requiring local persistence
+- **Database Storage**: Xun driver for database-backed persistent storage with LRU cache layer
 
 ## Supported Backends
 
 - **LRU Cache**: In-memory cache with LRU eviction
 - **Redis**: Distributed cache using Redis lists
 - **MongoDB**: Document-based storage using MongoDB arrays
-- **Badger**: Embedded key-value database with persistent storage
+- **Xun**: Database-backed storage with LRU cache and async persistence
 
 ## Complete API Reference
 
@@ -429,15 +429,16 @@ fmt.Printf("Unique tags: %v\n", tags) // Output: [go database cache]
 - Native support for array operations
 - Persistent and scalable
 
-### Badger Implementation
+### Xun Implementation
 
-- Embedded key-value database with no external dependencies
-- JSON serialization for List operations
-- File-based persistent storage
-- **Thread-safe operations** with read-write mutex protection
-- Automatic directory creation for database path
-- High-performance LSM-tree based storage engine
-- Configurable database path (relative to application root)
+- Database-backed storage using the Xun ORM
+- LRU cache layer for read performance optimization
+- Asynchronous batch persistence (configurable interval, default 1 minute)
+- Lazy loading - data loaded from database on first access
+- Automatic table creation and schema management
+- TTL support with background cleanup goroutine
+- Write-through cache with dirty tracking
+- Supports MySQL, PostgreSQL, SQLite, and other databases via Xun connectors
 
 ## Configuration
 
@@ -461,17 +462,25 @@ store, err := store.New(redisConnector, store.Option{})
 store, err := store.New(mongoConnector, store.Option{})
 ```
 
-### Badger
+### Xun (Database)
 
 ```go
-// Default path (relative to application root)
-store, err := store.New(nil, store.Option{"driver": "badger", "path": "badger/db"})
+// Using default database connector
+store, err := store.New(nil, store.Option{
+    "type": "xun",
+    "table": "__my_store",      // Table name (default: __store_default)
+    "connector": "default",      // Database connector (default: default)
+})
 
-// Absolute path
-store, err := store.New(nil, store.Option{"driver": "badger", "path": "/var/lib/myapp/badger"})
-
-// Current directory relative path
-store, err := store.New(nil, store.Option{"driver": "badger", "path": "./data/badger"})
+// With custom cache size and intervals
+store, err := store.New(nil, store.Option{
+    "type": "xun",
+    "table": "__my_store",
+    "connector": "default",
+    "cache_size": 10240,         // LRU cache size (default: 10240)
+    "persist_interval": 60,      // Async persistence interval in seconds (default: 60)
+    "cleanup_interval": 5,       // Expired data cleanup interval in minutes (default: 5)
+})
 ```
 
 ## Testing
@@ -492,13 +501,17 @@ go test ./store -v -run TestLRU
 go test ./store -v -run TestLRUConcurrency
 go test ./store -v -run TestRedisConcurrency
 go test ./store -v -run TestMongoConcurrency
-go test ./store -v -run TestBadgerConcurrency
+go test ./store -v -run TestXunConcurrency
+
+# Run TTL tests
+go test ./store -v -run TestRedisTTL
+go test ./store -v -run TestMongoTTL
+go test ./store -v -run TestXunTTL
 
 # Run benchmarks
 go test ./store -bench=BenchmarkLRU -v
 go test ./store -bench=BenchmarkRedis -v
 go test ./store -bench=BenchmarkMongo -v
-go test ./store -bench=BenchmarkBadger -v
 ```
 
 The test suite covers:
@@ -507,6 +520,7 @@ The test suite covers:
 - Edge cases and error conditions
 - Pagination functionality
 - Set operations and uniqueness
+- **TTL expiration testing** for Redis, MongoDB, and Xun
 - **Concurrency stress testing** (100 goroutines)
 - **Memory leak detection** with 10MB threshold
 - **Goroutine leak detection**
@@ -538,14 +552,14 @@ All store implementations are designed to be **thread-safe** and support concurr
 - Document-level locking ensures consistency
 - Aggregation pipelines are atomic and isolated
 
-### Badger
+### Xun
 
 - Uses `sync.RWMutex` for reader-writer lock protection
-- Read operations use read locks for better concurrency
-- Write operations use exclusive write locks
-- JSON serialization ensures data consistency
-- Embedded database eliminates network-related concurrency issues
-- Persistent storage with crash recovery
+- LRU cache layer with thread-safe access
+- Asynchronous batch writes reduce database contention
+- Dirty tracking ensures data consistency
+- Background goroutines for persistence and cleanup
+- Database transactions for atomic operations
 
 ### Stress Testing
 
@@ -618,14 +632,15 @@ if err != nil {
 - **O(N)** for array operations
 - Supports complex aggregation queries
 
-### Badger
+### Xun
 
-- **Best for**: Embedded applications, single-node deployments
-- **O(log N)** for most operations (LSM-tree based)
-- **O(N)** for list operations (JSON serialization)
-- No network latency, embedded storage
-- Persistent across application restarts
-- Suitable for applications requiring local data persistence
+- **Best for**: Applications using existing database infrastructure
+- **O(1)** for cached reads (LRU cache hit)
+- **O(log N)** for database reads (with indexing)
+- Async persistence reduces write latency
+- Leverages existing database for persistence
+- Suitable for applications with database connectivity
+- **Note**: Up to `persist_interval` seconds of data may be lost on crash
 
 ## Migration Guide
 
