@@ -1,6 +1,6 @@
 # Store JavaScript API Documentation
 
-The Store JavaScript API provides a unified interface for key-value storage with MongoDB-style list operations in Yao applications. This API supports LRU cache, Redis, MongoDB, and Badger backends through a consistent JavaScript interface.
+The Store JavaScript API provides a unified interface for key-value storage with MongoDB-style list operations in Yao applications. This API supports LRU cache, Redis, MongoDB, and Xun (database-backed) backends through a consistent JavaScript interface.
 
 ## Table of Contents
 
@@ -620,6 +620,18 @@ function getPaginatedResults(key: string, page: number, pageSize: number = 20) {
 - **LRU Cache**: Fastest for frequent access, limited by memory
 - **Redis**: Good for distributed applications, network latency considerations
 - **MongoDB**: Best for complex queries and very large datasets
-- **Badger**: Embedded storage for single-node applications, persistent across restarts
+- **Xun**: Database-backed storage with LRU cache layer, leverages existing database infrastructure
 
 Choose the appropriate backend based on your application's requirements and configure the store accordingly in your Yao application.
+
+### Xun Store Features
+
+The Xun store provides database-backed persistence with performance optimization:
+
+- **LRU Cache Layer**: Fast reads from in-memory cache
+- **Async Persistence**: Batch writes to reduce database load (configurable interval)
+- **Lazy Loading**: Data loaded from database on first access
+- **TTL Support**: Automatic expiration with background cleanup
+- **Multi-Database**: Supports MySQL, PostgreSQL, SQLite via Xun connectors
+
+**Note**: Up to `persist_interval` seconds of data may be lost on application crash.

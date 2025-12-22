@@ -883,11 +883,11 @@ Generic key-value store for metadata and auxiliary data:
 - Collection metadata storage
 - Segment voting, scoring, and weighting data
 - Document metadata and tracking
-- Multiple backend implementations (Redis, MongoDB, Badger, LRU Cache)
+- Multiple backend implementations (Redis, MongoDB, Xun, LRU Cache)
 
 #### Store Configuration Examples
 
-**Recommended Stores**: MongoDB (production) and Badger (development/single-node)
+**Recommended Stores**: MongoDB (production) and Xun (database-backed with cache)
 
 **MongoDB Store (Document Database) - ⭐ Recommended for Production**
 
@@ -912,15 +912,29 @@ mongoConnector, err := connector.New("mongo", "mongo_store", []byte(`{
 kvStore, err := store.New(mongoConnector, nil)
 ```
 
-**Badger Store (Embedded Database) - ⭐ Recommended for Development**
+**Xun Store (Database-backed with LRU Cache) - ⭐ Recommended for Applications with Database**
 
 ```go
-// Create Badger store (no connector needed)
+// Create Xun store using existing database connection
 kvStore, err := store.New(nil, store.Option{
-    "driver": "badger",
-    "path":   "./data/badger", // Local filesystem path
+    "type":             "xun",
+    "table":            "__graphrag_store",  // Table name for storage
+    "connector":        "default",           // Database connector name
+    "cache_size":       10240,               // LRU cache size (default: 10240)
+    "persist_interval": 60,                  // Async persistence interval in seconds (default: 60)
+    "cleanup_interval": 5,                   // Expired data cleanup interval in minutes (default: 5)
 })
 ```
+
+**Xun Store Features:**
+
+- LRU cache layer for fast reads
+- Asynchronous batch persistence to reduce database load
+- Lazy loading - data loaded from database on first access
+- Automatic table creation and schema management
+- TTL support with background cleanup
+- Supports MySQL, PostgreSQL, SQLite via Xun connectors
+- **Note**: Up to `persist_interval` seconds of data may be lost on crash
 
 **Redis Store (Distributed Cache) - ⚠️ Requires Persistence Configuration**
 
