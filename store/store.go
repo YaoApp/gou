@@ -107,19 +107,44 @@ func New(c connector.Connector, option Option) (Store, error) {
 		}
 
 		// Default to LRU
-		size := 10240
+		lruOption := lru.Option{Size: 10240}
 		if option != nil {
 			if v, has := option["size"]; has {
-				size = helper.EnvInt(v, 10240)
+				lruOption.Size = helper.EnvInt(v, 10240)
+			}
+			if v, has := option["prefix"]; has {
+				lruOption.Prefix = helper.EnvString(v, "")
 			}
 		}
-		return lru.New(size)
+		return lru.NewWithOption(lruOption)
+	}
+
+	// Get prefix from option
+	var prefix string
+	if option != nil {
+		if v, has := option["prefix"]; has {
+			prefix = helper.EnvString(v, "")
+		}
 	}
 
 	if c.Is(connector.REDIS) {
-		return redis.New(c)
+		store, err := redis.New(c)
+		if err != nil {
+			return nil, err
+		}
+		if prefix != "" {
+			store.Option.Prefix = prefix
+		}
+		return store, nil
 	} else if c.Is(connector.MONGO) {
-		return mongo.New(c)
+		store, err := mongo.New(c)
+		if err != nil {
+			return nil, err
+		}
+		if prefix != "" {
+			store.Option.Prefix = prefix
+		}
+		return store, nil
 	}
 
 	return nil, fmt.Errorf("the connector does not support")
@@ -136,6 +161,10 @@ func NewXunStore(option Option) (Store, error) {
 
 	if conn, has := option["connector"]; has {
 		xunOption.Connector = helper.EnvString(conn, "default")
+	}
+
+	if prefix, has := option["prefix"]; has {
+		xunOption.Prefix = helper.EnvString(prefix, "")
 	}
 
 	if cacheSize, has := option["cache_size"]; has {

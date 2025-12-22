@@ -28,6 +28,7 @@ const DefaultPersistInterval = time.Minute * 1
 type Store struct {
 	connector       string
 	tableName       string
+	prefix          string // Key prefix for namespacing
 	cache           *lru.ARCCache
 	cacheSize       int
 	cleanupInterval time.Duration
@@ -64,6 +65,7 @@ type dirtyEntry struct {
 type Option struct {
 	Table           string        `json:"table,omitempty"`            // Table name, default: __store_default
 	Connector       string        `json:"connector,omitempty"`        // Database connector, default: default
+	Prefix          string        `json:"prefix,omitempty"`           // Key prefix for namespacing
 	CacheSize       int           `json:"cache_size,omitempty"`       // LRU cache size, default: 10240
 	CleanupInterval time.Duration `json:"cleanup_interval,omitempty"` // Cleanup interval, default: 5 minutes
 	PersistInterval time.Duration `json:"persist_interval,omitempty"` // Persist interval, default: 1 minute

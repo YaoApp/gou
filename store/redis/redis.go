@@ -112,8 +112,17 @@ func (store *Store) Has(key string) bool {
 }
 
 // Len returns the number of stored entries (**not O(1)**)
-func (store *Store) Len() int {
-	script := fmt.Sprintf("return #redis.pcall('keys', '%s*')", store.Option.Prefix)
+// Optional pattern parameter supports * wildcard (e.g., "user:*")
+func (store *Store) Len(pattern ...string) int {
+	// Build the pattern
+	var fullPattern string
+	if len(pattern) > 0 && pattern[0] != "" {
+		fullPattern = store.Option.Prefix + pattern[0]
+	} else {
+		fullPattern = store.Option.Prefix + "*"
+	}
+
+	script := fmt.Sprintf("return #redis.pcall('keys', '%s')", fullPattern)
 	cmd := store.rdb.Eval(context.Background(), script, []string{})
 	v, err := cmd.Result()
 	if err != nil {
@@ -134,9 +143,19 @@ func (store *Store) Len() int {
 }
 
 // Keys returns all the cached keys
-func (store *Store) Keys() []string {
+// Optional pattern parameter supports * wildcard (e.g., "user:*")
+func (store *Store) Keys(pattern ...string) []string {
 	prefix := store.Option.Prefix
-	keys, err := store.rdb.Keys(context.Background(), prefix+"*").Result()
+
+	// Build the pattern
+	var fullPattern string
+	if len(pattern) > 0 && pattern[0] != "" {
+		fullPattern = prefix + pattern[0]
+	} else {
+		fullPattern = prefix + "*"
+	}
+
+	keys, err := store.rdb.Keys(context.Background(), fullPattern).Result()
 	if err != nil {
 		log.Error("Store redis Keys:%s", err.Error())
 		return []string{}

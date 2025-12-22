@@ -9,9 +9,16 @@ import (
 
 // Cache lru cache with TTL support
 type Cache struct {
-	size int
-	lru  *lru.ARCCache
-	mu   sync.RWMutex // Protects list operations for concurrency safety
+	size   int
+	prefix string // Key prefix for namespacing
+	lru    *lru.ARCCache
+	mu     sync.RWMutex // Protects list operations for concurrency safety
+}
+
+// Option lru cache option
+type Option struct {
+	Size   int    `json:"size,omitempty"`   // Cache size, default: 10240
+	Prefix string `json:"prefix,omitempty"` // Key prefix for namespacing
 }
 
 // entry wraps a value with optional expiration time

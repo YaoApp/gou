@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector"
+	"github.com/yaoapp/gou/store/lru"
 	"github.com/yaoapp/gou/store/xun"
 	"github.com/yaoapp/kun/any"
 	"github.com/yaoapp/xun/capsule"
@@ -59,39 +61,63 @@ func TestLoad(t *testing.T) {
 }
 
 func TestLRU(t *testing.T) {
-	lru := newStore(t, nil)
-	testBasic(t, lru)
-	testMulti(t, lru)
-	testList(t, lru)
-	testDelPattern(t, lru)
-	testIncrDecr(t, lru)
+	store := newStore(t, nil)
+	testBasic(t, store)
+	testMulti(t, store)
+	testList(t, store)
+	testDelPattern(t, store)
+	testIncrDecr(t, store)
+	testKeysLenPattern(t, store)
+
+	// Test prefix with two isolated stores
+	store1, _ := lru.NewWithOption(lru.Option{Size: 1024, Prefix: "ns1:"})
+	store2, _ := lru.NewWithOption(lru.Option{Size: 1024, Prefix: "ns2:"})
+	testPrefix(t, store1, store2)
 }
 
 func TestRedis(t *testing.T) {
-	redis := newStore(t, getConnector(t, "redis"))
-	testBasic(t, redis)
-	testMulti(t, redis)
-	testList(t, redis)
-	testDelPattern(t, redis)
-	testIncrDecr(t, redis)
+	store := newStore(t, getConnector(t, "redis"))
+	testBasic(t, store)
+	testMulti(t, store)
+	testList(t, store)
+	testDelPattern(t, store)
+	testIncrDecr(t, store)
+	testKeysLenPattern(t, store)
+
+	// Test prefix with two isolated stores
+	store1 := newStoreWithPrefix(t, getConnector(t, "redis"), "ns1:")
+	store2 := newStoreWithPrefix(t, getConnector(t, "redis"), "ns2:")
+	testPrefix(t, store1, store2)
 }
 
 func TestMongo(t *testing.T) {
-	mongo := newStore(t, getConnector(t, "mongo"))
-	testBasic(t, mongo)
-	testMulti(t, mongo)
-	testList(t, mongo)
-	testDelPattern(t, mongo)
-	testIncrDecr(t, mongo)
+	store := newStore(t, getConnector(t, "mongo"))
+	testBasic(t, store)
+	testMulti(t, store)
+	testList(t, store)
+	testDelPattern(t, store)
+	testIncrDecr(t, store)
+	testKeysLenPattern(t, store)
+
+	// Test prefix with two isolated stores
+	store1 := newStoreWithPrefix(t, getConnector(t, "mongo"), "ns1:")
+	store2 := newStoreWithPrefix(t, getConnector(t, "mongo"), "ns2:")
+	testPrefix(t, store1, store2)
 }
 
 func TestXun(t *testing.T) {
-	xunStore := newXunStore(t)
-	testBasic(t, xunStore)
-	testMulti(t, xunStore)
-	testList(t, xunStore)
-	testDelPattern(t, xunStore)
-	testIncrDecr(t, xunStore)
+	store := newXunStore(t)
+	testBasic(t, store)
+	testMulti(t, store)
+	testList(t, store)
+	testDelPattern(t, store)
+	testIncrDecr(t, store)
+	testKeysLenPattern(t, store)
+
+	// Test prefix with two isolated stores
+	store1 := newXunStoreWithPrefix(t, "ns1:")
+	store2 := newXunStoreWithPrefix(t, "ns2:")
+	testPrefix(t, store1, store2)
 }
 
 func TestLRUTTL(t *testing.T) {
@@ -260,6 +286,14 @@ func newStore(t *testing.T, c connector.Connector) Store {
 	return store
 }
 
+func newStoreWithPrefix(t *testing.T, c connector.Connector, prefix string) Store {
+	store, err := New(c, Option{"size": 20480, "prefix": prefix})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return store
+}
+
 func newXunStore(t *testing.T) Store {
 	// Initialize database connection
 	dbconnect(t)
@@ -287,6 +321,32 @@ func newXunStore(t *testing.T) Store {
 	return store
 }
 
+func newXunStoreWithPrefix(t *testing.T, prefix string) Store {
+	// Initialize database connection
+	dbconnect(t)
+
+	// Create xun store with option
+	tableName := "__store_prefix_test"
+	store, err := xun.New(xun.Option{
+		Table:           tableName,
+		Connector:       "default",
+		Prefix:          prefix,
+		CacheSize:       1024,
+		CleanupInterval: time.Second * 5,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Schedule cleanup
+	t.Cleanup(func() {
+		store.Clear()
+		store.Close()
+	})
+
+	return store
+}
+
 func dbconnect(t *testing.T) {
 	if capsule.Global != nil {
 		return // Already connected
@@ -296,7 +356,7 @@ func dbconnect(t *testing.T) {
 	TestDSN := os.Getenv("GOU_TEST_DSN")
 
 	if TestDSN == "" {
-		t.Skip("GOU_TEST_DSN not set, skipping xun store tests")
+		t.Fatal("GOU_TEST_DSN environment variable is required for database tests")
 		return
 	}
 
@@ -444,6 +504,175 @@ func testIncrDecr(t *testing.T, kv Store) {
 	result, err = kv.Decr("new_counter", 5)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(-5), result)
+
+	kv.Clear()
+}
+
+// testPrefix tests prefix isolation between two stores
+func testPrefix(t *testing.T, store1, store2 Store) {
+	// Clear any existing data
+	store1.Clear()
+	store2.Clear()
+
+	// Test basic operations with prefixes
+	store1.Set("key1", "value1", 0)
+	store2.Set("key1", "value2", 0)
+
+	// Each store should see its own value
+	val1, ok1 := store1.Get("key1")
+	val2, ok2 := store2.Get("key1")
+
+	assert.True(t, ok1)
+	assert.True(t, ok2)
+	assert.Equal(t, "value1", val1)
+	assert.Equal(t, "value2", val2)
+
+	// Test Has
+	assert.True(t, store1.Has("key1"))
+	assert.False(t, store1.Has("key2"))
+
+	// Test Del
+	store1.Del("key1")
+	_, ok1 = store1.Get("key1")
+	val2, ok2 = store2.Get("key1")
+	assert.False(t, ok1)
+	assert.True(t, ok2)
+	assert.Equal(t, "value2", val2)
+
+	// Test Keys and Len with prefix
+	store1.Set("a", 1, 0)
+	store1.Set("b", 2, 0)
+	store1.Set("c", 3, 0)
+
+	keys := store1.Keys()
+	assert.Equal(t, 3, len(keys))
+	assert.Equal(t, 3, store1.Len())
+
+	// Keys should not have prefix (prefix is internal)
+	for _, k := range keys {
+		assert.False(t, strings.HasPrefix(k, "ns1:"), "Key should not have prefix: %s", k)
+		assert.False(t, strings.HasPrefix(k, "ns2:"), "Key should not have prefix: %s", k)
+	}
+
+	// Test Clear with prefix (should only clear prefixed keys)
+	store1.Clear()
+	assert.Equal(t, 0, store1.Len())
+	// store2 should still have its data
+	val2, ok2 = store2.Get("key1")
+	assert.True(t, ok2)
+	assert.Equal(t, "value2", val2)
+
+	// Test Del pattern with prefix
+	store1.Set("user:1:name", "Alice", 0)
+	store1.Set("user:1:email", "alice@test.com", 0)
+	store1.Set("user:2:name", "Bob", 0)
+
+	store1.Del("user:1:*")
+	assert.False(t, store1.Has("user:1:name"))
+	assert.False(t, store1.Has("user:1:email"))
+	assert.True(t, store1.Has("user:2:name"))
+
+	// Test Incr with prefix
+	result, err := store1.Incr("counter", 1)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), result)
+
+	result, err = store1.Incr("counter", 5)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(6), result)
+
+	// Test list operations with prefix
+	store1.Push("list", "a", "b", "c")
+	listLen := store1.ArrayLen("list")
+	assert.Equal(t, 3, listLen)
+
+	all, _ := store1.ArrayAll("list")
+	assert.Equal(t, 3, len(all))
+
+	// Test GetDel with prefix
+	store1.Set("temp", "tempvalue", 0)
+	val, ok := store1.GetDel("temp")
+	assert.True(t, ok)
+	assert.Equal(t, "tempvalue", val)
+	assert.False(t, store1.Has("temp"))
+}
+
+func testKeysLenPattern(t *testing.T, kv Store) {
+	// Clear any existing data
+	kv.Clear()
+
+	// Set up test data with different prefixes
+	kv.Set("user:123:name", "John", 0)
+	kv.Set("user:123:email", "john@example.com", 0)
+	kv.Set("user:123:age", 30, 0)
+	kv.Set("user:456:name", "Jane", 0)
+	kv.Set("user:456:email", "jane@example.com", 0)
+	kv.Set("chat:789:message1", "Hello", 0)
+	kv.Set("chat:789:message2", "World", 0)
+	kv.Set("other:key", "value", 0)
+
+	// Test Keys without pattern - should return all keys
+	allKeys := kv.Keys()
+	assert.Equal(t, 8, len(allKeys))
+
+	// Test Keys with empty pattern - should return all keys
+	allKeys = kv.Keys("")
+	assert.Equal(t, 8, len(allKeys))
+
+	// Test Len without pattern - should return total count
+	assert.Equal(t, 8, kv.Len())
+
+	// Test Len with empty pattern - should return total count
+	assert.Equal(t, 8, kv.Len(""))
+
+	// Test Keys with pattern - user:123:*
+	user123Keys := kv.Keys("user:123:*")
+	assert.Equal(t, 3, len(user123Keys))
+	assert.Contains(t, user123Keys, "user:123:name")
+	assert.Contains(t, user123Keys, "user:123:email")
+	assert.Contains(t, user123Keys, "user:123:age")
+
+	// Test Len with pattern - user:123:*
+	assert.Equal(t, 3, kv.Len("user:123:*"))
+
+	// Test Keys with pattern - user:*
+	userKeys := kv.Keys("user:*")
+	assert.Equal(t, 5, len(userKeys))
+
+	// Test Len with pattern - user:*
+	assert.Equal(t, 5, kv.Len("user:*"))
+
+	// Test Keys with pattern - chat:*
+	chatKeys := kv.Keys("chat:*")
+	assert.Equal(t, 2, len(chatKeys))
+	assert.Contains(t, chatKeys, "chat:789:message1")
+	assert.Contains(t, chatKeys, "chat:789:message2")
+
+	// Test Len with pattern - chat:*
+	assert.Equal(t, 2, kv.Len("chat:*"))
+
+	// Test Keys with pattern - other:*
+	otherKeys := kv.Keys("other:*")
+	assert.Equal(t, 1, len(otherKeys))
+	assert.Contains(t, otherKeys, "other:key")
+
+	// Test Len with pattern - other:*
+	assert.Equal(t, 1, kv.Len("other:*"))
+
+	// Test Keys with pattern - nonexistent:*
+	nonexistentKeys := kv.Keys("nonexistent:*")
+	assert.Equal(t, 0, len(nonexistentKeys))
+
+	// Test Len with pattern - nonexistent:*
+	assert.Equal(t, 0, kv.Len("nonexistent:*"))
+
+	// Test Keys with exact match pattern (no wildcard)
+	exactKeys := kv.Keys("user:123:name")
+	assert.Equal(t, 1, len(exactKeys))
+	assert.Contains(t, exactKeys, "user:123:name")
+
+	// Test Len with exact match pattern (no wildcard)
+	assert.Equal(t, 1, kv.Len("user:123:name"))
 
 	kv.Clear()
 }
