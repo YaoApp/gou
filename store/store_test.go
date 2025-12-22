@@ -64,6 +64,7 @@ func TestLRU(t *testing.T) {
 	testMulti(t, lru)
 	testList(t, lru)
 	testDelPattern(t, lru)
+	testIncrDecr(t, lru)
 }
 
 func TestRedis(t *testing.T) {
@@ -72,6 +73,7 @@ func TestRedis(t *testing.T) {
 	testMulti(t, redis)
 	testList(t, redis)
 	testDelPattern(t, redis)
+	testIncrDecr(t, redis)
 }
 
 func TestMongo(t *testing.T) {
@@ -80,6 +82,7 @@ func TestMongo(t *testing.T) {
 	testMulti(t, mongo)
 	testList(t, mongo)
 	testDelPattern(t, mongo)
+	testIncrDecr(t, mongo)
 }
 
 func TestXun(t *testing.T) {
@@ -88,6 +91,12 @@ func TestXun(t *testing.T) {
 	testMulti(t, xunStore)
 	testList(t, xunStore)
 	testDelPattern(t, xunStore)
+	testIncrDecr(t, xunStore)
+}
+
+func TestLRUTTL(t *testing.T) {
+	lru := newStore(t, nil)
+	testTTL(t, lru)
 }
 
 func TestXunTTL(t *testing.T) {
@@ -395,6 +404,48 @@ func prepare(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+}
+
+func testIncrDecr(t *testing.T, kv Store) {
+	// Clear any existing data
+	kv.Clear()
+
+	// Test Incr on non-existent key (should start from 0)
+	result, err := kv.Incr("counter", 1)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), result)
+
+	// Test Incr on existing key
+	result, err = kv.Incr("counter", 5)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(6), result)
+
+	// Verify the value via Get
+	value, ok := kv.Get("counter")
+	assert.True(t, ok)
+	assert.Equal(t, int64(6), int64(any.Of(value).CInt()))
+
+	// Test Decr
+	result, err = kv.Decr("counter", 2)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(4), result)
+
+	// Test Decr with larger delta
+	result, err = kv.Decr("counter", 10)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(-6), result)
+
+	// Test Incr with negative delta (same as Decr)
+	result, err = kv.Incr("counter", -4)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(-10), result)
+
+	// Test Decr on non-existent key
+	result, err = kv.Decr("new_counter", 5)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(-5), result)
+
+	kv.Clear()
 }
 
 func testDelPattern(t *testing.T, kv Store) {

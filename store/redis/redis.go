@@ -462,3 +462,25 @@ func (store *Store) ArrayAll(key string) ([]interface{}, error) {
 
 	return result, nil
 }
+
+// Incr increments a numeric value and returns the new value
+func (store *Store) Incr(key string, delta int64) (int64, error) {
+	key = fmt.Sprintf("%s%s", store.Option.Prefix, key)
+	result, err := store.rdb.IncrBy(context.Background(), key, delta).Result()
+	if err != nil {
+		log.Error("Store redis Incr %s: %s", key, err.Error())
+		return 0, err
+	}
+	return result, nil
+}
+
+// Decr decrements a numeric value and returns the new value
+func (store *Store) Decr(key string, delta int64) (int64, error) {
+	key = fmt.Sprintf("%s%s", store.Option.Prefix, key)
+	result, err := store.rdb.DecrBy(context.Background(), key, delta).Result()
+	if err != nil {
+		log.Error("Store redis Decr %s: %s", key, err.Error())
+		return 0, err
+	}
+	return result, nil
+}

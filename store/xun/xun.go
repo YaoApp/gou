@@ -988,3 +988,74 @@ func (store *Store) keyExists(key string) (bool, error) {
 
 	return count > 0, nil
 }
+
+// Incr increments a numeric value and returns the new value
+func (store *Store) Incr(key string, delta int64) (int64, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
+	var current int64
+
+	// Check cache first
+	if cached, found := store.cache.Get(key); found {
+		if entry, ok := cached.(*cacheEntry); ok {
+			current = toInt64(entry.Value)
+		}
+	} else {
+		// Load from database
+		if value, ok := store.Get(key); ok {
+			current = toInt64(value)
+		}
+	}
+
+	newValue := current + delta
+
+	// Update cache
+	store.cache.Add(key, &cacheEntry{
+		Value:     newValue,
+		ExpiredAt: nil,
+		Type:      "value",
+	})
+
+	// Mark as dirty for async persistence
+	store.markDirty(key, newValue, "value", nil)
+
+	return newValue, nil
+}
+
+// Decr decrements a numeric value and returns the new value
+func (store *Store) Decr(key string, delta int64) (int64, error) {
+	return store.Incr(key, -delta)
+}
+
+// toInt64 converts an interface{} to int64
+func toInt64(v interface{}) int64 {
+	switch n := v.(type) {
+	case int:
+		return int64(n)
+	case int8:
+		return int64(n)
+	case int16:
+		return int64(n)
+	case int32:
+		return int64(n)
+	case int64:
+		return n
+	case uint:
+		return int64(n)
+	case uint8:
+		return int64(n)
+	case uint16:
+		return int64(n)
+	case uint32:
+		return int64(n)
+	case uint64:
+		return int64(n)
+	case float32:
+		return int64(n)
+	case float64:
+		return int64(n)
+	default:
+		return 0
+	}
+}
