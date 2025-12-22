@@ -51,6 +51,7 @@ func New(option Option) (*Store, error) {
 	store := &Store{
 		connector:       connector,
 		tableName:       tableName,
+		prefix:          option.Prefix,
 		cache:           cache,
 		cacheSize:       cacheSize,
 		cleanupInterval: cleanupInterval,
@@ -301,14 +302,32 @@ func (store *Store) markDeleted(key string) {
 	store.dirtyMu.Unlock()
 }
 
+// prefixKey adds the prefix to a key
+func (store *Store) prefixKey(key string) string {
+	if store.prefix == "" {
+		return key
+	}
+	return store.prefix + key
+}
+
+// unprefixKey removes the prefix from a key
+func (store *Store) unprefixKey(key string) string {
+	if store.prefix == "" {
+		return key
+	}
+	return strings.TrimPrefix(key, store.prefix)
+}
+
 // Get looks up a key's value from the store (cache-first, lazy load from DB)
 func (store *Store) Get(key string) (value interface{}, ok bool) {
+	prefixedKey := store.prefixKey(key)
+
 	// Check cache first
-	if cached, found := store.cache.Get(key); found {
+	if cached, found := store.cache.Get(prefixedKey); found {
 		if entry, ok := cached.(*cacheEntry); ok {
 			// Check if expired
 			if entry.ExpiredAt != nil && time.Now().After(*entry.ExpiredAt) {
-				store.cache.Remove(key)
+				store.cache.Remove(prefixedKey)
 				return nil, false
 			}
 			return entry.Value, true
@@ -318,7 +337,7 @@ func (store *Store) Get(key string) (value interface{}, ok bool) {
 	// Lazy load from database
 	row, err := capsule.Query().
 		Table(store.tableName).
-		Where("key", key).
+		Where("key", prefixedKey).
 		Where(func(qb query.Query) {
 			qb.WhereNull("expired_at").OrWhere("expired_at", ">", time.Now())
 		}).
@@ -326,7 +345,7 @@ func (store *Store) Get(key string) (value interface{}, ok bool) {
 
 	if err != nil {
 		if !strings.Contains(err.Error(), "no rows") {
-			log.Error("Store xun Get %s: %s", key, err.Error())
+			log.Error("Store xun Get %s: %s", prefixedKey, err.Error())
 		}
 		return nil, false
 	}
@@ -343,7 +362,7 @@ func (store *Store) Get(key string) (value interface{}, ok bool) {
 
 	var result interface{}
 	if err := jsoniter.UnmarshalFromString(valueStr, &result); err != nil {
-		log.Error("Store xun Get unmarshal %s: %s", key, err.Error())
+		log.Error("Store xun Get unmarshal %s: %s", prefixedKey, err.Error())
 		return nil, false
 	}
 
@@ -361,7 +380,7 @@ func (store *Store) Get(key string) (value interface{}, ok bool) {
 	}
 
 	// Add to cache (LRU will auto-evict if full)
-	store.cache.Add(key, &cacheEntry{
+	store.cache.Add(prefixedKey, &cacheEntry{
 		Value:     result,
 		ExpiredAt: expiredAt,
 		Type:      typ,
@@ -375,6 +394,8 @@ func (store *Store) Set(key string, value interface{}, ttl time.Duration) error 
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
+	prefixedKey := store.prefixKey(key)
+
 	var expiredAt *time.Time
 	if ttl > 0 {
 		exp := time.Now().Add(ttl)
@@ -382,14 +403,14 @@ func (store *Store) Set(key string, value interface{}, ttl time.Duration) error 
 	}
 
 	// Write to cache
-	store.cache.Add(key, &cacheEntry{
+	store.cache.Add(prefixedKey, &cacheEntry{
 		Value:     value,
 		ExpiredAt: expiredAt,
 		Type:      "value",
 	})
 
 	// Mark as dirty for async persistence
-	store.markDirty(key, value, "value", expiredAt)
+	store.markDirty(prefixedKey, value, "value", expiredAt)
 
 	return nil
 }
@@ -405,11 +426,13 @@ func (store *Store) Del(key string) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
+	prefixedKey := store.prefixKey(key)
+
 	// Remove from cache
-	store.cache.Remove(key)
+	store.cache.Remove(prefixedKey)
 
 	// Mark as deleted for async persistence
-	store.markDeleted(key)
+	store.markDeleted(prefixedKey)
 
 	return nil
 }
@@ -419,16 +442,19 @@ func (store *Store) delPattern(pattern string) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
+	// Add prefix to pattern
+	fullPattern := store.prefixKey(pattern)
+
 	// Convert wildcard pattern to SQL LIKE pattern
 	// e.g., "user:123:*" -> "user:123:%"
-	likePattern := strings.ReplaceAll(pattern, "*", "%")
+	likePattern := strings.ReplaceAll(fullPattern, "*", "%")
 
 	// Remove matching keys from cache
 	keys := store.cache.Keys()
-	prefix := strings.TrimSuffix(pattern, "*")
+	prefix := strings.TrimSuffix(fullPattern, "*")
 	for _, k := range keys {
 		if key, ok := k.(string); ok {
-			if strings.HasSuffix(pattern, "*") && strings.HasPrefix(key, prefix) {
+			if strings.HasSuffix(fullPattern, "*") && strings.HasPrefix(key, prefix) {
 				store.cache.Remove(key)
 				store.markDeletedNoLock(key)
 			}
@@ -442,7 +468,7 @@ func (store *Store) delPattern(pattern string) error {
 		Delete()
 
 	if err != nil {
-		log.Error("Store xun delPattern %s: %s", pattern, err.Error())
+		log.Error("Store xun delPattern %s: %s", fullPattern, err.Error())
 		return err
 	}
 
@@ -462,11 +488,13 @@ func (store *Store) markDeletedNoLock(key string) {
 
 // Has checks if a key exists in the store
 func (store *Store) Has(key string) bool {
+	prefixedKey := store.prefixKey(key)
+
 	// Check cache first
-	if cached, found := store.cache.Get(key); found {
+	if cached, found := store.cache.Get(prefixedKey); found {
 		if entry, ok := cached.(*cacheEntry); ok {
 			if entry.ExpiredAt != nil && time.Now().After(*entry.ExpiredAt) {
-				store.cache.Remove(key)
+				store.cache.Remove(prefixedKey)
 				return false
 			}
 			return true
@@ -476,7 +504,7 @@ func (store *Store) Has(key string) bool {
 	// Check database
 	count, err := capsule.Query().
 		Table(store.tableName).
-		Where("key", key).
+		Where("key", prefixedKey).
 		Where(func(qb query.Query) {
 			qb.WhereNull("expired_at").OrWhere("expired_at", ">", time.Now())
 		}).
@@ -491,14 +519,35 @@ func (store *Store) Has(key string) bool {
 }
 
 // Len returns the number of stored entries
-func (store *Store) Len() int {
+// Optional pattern parameter supports * wildcard (e.g., "user:*")
+func (store *Store) Len(pattern ...string) int {
 	now := time.Now()
 	count := 0
+
+	// Build full pattern with prefix
+	var fullPattern string
+	if len(pattern) > 0 && pattern[0] != "" {
+		fullPattern = store.prefixKey(pattern[0])
+	} else if store.prefix != "" {
+		fullPattern = store.prefix + "*"
+	}
+
+	// Get pattern and prefix for matching
+	var pat, prefix string
+	hasPattern := fullPattern != ""
+	if hasPattern {
+		pat = fullPattern
+		prefix = strings.TrimSuffix(pat, "*")
+	}
 
 	// Count from cache (includes dirty data not yet persisted)
 	keys := store.cache.Keys()
 	for _, k := range keys {
 		if key, ok := k.(string); ok {
+			// Filter by pattern if provided
+			if hasPattern && !matchPattern(key, pat, prefix) {
+				continue
+			}
 			if cached, found := store.cache.Peek(key); found {
 				if entry, ok := cached.(*cacheEntry); ok {
 					if entry.ExpiredAt == nil || now.Before(*entry.ExpiredAt) {
@@ -517,14 +566,20 @@ func (store *Store) Len() int {
 	}
 	store.deletedMu.RUnlock()
 
-	rows, err := capsule.Query().
+	// Build query with optional pattern filter
+	qb := capsule.Query().
 		Table(store.tableName).
 		Select("key").
-		Where(func(qb query.Query) {
-			qb.WhereNull("expired_at").OrWhere("expired_at", ">", time.Now())
-		}).
-		Get()
+		Where(func(q query.Query) {
+			q.WhereNull("expired_at").OrWhere("expired_at", ">", time.Now())
+		})
 
+	if hasPattern {
+		likePattern := strings.ReplaceAll(pat, "*", "%")
+		qb = qb.Where("key", "like", likePattern)
+	}
+
+	rows, err := qb.Get()
 	if err != nil {
 		return count
 	}
@@ -542,14 +597,37 @@ func (store *Store) Len() int {
 }
 
 // Keys returns all the keys
-func (store *Store) Keys() []string {
+// Optional pattern parameter supports * wildcard (e.g., "user:*")
+func (store *Store) Keys(pattern ...string) []string {
 	now := time.Now()
 	keySet := make(map[string]bool)
+
+	// Build full pattern with prefix
+	var fullPattern string
+	if len(pattern) > 0 && pattern[0] != "" {
+		fullPattern = store.prefixKey(pattern[0])
+	} else if store.prefix != "" {
+		fullPattern = store.prefix + "*"
+	}
+
+	// Get pattern and prefix for matching
+	var pat, prefix string
+	hasPattern := fullPattern != ""
+	if hasPattern {
+		pat = fullPattern
+		prefix = strings.TrimSuffix(pat, "*")
+	}
+
+	prefixLen := len(store.prefix)
 
 	// Get keys from cache
 	keys := store.cache.Keys()
 	for _, k := range keys {
 		if key, ok := k.(string); ok {
+			// Filter by pattern if provided
+			if hasPattern && !matchPattern(key, pat, prefix) {
+				continue
+			}
 			if cached, found := store.cache.Peek(key); found {
 				if entry, ok := cached.(*cacheEntry); ok {
 					if entry.ExpiredAt == nil || now.Before(*entry.ExpiredAt) {
@@ -568,15 +646,20 @@ func (store *Store) Keys() []string {
 	}
 	store.deletedMu.RUnlock()
 
-	// Get keys from database
-	rows, err := capsule.Query().
+	// Build query with optional pattern filter
+	qb := capsule.Query().
 		Table(store.tableName).
 		Select("key").
-		Where(func(qb query.Query) {
-			qb.WhereNull("expired_at").OrWhere("expired_at", ">", time.Now())
-		}).
-		Get()
+		Where(func(q query.Query) {
+			q.WhereNull("expired_at").OrWhere("expired_at", ">", time.Now())
+		})
 
+	if hasPattern {
+		likePattern := strings.ReplaceAll(pat, "*", "%")
+		qb = qb.Where("key", "like", likePattern)
+	}
+
+	rows, err := qb.Get()
 	if err == nil {
 		for _, row := range rows {
 			if key, ok := row.Get("key").(string); ok {
@@ -589,6 +672,10 @@ func (store *Store) Keys() []string {
 
 	result := make([]string, 0, len(keySet))
 	for key := range keySet {
+		// Remove prefix from returned keys
+		if prefixLen > 0 && len(key) >= prefixLen {
+			key = key[prefixLen:]
+		}
 		result = append(result, key)
 	}
 
@@ -596,6 +683,7 @@ func (store *Store) Keys() []string {
 }
 
 // Clear removes all entries from the store
+// If prefix is set, only clears keys with that prefix
 func (store *Store) Clear() {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -604,16 +692,39 @@ func (store *Store) Clear() {
 	keys := store.cache.Keys()
 	for _, k := range keys {
 		if key, ok := k.(string); ok {
+			// If prefix is set, only clear keys with that prefix
+			if store.prefix != "" && !strings.HasPrefix(key, store.prefix) {
+				continue
+			}
 			store.markDeleted(key)
 		}
 	}
 
-	// Clear cache
-	store.cache.Purge()
+	// Clear cache (only keys with prefix if set)
+	if store.prefix == "" {
+		store.cache.Purge()
+	} else {
+		// Only remove keys with the prefix
+		for _, k := range keys {
+			if key, ok := k.(string); ok {
+				if strings.HasPrefix(key, store.prefix) {
+					store.cache.Remove(key)
+				}
+			}
+		}
+	}
 
-	// Clear dirty entries
+	// Clear dirty entries (only with prefix if set)
 	store.dirtyMu.Lock()
-	store.dirty = make(map[string]*dirtyEntry)
+	if store.prefix == "" {
+		store.dirty = make(map[string]*dirtyEntry)
+	} else {
+		for k := range store.dirty {
+			if strings.HasPrefix(k, store.prefix) {
+				delete(store.dirty, k)
+			}
+		}
+	}
 	store.dirtyMu.Unlock()
 }
 
@@ -758,13 +869,14 @@ func (store *Store) Push(key string, values ...interface{}) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
-	list, _ := store.getListFromCache(key)
+	prefixedKey := store.prefixKey(key)
+	list, _ := store.getListFromCache(prefixedKey)
 	if list == nil {
 		list = []interface{}{}
 	}
 
 	list = append(list, values...)
-	store.setListToCache(key, list)
+	store.setListToCache(prefixedKey, list)
 
 	return nil
 }
@@ -774,7 +886,8 @@ func (store *Store) Pop(key string, position int) (interface{}, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
-	list, found := store.getListFromCache(key)
+	prefixedKey := store.prefixKey(key)
+	list, found := store.getListFromCache(prefixedKey)
 	if !found || len(list) == 0 {
 		return nil, fmt.Errorf("list is empty")
 	}
@@ -788,7 +901,7 @@ func (store *Store) Pop(key string, position int) (interface{}, error) {
 		list = list[1:]
 	}
 
-	store.setListToCache(key, list)
+	store.setListToCache(prefixedKey, list)
 
 	return result, nil
 }
@@ -798,7 +911,8 @@ func (store *Store) Pull(key string, value interface{}) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
-	list, found := store.getListFromCache(key)
+	prefixedKey := store.prefixKey(key)
+	list, found := store.getListFromCache(prefixedKey)
 	if !found {
 		return nil
 	}
@@ -816,7 +930,7 @@ func (store *Store) Pull(key string, value interface{}) error {
 		newList = []interface{}{}
 	}
 
-	store.setListToCache(key, newList)
+	store.setListToCache(prefixedKey, newList)
 
 	return nil
 }
@@ -826,7 +940,8 @@ func (store *Store) PullAll(key string, values []interface{}) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
-	list, found := store.getListFromCache(key)
+	prefixedKey := store.prefixKey(key)
+	list, found := store.getListFromCache(prefixedKey)
 	if !found {
 		return nil
 	}
@@ -849,7 +964,7 @@ func (store *Store) PullAll(key string, values []interface{}) error {
 		newList = []interface{}{}
 	}
 
-	store.setListToCache(key, newList)
+	store.setListToCache(prefixedKey, newList)
 
 	return nil
 }
@@ -859,7 +974,8 @@ func (store *Store) AddToSet(key string, values ...interface{}) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
-	list, _ := store.getListFromCache(key)
+	prefixedKey := store.prefixKey(key)
+	list, _ := store.getListFromCache(prefixedKey)
 	if list == nil {
 		list = []interface{}{}
 	}
@@ -878,14 +994,15 @@ func (store *Store) AddToSet(key string, values ...interface{}) error {
 		}
 	}
 
-	store.setListToCache(key, list)
+	store.setListToCache(prefixedKey, list)
 
 	return nil
 }
 
 // ArrayLen returns the length of a list
 func (store *Store) ArrayLen(key string) int {
-	list, found := store.getListFromCache(key)
+	prefixedKey := store.prefixKey(key)
+	list, found := store.getListFromCache(prefixedKey)
 	if !found {
 		return 0
 	}
@@ -894,7 +1011,8 @@ func (store *Store) ArrayLen(key string) int {
 
 // ArrayGet returns an element at the specified index
 func (store *Store) ArrayGet(key string, index int) (interface{}, error) {
-	list, found := store.getListFromCache(key)
+	prefixedKey := store.prefixKey(key)
+	list, found := store.getListFromCache(prefixedKey)
 	if !found {
 		return nil, fmt.Errorf("key not found")
 	}
@@ -911,7 +1029,8 @@ func (store *Store) ArraySet(key string, index int, value interface{}) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
-	list, found := store.getListFromCache(key)
+	prefixedKey := store.prefixKey(key)
+	list, found := store.getListFromCache(prefixedKey)
 	if !found {
 		return fmt.Errorf("key not found")
 	}
@@ -925,14 +1044,15 @@ func (store *Store) ArraySet(key string, index int, value interface{}) error {
 	copy(newList, list)
 	newList[index] = value
 
-	store.setListToCache(key, newList)
+	store.setListToCache(prefixedKey, newList)
 
 	return nil
 }
 
 // ArraySlice returns a slice of elements with skip and limit
 func (store *Store) ArraySlice(key string, skip, limit int) ([]interface{}, error) {
-	list, found := store.getListFromCache(key)
+	prefixedKey := store.prefixKey(key)
+	list, found := store.getListFromCache(prefixedKey)
 	if !found {
 		return []interface{}{}, nil
 	}
@@ -965,7 +1085,8 @@ func (store *Store) ArrayPage(key string, page, pageSize int) ([]interface{}, er
 
 // ArrayAll returns all elements in a list
 func (store *Store) ArrayAll(key string) ([]interface{}, error) {
-	list, found := store.getListFromCache(key)
+	prefixedKey := store.prefixKey(key)
+	list, found := store.getListFromCache(prefixedKey)
 	if !found {
 		return []interface{}{}, nil
 	}
@@ -994,15 +1115,16 @@ func (store *Store) Incr(key string, delta int64) (int64, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
+	prefixedKey := store.prefixKey(key)
 	var current int64
 
 	// Check cache first
-	if cached, found := store.cache.Get(key); found {
+	if cached, found := store.cache.Get(prefixedKey); found {
 		if entry, ok := cached.(*cacheEntry); ok {
 			current = toInt64(entry.Value)
 		}
 	} else {
-		// Load from database
+		// Load from database (Get already handles prefix)
 		if value, ok := store.Get(key); ok {
 			current = toInt64(value)
 		}
@@ -1011,14 +1133,14 @@ func (store *Store) Incr(key string, delta int64) (int64, error) {
 	newValue := current + delta
 
 	// Update cache
-	store.cache.Add(key, &cacheEntry{
+	store.cache.Add(prefixedKey, &cacheEntry{
 		Value:     newValue,
 		ExpiredAt: nil,
 		Type:      "value",
 	})
 
 	// Mark as dirty for async persistence
-	store.markDirty(key, newValue, "value", nil)
+	store.markDirty(prefixedKey, newValue, "value", nil)
 
 	return newValue, nil
 }
@@ -1026,6 +1148,16 @@ func (store *Store) Incr(key string, delta int64) (int64, error) {
 // Decr decrements a numeric value and returns the new value
 func (store *Store) Decr(key string, delta int64) (int64, error) {
 	return store.Incr(key, -delta)
+}
+
+// matchPattern checks if a key matches the pattern
+func matchPattern(key, pattern, prefix string) bool {
+	// Simple prefix matching for patterns ending with *
+	if strings.HasSuffix(pattern, "*") {
+		return strings.HasPrefix(key, prefix)
+	}
+	// Exact match
+	return key == pattern
 }
 
 // toInt64 converts an interface{} to int64

@@ -12,8 +12,8 @@ type Store interface {
 	Set(key string, value interface{}, ttl time.Duration) error
 	Del(key string) error // Supports wildcard pattern with * (e.g., "user:123:*")
 	Has(key string) bool
-	Len() int
-	Keys() []string
+	Len(pattern ...string) int       // Optional pattern with * wildcard (e.g., "user:*")
+	Keys(pattern ...string) []string // Optional pattern with * wildcard (e.g., "user:*")
 	Clear()
 	GetSet(key string, ttl time.Duration, getValue func(key string) (interface{}, error)) (interface{}, error)
 	GetDel(key string) (value interface{}, ok bool)

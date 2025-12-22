@@ -11,18 +11,43 @@ import (
 
 // New create a new LRU cache
 func New(size int) (*Cache, error) {
-	cache := &Cache{size: size}
-	lru, err := lru.NewARC(size)
+	return NewWithOption(Option{Size: size})
+}
+
+// NewWithOption create a new LRU cache with options
+func NewWithOption(opt Option) (*Cache, error) {
+	size := opt.Size
+	if size <= 0 {
+		size = 10240 // Default size
+	}
+	cache := &Cache{size: size, prefix: opt.Prefix}
+	lruCache, err := lru.NewARC(size)
 	if err != nil {
 		return nil, err
 	}
-	cache.lru = lru
+	cache.lru = lruCache
 	return cache, nil
+}
+
+// prefixKey adds the prefix to a key
+func (cache *Cache) prefixKey(key string) string {
+	if cache.prefix == "" {
+		return key
+	}
+	return cache.prefix + key
+}
+
+// unprefixKey removes the prefix from a key
+func (cache *Cache) unprefixKey(key string) string {
+	if cache.prefix == "" {
+		return key
+	}
+	return strings.TrimPrefix(key, cache.prefix)
 }
 
 // Get looks up a key's value from the cache.
 func (cache *Cache) Get(key string) (value interface{}, ok bool) {
-	raw, found := cache.lru.Get(key)
+	raw, found := cache.lru.Get(cache.prefixKey(key))
 	if !found {
 		return nil, false
 	}
@@ -35,7 +60,7 @@ func (cache *Cache) Get(key string) (value interface{}, ok bool) {
 
 	// Check expiration
 	if e.isExpired() {
-		cache.lru.Remove(key)
+		cache.lru.Remove(cache.prefixKey(key))
 		return nil, false
 	}
 
@@ -49,7 +74,7 @@ func (cache *Cache) Set(key string, value interface{}, ttl time.Duration) error 
 		exp := time.Now().Add(ttl)
 		e.ExpiredAt = &exp
 	}
-	cache.lru.Add(key, e)
+	cache.lru.Add(cache.prefixKey(key), e)
 	return nil
 }
 
@@ -60,14 +85,16 @@ func (cache *Cache) Del(key string) error {
 	if strings.Contains(key, "*") {
 		return cache.delPattern(key)
 	}
-	cache.lru.Remove(key)
+	cache.lru.Remove(cache.prefixKey(key))
 	return nil
 }
 
 // delPattern deletes all keys matching the pattern
 func (cache *Cache) delPattern(pattern string) error {
+	// Add prefix to pattern
+	fullPattern := cache.prefixKey(pattern)
 	// Convert pattern to prefix (only supports suffix wildcard for now)
-	prefix := strings.TrimSuffix(pattern, "*")
+	prefix := strings.TrimSuffix(fullPattern, "*")
 
 	keys := cache.lru.Keys()
 	for _, k := range keys {
@@ -75,7 +102,7 @@ func (cache *Cache) delPattern(pattern string) error {
 		if !ok {
 			keyStr = fmt.Sprintf("%v", k)
 		}
-		if matchPattern(keyStr, pattern, prefix) {
+		if matchPattern(keyStr, fullPattern, prefix) {
 			cache.lru.Remove(k)
 		}
 	}
@@ -94,7 +121,8 @@ func matchPattern(key, pattern, prefix string) bool {
 
 // Has check if the cache is exist ( without updating recency or frequency )
 func (cache *Cache) Has(key string) bool {
-	raw, found := cache.lru.Peek(key)
+	prefixedKey := cache.prefixKey(key)
+	raw, found := cache.lru.Peek(prefixedKey)
 	if !found {
 		return false
 	}
@@ -105,27 +133,93 @@ func (cache *Cache) Has(key string) bool {
 	}
 
 	if e.isExpired() {
-		cache.lru.Remove(key)
+		cache.lru.Remove(prefixedKey)
 		return false
 	}
 
 	return true
 }
 
-// Len returns the number of cached entries (includes expired entries not yet cleaned)
-func (cache *Cache) Len() int {
-	return cache.lru.Len()
+// Len returns the number of cached entries
+// Optional pattern parameter supports * wildcard (e.g., "user:*")
+func (cache *Cache) Len(pattern ...string) int {
+	// Build full pattern with prefix
+	var fullPattern string
+	if len(pattern) > 0 && pattern[0] != "" {
+		fullPattern = cache.prefixKey(pattern[0])
+	} else if cache.prefix != "" {
+		fullPattern = cache.prefix + "*"
+	}
+
+	count := 0
+	now := time.Now()
+	keys := cache.lru.Keys()
+
+	// Get prefix for pattern matching
+	var pat, prefix string
+	hasPattern := fullPattern != ""
+	if hasPattern {
+		pat = fullPattern
+		prefix = strings.TrimSuffix(pat, "*")
+	}
+
+	for _, key := range keys {
+		keyStr, ok := key.(string)
+		if !ok {
+			keyStr = fmt.Sprintf("%v", key)
+		}
+
+		// Filter by pattern if provided
+		if hasPattern && !matchPattern(keyStr, pat, prefix) {
+			continue
+		}
+
+		if raw, found := cache.lru.Peek(key); found {
+			if e, ok := raw.(*entry); ok {
+				if e.ExpiredAt != nil && now.After(*e.ExpiredAt) {
+					continue // Skip expired
+				}
+			}
+			count++
+		}
+	}
+	return count
 }
 
 // Keys returns all the cached keys (excludes expired entries)
-func (cache *Cache) Keys() []string {
+// Optional pattern parameter supports * wildcard (e.g., "user:*")
+func (cache *Cache) Keys(pattern ...string) []string {
 	keys := cache.lru.Keys()
 	res := []string{}
 	now := time.Now()
+
+	// Build full pattern with prefix
+	var fullPattern string
+	if len(pattern) > 0 && pattern[0] != "" {
+		fullPattern = cache.prefixKey(pattern[0])
+	} else if cache.prefix != "" {
+		fullPattern = cache.prefix + "*"
+	}
+
+	// Get pattern and prefix if provided
+	var pat, prefix string
+	hasPattern := fullPattern != ""
+	if hasPattern {
+		pat = fullPattern
+		prefix = strings.TrimSuffix(pat, "*")
+	}
+
+	prefixLen := len(cache.prefix)
+
 	for _, key := range keys {
 		keystr, ok := key.(string)
 		if !ok {
 			keystr = fmt.Sprintf("%v", key)
+		}
+
+		// Filter by pattern if provided
+		if hasPattern && !matchPattern(keystr, pat, prefix) {
+			continue
 		}
 
 		// Check expiration
@@ -136,14 +230,35 @@ func (cache *Cache) Keys() []string {
 				}
 			}
 		}
+
+		// Remove prefix from returned keys
+		if prefixLen > 0 && len(keystr) >= prefixLen {
+			keystr = keystr[prefixLen:]
+		}
 		res = append(res, keystr)
 	}
 	return res
 }
 
 // Clear is used to clear the cache
+// If prefix is set, only clears keys with that prefix
 func (cache *Cache) Clear() {
-	cache.lru.Purge()
+	if cache.prefix == "" {
+		cache.lru.Purge()
+		return
+	}
+
+	// Only clear keys with the prefix
+	keys := cache.lru.Keys()
+	for _, k := range keys {
+		keyStr, ok := k.(string)
+		if !ok {
+			keyStr = fmt.Sprintf("%v", k)
+		}
+		if strings.HasPrefix(keyStr, cache.prefix) {
+			cache.lru.Remove(k)
+		}
+	}
 }
 
 // GetSet looks up a key's value from the cache. if does not exist add to the cache
@@ -167,7 +282,7 @@ func (cache *Cache) GetDel(key string) (value interface{}, ok bool) {
 	if !ok {
 		return nil, false
 	}
-	cache.lru.Remove(key)
+	cache.lru.Remove(cache.prefixKey(key))
 	return value, true
 }
 
@@ -216,7 +331,8 @@ func (cache *Cache) GetSetMulti(keys []string, ttl time.Duration, getValue func(
 
 // getEntry gets the raw entry, creating one if needed for list operations
 func (cache *Cache) getEntry(key string) (*entry, bool) {
-	raw, found := cache.lru.Get(key)
+	prefixedKey := cache.prefixKey(key)
+	raw, found := cache.lru.Get(prefixedKey)
 	if !found {
 		return nil, false
 	}
@@ -228,7 +344,7 @@ func (cache *Cache) getEntry(key string) (*entry, bool) {
 	}
 
 	if e.isExpired() {
-		cache.lru.Remove(key)
+		cache.lru.Remove(prefixedKey)
 		return nil, false
 	}
 
@@ -240,6 +356,7 @@ func (cache *Cache) Push(key string, values ...interface{}) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
+	prefixedKey := cache.prefixKey(key)
 	var list []interface{}
 	if e, ok := cache.getEntry(key); ok {
 		if existingList, ok := e.Value.([]interface{}); ok {
@@ -248,7 +365,7 @@ func (cache *Cache) Push(key string, values ...interface{}) error {
 		}
 	}
 	list = append(list, values...)
-	cache.lru.Add(key, &entry{Value: list})
+	cache.lru.Add(prefixedKey, &entry{Value: list})
 	return nil
 }
 
@@ -257,6 +374,7 @@ func (cache *Cache) Pop(key string, position int) (interface{}, error) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
+	prefixedKey := cache.prefixKey(key)
 	e, ok := cache.getEntry(key)
 	if !ok {
 		return nil, fmt.Errorf("key not found")
@@ -284,9 +402,9 @@ func (cache *Cache) Pop(key string, position int) (interface{}, error) {
 	}
 
 	if len(list) == 0 {
-		cache.lru.Remove(key)
+		cache.lru.Remove(prefixedKey)
 	} else {
-		cache.lru.Add(key, &entry{Value: list})
+		cache.lru.Add(prefixedKey, &entry{Value: list})
 	}
 
 	return value, nil
@@ -297,6 +415,7 @@ func (cache *Cache) Pull(key string, value interface{}) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
+	prefixedKey := cache.prefixKey(key)
 	e, ok := cache.getEntry(key)
 	if !ok {
 		return nil
@@ -315,9 +434,9 @@ func (cache *Cache) Pull(key string, value interface{}) error {
 	}
 
 	if len(newList) == 0 {
-		cache.lru.Remove(key)
+		cache.lru.Remove(prefixedKey)
 	} else {
-		cache.lru.Add(key, &entry{Value: newList})
+		cache.lru.Add(prefixedKey, &entry{Value: newList})
 	}
 
 	return nil
@@ -328,6 +447,7 @@ func (cache *Cache) PullAll(key string, values []interface{}) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
+	prefixedKey := cache.prefixKey(key)
 	e, ok := cache.getEntry(key)
 	if !ok {
 		return nil
@@ -353,9 +473,9 @@ func (cache *Cache) PullAll(key string, values []interface{}) error {
 	}
 
 	if len(newList) == 0 {
-		cache.lru.Remove(key)
+		cache.lru.Remove(prefixedKey)
 	} else {
-		cache.lru.Add(key, &entry{Value: newList})
+		cache.lru.Add(prefixedKey, &entry{Value: newList})
 	}
 
 	return nil
@@ -366,6 +486,7 @@ func (cache *Cache) AddToSet(key string, values ...interface{}) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
+	prefixedKey := cache.prefixKey(key)
 	var list []interface{}
 	if e, ok := cache.getEntry(key); ok {
 		if existingList, ok := e.Value.([]interface{}); ok {
@@ -387,7 +508,7 @@ func (cache *Cache) AddToSet(key string, values ...interface{}) error {
 		}
 	}
 
-	cache.lru.Add(key, &entry{Value: list})
+	cache.lru.Add(prefixedKey, &entry{Value: list})
 	return nil
 }
 
@@ -436,6 +557,7 @@ func (cache *Cache) ArraySet(key string, index int, value interface{}) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
+	prefixedKey := cache.prefixKey(key)
 	e, ok := cache.getEntry(key)
 	if !ok {
 		return fmt.Errorf("key not found")
@@ -454,7 +576,7 @@ func (cache *Cache) ArraySet(key string, index int, value interface{}) error {
 	list := make([]interface{}, len(originalList))
 	copy(list, originalList)
 	list[index] = value
-	cache.lru.Add(key, &entry{Value: list})
+	cache.lru.Add(prefixedKey, &entry{Value: list})
 	return nil
 }
 
@@ -549,13 +671,14 @@ func (cache *Cache) Incr(key string, delta int64) (int64, error) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
+	prefixedKey := cache.prefixKey(key)
 	var current int64
 	if e, ok := cache.getEntry(key); ok {
 		current = toInt64(e.Value)
 	}
 
 	newValue := current + delta
-	cache.lru.Add(key, &entry{Value: newValue})
+	cache.lru.Add(prefixedKey, &entry{Value: newValue})
 	return newValue, nil
 }
 

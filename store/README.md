@@ -7,6 +7,7 @@ The Store package provides a unified interface for key-value storage with suppor
 - **Unified Interface**: Consistent API across LRU cache, Redis, MongoDB, and Xun implementations
 - **Complete API**: 25+ methods covering key-value and list operations
 - **Wildcard Delete**: Pattern-based key deletion with `*` wildcard support
+- **Pattern-based Keys/Len**: Query keys and count by pattern (e.g., `Keys("user:*")`, `Len("chat:*")`)
 - **MongoDB-style API**: Familiar operations for developers using MongoDB
 - **List Operations**: Full support for array/list data structures
 - **Pagination Support**: Built-in pagination with `ArrayPage` and `ArraySlice`
@@ -78,19 +79,43 @@ exists := store.Has("mykey")
 
 #### Len
 
-Get the total number of keys in the store.
+Get the total number of keys in the store, optionally filtered by pattern.
 
 ```go
+// Get total count
 count := store.Len()
+
+// Get count matching pattern
+userCount := store.Len("user:*")           // Count all user keys
+user123Count := store.Len("user:123:*")    // Count all keys for user 123
 ```
+
+**Pattern Support:**
+
+- Use `*` as a suffix wildcard to match multiple keys
+- Pattern `user:*` matches `user:123:name`, `user:456:email`, etc.
+- Empty pattern or no pattern returns total count
 
 #### Keys
 
-Get all keys in the store.
+Get all keys in the store, optionally filtered by pattern.
 
 ```go
+// Get all keys
 allKeys := store.Keys()
+
+// Get keys matching pattern
+userKeys := store.Keys("user:*")           // All user keys
+user123Keys := store.Keys("user:123:*")    // All keys for user 123
+chatKeys := store.Keys("chat:*")           // All chat keys
 ```
+
+**Pattern Support:**
+
+- Use `*` as a suffix wildcard to match multiple keys
+- Pattern `user:123:*` matches `user:123:name`, `user:123:email`, `user:123:settings`, etc.
+- Empty pattern or no pattern returns all keys
+- Useful for listing namespaced data (e.g., user data, chat history, cache entries)
 
 #### Clear
 
