@@ -395,7 +395,13 @@ func (store *Store) Set(key string, value interface{}, ttl time.Duration) error 
 }
 
 // Del removes a key from the store
+// Supports wildcard pattern with * (e.g., "user:123:*")
 func (store *Store) Del(key string) error {
+	// Check if key contains wildcard
+	if strings.Contains(key, "*") {
+		return store.delPattern(key)
+	}
+
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -406,6 +412,52 @@ func (store *Store) Del(key string) error {
 	store.markDeleted(key)
 
 	return nil
+}
+
+// delPattern deletes all keys matching the pattern
+func (store *Store) delPattern(pattern string) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
+	// Convert wildcard pattern to SQL LIKE pattern
+	// e.g., "user:123:*" -> "user:123:%"
+	likePattern := strings.ReplaceAll(pattern, "*", "%")
+
+	// Remove matching keys from cache
+	keys := store.cache.Keys()
+	prefix := strings.TrimSuffix(pattern, "*")
+	for _, k := range keys {
+		if key, ok := k.(string); ok {
+			if strings.HasSuffix(pattern, "*") && strings.HasPrefix(key, prefix) {
+				store.cache.Remove(key)
+				store.markDeletedNoLock(key)
+			}
+		}
+	}
+
+	// Delete from database using LIKE
+	_, err := capsule.Query().
+		Table(store.tableName).
+		Where("key", "like", likePattern).
+		Delete()
+
+	if err != nil {
+		log.Error("Store xun delPattern %s: %s", pattern, err.Error())
+		return err
+	}
+
+	return nil
+}
+
+// markDeletedNoLock marks a key as deleted without acquiring lock (caller must hold lock)
+func (store *Store) markDeletedNoLock(key string) {
+	store.deletedMu.Lock()
+	store.deleted[key] = true
+	store.deletedMu.Unlock()
+
+	store.dirtyMu.Lock()
+	delete(store.dirty, key)
+	store.dirtyMu.Unlock()
 }
 
 // Has checks if a key exists in the store

@@ -2,6 +2,7 @@ package lru
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -31,9 +32,42 @@ func (cache *Cache) Set(key string, value interface{}, ttl time.Duration) error 
 }
 
 // Del remove is used to purge a key from the cache
+// Supports wildcard pattern with * (e.g., "user:123:*")
 func (cache *Cache) Del(key string) error {
+	// Check if key contains wildcard
+	if strings.Contains(key, "*") {
+		return cache.delPattern(key)
+	}
 	cache.lru.Remove(key)
 	return nil
+}
+
+// delPattern deletes all keys matching the pattern
+func (cache *Cache) delPattern(pattern string) error {
+	// Convert pattern to prefix (only supports suffix wildcard for now)
+	prefix := strings.TrimSuffix(pattern, "*")
+
+	keys := cache.lru.Keys()
+	for _, k := range keys {
+		keyStr, ok := k.(string)
+		if !ok {
+			keyStr = fmt.Sprintf("%v", k)
+		}
+		if matchPattern(keyStr, pattern, prefix) {
+			cache.lru.Remove(k)
+		}
+	}
+	return nil
+}
+
+// matchPattern checks if a key matches the pattern
+func matchPattern(key, pattern, prefix string) bool {
+	// Simple prefix matching for patterns ending with *
+	if strings.HasSuffix(pattern, "*") {
+		return strings.HasPrefix(key, prefix)
+	}
+	// Exact match
+	return key == pattern
 }
 
 // Has check if the cache is exist ( without updating recency or frequency )
