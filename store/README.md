@@ -6,6 +6,7 @@ The Store package provides a unified interface for key-value storage with suppor
 
 - **Unified Interface**: Consistent API across LRU cache, Redis, MongoDB, and Xun implementations
 - **Complete API**: 25+ methods covering key-value and list operations
+- **Wildcard Delete**: Pattern-based key deletion with `*` wildcard support
 - **MongoDB-style API**: Familiar operations for developers using MongoDB
 - **List Operations**: Full support for array/list data structures
 - **Pagination Support**: Built-in pagination with `ArrayPage` and `ArraySlice`
@@ -49,11 +50,23 @@ err := store.Set("mykey", "myvalue", time.Hour)
 
 #### Del
 
-Delete a key.
+Delete a key or keys matching a pattern.
 
 ```go
+// Delete a single key
 err := store.Del("mykey")
+
+// Delete all keys matching a pattern (wildcard support)
+err := store.Del("user:123:*")    // Delete all keys starting with "user:123:"
+err := store.Del("chat:*")        // Delete all keys starting with "chat:"
+err := store.Del("session:456:*") // Delete all keys starting with "session:456:"
 ```
+
+**Wildcard Pattern:**
+
+- Use `*` as a suffix wildcard to match multiple keys
+- Pattern `user:123:*` matches `user:123:name`, `user:123:email`, `user:123:settings`, etc.
+- Useful for cleaning up namespaced data (e.g., user sessions, chat history, cache invalidation)
 
 #### Has
 
@@ -412,6 +425,7 @@ fmt.Printf("Unique tags: %v\n", tags) // Output: [go database cache]
 - **Thread-safe operations** with read-write mutex protection
 - **Copy-on-write** semantics to prevent data races
 - Returns data copies to prevent external modification
+- **Wildcard delete**: Iterates all keys and matches prefix pattern
 
 ### Redis Implementation
 
@@ -420,6 +434,7 @@ fmt.Printf("Unique tags: %v\n", tags) // Output: [go database cache]
 - Atomic operations
 - JSON serialization for complex data types
 - Uses Lua scripts for complex operations like `AddToSet`
+- **Wildcard delete**: Uses `SCAN` + `DEL` for safe pattern deletion
 
 ### MongoDB Implementation
 
@@ -428,6 +443,7 @@ fmt.Printf("Unique tags: %v\n", tags) // Output: [go database cache]
 - Aggregation pipeline for complex queries
 - Native support for array operations
 - Persistent and scalable
+- **Wildcard delete**: Uses regex pattern with `DeleteMany`
 
 ### Xun Implementation
 
@@ -439,6 +455,7 @@ fmt.Printf("Unique tags: %v\n", tags) // Output: [go database cache]
 - TTL support with background cleanup goroutine
 - Write-through cache with dirty tracking
 - Supports MySQL, PostgreSQL, SQLite, and other databases via Xun connectors
+- **Wildcard delete**: Uses SQL `LIKE` pattern for efficient batch deletion
 
 ## Configuration
 
@@ -520,6 +537,7 @@ The test suite covers:
 - Edge cases and error conditions
 - Pagination functionality
 - Set operations and uniqueness
+- **Wildcard pattern deletion** across all backends
 - **TTL expiration testing** for Redis, MongoDB, and Xun
 - **Concurrency stress testing** (100 goroutines)
 - **Memory leak detection** with 10MB threshold

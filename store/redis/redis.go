@@ -60,11 +60,45 @@ func (store *Store) Set(key string, value interface{}, ttl time.Duration) error 
 }
 
 // Del remove is used to purge a key from the store
+// Supports wildcard pattern with * (e.g., "user:123:*")
 func (store *Store) Del(key string) error {
+	// Check if key contains wildcard
+	if strings.Contains(key, "*") {
+		return store.delPattern(key)
+	}
 	key = fmt.Sprintf("%s%s", store.Option.Prefix, key)
 	err := store.rdb.Del(context.Background(), key).Err()
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+// delPattern deletes all keys matching the pattern using SCAN + DEL
+func (store *Store) delPattern(pattern string) error {
+	ctx := context.Background()
+	fullPattern := fmt.Sprintf("%s%s", store.Option.Prefix, pattern)
+
+	var cursor uint64
+	for {
+		var keys []string
+		var err error
+		keys, cursor, err = store.rdb.Scan(ctx, cursor, fullPattern, 100).Result()
+		if err != nil {
+			log.Error("Store redis delPattern scan %s: %s", pattern, err.Error())
+			return err
+		}
+
+		if len(keys) > 0 {
+			if err := store.rdb.Del(ctx, keys...).Err(); err != nil {
+				log.Error("Store redis delPattern del %s: %s", pattern, err.Error())
+				return err
+			}
+		}
+
+		if cursor == 0 {
+			break
+		}
 	}
 	return nil
 }

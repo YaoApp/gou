@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -126,11 +127,31 @@ func (store *Store) Set(key string, value interface{}, ttl time.Duration) error 
 }
 
 // Del remove is used to purge a key from the store
+// Supports wildcard pattern with * (e.g., "user:123:*")
 func (store *Store) Del(key string) error {
+	// Check if key contains wildcard
+	if strings.Contains(key, "*") {
+		return store.delPattern(key)
+	}
 	filter := bson.D{{Key: "key", Value: key}}
 	_, err := store.Collection.DeleteOne(context.TODO(), filter)
 	if err != nil {
 		log.Error("Store mongo Del: %s", err.Error())
+		return err
+	}
+	return nil
+}
+
+// delPattern deletes all keys matching the pattern using regex
+func (store *Store) delPattern(pattern string) error {
+	// Convert wildcard pattern to regex
+	// e.g., "user:123:*" -> "^user:123:.*"
+	regexPattern := "^" + strings.ReplaceAll(regexp.QuoteMeta(pattern), "\\*", ".*") + "$"
+
+	filter := bson.D{{Key: "key", Value: bson.D{{Key: "$regex", Value: regexPattern}}}}
+	_, err := store.Collection.DeleteMany(context.TODO(), filter)
+	if err != nil {
+		log.Error("Store mongo delPattern %s: %s", pattern, err.Error())
 		return err
 	}
 	return nil

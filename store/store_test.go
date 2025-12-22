@@ -63,6 +63,7 @@ func TestLRU(t *testing.T) {
 	testBasic(t, lru)
 	testMulti(t, lru)
 	testList(t, lru)
+	testDelPattern(t, lru)
 }
 
 func TestRedis(t *testing.T) {
@@ -70,6 +71,7 @@ func TestRedis(t *testing.T) {
 	testBasic(t, redis)
 	testMulti(t, redis)
 	testList(t, redis)
+	testDelPattern(t, redis)
 }
 
 func TestMongo(t *testing.T) {
@@ -77,6 +79,7 @@ func TestMongo(t *testing.T) {
 	testBasic(t, mongo)
 	testMulti(t, mongo)
 	testList(t, mongo)
+	testDelPattern(t, mongo)
 }
 
 func TestXun(t *testing.T) {
@@ -84,6 +87,7 @@ func TestXun(t *testing.T) {
 	testBasic(t, xunStore)
 	testMulti(t, xunStore)
 	testList(t, xunStore)
+	testDelPattern(t, xunStore)
 }
 
 func TestXunTTL(t *testing.T) {
@@ -391,6 +395,73 @@ func prepare(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+}
+
+func testDelPattern(t *testing.T, kv Store) {
+	// Clear any existing data
+	kv.Clear()
+
+	// Set up test data with different prefixes
+	kv.Set("user:123:name", "John", 0)
+	kv.Set("user:123:email", "john@example.com", 0)
+	kv.Set("user:123:age", 30, 0)
+	kv.Set("user:456:name", "Jane", 0)
+	kv.Set("user:456:email", "jane@example.com", 0)
+	kv.Set("chat:789:message1", "Hello", 0)
+	kv.Set("chat:789:message2", "World", 0)
+	kv.Set("other:key", "value", 0)
+
+	// Verify all keys exist
+	assert.Equal(t, 8, kv.Len())
+
+	// Test deleting with pattern - delete all user:123:* keys
+	err := kv.Del("user:123:*")
+	assert.Nil(t, err)
+
+	// Verify user:123:* keys are deleted
+	assert.False(t, kv.Has("user:123:name"))
+	assert.False(t, kv.Has("user:123:email"))
+	assert.False(t, kv.Has("user:123:age"))
+
+	// Verify other keys still exist
+	assert.True(t, kv.Has("user:456:name"))
+	assert.True(t, kv.Has("user:456:email"))
+	assert.True(t, kv.Has("chat:789:message1"))
+	assert.True(t, kv.Has("chat:789:message2"))
+	assert.True(t, kv.Has("other:key"))
+
+	assert.Equal(t, 5, kv.Len())
+
+	// Test deleting with pattern - delete all chat:* keys
+	err = kv.Del("chat:*")
+	assert.Nil(t, err)
+
+	assert.False(t, kv.Has("chat:789:message1"))
+	assert.False(t, kv.Has("chat:789:message2"))
+	assert.Equal(t, 3, kv.Len())
+
+	// Test deleting with pattern - delete all user:* keys
+	err = kv.Del("user:*")
+	assert.Nil(t, err)
+
+	assert.False(t, kv.Has("user:456:name"))
+	assert.False(t, kv.Has("user:456:email"))
+	assert.Equal(t, 1, kv.Len())
+
+	// Verify other:key still exists
+	assert.True(t, kv.Has("other:key"))
+
+	// Test exact delete still works
+	err = kv.Del("other:key")
+	assert.Nil(t, err)
+	assert.False(t, kv.Has("other:key"))
+	assert.Equal(t, 0, kv.Len())
+
+	// Test deleting non-existent pattern (should not error)
+	err = kv.Del("nonexistent:*")
+	assert.Nil(t, err)
+
+	kv.Clear()
 }
 
 func testList(t *testing.T, kv Store) {
