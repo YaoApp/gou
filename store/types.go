@@ -10,7 +10,7 @@ import (
 type Store interface {
 	Get(key string) (value interface{}, ok bool)
 	Set(key string, value interface{}, ttl time.Duration) error
-	Del(key string) error
+	Del(key string) error // Supports wildcard pattern with * (e.g., "user:123:*")
 	Has(key string) bool
 	Len() int
 	Keys() []string
@@ -21,6 +21,10 @@ type Store interface {
 	SetMulti(values map[string]interface{}, ttl time.Duration)
 	DelMulti(keys []string)
 	GetSetMulti(keys []string, ttl time.Duration, getValue func(key string) (interface{}, error)) map[string]interface{}
+
+	// Atomic counter operations
+	Incr(key string, delta int64) (int64, error) // Increment a numeric value, returns new value
+	Decr(key string, delta int64) (int64, error) // Decrement a numeric value, returns new value
 
 	// List operations - MongoDB-style API
 	Push(key string, values ...interface{}) error

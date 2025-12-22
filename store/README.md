@@ -165,6 +165,43 @@ values := store.GetSetMulti(keys, time.Hour, func(key string) (interface{}, erro
 })
 ```
 
+### Atomic Counter Operations
+
+#### Incr
+
+Increment a numeric value and return the new value.
+
+```go
+// Increment by 1
+newValue, err := store.Incr("counter", 1)
+
+// Increment by 10
+newValue, err := store.Incr("counter", 10)
+
+// Increment non-existent key (starts from 0)
+newValue, err := store.Incr("new_counter", 5) // Returns 5
+```
+
+#### Decr
+
+Decrement a numeric value and return the new value.
+
+```go
+// Decrement by 1
+newValue, err := store.Decr("counter", 1)
+
+// Decrement by 10 (can go negative)
+newValue, err := store.Decr("counter", 10)
+```
+
+**Use Cases:**
+
+- Page view counters
+- Rate limiting
+- Inventory tracking
+- Session counters
+- Distributed locks with timeouts
+
 ## List Operations API
 
 ### Basic List Operations
@@ -422,6 +459,7 @@ fmt.Printf("Unique tags: %v\n", tags) // Output: [go database cache]
 - Stores lists as `[]interface{}` in memory
 - Fast access but limited by memory
 - No persistence across restarts
+- **TTL support**: Lazy expiration check on Get/Has operations
 - **Thread-safe operations** with read-write mutex protection
 - **Copy-on-write** semantics to prevent data races
 - Returns data copies to prevent external modification
@@ -521,6 +559,7 @@ go test ./store -v -run TestMongoConcurrency
 go test ./store -v -run TestXunConcurrency
 
 # Run TTL tests
+go test ./store -v -run TestLRUTTL
 go test ./store -v -run TestRedisTTL
 go test ./store -v -run TestMongoTTL
 go test ./store -v -run TestXunTTL
@@ -538,7 +577,8 @@ The test suite covers:
 - Pagination functionality
 - Set operations and uniqueness
 - **Wildcard pattern deletion** across all backends
-- **TTL expiration testing** for Redis, MongoDB, and Xun
+- **Atomic counter operations** (Incr/Decr) across all backends
+- **TTL expiration testing** for LRU, Redis, MongoDB, and Xun
 - **Concurrency stress testing** (100 goroutines)
 - **Memory leak detection** with 10MB threshold
 - **Goroutine leak detection**
