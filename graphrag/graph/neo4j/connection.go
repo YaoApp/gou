@@ -53,9 +53,11 @@ func (s *Store) Connect(ctx context.Context, storeConfig ...types.GraphStoreConf
 		}
 	}
 
-	// Create Neo4j driver
+	// Create Neo4j driver with unified logging
 	auth := neo4j.BasicAuth(username, password, "")
-	driver, err := neo4j.NewDriverWithContext(config.DatabaseURL, auth)
+	driver, err := neo4j.NewDriverWithContext(config.DatabaseURL, auth, func(c *neo4j.Config) {
+		c.Log = newKunLogger()
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create Neo4j driver: %w", err)
 	}
