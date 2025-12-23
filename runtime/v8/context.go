@@ -188,7 +188,7 @@ func (context *Context) CallWith(ctx context.Context, method string, args ...int
 			terminateLock.Lock()
 			terminated = true
 			terminateLock.Unlock()
-			if context.Isolate != nil && !context.Isolate.Isolate.IsExecutionTerminating() {
+			if context.Isolate != nil && !context.Isolate.IsExecutionTerminating() {
 				context.Isolate.TerminateExecution()
 			}
 		case <-done:
