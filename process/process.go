@@ -87,6 +87,11 @@ func (process *Process) Execute() (err error) {
 // This method is designed for calls from JavaScript with shared V8 context
 // It executes in the current thread without creating goroutines to maintain thread affinity
 func (process *Process) ExecuteSync() (err error) {
+	// Ensure context is not nil (same as Execute method)
+	if process.Context == nil {
+		process.Context = context.Background()
+	}
+
 	var hd Handler
 	hd, err = process.handler()
 	if err != nil {
