@@ -44,4 +44,3 @@ func (l *kunLogger) Debugf(name, id string, msg string, args ...any) {
 		"id":        id,
 	}).Debug(msg, args...)
 }
-
