@@ -10,6 +10,35 @@ import (
 	"github.com/yaoapp/gou/process"
 )
 
+// AuthorizedProvider is an interface for objects that can provide authorized information
+// This allows agent context (from yao) to pass authorization info to process calls
+// Agent context should implement this interface to pass authorization to MCP tool calls
+type AuthorizedProvider interface {
+	// GetAuthorizedMap returns authorized information as a map
+	// The map should contain fields like: user_id, team_id, tenant_id, etc.
+	GetAuthorizedMap() map[string]interface{}
+}
+
+// extractAuthorizedFromExtraArgs extracts authorized information from extra arguments
+// It looks for objects that implement AuthorizedProvider interface
+// Returns nil if no authorized info is found
+func extractAuthorizedFromExtraArgs(extraArgs []interface{}) map[string]interface{} {
+	for _, arg := range extraArgs {
+		if arg == nil {
+			continue
+		}
+
+		// Check if it implements AuthorizedProvider interface
+		if provider, ok := arg.(AuthorizedProvider); ok {
+			if authMap := provider.GetAuthorizedMap(); authMap != nil {
+				return authMap
+			}
+		}
+	}
+
+	return nil
+}
+
 // ListTools requests a list of available tools from the server
 func (c *Client) ListTools(ctx context.Context, cursor string) (*types.ListToolsResponse, error) {
 	// Get mapping data from registry
@@ -88,8 +117,11 @@ func (c *Client) CallTool(ctx context.Context, name string, arguments interface{
 		}, nil
 	}
 
-	// Call the mapped Yao process with extracted arguments
-	proc := process.New(toolSchema.Process, procArgs...).WithContext(ctxWithCancel)
+	// Extract authorized information from extra arguments (e.g., agent context)
+	authorizedMap := extractAuthorizedFromExtraArgs(extraArgs)
+
+	// Call the mapped Yao process with extracted arguments and authorized info
+	proc := process.New(toolSchema.Process, procArgs...).WithContext(ctxWithCancel).WithAuthorized(authorizedMap)
 	err = proc.Execute()
 	if err != nil {
 		// Check if error is due to cancellation
