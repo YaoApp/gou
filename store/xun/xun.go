@@ -322,6 +322,14 @@ func (store *Store) unprefixKey(key string) string {
 func (store *Store) Get(key string) (value interface{}, ok bool) {
 	prefixedKey := store.prefixKey(key)
 
+	// Check if key is marked as deleted (pending async deletion)
+	store.deletedMu.RLock()
+	isDeleted := store.deleted[prefixedKey]
+	store.deletedMu.RUnlock()
+	if isDeleted {
+		return nil, false
+	}
+
 	// Check cache first
 	if cached, found := store.cache.Get(prefixedKey); found {
 		if entry, ok := cached.(*cacheEntry); ok {
@@ -489,6 +497,14 @@ func (store *Store) markDeletedNoLock(key string) {
 // Has checks if a key exists in the store
 func (store *Store) Has(key string) bool {
 	prefixedKey := store.prefixKey(key)
+
+	// Check if key is marked as deleted (pending async deletion)
+	store.deletedMu.RLock()
+	isDeleted := store.deleted[prefixedKey]
+	store.deletedMu.RUnlock()
+	if isDeleted {
+		return false
+	}
 
 	// Check cache first
 	if cached, found := store.cache.Get(prefixedKey); found {
@@ -801,6 +817,14 @@ func (store *Store) GetSetMulti(keys []string, ttl time.Duration, getValue func(
 
 // getListFromCache gets a list from cache, lazy load from DB if not found
 func (store *Store) getListFromCache(key string) ([]interface{}, bool) {
+	// Check if key is marked as deleted (pending async deletion)
+	store.deletedMu.RLock()
+	isDeleted := store.deleted[key]
+	store.deletedMu.RUnlock()
+	if isDeleted {
+		return nil, false
+	}
+
 	// Check cache first
 	if cached, found := store.cache.Get(key); found {
 		if entry, ok := cached.(*cacheEntry); ok {

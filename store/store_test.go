@@ -172,10 +172,26 @@ func testBasic(t *testing.T, kv Store) {
 
 	var err error
 	kv.Clear()
+
+	// Test Del then Get/Has consistency (regression test for deleted key visibility bug)
+	kv.Set("del_test_key", "del_test_value", 0)
+	value, ok := kv.Get("del_test_key")
+	assert.True(t, ok)
+	assert.Equal(t, "del_test_value", value)
+	assert.True(t, kv.Has("del_test_key"))
+
+	// Delete the key
+	kv.Del("del_test_key")
+
+	// Both Get and Has should return false/not found after deletion
+	_, ok = kv.Get("del_test_key")
+	assert.False(t, ok, "Get should return false after Del")
+	assert.False(t, kv.Has("del_test_key"), "Has should return false after Del")
+
 	kv.Set("key1", "bar", 0)
 	kv.Set("key2", 1024, 0)
 	kv.Set("key3", 0.618, 0)
-	value, ok := kv.Get("key1")
+	value, ok = kv.Get("key1")
 	assert.True(t, ok)
 	assert.Equal(t, "bar", value)
 
@@ -748,8 +764,25 @@ func testList(t *testing.T, kv Store) {
 	// Clear any existing data
 	kv.Clear()
 
+	// Test Del then list operations consistency (regression test for deleted key visibility bug)
+	err := kv.Push("del_list_test", "a", "b", "c")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, kv.ArrayLen("del_list_test"))
+
+	// Delete the list
+	kv.Del("del_list_test")
+
+	// All list operations should return empty/not found after deletion
+	assert.Equal(t, 0, kv.ArrayLen("del_list_test"), "ArrayLen should return 0 after Del")
+	all, err := kv.ArrayAll("del_list_test")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(all), "ArrayAll should return empty after Del")
+
+	_, err = kv.ArrayGet("del_list_test", 0)
+	assert.NotNil(t, err, "ArrayGet should return error after Del")
+
 	// Test Push operation
-	err := kv.Push("testlist", "item1", "item2", "item3")
+	err = kv.Push("testlist", "item1", "item2", "item3")
 	assert.Nil(t, err)
 
 	// Test ArrayLen

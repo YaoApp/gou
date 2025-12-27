@@ -232,26 +232,30 @@ func (g *GraphRag) RemoveCollection(ctx context.Context, id string) (bool, error
 		}
 	}
 
-	// Remove collection metadata (Store has priority)
+	// Remove collection metadata from Store if available
+	// Always try to delete, don't rely on Has() check
+	// (Has() may return false if key is in cache but not in DB, or vice versa)
 	if g.Store != nil {
-		if g.Store.Has(id) {
-			err = g.Store.Del(id)
-			if err != nil {
-				errors = append(errors, fmt.Sprintf("failed to delete collection metadata from Store: %v", err))
-			} else {
-				g.Logger.Infof("Removed collection metadata from Store: %s", id)
-				removed = true
-			}
+		err = g.Store.Del(id)
+		if err != nil {
+			// Only log as debug, not an error (key might not exist)
+			g.Logger.Debugf("Could not delete collection metadata from Store: %v", err)
+		} else {
+			g.Logger.Infof("Removed collection metadata from Store: %s", id)
+			removed = true
 		}
-	} else if g.Vector != nil {
-		// Try to remove from System Collection
+	}
+
+	// Always try to remove from System Collection as well (handles inconsistent states)
+	// This ensures cleanup even if metadata was stored in System Collection but Store exists
+	if g.Vector != nil {
 		opts := &types.DeleteDocumentOptions{
 			CollectionName: g.System,
 			IDs:            []string{id},
 		}
 		err = g.Vector.DeleteDocuments(ctx, opts)
 		if err != nil {
-			// Only log as warning, not an error (metadata might not exist)
+			// Only log as debug, not an error (metadata might not exist in System Collection)
 			g.Logger.Debugf("Could not delete collection metadata from System Collection: %v", err)
 		} else {
 			g.Logger.Infof("Removed collection metadata from System Collection: %s", id)
