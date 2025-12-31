@@ -7,6 +7,7 @@ import (
 	"time"
 
 	atobT "github.com/yaoapp/gou/runtime/v8/functions/atob"
+	authorizedT "github.com/yaoapp/gou/runtime/v8/functions/authorized"
 	btoaT "github.com/yaoapp/gou/runtime/v8/functions/btoa"
 	evalT "github.com/yaoapp/gou/runtime/v8/functions/eval"
 	langT "github.com/yaoapp/gou/runtime/v8/functions/lang"
@@ -139,6 +140,9 @@ func MakeTemplate(iso *v8go.Isolate) *v8go.ObjectTemplate {
 	// Window object (std functions)
 	template.Set("atob", atobT.ExportFunction(iso))
 	template.Set("btoa", btoaT.ExportFunction(iso))
+
+	// Authorized function - returns the authorized information
+	template.Set("Authorized", authorizedT.ExportFunction(iso))
 
 	// Register third party objects
 	for name, object := range thirdPartyObjects {
