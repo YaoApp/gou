@@ -22,7 +22,22 @@ import (
 	"rogchap.com/v8go"
 )
 
-// defaultHandler default handler
+// BuildHandler builds a gin.HandlerFunc for the given HTTP and Path configuration
+// This is the public API for building handlers dynamically
+func BuildHandler(http HTTP, path Path) gin.HandlerFunc {
+	getArgs := http.parseIn(path.In)
+
+	if path.Out.Redirect != nil {
+		return path.redirectHandler(getArgs)
+	} else if path.ProcessHandler {
+		return path.processHandler()
+	} else if strings.HasPrefix(path.Out.Type, "text/event-stream") {
+		return path.streamHandler(getArgs)
+	}
+	return path.defaultHandler(getArgs)
+}
+
+// defaultHandler creates the default HTTP handler
 func (path Path) defaultHandler(getArgs argsHandler) func(c *gin.Context) {
 	return func(c *gin.Context) {
 
@@ -217,9 +232,10 @@ func (path Path) runStreamScript(ctx context.Context, c *gin.Context, getArgs ar
 		return
 	}
 
-	// bind session and global data
+	// bind session, global data, and authorized info
 	sid := ""
 	global := map[string]interface{}{}
+
 	if v, has := c.Get("__sid"); has { // set session id
 		if v, ok := v.(string); ok {
 			sid = v
@@ -231,6 +247,9 @@ func (path Path) runStreamScript(ctx context.Context, c *gin.Context, getArgs ar
 		}
 	}
 
+	// Get authorized info - compatible with both direct __authorized and individual fields
+	authorized := getAuthorizedInfo(c)
+
 	// make a new script context
 	v8ctx, err := script.NewContext(sid, global)
 	if err != nil {
@@ -238,6 +257,11 @@ func (path Path) runStreamScript(ctx context.Context, c *gin.Context, getArgs ar
 		return
 	}
 	defer v8ctx.Close()
+
+	// Set authorized info if available
+	if authorized != nil {
+		v8ctx.WithAuthorized(authorized)
+	}
 
 	v8ctx.WithFunction("ssEvent", func(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		args := info.Args()
@@ -278,16 +302,21 @@ func (path Path) execProcess(ctx context.Context, chRes chan<- interface{}, c *g
 	}
 	defer process.Dispose()
 
-	if sid, has := c.Get("__sid"); has { // 设定会话ID
+	if sid, has := c.Get("__sid"); has { // Set session ID
 		if sid, ok := sid.(string); ok {
 			process.WithSID(sid)
 		}
 	}
 
-	if global, has := c.Get("__global"); has { // 设定全局变量
+	if global, has := c.Get("__global"); has { // Set global variables
 		if global, ok := global.(map[string]interface{}); ok {
 			process.WithGlobal(global)
 		}
+	}
+
+	// Set authorized info - compatible with both direct __authorized and individual fields
+	if authorized := getAuthorizedInfo(c); authorized != nil {
+		process.WithAuthorized(authorized)
 	}
 
 	process.WithContext(ctx)
@@ -305,16 +334,21 @@ func (path Path) runProcess(ctx context.Context, c *gin.Context, getArgs argsHan
 	var process = process.New(path.Process, args...)
 	defer process.Dispose()
 
-	if sid, has := c.Get("__sid"); has { // 设定会话ID
+	if sid, has := c.Get("__sid"); has { // Set session ID
 		if sid, ok := sid.(string); ok {
 			process.WithSID(sid)
 		}
 	}
 
-	if global, has := c.Get("__global"); has { // 设定全局变量
+	if global, has := c.Get("__global"); has { // Set global variables
 		if global, ok := global.(map[string]interface{}); ok {
 			process.WithGlobal(global)
 		}
+	}
+
+	// Set authorized info - compatible with both direct __authorized and individual fields
+	if authorized := getAuthorizedInfo(c); authorized != nil {
+		process.WithAuthorized(authorized)
 	}
 
 	process.WithContext(ctx)
@@ -408,4 +442,55 @@ func isFirstNonSpaceChar(text string, char rune) bool {
 		}
 	}
 	return false
+}
+
+// getAuthorizedInfo extracts authorized information from gin context
+// Compatible with two formats:
+// 1. Direct __authorized map (legacy)
+// 2. Individual fields set by authorized.SetInfo (__subject, __scope, __client_id, etc.)
+func getAuthorizedInfo(c *gin.Context) map[string]interface{} {
+	// First try direct __authorized map
+	if authorized, has := c.Get("__authorized"); has {
+		if authMap, ok := authorized.(map[string]interface{}); ok {
+			return authMap
+		}
+	}
+
+	// Fallback: build from individual fields (set by authorized.SetInfo)
+	authorized := make(map[string]interface{})
+	hasAny := false
+
+	if subject, ok := c.Get("__subject"); ok {
+		authorized["sub"] = subject
+		hasAny = true
+	}
+	if clientID, ok := c.Get("__client_id"); ok {
+		authorized["client_id"] = clientID
+		hasAny = true
+	}
+	if userID, ok := c.Get("__user_id"); ok {
+		authorized["user_id"] = userID
+		hasAny = true
+	}
+	if scope, ok := c.Get("__scope"); ok {
+		authorized["scope"] = scope
+		hasAny = true
+	}
+	if teamID, ok := c.Get("__team_id"); ok {
+		authorized["team_id"] = teamID
+		hasAny = true
+	}
+	if tenantID, ok := c.Get("__tenant_id"); ok {
+		authorized["tenant_id"] = tenantID
+		hasAny = true
+	}
+	if sid, ok := c.Get("__sid"); ok {
+		authorized["session_id"] = sid
+		hasAny = true
+	}
+
+	if hasAny {
+		return authorized
+	}
+	return nil
 }
