@@ -1,13 +1,19 @@
 package api
 
-import "github.com/yaoapp/gou/process"
+import (
+	"github.com/yaoapp/gou/process"
+	"github.com/yaoapp/kun/exception"
+)
 
 func init() {
 	process.RegisterGroup("api", map[string]process.Handler{
-		"list": processList,
+		"list":   processList,
+		"reload": processReload,
 	})
 }
 
+// processList lists all loaded APIs or specific APIs by IDs
+// Process: api.List, api.List ["id1", "id2"]
 func processList(process *process.Process) interface{} {
 
 	ids := []string{}
@@ -31,4 +37,24 @@ func processList(process *process.Process) interface{} {
 		}
 	}
 	return apis
+}
+
+// processReload reloads all API definitions from the specified directory
+// Process: api.Reload, api.Reload "apis"
+func processReload(process *process.Process) interface{} {
+	root := "apis"
+	if process.NumOfArgs() > 0 {
+		root = process.ArgsString(0)
+	}
+
+	err := ReloadAPIs(root)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+
+	return map[string]interface{}{
+		"success": true,
+		"message": "APIs reloaded",
+		"count":   len(APIs),
+	}
 }

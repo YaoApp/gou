@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/yaoapp/kun/log"
@@ -13,7 +14,7 @@ import (
 	"github.com/yaoapp/xun"
 )
 
-// APIs 已加载API列表
+// APIs is the loaded API list
 var APIs = map[string]*API{}
 
 // Load load the api
@@ -128,7 +129,128 @@ func AddGuard(name string, guard gin.HandlerFunc) {
 	HTTPGuards[name] = guard
 }
 
-// Reload API
+// Reload reloads a single API definition from its file
 func (api *API) Reload() (*API, error) {
 	return Load(api.File, api.ID)
+}
+
+// FindHandler finds a handler by method and path from the route table
+// Returns the API, Path, Handler, extracted parameters, and error
+func FindHandler(method, path string) (*API, *Path, gin.HandlerFunc, map[string]string, error) {
+	routeTable.mu.RLock()
+	defer routeTable.mu.RUnlock()
+
+	entry, params := routeTable.find(method, path)
+	if entry == nil {
+		return nil, nil, nil, nil, fmt.Errorf("route not found: %s %s", method, path)
+	}
+
+	handler := BuildHandler(entry.API.HTTP, *entry.Path)
+	return entry.API, entry.Path, handler, params, nil
+}
+
+// ReloadAPIs reloads all API definitions from the specified directory
+// This function is thread-safe and performs atomic replacement of the route table
+func ReloadAPIs(root string) error {
+	// Load API files from the directory
+	exts := []string{"*.http.yao", "*.http.json", "*.http.jsonc"}
+
+	// Check if directory exists
+	exists, err := application.App.Exists(root)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+
+	// Collect new APIs
+	newAPIs := make(map[string]*API)
+	var loadErr error
+
+	err = application.App.Walk(root, func(rootPath, file string, isdir bool) error {
+		if isdir {
+			return nil
+		}
+
+		// Generate ID from file path
+		id := strings.TrimPrefix(file, "/")
+		id = strings.TrimPrefix(id, root+"/")
+		id = strings.TrimPrefix(id, root)
+		id = strings.TrimSuffix(id, filepath.Ext(id))
+		id = strings.TrimSuffix(id, filepath.Ext(id)) // Remove .http
+		id = strings.ReplaceAll(id, "/", ".")
+
+		api, err := Load(file, id)
+		if err != nil {
+			loadErr = err
+			return nil // Continue loading other files
+		}
+		newAPIs[id] = api
+		return nil
+	}, exts...)
+
+	if err != nil {
+		return err
+	}
+
+	if loadErr != nil {
+		log.Warn("[API] ReloadAPIs partial error: %s", loadErr.Error())
+	}
+
+	// Rebuild route table with write lock
+	routeTable.mu.Lock()
+	defer routeTable.mu.Unlock()
+
+	// Clear and rebuild
+	routeTable.clear()
+	for _, api := range APIs {
+		for i := range api.HTTP.Paths {
+			path := &api.HTTP.Paths[i]
+			fullPath := buildFullPath(api.HTTP.Group, path.Path)
+
+			entry := &RouteEntry{
+				Pattern: fullPath,
+				API:     api,
+				Path:    path,
+			}
+
+			// Compile pattern if it has parameters
+			if hasPathParams(fullPath) {
+				entry.Regex, entry.Params = compilePattern(fullPath)
+			}
+
+			routeTable.addEntry(path.Method, entry)
+		}
+	}
+
+	return nil
+}
+
+// BuildRouteTable builds the route table from loaded APIs
+// Should be called after loading APIs and before using FindHandler
+func BuildRouteTable() {
+	routeTable.mu.Lock()
+	defer routeTable.mu.Unlock()
+
+	routeTable.clear()
+	for _, api := range APIs {
+		for i := range api.HTTP.Paths {
+			path := &api.HTTP.Paths[i]
+			fullPath := buildFullPath(api.HTTP.Group, path.Path)
+
+			entry := &RouteEntry{
+				Pattern: fullPath,
+				API:     api,
+				Path:    path,
+			}
+
+			// Compile pattern if it has parameters
+			if hasPathParams(fullPath) {
+				entry.Regex, entry.Params = compilePattern(fullPath)
+			}
+
+			routeTable.addEntry(path.Method, entry)
+		}
+	}
 }
