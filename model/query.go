@@ -15,6 +15,13 @@ var opmap map[string]string = map[string]string{
 	"lt":   "<",
 	"ge":   ">=",
 	"le":   "<=",
+	// Direct operator mappings (allow using operators directly)
+	"=":  "=",
+	"<>": "<>",
+	">":  ">",
+	"<":  "<",
+	">=": ">=",
+	"<=": "<=",
 }
 
 // NewQuery 新建查询栈
