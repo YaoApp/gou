@@ -29,6 +29,10 @@ type Options struct {
 
 	// Model Capabilities
 	Capabilities *Capabilities `json:"capabilities,omitempty"`
+
+	// Thinking mode configuration (for models that support reasoning/thinking)
+	// Example: {"type": "enabled"} or {"type": "disabled"}
+	Thinking interface{} `json:"thinking,omitempty"`
 }
 
 // Capabilities defines the capabilities of a language model
@@ -141,6 +145,11 @@ func (o *Connector) Setting() map[string]interface{} {
 	}
 
 	setting["capabilities"] = capabilities
+
+	// Add thinking configuration if present (for models that support reasoning/thinking mode)
+	if o.Options.Thinking != nil {
+		setting["thinking"] = o.Options.Thinking
+	}
 
 	// Note: HTTP proxy is handled via HTTPS_PROXY/HTTP_PROXY environment variables
 	// by http.GetTransport, not configured here
