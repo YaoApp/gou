@@ -76,6 +76,7 @@ require (
 )
 
 require (
+	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.0
 	github.com/evanw/esbuild v0.25.4
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible
 	github.com/google/uuid v1.6.0
@@ -86,12 +87,14 @@ require (
 	github.com/pdfcpu/pdfcpu v0.11.0
 	github.com/qdrant/go-client v1.14.0
 	github.com/redis/go-redis/v9 v9.17.2
-	github.com/sergi/go-diff v1.3.1
+	github.com/sergi/go-diff v1.4.0
+	github.com/yuin/goldmark v1.7.16
 	golang.org/x/image v0.29.0
 )
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/JohannesKaufmann/dom v0.2.0 // indirect
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect

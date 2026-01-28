@@ -1,6 +1,6 @@
-# Text Extract
+# Text Processing
 
-Extract code blocks from text, especially useful for parsing LLM outputs.
+Text processing utilities including code block extraction and format conversion.
 
 ## Features
 
@@ -9,6 +9,8 @@ Extract code blocks from text, especially useful for parsing LLM outputs.
 - Parse JSON/YAML with fault-tolerant parser
 - Fallback to `text` type when no pattern detected
 - Support 15+ languages: Go, Python, JavaScript, TypeScript, Rust, Java, C#, C/C++, Ruby, PHP, Shell, SQL, HTML, CSS, Markdown, etc.
+- **Markdown to HTML conversion** (GitHub Flavored Markdown support)
+- **HTML to Markdown conversion**
 
 ## Go Usage
 
@@ -27,6 +29,14 @@ data := text.ExtractJSON(llmResponse)
 
 // Extract by type
 sqlBlocks := text.ExtractByType(llmResponse, "sql")
+
+// Markdown to HTML
+html, err := text.MarkdownToHTML("# Hello\n\nThis is **bold** text.")
+// Returns: "<h1 id="hello">Hello</h1>\n<p>This is <strong>bold</strong> text.</p>\n"
+
+// HTML to Markdown
+md, err := text.HTMLToMarkdown("<h1>Hello</h1><p>This is <strong>bold</strong> text.</p>")
+// Returns: "# Hello\n\nThis is **bold** text."
 ```
 
 ## JavaScript Usage (Yao Process)
@@ -45,6 +55,14 @@ const data = Process("text.ExtractJSON", llmResponse);
 
 // Extract by type
 const sqlBlocks = Process("text.ExtractByType", llmResponse, "sql");
+
+// Markdown to HTML (supports GFM: tables, strikethrough, task lists)
+const html = Process("text.MarkdownToHTML", "# Hello\n\nThis is **bold** text.");
+// Returns: "<h1 id="hello">Hello</h1>\n<p>This is <strong>bold</strong> text.</p>\n"
+
+// HTML to Markdown
+const md = Process("text.HTMLToMarkdown", "<h1>Hello</h1><p>This is <strong>bold</strong> text.</p>");
+// Returns: "# Hello\n\nThis is **bold** text."
 ````
 
 ## Supported Types
@@ -90,4 +108,51 @@ const data3 = Process("text.ExtractJSON", "name: test\nvalue: 123");
 // Plain text fallback
 const blocks = Process("text.Extract", "Hello, how are you?");
 // Returns: [{type: "text", content: "Hello, how are you?"}]
+```
+
+## Markdown/HTML Conversion
+
+### Markdown to HTML
+
+Supports GitHub Flavored Markdown (GFM) including:
+
+- Tables
+- Strikethrough (`~~text~~`)
+- Task lists (`- [x] done`)
+- Autolinks
+
+```javascript
+// Basic conversion
+const html = Process("text.MarkdownToHTML", "# Title\n\nParagraph with **bold**.");
+
+// GFM table
+const tableHtml = Process("text.MarkdownToHTML", `
+| Name | Age |
+|------|-----|
+| John | 30  |
+`);
+
+// GFM task list
+const taskHtml = Process("text.MarkdownToHTML", `
+- [x] Task done
+- [ ] Task pending
+`);
+```
+
+### HTML to Markdown
+
+Converts HTML back to clean Markdown:
+
+```javascript
+// Basic conversion
+const md = Process("text.HTMLToMarkdown", "<h1>Title</h1><p>Text</p>");
+// Returns: "# Title\n\nText"
+
+// Links and images
+const md2 = Process("text.HTMLToMarkdown", '<a href="https://example.com">Link</a>');
+// Returns: "[Link](https://example.com)"
+
+// Lists
+const md3 = Process("text.HTMLToMarkdown", "<ul><li>Item 1</li><li>Item 2</li></ul>");
+// Returns: "- Item 1\n- Item 2"
 ```

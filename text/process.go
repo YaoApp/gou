@@ -2,14 +2,17 @@ package text
 
 import (
 	"github.com/yaoapp/gou/process"
+	"github.com/yaoapp/kun/exception"
 )
 
 func init() {
 	process.RegisterGroup("text", map[string]process.Handler{
-		"extract":       ProcessExtract,
-		"extractfirst":  ProcessExtractFirst,
-		"extractjson":   ProcessExtractJSON,
-		"extractbytype": ProcessExtractByType,
+		"extract":        ProcessExtract,
+		"extractfirst":   ProcessExtractFirst,
+		"extractjson":    ProcessExtractJSON,
+		"extractbytype":  ProcessExtractByType,
+		"markdowntohtml": ProcessMarkdownToHTML,
+		"htmltomarkdown": ProcessHTMLToMarkdown,
 	})
 }
 
@@ -114,4 +117,61 @@ func ProcessExtractByType(process *process.Process) interface{} {
 		return []CodeBlock{}
 	}
 	return blocks
+}
+
+// ProcessMarkdownToHTML text.MarkdownToHTML
+// Converts Markdown text to HTML
+// Supports GitHub Flavored Markdown (GFM) extensions including:
+// - Tables, Strikethrough, Task lists, Autolinks
+//
+// Args:
+//   - markdown string - The Markdown text to convert
+//
+// Returns: string - The converted HTML content
+//
+// Usage:
+//
+//	var html = Process("text.MarkdownToHTML", "# Hello\n\nThis is **bold** text.")
+//	// Returns: "<h1 id=\"hello\">Hello</h1>\n<p>This is <strong>bold</strong> text.</p>\n"
+//
+//	// With GFM table
+//	var html = Process("text.MarkdownToHTML", "| A | B |\n|---|---|\n| 1 | 2 |")
+//	// Returns: "<table>...</table>"
+func ProcessMarkdownToHTML(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	markdown := process.ArgsString(0)
+
+	html, err := MarkdownToHTML(markdown)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return html
+}
+
+// ProcessHTMLToMarkdown text.HTMLToMarkdown
+// Converts HTML to Markdown
+// Uses goquery-based parsing for reliable HTML handling
+//
+// Args:
+//   - html string - The HTML content to convert
+//
+// Returns: string - The converted Markdown text
+//
+// Usage:
+//
+//	var md = Process("text.HTMLToMarkdown", "<h1>Hello</h1><p>This is <strong>bold</strong> text.</p>")
+//	// Returns: "# Hello\n\nThis is **bold** text."
+//
+//	// With links and images
+//	var md = Process("text.HTMLToMarkdown", "<a href=\"https://example.com\">Link</a>")
+//	// Returns: "[Link](https://example.com)"
+func ProcessHTMLToMarkdown(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	html := process.ArgsString(0)
+
+	markdown, err := HTMLToMarkdown(html)
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+	return markdown
 }
