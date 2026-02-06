@@ -33,6 +33,10 @@ type Options struct {
 	// Thinking mode configuration (for models that support reasoning/thinking)
 	// Example: {"type": "enabled"} or {"type": "disabled"}
 	Thinking interface{} `json:"thinking,omitempty"`
+
+	// Request parameters that can be passed to sandbox proxy
+	MaxTokens   int      `json:"max_tokens,omitempty"`   // Maximum tokens for response
+	Temperature *float64 `json:"temperature,omitempty"`  // Temperature for response (use pointer to distinguish 0 from unset)
 }
 
 // Capabilities defines the capabilities of a language model
@@ -149,6 +153,16 @@ func (o *Connector) Setting() map[string]interface{} {
 	// Add thinking configuration if present (for models that support reasoning/thinking mode)
 	if o.Options.Thinking != nil {
 		setting["thinking"] = o.Options.Thinking
+	}
+
+	// Add max_tokens if specified (for sandbox proxy)
+	if o.Options.MaxTokens > 0 {
+		setting["max_tokens"] = o.Options.MaxTokens
+	}
+
+	// Add temperature if specified (for sandbox proxy)
+	if o.Options.Temperature != nil {
+		setting["temperature"] = *o.Options.Temperature
 	}
 
 	// Note: HTTP proxy is handled via HTTPS_PROXY/HTTP_PROXY environment variables
