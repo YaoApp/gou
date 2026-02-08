@@ -99,6 +99,26 @@ func New(typ string, id string, dsl []byte) (Connector, error) {
 	return Connectors[id], nil
 }
 
+// BuildAPIURL builds the complete API URL from host and endpoint.
+//
+// If host ends with "/" it is used as-is (the user has specified a full base
+// path such as "https://my-proxy.example.com/v1/").
+// Otherwise a "/v1" prefix is prepended to the endpoint automatically, which
+// is the standard convention for OpenAI-compatible APIs
+// (e.g. host="https://api.openai.com", endpoint="/chat/completions"
+//
+//	→ "https://api.openai.com/v1/chat/completions").
+//
+// This is the single source of truth so that every caller (agent LLM provider,
+// sandbox proxy, graphrag utilities, …) builds URLs the same way.
+func BuildAPIURL(host, endpoint string) string {
+	if !strings.HasSuffix(host, "/") {
+		endpoint = "/v1" + endpoint
+	}
+	host = strings.TrimSuffix(host, "/")
+	return host + endpoint
+}
+
 // Select a connector
 func Select(id string) (Connector, error) {
 	connector, has := Connectors[id]

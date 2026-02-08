@@ -35,8 +35,8 @@ type Options struct {
 	Thinking interface{} `json:"thinking,omitempty"`
 
 	// Request parameters that can be passed to sandbox proxy
-	MaxTokens   int      `json:"max_tokens,omitempty"`   // Maximum tokens for response
-	Temperature *float64 `json:"temperature,omitempty"`  // Temperature for response (use pointer to distinguish 0 from unset)
+	MaxTokens   int      `json:"max_tokens,omitempty"`  // Maximum tokens for response
+	Temperature *float64 `json:"temperature,omitempty"` // Temperature for response (use pointer to distinguish 0 from unset)
 }
 
 // Capabilities defines the capabilities of a language model

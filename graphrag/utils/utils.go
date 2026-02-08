@@ -45,13 +45,8 @@ func PostLLM(ctx context.Context, conn connector.Connector, endpoint string, pay
 		endpoint = "/" + endpoint
 	}
 
-	// Host is api.openai.com & endpoint not has /v1, then add /v1
-	if host == "https://api.openai.com" && !strings.HasPrefix(endpoint, "/v1") {
-		endpoint = "/v1" + endpoint
-	}
-
-	// Build full URL
-	url := fmt.Sprintf("%s/%s", strings.TrimSuffix(host, "/"), strings.TrimPrefix(endpoint, "/"))
+	// Build full URL using shared helper
+	url := connector.BuildAPIURL(host, endpoint)
 
 	// Get API key
 	apiKey, ok := setting["key"].(string)
@@ -88,13 +83,8 @@ func PostLLMFile(ctx context.Context, conn connector.Connector, endpoint string,
 		endpoint = "/" + endpoint
 	}
 
-	// Host is api.openai.com & endpoint not has /v1, then add /v1
-	if host == "https://api.openai.com" && !strings.HasPrefix(endpoint, "/v1") {
-		endpoint = "/v1" + endpoint
-	}
-
-	// Build full URL
-	url := fmt.Sprintf("%s/%s", strings.TrimSuffix(host, "/"), strings.TrimPrefix(endpoint, "/"))
+	// Build full URL using shared helper
+	url := connector.BuildAPIURL(host, endpoint)
 
 	// Get API key
 	apiKey, ok := setting["key"].(string)
@@ -142,14 +132,8 @@ func StreamLLM(ctx context.Context, conn connector.Connector, endpoint string, p
 		endpoint = "/" + endpoint
 	}
 
-	// Special handling for OpenAI API
-	if host == "https://api.openai.com" && !strings.HasPrefix(endpoint, "/v1") {
-		endpoint = "/v1" + endpoint
-	}
-
-	// Build full URL - fix the double slash issue
-	host = strings.TrimSuffix(host, "/")
-	url := host + endpoint
+	// Build full URL using shared helper
+	url := connector.BuildAPIURL(host, endpoint)
 
 	// Get API key
 	key, ok := setting["key"].(string)
