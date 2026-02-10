@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/fs/system"
 	"github.com/yaoapp/gou/process"
 )
 
@@ -733,6 +734,68 @@ func testFsFiles(t *testing.T) map[string]string {
 		"D1_D2":    filepath.Join(root, "d1", "d2"),
 	}
 
+}
+
+func TestProcessFsAbs(t *testing.T) {
+	// Test fs.system.Abs — system root is "/"
+	t.Run("fs.system.Abs", func(t *testing.T) {
+		processName := "fs.system.Abs"
+		args := []interface{}{"/tmp/foo"}
+		res, err := process.New(processName, args...).Exec()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		absPath, ok := res.(string)
+		assert.True(t, ok)
+		assert.Equal(t, filepath.Join("/", "/tmp/foo"), absPath)
+		t.Logf("fs.system.Abs(\"/tmp/foo\") = %s", absPath)
+	})
+
+	// Test fs.data.Abs — data root is app_root + "/data"
+	t.Run("fs.data.Abs", func(t *testing.T) {
+		appRoot := os.Getenv("GOU_TEST_APP_ROOT")
+		if appRoot == "" {
+			t.Skip("GOU_TEST_APP_ROOT not set")
+		}
+		dataRoot := filepath.Join(appRoot, "data")
+		Register("data", system.New(dataRoot))
+
+		processName := "fs.data.Abs"
+		args := []interface{}{"/tmp/foo"}
+		res, err := process.New(processName, args...).Exec()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		absPath, ok := res.(string)
+		assert.True(t, ok)
+		expected := filepath.Join(dataRoot, "/tmp/foo")
+		assert.Equal(t, expected, absPath)
+		t.Logf("fs.data.Abs(\"/tmp/foo\") = %s", absPath)
+	})
+
+	// Test fs.dsl.Abs — dsl root is app_root
+	t.Run("fs.dsl.Abs", func(t *testing.T) {
+		appRoot := os.Getenv("GOU_TEST_APP_ROOT")
+		if appRoot == "" {
+			t.Skip("GOU_TEST_APP_ROOT not set")
+		}
+		Register("dsl", system.New(appRoot))
+
+		processName := "fs.dsl.Abs"
+		args := []interface{}{"/models/user.yao"}
+		res, err := process.New(processName, args...).Exec()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		absPath, ok := res.(string)
+		assert.True(t, ok)
+		expected := filepath.Join(appRoot, "/models/user.yao")
+		assert.Equal(t, expected, absPath)
+		t.Logf("fs.dsl.Abs(\"/models/user.yao\") = %s", absPath)
+	})
 }
 
 func testFsClear(stor FileSystem, t *testing.T) {
