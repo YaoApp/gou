@@ -54,6 +54,7 @@ var FileSystemHandlers = map[string]process.Handler{
 	"zip":              processZip,
 	"unzip":            processUnzip,
 	"glob":             processGlob,
+	"abs":              processAbs,
 }
 
 func init() {
@@ -227,6 +228,17 @@ func processGlob(process *process.Process) interface{} {
 	}
 
 	return dirs
+}
+
+func processAbs(process *process.Process) interface{} {
+	process.ValidateArgNums(1)
+	stor := stor(process)
+	file := process.ArgsString(0)
+	root := stor.Root()
+	if root == "" {
+		return file
+	}
+	return filepath.Join(root, file)
 }
 
 func processMkdir(process *process.Process) interface{} {
