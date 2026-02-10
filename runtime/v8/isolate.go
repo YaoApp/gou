@@ -6,12 +6,15 @@ import (
 	"sync"
 	"time"
 
+	allT "github.com/yaoapp/gou/runtime/v8/functions/all"
+	anyT "github.com/yaoapp/gou/runtime/v8/functions/any"
 	atobT "github.com/yaoapp/gou/runtime/v8/functions/atob"
 	authorizedT "github.com/yaoapp/gou/runtime/v8/functions/authorized"
 	btoaT "github.com/yaoapp/gou/runtime/v8/functions/btoa"
 	evalT "github.com/yaoapp/gou/runtime/v8/functions/eval"
 	langT "github.com/yaoapp/gou/runtime/v8/functions/lang"
 	processT "github.com/yaoapp/gou/runtime/v8/functions/process"
+	raceT "github.com/yaoapp/gou/runtime/v8/functions/race"
 	useT "github.com/yaoapp/gou/runtime/v8/functions/use"
 	exceptionT "github.com/yaoapp/gou/runtime/v8/objects/exception"
 	fsT "github.com/yaoapp/gou/runtime/v8/objects/fs"
@@ -34,7 +37,7 @@ var isoReady chan *store.Isolate
 var isoCreateLock sync.Mutex // Protects concurrent isolate creation to avoid V8 allocator contention
 
 // thirdPartyObjects third party objects
-var keepWords = []string{"log", "time", "http", "Exception", "FS", "Job", "Store", "Plan", "Query", "WebSocket", "$L", "Process", "Eval"}
+var keepWords = []string{"log", "time", "http", "Exception", "FS", "Job", "Store", "Plan", "Query", "WebSocket", "$L", "Process", "Eval", "All", "Any", "Race"}
 var thirdPartyObjects map[string]*ThirdPartyObject = make(map[string]*ThirdPartyObject)
 var thirdPartyFunctions map[string]*ThirdPartyFunction = make(map[string]*ThirdPartyFunction)
 
@@ -143,6 +146,11 @@ func MakeTemplate(iso *v8go.Isolate) *v8go.ObjectTemplate {
 
 	// Authorized function - returns the authorized information
 	template.Set("Authorized", authorizedT.ExportFunction(iso))
+
+	// Concurrent execution functions (Promise.all/any/race semantics)
+	template.Set("All", allT.ExportFunction(iso))
+	template.Set("Any", anyT.ExportFunction(iso))
+	template.Set("Race", raceT.ExportFunction(iso))
 
 	// Register third party objects
 	for name, object := range thirdPartyObjects {

@@ -29,6 +29,7 @@ func prepare(t *testing.T, option *Option) {
 		"runtime.basic":      filepath.Join("scripts", "runtime", "basic.js"),
 		"runtime.lib":        filepath.Join("scripts", "runtime", "lib.js"),
 		"runtime.typescript": filepath.Join("scripts", "runtime", "typescript.ts"),
+		"runtime.concurrent": filepath.Join("scripts", "runtime", "concurrent.js"),
 	}
 
 	for id, file := range scripts {
