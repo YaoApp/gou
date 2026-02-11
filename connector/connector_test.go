@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/connector/anthropic"
 	"github.com/yaoapp/gou/connector/database"
 	"github.com/yaoapp/gou/connector/fastembed"
 	mongo "github.com/yaoapp/gou/connector/mongo"
@@ -128,6 +129,40 @@ func TestLoadOpenAI(t *testing.T) {
 	setting := Connectors["openai"].Setting()
 	assert.Equal(t, "openai", Connectors["openai"].ID())
 	assert.Contains(t, setting["key"], "sk-")
+}
+
+func TestLoadAnthropic(t *testing.T) {
+	file := prepare(t, "anthropic")
+	_, err := Load(file, "anthropic")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, has := Connectors["anthropic"]
+	if !has {
+		t.Fatal("the anthropic connector does not exist")
+	}
+
+	if !Connectors["anthropic"].Is(ANTHROPIC) {
+		t.Fatal("the connector is not a ANTHROPIC")
+	}
+
+	if _, ok := Connectors["anthropic"].(*anthropic.Connector); !ok {
+		t.Fatal("the anthropic connector is not a *anthropic.Connector")
+	}
+
+	setting := Connectors["anthropic"].Setting()
+	assert.Equal(t, "anthropic", Connectors["anthropic"].ID())
+	assert.Contains(t, setting["key"], "sk-ant-")
+	assert.Equal(t, "https://api.anthropic.com", setting["host"])
+	assert.Equal(t, "2023-06-01", setting["version"])
+	assert.Equal(t, "claude-sonnet-4-20250514", setting["model"])
+
+	// Verify capabilities are set
+	caps, ok := setting["capabilities"].(*anthropic.Capabilities)
+	assert.True(t, ok, "capabilities should be *anthropic.Capabilities")
+	assert.True(t, caps.ToolCalls, "should support tool calls")
+	assert.True(t, caps.Streaming, "should support streaming")
 }
 
 func TestLoadFastembed(t *testing.T) {
