@@ -36,6 +36,9 @@ const (
 
 	// SCRIPT ? the script connector ( difference with widget ?)
 	SCRIPT
+
+	// ANTHROPIC the anthropic connector (Claude API format)
+	ANTHROPIC
 )
 
 var types = map[string]int{
@@ -54,6 +57,7 @@ var types = map[string]int{
 	"script":        SCRIPT, // ?
 	"moapi":         MOAPI,
 	"fastembed":     FASTEMBED,
+	"anthropic":     ANTHROPIC,
 }
 
 // Connector the connector interface

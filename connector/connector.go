@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/connector/anthropic"
 	"github.com/yaoapp/gou/connector/database"
 	"github.com/yaoapp/gou/connector/fastembed"
 	"github.com/yaoapp/gou/connector/moapi"
@@ -64,7 +65,7 @@ func LoadSource(source []byte, id string, file string) (Connector, error) {
 	}
 
 	// The AI connectors
-	if dsl.Type == "openai" || dsl.Type == "fastembed" {
+	if dsl.Type == "openai" || dsl.Type == "anthropic" || dsl.Type == "fastembed" {
 		label := dsl.Label
 		if label == "" {
 			label = dsl.Name
@@ -167,6 +168,10 @@ func makeConnector(typ string) (Connector, error) {
 
 	case FASTEMBED:
 		c := &fastembed.Connector{}
+		return c, nil
+
+	case ANTHROPIC:
+		c := &anthropic.Connector{}
 		return c, nil
 	}
 
