@@ -707,12 +707,6 @@ func (f *LinuxFFmpeg) chunkWithSilenceDetection(ctx context.Context, options Chu
 	return chunks, nil
 }
 
-// SilencePeriod represents a period of silence
-type SilencePeriod struct {
-	Start float64
-	End   float64
-}
-
 // detectSilencePeriods detects silence periods in audio
 func (f *LinuxFFmpeg) detectSilencePeriods(ctx context.Context, options ChunkOptions) ([]SilencePeriod, error) {
 	// Use FFmpeg silencedetect filter to find silence

@@ -43,6 +43,7 @@ type Options struct {
 type Capabilities struct {
 	Vision                interface{} `json:"vision,omitempty" yaml:"vision,omitempty"`
 	Audio                 bool        `json:"audio,omitempty" yaml:"audio,omitempty"`
+	STT                   bool        `json:"stt,omitempty" yaml:"stt,omitempty"` // Speech-to-Text / audio transcription model (e.g. Whisper)
 	ToolCalls             bool        `json:"tool_calls,omitempty" yaml:"tool_calls,omitempty"`
 	Reasoning             bool        `json:"reasoning,omitempty" yaml:"reasoning,omitempty"`
 	Streaming             bool        `json:"streaming,omitempty" yaml:"streaming,omitempty"`
