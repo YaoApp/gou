@@ -4,16 +4,22 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/kun/exception"
 )
 
-// defaultPDF is the default PDF processor instance
+// defaultPDF is the default PDF processor instance (lazy-initialized)
 var defaultPDF *PDF
+
+// pdfInitOnce ensures lazy initialization happens only once
+var pdfInitOnce sync.Once
 
 func init() {
 	process.RegisterGroup("pdf", map[string]process.Handler{
@@ -21,9 +27,107 @@ func init() {
 		"split":   ProcessSplit,
 		"convert": ProcessConvert,
 	})
+}
 
-	// Create default PDF instance with sensible defaults
-	defaultPDF = New(Options{})
+// getPDF returns the lazily-initialized default PDF instance.
+// It reads YAO_PDFTOPPM_PATH, YAO_MUTOOL_PATH, and YAO_IMAGEMAGICK_PATH
+// environment variables; if not set, the platform default paths are used.
+func getPDF() *PDF {
+	pdfInitOnce.Do(func() {
+		customPaths := make(ToolPaths)
+
+		if p := os.Getenv("YAO_PDFTOPPM_PATH"); p != "" {
+			customPaths[ToolPdftoppm] = p
+		}
+		if p := os.Getenv("YAO_MUTOOL_PATH"); p != "" {
+			customPaths[ToolMutool] = p
+		}
+		if p := os.Getenv("YAO_IMAGEMAGICK_PATH"); p != "" {
+			customPaths[ToolImageMagick] = p
+		}
+
+		opts := Options{}
+		// If any custom path was provided, use the first one as the preferred tool
+		if len(customPaths) > 0 {
+			cmd := NewCommand(customPaths)
+			defaultPDF = &PDF{
+				convertTool: ToolPdftoppm, // Default tool
+				cmd:         cmd,
+			}
+			defaultPDF.toolPath = cmd.GetToolPath(defaultPDF.convertTool)
+		} else {
+			defaultPDF = New(opts)
+		}
+	})
+	return defaultPDF
+}
+
+// PDFToolStatus represents the availability status of a PDF tool.
+type PDFToolStatus struct {
+	Name      string `json:"name"`               // Tool name
+	Available bool   `json:"available"`           // Whether the tool is available
+	Path      string `json:"path,omitempty"`      // Resolved executable path
+	Version   string `json:"version,omitempty"`   // Version string
+	EnvVar    string `json:"env_var,omitempty"`   // Environment variable name for custom path
+	Error     string `json:"error,omitempty"`     // Error message if not available
+}
+
+// Inspect checks the availability and version of PDF conversion tools.
+// It performs a silent, non-fatal check suitable for system status reporting.
+func Inspect() map[string]*PDFToolStatus {
+	// Determine platform-specific defaults
+	magickCmd := "magick"
+	if runtime.GOOS == "linux" {
+		magickCmd = "convert"
+	}
+
+	result := map[string]*PDFToolStatus{
+		"pdftoppm":    inspectPDFTool("pdftoppm", "YAO_PDFTOPPM_PATH", "pdftoppm", "-v"),
+		"mutool":      inspectPDFTool("mutool", "YAO_MUTOOL_PATH", "mutool", "-v"),
+		"imagemagick": inspectPDFTool("imagemagick", "YAO_IMAGEMAGICK_PATH", magickCmd, "-version"),
+	}
+	return result
+}
+
+// inspectPDFTool checks a single PDF tool for availability and version.
+func inspectPDFTool(name, envVar, defaultCmd, versionFlag string) *PDFToolStatus {
+	status := &PDFToolStatus{
+		Name:   name,
+		EnvVar: envVar,
+	}
+
+	// Determine which command to check
+	cmdPath := os.Getenv(envVar)
+	if cmdPath == "" {
+		cmdPath = defaultCmd
+	}
+
+	// Check availability
+	resolvedPath, err := exec.LookPath(cmdPath)
+	if err != nil {
+		if envVal := os.Getenv(envVar); envVal != "" {
+			status.Error = fmt.Sprintf("env %s=%s: not found or not executable", envVar, envVal)
+		} else {
+			status.Error = "not found in PATH"
+		}
+		return status
+	}
+
+	status.Path = resolvedPath
+	status.Available = true
+
+	// Get version
+	cmd := exec.Command(resolvedPath, versionFlag)
+	// Some tools output version to stderr (e.g. pdftoppm)
+	output, err := cmd.CombinedOutput()
+	if err == nil && len(output) > 0 {
+		lines := strings.Split(string(output), "\n")
+		if len(lines) > 0 {
+			status.Version = strings.TrimSpace(lines[0])
+		}
+	}
+
+	return status
 }
 
 // ProcessInfo pdf.Info
@@ -42,10 +146,12 @@ func ProcessInfo(process *process.Process) interface{} {
 	process.ValidateArgNums(1)
 	filePath := process.ArgsString(0)
 
+	pdf := getPDF()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	info, err := defaultPDF.GetInfo(ctx, filePath)
+	info, err := pdf.GetInfo(ctx, filePath)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
@@ -114,7 +220,8 @@ func ProcessSplit(process *process.Process) interface{} {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	files, err := defaultPDF.Split(ctx, filePath, config)
+	pdf := getPDF()
+	files, err := pdf.Split(ctx, filePath, config)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
@@ -196,7 +303,8 @@ func ProcessConvert(process *process.Process) interface{} {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	files, err := defaultPDF.Convert(ctx, filePath, config)
+	pdf := getPDF()
+	files, err := pdf.Convert(ctx, filePath, config)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}

@@ -3,17 +3,25 @@ package ffmpeg
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
+	"os/exec"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/kun/exception"
 )
 
-// defaultFFmpeg is the default FFmpeg instance
+// defaultFFmpeg is the default FFmpeg instance (lazy-initialized)
 var defaultFFmpeg FFmpeg
+
+// initOnce ensures lazy initialization happens only once
+var initOnce sync.Once
+
+// initErr stores any error from lazy initialization
+var initErr error
 
 func init() {
 	process.RegisterGroup("ffmpeg", map[string]process.Handler{
@@ -22,16 +30,95 @@ func init() {
 		"extractaudio": ProcessExtractAudio,
 		"chunkaudio":   ProcessChunkAudio,
 	})
+}
 
-	// Create and initialize default FFmpeg instance
-	defaultFFmpeg = NewFFmpeg()
-	if err := defaultFFmpeg.Init(Config{
-		MaxProcesses: 4,
-		MaxThreads:   8,
-	}); err != nil {
-		// Log warning but don't panic - ffmpeg may not be installed
-		log.Printf("Warning: FFmpeg initialization failed: %v", err)
+// getFFmpeg returns the lazily-initialized default FFmpeg instance.
+// It reads YAO_FFMPEG_PATH and YAO_FFPROBE_PATH environment variables;
+// if not set, the platform-specific Init() performs default path detection.
+func getFFmpeg() (FFmpeg, error) {
+	initOnce.Do(func() {
+		config := Config{
+			FFmpegPath:   os.Getenv("YAO_FFMPEG_PATH"),
+			FFprobePath:  os.Getenv("YAO_FFPROBE_PATH"),
+			MaxProcesses: 4,
+			MaxThreads:   8,
+		}
+		defaultFFmpeg = NewFFmpeg()
+		initErr = defaultFFmpeg.Init(config)
+	})
+	if initErr != nil {
+		return nil, fmt.Errorf("ffmpeg not available: %v", initErr)
 	}
+	return defaultFFmpeg, nil
+}
+
+// Inspect checks the availability and version of ffmpeg and ffprobe.
+// It performs a silent, non-fatal check suitable for system status reporting.
+// This function does NOT use the lazy-initialized default instance;
+// it performs its own independent detection.
+func Inspect() map[string]*ToolStatus {
+	result := map[string]*ToolStatus{
+		"ffmpeg":  inspectTool("ffmpeg", "YAO_FFMPEG_PATH", []string{"ffmpeg", "/usr/local/bin/ffmpeg", "/opt/homebrew/bin/ffmpeg", "/usr/bin/ffmpeg"}),
+		"ffprobe": inspectTool("ffprobe", "YAO_FFPROBE_PATH", []string{"ffprobe", "/usr/local/bin/ffprobe", "/opt/homebrew/bin/ffprobe", "/usr/bin/ffprobe"}),
+	}
+	return result
+}
+
+// inspectTool checks a single external tool for availability and version.
+func inspectTool(name, envVar string, defaultPaths []string) *ToolStatus {
+	status := &ToolStatus{
+		Name:   name,
+		EnvVar: envVar,
+	}
+
+	// Determine the path to check
+	envPath := os.Getenv(envVar)
+	if envPath != "" {
+		// Environment variable is set, use it directly
+		resolvedPath, err := exec.LookPath(envPath)
+		if err != nil {
+			status.Error = fmt.Sprintf("env %s=%s: not found or not executable", envVar, envPath)
+			return status
+		}
+		status.Path = resolvedPath
+		status.Available = true
+	} else {
+		// Try default paths
+		for _, p := range defaultPaths {
+			resolvedPath, err := exec.LookPath(p)
+			if err == nil {
+				status.Path = resolvedPath
+				status.Available = true
+				break
+			}
+		}
+		if !status.Available {
+			status.Error = "not found in PATH"
+			return status
+		}
+	}
+
+	// Get version
+	version, err := getToolVersion(status.Path)
+	if err == nil {
+		status.Version = version
+	}
+
+	return status
+}
+
+// getToolVersion runs "<tool> -version" and returns the first line.
+func getToolVersion(toolPath string) (string, error) {
+	cmd := exec.Command(toolPath, "-version")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	lines := strings.Split(string(output), "\n")
+	if len(lines) > 0 {
+		return strings.TrimSpace(lines[0]), nil
+	}
+	return "", fmt.Errorf("empty version output")
 }
 
 // ProcessInfo ffmpeg.Info
@@ -50,10 +137,15 @@ func ProcessInfo(process *process.Process) interface{} {
 	process.ValidateArgNums(1)
 	filePath := process.ArgsString(0)
 
+	ffmpeg, err := getFFmpeg()
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	info, err := defaultFFmpeg.GetMediaInfo(ctx, filePath)
+	info, err := ffmpeg.GetMediaInfo(ctx, filePath)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
@@ -122,10 +214,15 @@ func ProcessConvert(process *process.Process) interface{} {
 		opts.Options["-ar"] = fmt.Sprintf("%d", toInt(sampleRate))
 	}
 
+	ffmpeg, err := getFFmpeg()
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	err := defaultFFmpeg.Convert(ctx, opts)
+	err = ffmpeg.Convert(ctx, opts)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
@@ -200,10 +297,15 @@ func ProcessExtractAudio(process *process.Process) interface{} {
 		Options: options,
 	}
 
+	ffmpeg, err := getFFmpeg()
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	err := defaultFFmpeg.Extract(ctx, opts)
+	err = ffmpeg.Extract(ctx, opts)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
@@ -279,10 +381,15 @@ func ProcessChunkAudio(process *process.Process) interface{} {
 		opts.OutputDir = tmpDir
 	}
 
+	ffmpeg, err := getFFmpeg()
+	if err != nil {
+		exception.New(err.Error(), 500).Throw()
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	result, err := defaultFFmpeg.ChunkAudio(ctx, opts)
+	result, err := ffmpeg.ChunkAudio(ctx, opts)
 	if err != nil {
 		exception.New(err.Error(), 500).Throw()
 	}
