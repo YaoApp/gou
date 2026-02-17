@@ -2,75 +2,77 @@
 
 ## Overview
 
-Yao currently executes user scripts (Hooks, Tools, Guards, etc.) through the V8 JavaScript engine, which works well for TypeScript/JavaScript development. We are exploring **adding WASM as a parallel runtime** to enable **multi-language support** — allowing developers to write Yao scripts in **Rust, Go, C, AssemblyScript**, or any language that compiles to WebAssembly, alongside existing TypeScript/JavaScript.
-
-This is **not a replacement** for V8. It's a new runtime that sits alongside V8 under the existing `runtime/` architecture:
+Yao currently executes user scripts (Hooks, Tools, Guards, etc.) through the V8 JavaScript engine. We are adding **WASM as a parallel runtime** to enable **multi-language support** — allowing developers to write Yao scripts in **Rust, Go, C**, or any language that compiles to WebAssembly. Existing **TypeScript/JavaScript** scripts can also be compiled to WASM via `yao build` with **zero code changes**.
 
 ```
 gou/runtime/
 ├── v8/         ← Existing: TypeScript/JavaScript (unchanged)
-├── wasm/       ← Proposed: WebAssembly (Rust, Go, C, AssemblyScript, TS→WASM...)
+├── wasm/       ← New: WebAssembly (Rust, Go, C, TS→WASM...)
 └── transform/  ← Existing: TS/JS compilation (unchanged)
 ```
 
 ## Motivation
 
-1. **Multi-Language Support**: Let developers write Yao scripts in languages they're most productive in — Rust for performance-critical hooks, Go for system-level operations, or continue with TypeScript for rapid prototyping.
+1. **Multi-Language Support**: Write Yao scripts in Rust, Go, C, or continue with TypeScript.
 
-2. **Language-Agnostic Binary Format**: WASM is a W3C standard supported by all major languages. Once Yao defines its Host API, any language can target it.
+2. **Binary Distribution**: WASM modules are compiled binaries. Compiled-language WASM (Rust, Go, C) is highly resistant to reverse engineering — similar to native binaries. TS/JS compiled via QuickJS retains string constants and function names in bytecode, offering limited source protection. For sensitive business logic, implement critical algorithms in Rust or Go.
 
-3. **Binary Distribution**: WASM modules are compiled binaries, enabling applications to be distributed without source code — useful for commercial Yao applications.
+3. **Lightweight Runtime**: [wazero](https://wazero.io/) is a zero-dependency WebAssembly runtime in pure Go. No V8/C++ dependency for script execution.
 
-4. **Lightweight Runtime**: [wazero](https://wazero.io/) is a zero-dependency WebAssembly runtime written in pure Go. The WASM layer itself requires no CGO, eliminating the V8/C++ dependency from the script execution path.
+4. **Edge & Embedded Deployment**: A WASM-only Yao Runtime for IoT, edge, and serverless.
 
-5. **Edge & Embedded Deployment**: A WASM-only Yao Runtime could run on IoT devices, edge nodes, or serverless platforms where V8 is too heavy.
+## Architecture
 
-## Design Principles
+### Two Products, One Codebase
+
+**Yao** (Development & Full-Featured):
+- V8 + WASM dual runtime
+- Supports `.ts`, `.js`, `.wasm` scripts
+- `yao build` compiles TS/JS → WASM for deployment
+- When both `hook.ts` and `hook.wasm` exist, **WASM takes priority**
+- Full development toolchain: hot reload, debugger, REPL
+
+**Yao Runtime** (Production & Deployment):
+- WASM-only — no V8, no C++ dependency for script execution
+- Runs `.wasm` modules exclusively
+- Minimal footprint, cross-compiles to any platform
+- Applications ship as `.wasm` binaries — no source code distribution
+
+```
+  Developer Machine (Yao)              Production (Yao Runtime)
+  ┌─────────────────────┐              ┌─────────────────────┐
+  │  Write TS/JS/Rust/Go │              │                     │
+  │         ↓            │   yao build  │  Load .wasm only    │
+  │  Run & Debug with V8 │  ─────────→  │  No V8 dependency   │
+  │  + WASM dual runtime │              │  ~500KB per request  │
+  │         ↓            │              │  Instant GC          │
+  │  yao build → .wasm   │              │                     │
+  └─────────────────────┘              └─────────────────────┘
+```
 
 ### Unified Process System
 
-The core design principle: **callers don't know or care what language a script is written in.** Everything goes through Yao's existing Process system:
+Callers don't know or care what language a script is written in. Everything goes through Yao's existing Process system:
 
 ```
 Process("scripts.validate.Check", args)     // Could be TS, Rust, Go, or C
 Process("scripts.transform.Convert", args)  // Caller doesn't know, doesn't care
 ```
 
-WASM scripts register into the Process system the same way V8 scripts do today:
-
-```go
-// V8 (existing)
-process.Register("scripts", processScriptsV8)
-
-// WASM (proposed)
-process.Register("scripts", processScriptsWASM)
-
-// Or both, with file extension routing:
-// .ts/.js → V8, .wasm → wazero
-```
-
 ### Yao Host API (ABI)
 
-WASM modules communicate with Yao through **Host Functions** — standard WASM imports provided by the Go host. This is the **Yao WASM ABI**:
-
-```wasm
-;; Every Yao WASM module imports from the "yao" namespace
-(import "yao" "process" (func (param i32 i32 i32 i32) (result i64)))
-(import "yao" "log"     (func (param i32 i32 i32)))
-```
-
-The host function signatures:
+WASM modules communicate with Yao through **Host Functions** — standard WASM imports provided by the Go host:
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `process` | `(name_ptr, name_len, args_ptr, args_len) → packed_result` | Call any Yao Process |
 | `log` | `(level, msg_ptr, msg_len)` | Write to Yao log |
 
-Since `process` is the gateway to Yao's entire capability set (Models, Flows, Tables, APIs, Stores, Queries, etc.), **a single host function covers 80%+ of use cases**. Additional host functions (store, query, fs, http) can be added for performance-critical paths that want to avoid the Process dispatch overhead.
+Since `process` is the gateway to Yao's entire capability set (Models, Flows, Tables, APIs, Stores, Queries, etc.), a single host function covers the majority of use cases.
 
 ### How Each Language Uses It
 
-**Rust:**
+**Rust** (native WASM, direct host function import):
 ```rust
 #[link(wasm_import_module = "yao")]
 extern "C" {
@@ -85,7 +87,7 @@ pub extern "C" fn before_save(payload_ptr: *const u8, payload_len: u32) -> u64 {
 }
 ```
 
-**Go (TinyGo / Go 1.21+ wasip1):**
+**Go** (native WASM via TinyGo / wasip1):
 ```go
 //go:wasmimport yao process
 func yaoProcess(namePtr, nameLen, argsPtr, argsLen uint32) uint64
@@ -97,19 +99,7 @@ func BeforeSave() {
 }
 ```
 
-**AssemblyScript (TS-like syntax, compiles to WASM natively):**
-```typescript
-@external("yao", "process")
-declare function yao_process(namePtr: u32, nameLen: u32,
-                              argsPtr: u32, argsLen: u32): u64;
-
-export function beforeSave(payloadPtr: u32, payloadLen: u32): u64 {
-    const user = Process("models.user.Find", [userId]);
-    // ... business logic ...
-}
-```
-
-**C:**
+**C** (native WASM via clang):
 ```c
 __attribute__((import_module("yao"), import_name("process")))
 extern uint64_t yao_process(uint32_t name_ptr, uint32_t name_len,
@@ -121,115 +111,102 @@ uint64_t before_save(uint32_t payload_ptr, uint32_t payload_len) {
 }
 ```
 
-**TypeScript (via Javy/QuickJS → WASM compilation):**
+**TypeScript** (zero code changes — compiled to WASM via `yao build`):
 ```typescript
-// Existing TS code compiles to WASM via: esbuild → JS → Javy → .wasm
-// No code changes needed — the build toolchain handles it
-function BeforeSave(payload: any): any {
-    const user = Process("models.user.Find", payload.user_id);
-    return { ...payload, user_name: user.name };
+// This is existing Yao TS code. No modifications needed.
+// `yao build` compiles it to WASM automatically.
+function BeforeSave(payload: Record<string, any>): Record<string, any> {
+    const user = Process("models.user.Find", payload.user_id, {});
+    const fs = new FS("/data/app");
+    const config = fs.ReadFile("config.json");
+    if (payload.amount > 10000) {
+        payload.status = "pending_approval";
+        payload.reviewer = user.name;
+    }
+    return payload;
 }
 ```
 
-### Two Products, One Codebase
+### TS/JS → WASM Compilation
 
-The WASM runtime enables two distinct distribution artifacts from the same codebase:
-
-**Yao** (Development & Full-Featured):
-- V8 + WASM dual runtime
-- Supports `.ts`, `.js`, `.wasm` scripts
-- `yao build` compiles TS/JS → WASM for deployment
-- When both `hook.ts` and `hook.wasm` exist, **WASM takes priority**
-- Full development toolchain: hot reload, debugger, REPL
-
-**Yao Runtime** (Production & Deployment):
-- WASM-only — no V8, no C++ dependency for script execution
-- Runs `.wasm` modules exclusively
-- Minimal binary size, cross-compiles to any platform
-- Suitable for edge, IoT, serverless, and embedded deployment
-- Applications ship as `.wasm` binaries — no source code distribution
+TypeScript/JavaScript cannot be directly AOT-compiled to native WASM (it's a dynamic language). The `yao build` pipeline uses a custom [Javy](https://github.com/bytecodealliance/javy) plugin built with the [QuickJS-NG](https://github.com/quickjs-ng/quickjs) engine:
 
 ```
-Development workflow:
-
-  Developer Machine (Yao)              Production (Yao Runtime)
-  ┌─────────────────────┐              ┌─────────────────────┐
-  │  Write TS/JS/Rust/Go │              │                     │
-  │         ↓            │   yao build  │  Load .wasm only    │
-  │  Run & Debug with V8 │  ─────────→  │  Pure Go binary     │
-  │  + WASM dual runtime │              │  No V8 dependency    │
-  │         ↓            │              │  ~500KB per request  │
-  │  yao build → .wasm   │              │                     │
-  └─────────────────────┘              └─────────────────────┘
+hook.ts → esbuild → hook.js → Javy (Yao Plugin) → hook.wasm (1.5KB)
 ```
 
-### Script Lifecycle
+The **Yao Plugin** (1.2MB, loaded once at startup) is a custom QuickJS WASM module that pre-injects all Yao Runtime APIs (`Process`, `log`, `FS`, `Store`, `Http`, etc.) as global JavaScript objects. These APIs bridge to Go host functions via WASM imports. The user's TS/JS code requires **zero modifications**.
 
-**Yao (dual runtime):**
-```
-Yao Start
-├── Load V8 engine
-├── Load WASM runtime (wazero) + QuickJS Plugin (~340ms, once)
-├── Scan scripts/ directory
-│   ├── validate.ts              → V8
-│   ├── hook.ts + hook.wasm      → WASM (priority)
-│   ├── transform.wasm (Rust)    → WASM
-│   └── plugin.wasm (Go)         → WASM
-└── Ready to serve (V8 + WASM)
-```
-
-**Yao Runtime (WASM only):**
-```
-Yao Runtime Start
-├── Load WASM runtime (wazero) + QuickJS Plugin (~340ms, once)
-├── Scan scripts/ directory
-│   ├── validate.wasm (3KB)    → Compile: ~0.02ms → Cache
-│   ├── hook.wasm (3KB)        → Compile: ~0.02ms → Cache
-│   ├── transform.wasm (15KB)  → Compile: ~0.5ms  → Cache
-│   ├── plugin.wasm (50KB)     → Compile: ~2ms    → Cache
-│   └── ... (50 scripts)       → Total: ~10ms
-└── Ready to serve (WASM only, no V8)
-
-Per-request execution:
-  → Get cached CompiledModule → Instantiate → Execute → Dispose
-  → ~0.3ms per invocation, ~500KB memory, instantly reclaimed
-```
-
-### Data Serialization
-
-WASM linear memory is isolated from Go memory. Data exchange uses **MessagePack** (or JSON) encoding through the linear memory:
-
-```
-Go side                    WASM Linear Memory              WASM side
-────────                   ──────────────────              ─────────
-map[string]any   →  encode → [bytes at ptr]  →  decode →  native struct
-                    write to memory            read from memory
-
-return value     ←  decode ← [bytes at ptr]  ←  encode ←  native struct
-                    read from memory           write to memory
-```
+Rust, Go, and C compile to **native WASM** — no interpreter, no QuickJS, direct host function calls. Native WASM is also highly resistant to reverse engineering, making it suitable for proprietary algorithms and sensitive business logic.
 
 ## Proof of Concept Results
 
-We've validated the core compilation and execution chain:
+All tests conducted with verified, working code (`wasm-poc/`).
 
-| Step | Result | Performance |
-|------|--------|-------------|
-| TS → JS (esbuild) | ✅ Works | 1ms |
-| JS → WASM (Javy, dynamic mode) | ✅ Works | ~1.6s build time |
-| WASM load + execute (wazero) | ✅ Works | ~340ms to compile QuickJS plugin at startup (once), ~0.3ms per-request execute |
-| Go → WASM (wasip1) | ✅ Works | Compiles and runs correctly |
-| Mixed TS+Go WASM in same runtime | ✅ Works | Both execute in single wazero.Runtime |
-| Host function injection | ✅ Standard WASM imports | Works across all languages |
+### End-to-End Host Function Bridge (Verified)
 
-**Script sizes (dynamic linking mode — QuickJS engine shared, not bundled per-script):**
+TS code calling `Process()` → Go host receives call + args → Go returns result → TS receives structured data:
 
-| Script | Static Mode | Dynamic Mode |
-|--------|-------------|-------------|
-| Simple Hook | 1.2 MB | **3.3 KB** |
-| Complex Hook | 1.2 MB | **2.8 KB** |
-| QuickJS Plugin (shared, once) | — | 1.2 MB |
-| **50 scripts total** | **60 MB** | **~1.35 MB** |
+```
+[Host] log.info: === BeforeSave Start ===
+[Host] Process("fs.ReadFile", [/data/app/config.json])           ← new FS("/data/app").ReadFile()
+[Host] Process("models.user.Find", [100 map[]])                  ← Process() call
+[Host] Process("store.Get", [voucher:42])                        ← new Store("voucher:").Get()
+[Host] Process("fs.WriteFile", [/data/app/approval/42.json ...]) ← fs.WriteFile()
+[Host] Process("http.Post", [https://api.example.com/notify ...])← new Http(...).Post()
+[Host] Process("store.Set", [voucher:42 map[...]])               ← cache.Set()
+[Host] Process("fs.Exists", [/data/app/approval/42.json])        ← fs.Exists()
+[Host] Process("fs.ReadDir", [/data/app/approval])               ← fs.ReadDir()
+[Host] log.info: === BeforeSave Done ===
+{"id":42,"user_id":100,"amount":15000,"status":"pending_approval","reviewer":"张三"}
+```
+
+Verified capabilities:
+- `Process(name, ...args)` with structured data round-trip ✅
+- `new FS(basePath)` constructor + `.ReadFile()`, `.WriteFile()`, `.Exists()`, `.ReadDir()` ✅
+- `new Store(prefix)` constructor + `.Get()`, `.Set()` ✅
+- `new Http(baseURL)` constructor + `.Post()` ✅
+- `log.Info()`, `log.Warn()` ✅
+- JSON serialization/deserialization across WASM boundary ✅
+- Object property access on returned data (`user.name`) ✅
+- **Zero TS code modifications** ✅
+
+### Script Sizes
+
+| Script | Size |
+|--------|------|
+| Simple Hook (TS→WASM) | **1.5 KB** |
+| Complex Hook with FS/Store/Http (TS→WASM) | **3.2 KB** |
+| Yao Plugin (QuickJS engine, shared, loaded once) | **1.2 MB** |
+| **50 TS scripts total** | **~1.3 MB** |
+
+### Performance
+
+Measured with Go-side precise timing (not JS `Date.now()`):
+
+**Pure computation benchmark** (fibonacci recursive 35, 100K string concat, 50K JSON ops, 100K array sort):
+
+| Engine | Total Time |
+|--------|-----------|
+| V8 (Node.js) | **177ms** |
+| QuickJS (WASM via wazero) | **4,296ms** (~24x slower) |
+
+**Why this doesn't matter for Yao**: Real Yao Hooks spend 90%+ of execution time in `Process()` calls (database queries, network I/O — typically 10-500ms each). The JS logic itself is simple conditionals and field assignments. A Hook that takes 200ms with V8 would take ~202ms with QuickJS — the difference is imperceptible.
+
+**Startup & instantiation:**
+
+| Step | Time |
+|------|------|
+| Plugin instantiate (once at startup) | **220µs** |
+| Script compile (once per script) | **220µs** |
+| Per-request execute (instantiate + run + dispose) | **~2ms** |
+
+### Memory
+
+| Mode | Per-Request Memory | Reclamation |
+|------|-------------------|-------------|
+| V8 (Standard mode) | ~50-100MB (Isolate) | Lazy on macOS (`MADV_FREE`) |
+| WASM (wazero) | **~500KB** | **Immediate** |
 
 ## Proposed Directory Structure
 
@@ -241,13 +218,15 @@ gou/runtime/
 │   ├── objects/
 │   └── ...
 ├── wasm/                        ← New
-│   ├── runtime.go               ← wazero runtime lifecycle (Start/Stop)
-│   ├── script.go                ← WasmScript: Load, Compile, Exec
-│   ├── process.go               ← process.Register("scripts", ...) for WASM
+│   ├── runtime.go               ← wazero runtime lifecycle
+│   ├── script.go                ← Load, Compile, Exec WASM scripts
+│   ├── process.go               ← process.Register for WASM scripts
+│   ├── plugin/                  ← Yao Plugin (Rust/QuickJS)
+│   │   ├── src/lib.rs           ← Plugin source (injects Process, FS, Store, Http, log)
+│   │   └── Cargo.toml
 │   ├── host/                    ← Host function implementations
 │   │   ├── process.go           ← yao.process host function
-│   │   ├── log.go               ← yao.log host function
-│   │   └── ...                  ← Additional host functions as needed
+│   │   └── log.go               ← yao.log host function
 │   └── bridge/                  ← Go ↔ WASM memory serialization
 │       ├── encode.go
 │       └── decode.go
@@ -258,13 +237,12 @@ gou/runtime/
 
 Status: **Planned**
 
-| Release | Phase | Scope |
-|---------|-------|-------|
-| **v1.1-alpha** | Core WASM runtime + `process` host function | Rust/Go/TS WASM hooks can call any Yao Process |
-| **v1.1-alpha** | Full host API (log, store, query, fs, http) | Complete Yao Runtime API available in WASM |
-| **v1.1-alpha** | `yao build` command: TS → JS → WASM pipeline | Existing TS apps compile to WASM with one command |
-| **v1.2-beta** | **Yao Runtime** standalone binary (WASM-only, no V8) | Production deployment artifact, no V8/C++ dependency |
-| **v1.3-release** | Language SDKs (Rust crate, Go package, etc.) | Ergonomic developer experience per language |
+| Release | Scope |
+|---------|-------|
+| **v1.1-alpha** | Core WASM runtime + `process` host function + full Yao API injection |
+| **v1.1-alpha** | `yao build` command: TS → JS → WASM pipeline |
+| **v1.2-beta** | **Yao Runtime** standalone binary (WASM-only, no V8) |
+| **v1.3-release** | Language SDKs (Rust crate, Go package, etc.) |
 
 *Versions and timeline are subject to adjustment based on development progress.*
 
@@ -273,4 +251,5 @@ Status: **Planned**
 - [WebAssembly Specification](https://webassembly.org/)
 - [wazero — Zero-dependency Go WebAssembly Runtime](https://wazero.io/)
 - [Javy — JavaScript to WebAssembly Toolchain](https://github.com/bytecodealliance/javy)
+- [QuickJS-NG — QuickJS, the Next Generation](https://github.com/quickjs-ng/quickjs)
 - [WASI — WebAssembly System Interface](https://wasi.dev/)
