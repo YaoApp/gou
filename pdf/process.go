@@ -64,12 +64,12 @@ func getPDF() *PDF {
 
 // PDFToolStatus represents the availability status of a PDF tool.
 type PDFToolStatus struct {
-	Name      string `json:"name"`               // Tool name
-	Available bool   `json:"available"`           // Whether the tool is available
-	Path      string `json:"path,omitempty"`      // Resolved executable path
-	Version   string `json:"version,omitempty"`   // Version string
-	EnvVar    string `json:"env_var,omitempty"`   // Environment variable name for custom path
-	Error     string `json:"error,omitempty"`     // Error message if not available
+	Name      string `json:"name"`              // Tool name
+	Available bool   `json:"available"`         // Whether the tool is available
+	Path      string `json:"path,omitempty"`    // Resolved executable path
+	Version   string `json:"version,omitempty"` // Version string
+	EnvVar    string `json:"env_var,omitempty"` // Environment variable name for custom path
+	Error     string `json:"error,omitempty"`   // Error message if not available
 }
 
 // Inspect checks the availability and version of PDF conversion tools.

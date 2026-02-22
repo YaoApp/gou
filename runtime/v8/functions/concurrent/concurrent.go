@@ -1,8 +1,10 @@
 package concurrent
 
 import (
+	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
@@ -13,6 +15,7 @@ import (
 type Task struct {
 	Process string        // Process name (e.g. "scripts.runtime.basic.Hello")
 	Args    []interface{} // Process arguments
+	Timeout int           // Timeout in seconds (0 = use default 30s)
 }
 
 // TaskResult holds the outcome of a single concurrent task.
@@ -69,7 +72,14 @@ func ParseTasks(info *v8go.FunctionCallbackInfo) ([]Task, *bridge.Share, error) 
 			}
 		}
 
-		tasks = append(tasks, Task{Process: procName, Args: args})
+		var timeout int
+		if rawTimeout, exists := m["timeout"]; exists {
+			if t, ok := rawTimeout.(float64); ok && t > 0 {
+				timeout = int(t)
+			}
+		}
+
+		tasks = append(tasks, Task{Process: procName, Args: args, Timeout: timeout})
 	}
 
 	return tasks, share, nil
@@ -86,6 +96,12 @@ func executeTask(t Task, share *bridge.Share) TaskResult {
 	proc = proc.WithGlobal(share.Global).WithSID(share.Sid)
 	if share.Authorized != nil {
 		proc = proc.WithAuthorized(share.Authorized)
+	}
+
+	if t.Timeout > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(t.Timeout)*time.Second)
+		defer cancel()
+		proc = proc.WithContext(ctx)
 	}
 
 	err = proc.Execute()
