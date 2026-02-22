@@ -174,12 +174,12 @@ type FFmpeg interface {
 // ToolStatus represents the availability status of an external tool.
 // Used by Inspect() to report tool detection results.
 type ToolStatus struct {
-	Name      string `json:"name"`               // Tool name (e.g. "ffmpeg", "ffprobe")
-	Available bool   `json:"available"`           // Whether the tool is available
-	Path      string `json:"path,omitempty"`      // Resolved executable path
-	Version   string `json:"version,omitempty"`   // Version string (first line of -version output)
-	EnvVar    string `json:"env_var,omitempty"`   // Environment variable name for custom path
-	Error     string `json:"error,omitempty"`     // Error message if not available
+	Name      string `json:"name"`              // Tool name (e.g. "ffmpeg", "ffprobe")
+	Available bool   `json:"available"`         // Whether the tool is available
+	Path      string `json:"path,omitempty"`    // Resolved executable path
+	Version   string `json:"version,omitempty"` // Version string (first line of -version output)
+	EnvVar    string `json:"env_var,omitempty"` // Environment variable name for custom path
+	Error     string `json:"error,omitempty"`   // Error message if not available
 }
 
 // SilencePeriod represents a detected silence period in audio
