@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/fatih/color"
+	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/runtime/v8/objects/console"
 	"github.com/yaoapp/kun/log"
@@ -130,13 +131,14 @@ func (context *Context) CallAnonymousWith(ctx context.Context, source string, ar
 
 	res, err := context.CallWith(ctx, name, args...)
 	if err != nil {
-		color.White("Source:\n")
+		w := helper.GetDevWriter()
+		color.New(color.FgWhite).Fprintln(w, "Source:")
 		lines := strings.Split(source, "\n")
 		total := fmt.Sprintf("%d", len(lines))
 		for i, line := range lines {
 			num := fmt.Sprintf("%d", i+1)
 			num = strings.Repeat(" ", len(total)-len(num)) + num
-			fmt.Printf("%s: %s\n", num, line)
+			fmt.Fprintf(w, "%s: %s\n", num, line)
 		}
 		return nil, err
 	}

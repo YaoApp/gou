@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
@@ -59,6 +60,10 @@ func JsValues(ctx *v8go.Context, goValues []interface{}) ([]*v8go.Value, error) 
 // JsError return javascript error object
 func JsError(ctx *v8go.Context, err interface{}) *v8go.Value {
 
+	if ctx.Isolate().IsExecutionTerminating() {
+		return nil
+	}
+
 	var message string
 	switch v := err.(type) {
 	case string:
@@ -94,6 +99,9 @@ func JsError(ctx *v8go.Context, err interface{}) *v8go.Value {
 
 // JsException throw javascript Exception
 func JsException(ctx *v8go.Context, message interface{}) *v8go.Value {
+	if ctx.Isolate().IsExecutionTerminating() {
+		return nil
+	}
 	return ctx.Isolate().ThrowException(JsError(ctx, message))
 }
 
@@ -434,7 +442,7 @@ func goValueParse(value *v8go.Value, v interface{}) (interface{}, error) {
 	ptr := &v
 	err = jsoniter.Unmarshal(data, ptr)
 	if err != nil {
-		fmt.Printf("---\n%s\n---\n", data)
+		fmt.Fprintf(os.Stderr, "---\n%s\n---\n", data)
 		return nil, err
 	}
 
