@@ -9,52 +9,60 @@ import (
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 )
 
+var (
+	colorRed     = color.New(color.FgRed)
+	colorCyan    = color.New(color.FgCyan)
+	colorGreen   = color.New(color.FgGreen)
+	colorMagenta = color.New(color.FgMagenta)
+)
+
 // Dump The Dump function dumps the given variables:
 func Dump(values ...interface{}) {
 
+	w := GetDevWriter()
 	f := NewFormatter()
 	f.Indent = 4
 	f.RawStrings = true
 	for _, v := range values {
 
 		if err, ok := v.(error); ok {
-			color.Red(err.Error())
+			colorRed.Fprintln(w, err.Error())
 			continue
 		}
 
 		switch value := v.(type) {
 
 		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, bool:
-			color.Cyan(fmt.Sprintf("%v", v))
+			colorCyan.Fprintln(w, fmt.Sprintf("%v", v))
 			continue
 
 		case string, []byte:
-			color.Green(fmt.Sprintf("%s", v))
+			colorGreen.Fprintln(w, fmt.Sprintf("%s", v))
 			continue
 
 		case bridge.UndefinedT:
-			color.Magenta(value.String())
+			colorMagenta.Fprintln(w, value.String())
 			continue
 
 		case bridge.FunctionT:
-			color.Cyan(value.String())
+			colorCyan.Fprintln(w, value.String())
 			continue
 
 		case bridge.PromiseT:
-			color.Cyan("Promise { " + value.String() + " }")
+			colorCyan.Fprintln(w, "Promise { "+value.String()+" }")
 			continue
 
 		default:
 			var res interface{}
 			txt, err := jsoniter.Marshal(v)
 			if err != nil {
-				color.Red(err.Error())
+				colorRed.Fprintln(w, err.Error())
 				continue
 			}
 
 			jsoniter.Unmarshal(txt, &res)
 			bytes, _ := f.Marshal(res)
-			fmt.Println(string(bytes))
+			fmt.Fprintln(w, string(bytes))
 		}
 	}
 }
@@ -110,17 +118,17 @@ func ToString(values ...interface{}) string {
 // DumpError dumps the given variables in red color
 func DumpError(values ...interface{}) {
 	str := ToString(values...)
-	color.Red(str)
+	colorRed.Fprintln(GetDevWriter(), str)
 }
 
 // DumpWarn dumps the given variables in yellow color
 func DumpWarn(values ...interface{}) {
 	str := ToString(values...)
-	color.Yellow(str)
+	color.New(color.FgYellow).Fprintln(GetDevWriter(), str)
 }
 
 // DumpInfo dumps the given variables in blue color
 func DumpInfo(values ...interface{}) {
 	str := ToString(values...)
-	color.Blue(str)
+	color.New(color.FgBlue).Fprintln(GetDevWriter(), str)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/go-sourcemap/sourcemap"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/kun/exception"
 	"rogchap.com/v8go"
 )
@@ -71,16 +72,24 @@ func clearSourceMaps() {
 func PrintException(method string, args []interface{}, jserr *v8go.JSError, rootMapping interface{}) {
 
 	if runtimeOption.Debug {
-		ex := exception.New(jserr.Message, 500)
-		color.Red("\n----------------------------------")
-		color.Red("Script Exception: %s", fmt.Sprintf("%d %s", ex.Code, ex.Message))
-		color.Red("----------------------------------")
+		var buf strings.Builder
+		red := color.New(color.FgRed)
+		yellow := color.New(color.FgYellow)
+		white := color.New(color.FgWhite)
 
-		color.Red("%s\n", StackTrace(jserr, rootMapping))
-		fmt.Println(color.YellowString("\nMethod:"), color.WhiteString("%s", method))
-		color.Yellow("Args:")
+		ex := exception.New(jserr.Message, 500)
+		red.Fprintln(&buf, "\n----------------------------------")
+		red.Fprintf(&buf, "Script Exception: %d %s\n", ex.Code, ex.Message)
+		red.Fprintln(&buf, "----------------------------------")
+
+		red.Fprintf(&buf, "%s\n", StackTrace(jserr, rootMapping))
+		yellow.Fprint(&buf, "\nMethod: ")
+		white.Fprintf(&buf, "%s\n", method)
+		yellow.Fprintln(&buf, "Args:")
 		raw, _ := jsoniter.MarshalToString(args)
-		color.White("%s\n", raw)
+		white.Fprintf(&buf, "%s\n", raw)
+
+		helper.GetDevWriter().Write([]byte(buf.String()))
 	}
 }
 
