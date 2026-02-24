@@ -5,6 +5,7 @@ import (
 
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/gou/llm"
 	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/xun/dbal/query"
 	"github.com/yaoapp/xun/dbal/schema"
@@ -39,18 +40,9 @@ type Options struct {
 	Temperature *float64 `json:"temperature,omitempty"` // Temperature (use pointer to distinguish 0 from unset)
 }
 
-// Capabilities defines the capabilities of an Anthropic model
-type Capabilities struct {
-	Vision                interface{} `json:"vision,omitempty" yaml:"vision,omitempty"`
-	Audio                 bool        `json:"audio,omitempty" yaml:"audio,omitempty"`
-	STT                   bool        `json:"stt,omitempty" yaml:"stt,omitempty"` // Speech-to-Text / audio transcription model (e.g. Whisper)
-	ToolCalls             bool        `json:"tool_calls,omitempty" yaml:"tool_calls,omitempty"`
-	Reasoning             bool        `json:"reasoning,omitempty" yaml:"reasoning,omitempty"`
-	Streaming             bool        `json:"streaming,omitempty" yaml:"streaming,omitempty"`
-	JSON                  bool        `json:"json,omitempty" yaml:"json,omitempty"`
-	Multimodal            bool        `json:"multimodal,omitempty" yaml:"multimodal,omitempty"`
-	TemperatureAdjustable bool        `json:"temperature_adjustable,omitempty" yaml:"temperature_adjustable,omitempty"`
-}
+// Capabilities is an alias for llm.Capabilities for backward compatibility.
+// New code should use llm.Capabilities directly.
+type Capabilities = llm.Capabilities
 
 // Register the connector from dsl
 func (c *Connector) Register(file string, id string, dsl []byte) error {

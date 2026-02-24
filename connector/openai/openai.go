@@ -5,6 +5,7 @@ import (
 
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/gou/llm"
 	"github.com/yaoapp/gou/types"
 	"github.com/yaoapp/xun/dbal/query"
 	"github.com/yaoapp/xun/dbal/schema"
@@ -39,19 +40,9 @@ type Options struct {
 	Temperature *float64 `json:"temperature,omitempty"` // Temperature for response (use pointer to distinguish 0 from unset)
 }
 
-// Capabilities defines the capabilities of a language model
-// This configuration is loaded from agent/models.yml
-type Capabilities struct {
-	Vision                interface{} `json:"vision,omitempty" yaml:"vision,omitempty"`                                 // Supports vision/image input: bool or VisionFormat string ("openai", "claude"/"base64", "default")
-	Audio                 bool        `json:"audio,omitempty" yaml:"audio,omitempty"`                                   // Supports audio input/output (multimodal audio understanding)
-	STT                   bool        `json:"stt,omitempty" yaml:"stt,omitempty"`                                       // Speech-to-Text / audio transcription model (e.g. Whisper)
-	ToolCalls             bool        `json:"tool_calls,omitempty" yaml:"tool_calls,omitempty"`                         // Supports tool/function calling
-	Reasoning             bool        `json:"reasoning,omitempty" yaml:"reasoning,omitempty"`                           // Supports reasoning/thinking mode (o1, DeepSeek R1)
-	Streaming             bool        `json:"streaming,omitempty" yaml:"streaming,omitempty"`                           // Supports streaming responses
-	JSON                  bool        `json:"json,omitempty" yaml:"json,omitempty"`                                     // Supports JSON mode
-	Multimodal            bool        `json:"multimodal,omitempty" yaml:"multimodal,omitempty"`                         // Supports multimodal input
-	TemperatureAdjustable bool        `json:"temperature_adjustable,omitempty" yaml:"temperature_adjustable,omitempty"` // Supports temperature adjustment (reasoning models typically don't)
-}
+// Capabilities is an alias for llm.Capabilities for backward compatibility.
+// New code should use llm.Capabilities directly.
+type Capabilities = llm.Capabilities
 
 // Note: HTTP proxy (HTTPS_PROXY, HTTP_PROXY environment variables) is handled by http.GetTransport automatically
 
