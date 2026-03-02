@@ -36,13 +36,15 @@ func (c *Client) Info() *types.ClientInfo {
 		return &types.ClientInfo{}
 	}
 	return &types.ClientInfo{
-		ID:          c.DSL.ID,
-		Name:        c.DSL.Name,
-		Version:     c.DSL.Version,
-		Type:        c.DSL.Type,
-		Transport:   c.DSL.Transport,
-		Label:       c.DSL.Label,
-		Description: c.DSL.Description,
+		ID:           c.DSL.ID,
+		Name:         c.DSL.Name,
+		Version:      c.DSL.Version,
+		Type:         c.DSL.Type,
+		Transport:    c.DSL.Transport,
+		Label:        c.DSL.Label,
+		Description:  c.DSL.Description,
+		Tags:         c.DSL.Tags,
+		Dependencies: c.DSL.Dependencies,
 	}
 }
 

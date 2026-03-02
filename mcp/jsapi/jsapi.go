@@ -66,6 +66,9 @@ func (m *MCP) NewObject(v8ctx *v8go.Context) (*v8go.Value, error) {
 	// Set primitive fields
 	jsObject.Set("id", m.ClientID)
 
+	// Set methods - Client info
+	jsObject.Set("Info", m.infoMethod(v8ctx.Isolate()))
+
 	// Set release methods
 	// Release() - Public method for manual resource cleanup (recommended)
 	// __release() - Automatic cleanup when GC collects the object (fallback)
@@ -494,6 +497,22 @@ func (m *MCP) getSampleMethod(iso *v8go.Isolate) *v8go.FunctionTemplate {
 		jsResp, err := bridge.JsValue(v8ctx, resp)
 		if err != nil {
 			return bridge.JsException(v8ctx, "failed to convert response: "+err.Error())
+		}
+
+		return jsResp
+	})
+}
+
+// infoMethod implements client.Info()
+// Usage: const info = client.Info()
+func (m *MCP) infoMethod(iso *v8go.Isolate) *v8go.FunctionTemplate {
+	return v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		v8ctx := info.Context()
+
+		clientInfo := m.Client.Info()
+		jsResp, err := bridge.JsValue(v8ctx, clientInfo)
+		if err != nil {
+			return bridge.JsException(v8ctx, "failed to convert client info: "+err.Error())
 		}
 
 		return jsResp
