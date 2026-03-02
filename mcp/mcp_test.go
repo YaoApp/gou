@@ -343,6 +343,104 @@ func TestDSLValidation(t *testing.T) {
 	})
 }
 
+func TestTagsAndDependencies(t *testing.T) {
+	t.Run("Parse tags and dependencies from DSL source", func(t *testing.T) {
+		dsl := `{
+			"transport": "stdio",
+			"name": "test-meta",
+			"label": "Test Meta Client",
+			"description": "Client with tags and dependencies",
+			"version": "1.2.0",
+			"command": "echo",
+			"tags": ["ai", "tools", "testing"],
+			"dependencies": {
+				"base-tools": ">=1.0.0",
+				"auth-service": "^2.0.0"
+			}
+		}`
+
+		client, err := LoadClientSource(dsl, "test-meta")
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+
+		info := client.Info()
+		assert.Equal(t, "test-meta", info.ID)
+		assert.Equal(t, "test-meta", info.Name)
+		assert.Equal(t, "1.2.0", info.Version)
+		assert.Equal(t, "Test Meta Client", info.Label)
+		assert.Equal(t, "Client with tags and dependencies", info.Description)
+
+		assert.Equal(t, []string{"ai", "tools", "testing"}, info.Tags)
+		assert.Equal(t, map[string]string{
+			"base-tools":   ">=1.0.0",
+			"auth-service": "^2.0.0",
+		}, info.Dependencies)
+
+		UnloadClient("test-meta")
+	})
+
+	t.Run("Parse DSL without tags and dependencies", func(t *testing.T) {
+		dsl := `{
+			"transport": "stdio",
+			"name": "test-no-meta",
+			"command": "echo"
+		}`
+
+		client, err := LoadClientSource(dsl, "test-no-meta")
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
+
+		info := client.Info()
+		assert.Empty(t, info.Tags)
+		assert.Empty(t, info.Dependencies)
+
+		UnloadClient("test-no-meta")
+	})
+
+	t.Run("Load tags and dependencies from file", func(t *testing.T) {
+		if application.App == nil {
+			t.Skip("Application not initialized, skipping file-based tests")
+		}
+
+		client, err := LoadClient("mcps/dsl.mcp.yao", "dsl")
+		if err != nil {
+			t.Skipf("Could not load test file: %v", err)
+		}
+		assert.NotNil(t, client)
+
+		info := client.Info()
+		assert.Equal(t, "DSL Operations MCP Server", info.Label)
+		assert.Equal(t, "1.0.0", info.Version)
+		assert.Equal(t, []string{"dsl", "validation", "tools"}, info.Tags)
+		assert.Equal(t, map[string]string{"echo": ">=1.0.0"}, info.Dependencies)
+
+		UnloadClient("dsl")
+	})
+
+	t.Run("Load customer with multiple dependencies from file", func(t *testing.T) {
+		if application.App == nil {
+			t.Skip("Application not initialized, skipping file-based tests")
+		}
+
+		client, err := LoadClient("mcps/customer.mcp.yao", "customer")
+		if err != nil {
+			t.Skipf("Could not load test file: %v", err)
+		}
+		assert.NotNil(t, client)
+
+		info := client.Info()
+		assert.Equal(t, "Customer Management", info.Label)
+		assert.Equal(t, "2.0.0", info.Version)
+		assert.Equal(t, []string{"customer", "crm", "resources"}, info.Tags)
+		assert.Equal(t, map[string]string{
+			"echo": ">=1.0.0",
+			"dsl":  "^1.0.0",
+		}, info.Dependencies)
+
+		UnloadClient("customer")
+	})
+}
+
 func TestConcurrentLoad(t *testing.T) {
 	const numGoroutines = 20
 	const numClients = 5
@@ -565,6 +663,7 @@ func TestCleanup(t *testing.T) {
 		"test-select", "test-exists", "test-get", "test-env",
 		"test-env-map", "test-env-args", "test-no-command",
 		"test-no-url", "test-auto-fill", "stdio-file",
+		"test-meta", "test-no-meta",
 	}
 
 	for _, clientID := range testClients {

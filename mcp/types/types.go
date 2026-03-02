@@ -57,6 +57,8 @@ type ClientDSL struct {
 
 	types.MetaInfo
 
+	Dependencies map[string]string `json:"dependencies,omitempty"` // Dependencies on other MCP Clients (name -> version constraint)
+
 	// Client capabilities configuration
 	EnableSampling    bool `json:"enable_sampling,omitempty"`    // Enable sampling capability
 	EnableRoots       bool `json:"enable_roots,omitempty"`       // Enable roots capability
@@ -126,13 +128,15 @@ type InitializeResponse struct {
 
 // Client and Server info
 type ClientInfo struct {
-	ID          string        `json:"id,omitempty"`          // Client ID
-	Name        string        `json:"name"`                  // Client name
-	Version     string        `json:"version,omitempty"`     // Client version
-	Type        string        `json:"type,omitempty"`        // Client type (standard, agent, system)
-	Transport   TransportType `json:"transport,omitempty"`   // Transport type
-	Label       string        `json:"label,omitempty"`       // Display label
-	Description string        `json:"description,omitempty"` // Description
+	ID           string            `json:"id,omitempty"`           // Client ID
+	Name         string            `json:"name"`                   // Client name
+	Version      string            `json:"version,omitempty"`      // Client version
+	Type         string            `json:"type,omitempty"`         // Client type (standard, agent, system)
+	Transport    TransportType     `json:"transport,omitempty"`    // Transport type
+	Label        string            `json:"label,omitempty"`        // Display label
+	Description  string            `json:"description,omitempty"`  // Description
+	Tags         []string          `json:"tags,omitempty"`         // Tags for search and filtering
+	Dependencies map[string]string `json:"dependencies,omitempty"` // Dependencies (name -> version constraint)
 }
 
 type ServerInfo struct {
