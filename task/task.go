@@ -13,6 +13,7 @@ import (
 
 // Tasks the registered tasks
 var Tasks = map[string]*Task{}
+var tasksMu sync.RWMutex
 
 // New create new task
 func New(handlers *Handlers, option Option) *Task {
@@ -111,37 +112,48 @@ func (t *Task) Add(args ...interface{}) (int, error) {
 // Progress set the progress of the job
 func Progress(name string, id, curr, total int, message string) error {
 
+	tasksMu.RLock()
 	t, has := Tasks[name]
+	tasksMu.RUnlock()
 	if !has {
 		return fmt.Errorf("task %s does not exist", name)
 	}
 
+	t.mutex.Lock()
 	job, has := t.jobs[id]
+	t.mutex.Unlock()
 	if !has {
 		return fmt.Errorf("job %d does not exist or was completed", id)
 	}
 
+	job.mu.Lock()
 	job.curr = curr
 	job.total = total
 	job.message = message
+	job.mu.Unlock()
 	t.progress(job, curr, total, message)
 	return nil
 }
 
 // Get get job by job id
 func (t *Task) Get(id int) (map[string]interface{}, error) {
+	t.mutex.Lock()
 	job, has := t.jobs[id]
+	t.mutex.Unlock()
 	if !has {
 		return nil, fmt.Errorf("job %d does not exist or was completed", id)
 	}
-	return map[string]interface{}{
+	job.mu.Lock()
+	result := map[string]interface{}{
 		"id":       job.id,
 		"status":   status[job.status],
 		"current":  job.curr,
 		"total":    job.total,
 		"message":  job.message,
 		"response": job.response,
-	}, nil
+	}
+	job.mu.Unlock()
+	return result, nil
 }
 
 // createWorker create a new worker
@@ -168,7 +180,11 @@ func (t *Task) startWorker(w *Worker) {
 func (t *Task) start(job *Job) {
 
 	defer job.cancel()
-	defer delete(t.jobs, job.id)
+	defer func() {
+		t.mutex.Lock()
+		delete(t.jobs, job.id)
+		t.mutex.Unlock()
+	}()
 
 	ch := make(chan interface{}, 1) // the result channel
 	chError := make(chan error, 1)  // the error channel
@@ -230,7 +246,9 @@ func (t *Task) nextID() int {
 //  1. The goroutine will be running until the handler completed, it should be killed.
 //  2. Should retry if the handler is error or panic
 func (t *Task) exec(job *Job) (interface{}, error) {
+	job.mu.Lock()
 	job.status = RUNNING
+	job.mu.Unlock()
 	if t.handlers.Exec == nil {
 		err := fmt.Errorf("[TASK] %s Job:%v, is not set the execute handler", t.name, job.id)
 		return nil, err
@@ -239,8 +257,10 @@ func (t *Task) exec(job *Job) (interface{}, error) {
 }
 
 func (t *Task) failure(job *Job, err error) {
+	job.mu.Lock()
 	job.status = FAILURE
 	job.response = err.Error()
+	job.mu.Unlock()
 	if t.handlers.Error == nil {
 		return
 	}
@@ -248,8 +268,10 @@ func (t *Task) failure(job *Job, err error) {
 }
 
 func (t *Task) success(job *Job, response interface{}) {
+	job.mu.Lock()
 	job.status = SUCCESS
 	job.response = response
+	job.mu.Unlock()
 	if t.handlers.Success == nil {
 		return
 	}
@@ -257,7 +279,9 @@ func (t *Task) success(job *Job, response interface{}) {
 }
 
 func (t *Task) add(job *Job) {
+	job.mu.Lock()
 	job.status = WAITING
+	job.mu.Unlock()
 	if t.handlers.Add == nil {
 		return
 	}

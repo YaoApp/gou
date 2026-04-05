@@ -75,6 +75,7 @@ type Job struct {
 	message  string
 	response interface{}
 	args     []interface{}
+	mu       sync.Mutex
 }
 
 // Handlers the event handlers

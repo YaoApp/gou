@@ -63,14 +63,18 @@ func Load(file string, name string) (*Task, error) {
 
 	handlers := taskEventHandlers(name, o)
 	t := New(handlers, option)
+	tasksMu.Lock()
 	Tasks[name] = t
+	tasksMu.Unlock()
 
 	return t, nil
 }
 
 // Select select task by name
 func Select(name string) *Task {
+	tasksMu.RLock()
 	t, has := Tasks[name]
+	tasksMu.RUnlock()
 	if !has {
 		exception.New("Task:%s does not load", 500, name).Throw()
 	}
