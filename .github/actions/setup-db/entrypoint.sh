@@ -9,12 +9,18 @@ startMySQL() {
         PORT=$INPUT_PORT
     fi
 
+    CONTAINER_NAME="mysql_${INPUT_DB}_${VERSION}"
+
     echo "Start MySQL $VERSION"
+    docker_run="$docker_run --name $CONTAINER_NAME"
     docker_run="$docker_run -e MYSQL_ROOT_PASSWORD=$INPUT_PASSWORD -e MYSQL_USER=$INPUT_USER -e MYSQL_PASSWORD=$INPUT_PASSWORD"
     docker_run="$docker_run -e MYSQL_DATABASE=$INPUT_DB"
     docker_run="$docker_run -d -p $PORT:3306 mysql:$VERSION --port=3306"
     docker_run="$docker_run --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci"
     sh -c "$docker_run"
+
+    echo "Waiting for MySQL to be ready..."
+    timeout 90s sh -c "until docker exec $CONTAINER_NAME mysqladmin ping -h 127.0.0.1 --silent ; do sleep 5 ; done"
 
     DB_DSN="root:$INPUT_PASSWORD@tcp(127.0.0.1:$PORT)/$INPUT_DB?charset=utf8mb4&parseTime=True&loc=Local"
     echo "DSN=$DB_DSN" >> $GITHUB_ENV
@@ -29,12 +35,19 @@ startPostgres() {
         PORT=$INPUT_PORT
     fi
 
+    CONTAINER_NAME="postgres_${INPUT_DB}_${VERSION}"
+
     echo "Start Postgres $VERSION"
     docker_run="docker run"
+    docker_run="$docker_run --name $CONTAINER_NAME"
     docker_run="$docker_run -e POSTGRES_DB=$INPUT_DB"
     docker_run="$docker_run -e POSTGRES_USER=$INPUT_USER"
     docker_run="$docker_run -e POSTGRES_PASSWORD=$INPUT_PASSWORD"
     docker_run="$docker_run -d -p $PORT:5432 postgres:$VERSION"
+    sh -c "$docker_run"
+
+    echo "Waiting for Postgres to be ready..."
+    timeout 90s sh -c "until docker exec $CONTAINER_NAME pg_isready ; do sleep 5 ; done"
 
     DB_DSN="postgres://$INPUT_USER:$INPUT_PASSWORD@127.0.0.1:$PORT/$INPUT_DB?sslmode=disable"
     echo "DSN=$DB_DSN" >> $GITHUB_ENV
