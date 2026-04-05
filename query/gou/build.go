@@ -16,6 +16,12 @@ func (gou *Query) Build() {
 		exception.New("查询条件错误", 400).Ctx(errs).Throw()
 	}
 
+	if gou.driver == "" && gou.Query != nil {
+		if driver, err := gou.Query.Driver(); err == nil {
+			gou.driver = driver
+		}
+	}
+
 	gou.buildSelect()
 	gou.buildFrom()
 	gou.buildWheres()
@@ -128,22 +134,43 @@ func (gou *Query) buildGroups() *Query {
 		field, joins, updates := gou.sqlGroup(group, selects)
 		fields = append(fields, field)
 		jsonTables = append(jsonTables, joins...)
-		// 更新已选字段
 		for i, exp := range updates {
 			gou.Select[i] = exp
 		}
 	}
 
-	// Joins
+	// Joins (PG uses CROSS JOIN LATERAL instead of JOIN JSON_TABLE)
 	for _, table := range jsonTables {
-		gou.Query.JoinRaw(fmt.Sprintf("JOIN %s", table))
+		if gou.driver == "postgres" {
+			gou.Query.JoinRaw(fmt.Sprintf("CROSS JOIN %s", table))
+		} else {
+			gou.Query.JoinRaw(fmt.Sprintf("JOIN %s", table))
+		}
 	}
 
 	// Update Select
 	gou.buildSelect()
 
-	// Groupby
-	gou.Query.GroupByRaw(strings.Join(fields, ", "))
+	// Groupby: PG uses GROUP BY ROLLUP(...) instead of per-field WITH ROLLUP
+	if gou.driver == "postgres" {
+		regular := []string{}
+		rollupFields := []string{}
+		for _, f := range fields {
+			if strings.HasSuffix(f, " __ROLLUP__") {
+				rollupFields = append(rollupFields, strings.TrimSuffix(f, " __ROLLUP__"))
+			} else {
+				regular = append(regular, f)
+			}
+		}
+		if len(rollupFields) > 0 {
+			parts := append(regular, fmt.Sprintf("ROLLUP(%s)", strings.Join(rollupFields, ", ")))
+			gou.Query.GroupByRaw(strings.Join(parts, ", "))
+		} else {
+			gou.Query.GroupByRaw(strings.Join(fields, ", "))
+		}
+	} else {
+		gou.Query.GroupByRaw(strings.Join(fields, ", "))
+	}
 
 	return gou
 }

@@ -8,6 +8,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// escapeSQLString escapes single quotes for safe embedding in SQL string literals.
+func escapeSQLString(s string) string {
+	return strings.ReplaceAll(s, "'", "''")
+}
+
 // Encryptors 已加载加密器
 var Encryptors = map[string]*Encryptor{}
 
@@ -65,16 +70,16 @@ func (aes *EncryptorAES) Set(crypt *Encryptor) {
 
 // Encode AES Encode
 func (aes EncryptorAES) Encode(value string) (string, error) {
-	return fmt.Sprintf("HEX(AES_ENCRYPT('%s', '%s'))", value, aes.Key), nil
+	return fmt.Sprintf("HEX(AES_ENCRYPT('%s', '%s'))", escapeSQLString(value), escapeSQLString(aes.Key)), nil
 }
 
 // Decode AES Decode
 func (aes EncryptorAES) Decode(field string) (string, error) {
 	if strings.Contains(field, ".") {
 		namer := strings.Split(field, ".")
-		return fmt.Sprintf("AES_DECRYPT(UNHEX(`%s`.`%s`), '%s')", namer[0], namer[1], aes.Key), nil
+		return fmt.Sprintf("AES_DECRYPT(UNHEX(`%s`.`%s`), '%s')", namer[0], namer[1], escapeSQLString(aes.Key)), nil
 	}
-	return fmt.Sprintf("AES_DECRYPT(UNHEX(`%s`), '%s'", field, aes.Key), nil
+	return fmt.Sprintf("AES_DECRYPT(UNHEX(`%s`), '%s')", field, escapeSQLString(aes.Key)), nil
 }
 
 // Validate AES Decode
@@ -113,4 +118,35 @@ func (pwd EncryptorPassword) Validate(hash string, value string) bool {
 // Decode PASSWORD Decode
 func (pwd EncryptorPassword) Decode(value string) (string, error) {
 	return value, nil
+}
+
+// EncryptorPGCrypto uses PostgreSQL pgcrypto extension for AES-equivalent encryption
+type EncryptorPGCrypto struct{ *Encryptor }
+
+// Set PGCrypto Encryptor
+func (pg *EncryptorPGCrypto) Set(crypt *Encryptor) {
+	pg.Encryptor = crypt
+}
+
+// Encode PGCrypto Encode — returns SQL expression using pgp_sym_encrypt + hex encoding
+func (pg EncryptorPGCrypto) Encode(value string) (string, error) {
+	return fmt.Sprintf("encode(pgp_sym_encrypt('%s', '%s'), 'hex')", escapeSQLString(value), escapeSQLString(pg.Key)), nil
+}
+
+// Decode PGCrypto Decode — returns SQL expression using pgp_sym_decrypt + hex decoding
+func (pg EncryptorPGCrypto) Decode(field string) (string, error) {
+	if strings.Contains(field, ".") {
+		namer := strings.Split(field, ".")
+		return fmt.Sprintf(`pgp_sym_decrypt(decode("%s"."%s", 'hex'), '%s')`, namer[0], namer[1], escapeSQLString(pg.Key)), nil
+	}
+	return fmt.Sprintf(`pgp_sym_decrypt(decode("%s", 'hex'), '%s')`, field, escapeSQLString(pg.Key)), nil
+}
+
+// Validate PGCrypto Validate
+func (pg EncryptorPGCrypto) Validate(hash string, field string) bool {
+	plain, err := pg.Decode(hash)
+	if err != nil {
+		return false
+	}
+	return plain == field
 }

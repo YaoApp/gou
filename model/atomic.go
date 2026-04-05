@@ -119,7 +119,7 @@ func (mod *Model) Create(row maps.MapStrAny) (int, error) {
 
 	id, err := capsule.Query().
 		Table(mod.MetaData.Table.Name).
-		InsertGetID(row)
+		InsertGetID(row, mod.PrimaryKey)
 
 	if err != nil {
 		return 0, err
@@ -272,7 +272,7 @@ func (mod *Model) Save(row maps.MapStrAny) (interface{}, error) {
 
 	id, err := capsule.Query().
 		Table(mod.MetaData.Table.Name).
-		InsertGetID(row)
+		InsertGetID(row, mod.PrimaryKey)
 
 	if err != nil {
 		return 0, err
@@ -413,8 +413,8 @@ func (mod *Model) UpdateWhere(param QueryParam, row maps.MapStrAny) (int, error)
 		row.Set("updated_at", dbal.Raw("CURRENT_TIMESTAMP"))
 	}
 
-	// 如果不是 SQLite3 添加字段
-	if mod.Driver != "sqlite3" {
+	// MySQL UPDATE SET 支持 table.column 写法; PG 和 SQLite3 不支持
+	if mod.Driver == "mysql" {
 		for name, value := range row {
 			if !strings.Contains(name, ".") {
 				new := fmt.Sprintf("%s.%s", mod.MetaData.Table.Name, name)
@@ -458,21 +458,29 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 		data := maps.MapStrAny{}
 		columns := []string{}
 		baseTimestamp := time.Now().UnixNano()
+		isPG := mod.Driver == "postgres"
 
 		for i, col := range mod.UniqueColumns {
 			typ := strings.ToLower(col.Type)
 			q := mod.QuoteIdentifier(col.Name)
 			if typ == "string" {
-				data[col.Name] = dbal.Raw(fmt.Sprintf("CONCAT_WS('_', %s, '%d', '%d')", col.Name, baseTimestamp, i))
-				columns = append(
-					columns,
-					fmt.Sprintf("CONCAT('\"%s\":\"', %s, '\"')", col.Name, q),
-				)
+				if isPG {
+					data[col.Name] = dbal.Raw(fmt.Sprintf("%s || '_' || '%d' || '_' || '%d'", q, baseTimestamp, i))
+					columns = append(columns,
+						fmt.Sprintf("'\"' || '%s' || '\":\"' || %s || '\"'", col.Name, q))
+				} else {
+					data[col.Name] = dbal.Raw(fmt.Sprintf("CONCAT_WS('_', %s, '%d', '%d')", q, baseTimestamp, i))
+					columns = append(columns,
+						fmt.Sprintf("CONCAT('\"%s\":\"', %s, '\"')", col.Name, q))
+				}
 			} else {
-				columns = append(
-					columns,
-					fmt.Sprintf("CONCAT('\"%s\":', %s)", col.Name, q),
-				)
+				if isPG {
+					columns = append(columns,
+						fmt.Sprintf("'\"' || '%s' || '\":' || %s::text", col.Name, q))
+				} else {
+					columns = append(columns,
+						fmt.Sprintf("CONCAT('\"%s\":', %s)", col.Name, q))
+				}
 			}
 			if col.Nullable {
 				data[col.Name] = nil
@@ -485,9 +493,11 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 
 		// 备份唯一数据
 		if len(columns) > 0 {
-			expr := "CONCAT('{'," + strings.Join(columns, ",',',") + ",'}')"
-			if mod.Driver == "postgres" {
-				expr += "::jsonb"
+			var expr string
+			if isPG {
+				expr = "('{' || " + strings.Join(columns, " || ',' || ") + " || '}')::json"
+			} else {
+				expr = "CONCAT('{'," + strings.Join(columns, ",',',") + ",'}')"
 			}
 			restore := dbal.Raw(expr)
 			_, err := qb.Update(maps.MapStr{"__restore_data": restore})
@@ -496,8 +506,8 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 			}
 		}
 
-		// 删除数据
-		if mod.Driver == "postgres" {
+		// 删除数据 (PG UPDATE SET 不支持 table.column 写法)
+		if isPG {
 			data["deleted_at"] = dbal.Raw("CURRENT_TIMESTAMP")
 		} else {
 			field := fmt.Sprintf("%s.%s", mod.MetaData.Table.Name, "deleted_at")

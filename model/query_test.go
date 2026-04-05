@@ -1,405 +1,170 @@
 package model
 
-// func TestQueryWhere(t *testing.T) {
-// 	param := QueryParam{
-// 		Model: "user",
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Column: "mobile",
-// 				Value:  "13900001111",
-// 			},
-// 			{
-// 				Column: "type",
-// 				Value:  "admin",
-// 			},
-// 		},
-// 	}
-// 	stack := NewQueryStack(param)
-// 	stack.Run()
+import (
+	"testing"
 
-// }
+	"github.com/stretchr/testify/assert"
+)
 
-// func TestQueryOrWhere(t *testing.T) {
-// 	param := QueryParam{
-// 		Model: "user",
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Column: "status",
-// 				Value:  "enabled",
-// 			},
-// 			{
-// 				Wheres: []QueryWhere{
-// 					{
-// 						Column: "type",
-// 						Method: "where",
-// 						Value:  "admin",
-// 					},
-// 					{
-// 						Column: "type",
-// 						Method: "orWhere",
-// 						Value:  "staff",
-// 					},
-// 				},
-// 			}, {
-// 				Column: "mobile",
-// 				Value:  "13900002222",
-// 			},
-// 		},
-// 	}
-// 	stack := NewQueryStack(param)
-// 	stack.Run()
-// }
+func TestQueryWhere(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestQueryHasOne(t *testing.T) {
-// 	param := QueryParam{
-// 		Model: "user",
-// 		Withs: map[string]With{
-// 			"manu": {
-// 				Name: "manu",
-// 				Query: QueryParam{
-// 					Select: []interface{}{"name", "status", "short_name"},
-// 				},
-// 			},
-// 		},
-// 		Select: []interface{}{"name", "secret", "status", "type"},
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Column: "status",
-// 				Value:  "enabled",
-// 			},
-// 			{
-// 				Wheres: []QueryWhere{
-// 					{
-// 						Column: "type",
-// 						Method: "where",
-// 						Value:  "admin",
-// 					},
-// 					{
-// 						Column: "type",
-// 						Method: "orWhere",
-// 						Value:  "staff",
-// 					},
-// 				},
-// 			}, {
-// 				Column: "mobile",
-// 				Value:  "13900002222",
-// 			},
-// 		},
-// 	}
-// 	stack := NewQueryStack(param)
-// 	res := stack.Run()
-// 	utils.Dump(res)
-// }
-// func TestQueryHasOneWhere(t *testing.T) {
-// 	param := QueryParam{
-// 		Model: "user",
-// 		Withs: map[string]With{
-// 			"manu": {
-// 				Name: "manu",
-// 				Query: QueryParam{
-// 					Select: []interface{}{"name", "status", "short_name"},
-// 					Wheres: []QueryWhere{
-// 						{
-// 							Column: "status",
-// 							Method: "where",
-// 							Value:  "disabled",
-// 						}},
-// 				},
-// 			},
-// 		},
-// 		Select: []interface{}{"name", "secret", "status", "type"},
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Column: "status",
-// 				Value:  "enabled",
-// 			},
-// 			{
-// 				Wheres: []QueryWhere{
-// 					{
-// 						Column: "type",
-// 						Method: "where",
-// 						Value:  "admin",
-// 					},
-// 					{
-// 						Column: "type",
-// 						Method: "orWhere",
-// 						Value:  "staff",
-// 					},
-// 				},
-// 			}, {
-// 				Column: "mobile",
-// 				Value:  "13900002222",
-// 			},
-// 		},
-// 	}
-// 	stack := NewQueryStack(param)
-// 	stack.Run()
-// 	res := stack.Run()
-// 	utils.Dump(res)
-// }
+	param := QueryParam{
+		Model: "user",
+		Wheres: []QueryWhere{
+			{Column: "name", Value: "John Doe"},
+		},
+	}
+	stack := NewQueryStack(param)
+	res := stack.Run()
+	assert.Equal(t, 1, len(res))
+	assert.Equal(t, "John Doe", res[0].Get("name"))
+}
 
-// func TestQueryHasOneRel(t *testing.T) {
-// 	param := QueryParam{
-// 		Model: "user",
-// 		Withs: map[string]With{
-// 			"manu": {
-// 				Name: "manu",
-// 				Query: QueryParam{
-// 					Select: []interface{}{"name", "status", "short_name"},
-// 				},
-// 			},
-// 		},
-// 		Select: []interface{}{"name", "secret", "status", "type"},
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Column: "status",
-// 				Value:  "enabled",
-// 			},
-// 			{
-// 				Wheres: []QueryWhere{
-// 					{
-// 						Column: "type",
-// 						Method: "where",
-// 						Value:  "admin",
-// 					},
-// 					{
-// 						Column: "type",
-// 						Method: "orWhere",
-// 						Value:  "staff",
-// 					},
-// 				},
-// 			}, {
-// 				Rel:    "manu",
-// 				Column: "short_name",
-// 				Value:  "云道天成",
-// 			},
-// 		},
-// 	}
-// 	stack := NewQueryStack(param)
-// 	res := stack.Run()
-// 	utils.Dump(res)
+func TestQueryOrWhere(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// }
+	param := QueryParam{
+		Model: "user",
+		Wheres: []QueryWhere{
+			{
+				Wheres: []QueryWhere{
+					{Column: "name", Method: "where", Value: "John Doe"},
+					{Column: "name", Method: "orWhere", Value: "Lucy Queen"},
+				},
+			},
+		},
+	}
+	stack := NewQueryStack(param)
+	res := stack.Run()
+	assert.Equal(t, 2, len(res))
+}
 
-// func TestQueryHasOneThrough(t *testing.T) {
-// 	param := QueryParam{
-// 		Model: "user",
-// 		Withs: map[string]With{
-// 			"mother": {Name: "mother"},
-// 		},
-// 		Select: []interface{}{"name", "secret", "status", "type", "id"},
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Column: "status",
-// 				Value:  "enabled",
-// 			},
-// 			{
-// 				Wheres: []QueryWhere{
-// 					{
-// 						Column: "type",
-// 						Method: "where",
-// 						Value:  "admin",
-// 					},
-// 					{
-// 						Column: "type",
-// 						Method: "orWhere",
-// 						Value:  "staff",
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-// 	stack := NewQueryStack(param)
-// 	res := stack.Run()
-// 	utils.Dump(res)
-// }
+func TestQueryHasOne(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestQueryHasOneThroughWhere(t *testing.T) {
-// 	param := QueryParam{
-// 		Model: "user",
-// 		Withs: map[string]With{
-// 			"mother": {},
-// 		},
-// 		Select: []interface{}{"name", "secret", "status", "type", "id"},
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Rel:    "mother.friends",
-// 				Column: "status",
-// 				Value:  "enabled",
-// 			},
-// 			{
-// 				Column: "status",
-// 				Value:  "enabled",
-// 			},
-// 			{
-// 				Wheres: []QueryWhere{
-// 					{
-// 						Column: "type",
-// 						Method: "where",
-// 						Value:  "admin",
-// 					},
-// 					{
-// 						Column: "type",
-// 						Method: "orWhere",
-// 						Value:  "staff",
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-// 	stack := NewQueryStack(param)
-// 	res := stack.Run()
-// 	utils.Dump(res)
-// }
+	param := QueryParam{
+		Model: "pet",
+		Select: []interface{}{"name", "category_id", "owner_id"},
+		Withs: map[string]With{
+			"category": {
+				Query: QueryParam{
+					Select: []interface{}{"id", "name"},
+				},
+			},
+		},
+		Wheres: []QueryWhere{
+			{Column: "name", Value: "Tommy"},
+		},
+	}
+	stack := NewQueryStack(param)
+	res := stack.Run()
+	assert.Equal(t, 1, len(res))
+	assert.Equal(t, "Tommy", res[0].Get("name"))
+	assert.Equal(t, "Dog", res[0].Dot().Get("category.name"))
+}
 
-// func TestQueryHasMany(t *testing.T) {
-// 	param := QueryParam{
-// 		Model: "user",
-// 		Withs: map[string]With{
-// 			"addresses": {
-// 				Query: QueryParam{
-// 					Select:   []interface{}{"province", "city", "location", "status"},
-// 					PageSize: 20,
-// 				},
-// 			},
-// 		},
-// 		Select: []interface{}{"name", "secret", "status", "type", "extra"},
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Column: "status",
-// 				Value:  "enabled",
-// 			},
-// 			{
-// 				Wheres: []QueryWhere{
-// 					{
-// 						Column: "type",
-// 						Method: "where",
-// 						Value:  "admin",
-// 					},
-// 					{
-// 						Column: "type",
-// 						Method: "orWhere",
-// 						Value:  "staff",
-// 					},
-// 				},
-// 			}, {
-// 				Column: "mobile",
-// 				Value:  "13900002222",
-// 			},
-// 		},
-// 	}
-// 	stack := NewQueryStack(param)
-// 	res := stack.Run()
-// 	utils.Dump(res)
+func TestQueryHasOneWhere(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// }
+	param := QueryParam{
+		Model: "pet",
+		Select: []interface{}{"name", "owner_id"},
+		Withs: map[string]With{
+			"owner": {
+				Query: QueryParam{
+					Select: []interface{}{"id", "name", "email"},
+				},
+			},
+		},
+		Wheres: []QueryWhere{
+			{Column: "owner_id", Value: 1},
+		},
+	}
+	stack := NewQueryStack(param)
+	res := stack.Run()
+	assert.Equal(t, 2, len(res))
+	for _, row := range res {
+		assert.Equal(t, "John Doe", row.Dot().Get("owner.name"))
+	}
+}
 
-// func TestQueryHasManyAndOne(t *testing.T) {
-// 	param := QueryParam{
-// 		Model: "user",
-// 		Withs: map[string]With{
-// 			"manu": {
-// 				Query: QueryParam{
-// 					Select: []interface{}{"name", "status", "short_name"},
-// 				},
-// 			},
-// 			"addresses": {
-// 				Query: QueryParam{
-// 					Select:   []interface{}{"province", "city", "location", "status"},
-// 					PageSize: 20,
-// 				},
-// 			},
-// 		},
-// 		Select: []interface{}{"name", "secret", "status", "type", "extra"},
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Column: "status",
-// 				Value:  "enabled",
-// 			},
-// 			{
-// 				Wheres: []QueryWhere{
-// 					{
-// 						Column: "type",
-// 						Method: "where",
-// 						Value:  "admin",
-// 					},
-// 					{
-// 						Column: "type",
-// 						Method: "orWhere",
-// 						Value:  "staff",
-// 					},
-// 				},
-// 			}, {
-// 				Column: "mobile",
-// 				Value:  "13900002222",
-// 			},
-// 		},
-// 	}
-// 	stack := NewQueryStack(param)
-// 	res := stack.Run()
-// 	utils.Dump(res)
-// }
+func TestQueryHasOneMultipleRelations(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestQueryHasManyAndOnePaginate(t *testing.T) {
-// 	param := QueryParam{
-// 		Model: "user",
-// 		Withs: map[string]With{
-// 			"manu": {
-// 				Query: QueryParam{
-// 					Select: []interface{}{"name", "status", "short_name"},
-// 				},
-// 			},
-// 			"addresses": {
-// 				Query: QueryParam{
-// 					Select:   []interface{}{"province", "city", "location", "status"},
-// 					PageSize: 20,
-// 				},
-// 			},
-// 		},
-// 		Select: []interface{}{"name", "secret", "status", "type", "extra"},
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Column: "status",
-// 				Value:  "enabled",
-// 			},
-// 		},
-// 	}
-// 	stack := NewQueryStack(param)
-// 	res := stack.Paginate(1, 2)
-// 	utils.Dump(res)
-// }
+	param := QueryParam{
+		Model: "pet",
+		Select: []interface{}{"name", "category_id", "owner_id", "doctor_id"},
+		Withs: map[string]With{
+			"category": {
+				Query: QueryParam{Select: []interface{}{"id", "name"}},
+			},
+			"owner": {
+				Query: QueryParam{Select: []interface{}{"id", "name"}},
+			},
+			"doctor": {
+				Query: QueryParam{Select: []interface{}{"id", "name"}},
+			},
+		},
+		Wheres: []QueryWhere{
+			{Column: "name", Value: "Tommy"},
+		},
+	}
+	stack := NewQueryStack(param)
+	res := stack.Run()
+	assert.Equal(t, 1, len(res))
+	dot := res[0].Dot()
+	assert.Equal(t, "Dog", dot.Get("category.name"))
+	assert.Equal(t, "John Doe", dot.Get("owner.name"))
+	assert.Equal(t, "Lucy Queen", dot.Get("doctor.name"))
+}
 
-// func TestQueryHasManyAndOnePaginateOrder(t *testing.T) {
-// 	param := QueryParam{
-// 		Model: "user",
-// 		Withs: map[string]With{
-// 			"manu": {
-// 				Query: QueryParam{
-// 					Select: []interface{}{"name", "status", "short_name"},
-// 				},
-// 			},
-// 			"addresses": {
-// 				Query: QueryParam{
-// 					Select:   []interface{}{"province", "city", "location", "status"},
-// 					PageSize: 20,
-// 				},
-// 			},
-// 		},
-// 		Select: []interface{}{"name", "secret", "status", "type", "extra"},
-// 		Orders: []QueryOrder{
-// 			{
-// 				Column: "id",
-// 				Option: "desc",
-// 			},
-// 		},
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Column: "status",
-// 				Value:  "enabled",
-// 			},
-// 		},
-// 	}
-// 	stack := NewQueryStack(param)
-// 	res := stack.Paginate(1, 2)
-// 	utils.Dump(res)
-// }
+func TestQueryPaginate(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	param := QueryParam{
+		Model: "pet",
+		Select: []interface{}{"name", "category_id"},
+		Withs: map[string]With{
+			"category": {
+				Query: QueryParam{Select: []interface{}{"id", "name"}},
+			},
+		},
+	}
+	stack := NewQueryStack(param)
+	res := stack.Paginate(1, 2)
+	dot := res.Dot()
+	assert.Equal(t, 4, dot.Get("total"))
+	assert.Equal(t, 1, dot.Get("page"))
+}
+
+func TestQueryPaginateOrder(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	param := QueryParam{
+		Model: "pet",
+		Select: []interface{}{"name"},
+		Orders: []QueryOrder{
+			{Column: "id", Option: "desc"},
+		},
+	}
+	stack := NewQueryStack(param)
+	res := stack.Paginate(1, 2)
+	dot := res.Dot()
+	assert.Equal(t, 4, dot.Get("total"))
+	assert.Equal(t, "Nemo", dot.Get("data.0.name"))
+}

@@ -66,10 +66,19 @@ func (mod *Model) Filterselect(alias string, columns []interface{}, cmap map[str
 		}
 
 		// 加密字段
-		if column.Crypt == "AES" && column.model.Driver == "mysql" {
-			icrypt, err := SelectCrypt(column.Crypt)
-			if err != nil {
-				exception.New(err.Error(), 400).Throw()
+		if column.Crypt == "AES" && (column.model.Driver == "mysql" || column.model.Driver == "postgres") {
+			var icrypt IEncryptor
+			var err error
+			if column.model.Driver == "postgres" {
+				icrypt = &EncryptorPGCrypto{}
+				if enc, has := Encryptors[column.Crypt]; has {
+					icrypt.Set(enc)
+				}
+			} else {
+				icrypt, err = SelectCrypt(column.Crypt)
+				if err != nil {
+					exception.New(err.Error(), 400).Throw()
+				}
 			}
 			raw, err := icrypt.Decode(field)
 			if err != nil {
@@ -107,10 +116,19 @@ func (mod *Model) FliterWhere(alias string, col interface{}) interface{} {
 	}
 
 	// 加密字段
-	if column.Crypt == "AES" && column.model.Driver == "mysql" {
-		icrypt, err := SelectCrypt(column.Crypt)
-		if err != nil {
-			exception.New(err.Error(), 400).Throw()
+	if column.Crypt == "AES" && (column.model.Driver == "mysql" || column.model.Driver == "postgres") {
+		var icrypt IEncryptor
+		var err error
+		if column.model.Driver == "postgres" {
+			icrypt = &EncryptorPGCrypto{}
+			if enc, has := Encryptors[column.Crypt]; has {
+				icrypt.Set(enc)
+			}
+		} else {
+			icrypt, err = SelectCrypt(column.Crypt)
+			if err != nil {
+				exception.New(err.Error(), 400).Throw()
+			}
 		}
 		raw, err := icrypt.Decode(name)
 		if err != nil {

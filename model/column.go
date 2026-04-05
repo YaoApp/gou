@@ -67,20 +67,37 @@ func (column *Column) fliterInCrypt(value interface{}, row maps.MapStrAny) {
 		return
 	}
 
-	icrypt, err := SelectCrypt(column.Crypt)
-	if err != nil {
-		exception.New(err.Error(), 400).Throw()
-	}
-
 	valuestr, ok := value.(string)
 	if !ok {
 		exception.New(column.Name+"数值格式不是字符型", 400).Throw()
 	}
 
-	// 忽略除 MySQL 之外的 AES 驱动
-	if column.Crypt == "AES" && column.model.Driver != "mysql" {
-		column.Crypt = ""
-		return
+	// AES: MySQL uses AES_ENCRYPT, PG uses pgcrypto, others skip
+	if column.Crypt == "AES" {
+		driver := ""
+		if column.model != nil {
+			driver = column.model.Driver
+		}
+		if driver == "postgres" {
+			pgcrypt := &EncryptorPGCrypto{}
+			if enc, has := Encryptors[column.Crypt]; has {
+				pgcrypt.Set(enc)
+			}
+			exp, err := pgcrypt.Encode(valuestr)
+			if err != nil {
+				exception.Err(err, 400).Throw()
+			}
+			row.Set(column.Name, dbal.Raw(exp))
+			return
+		} else if driver != "mysql" {
+			column.Crypt = ""
+			return
+		}
+	}
+
+	icrypt, err := SelectCrypt(column.Crypt)
+	if err != nil {
+		exception.New(err.Error(), 400).Throw()
 	}
 
 	if column.Crypt == "AES" {

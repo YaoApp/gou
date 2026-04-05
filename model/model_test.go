@@ -315,6 +315,7 @@ func prepare(t *testing.T) {
 		"category": filepath.Join("models", "category.mod.yao"),
 		"user.pet": filepath.Join("models", "user", "pet.mod.yao"),
 		"pet.tag":  filepath.Join("models", "pet", "tag.mod.yao"),
+		"store":    filepath.Join("models", "store.mod.yao"),
 	}
 
 	WithCrypt([]byte(fmt.Sprintf(`{"key":"%s"}`, aesKey)), "AES")
@@ -428,45 +429,25 @@ func dbconnect() {
 	})
 }
 
-// func TestModelMustPaginateWithsWheresOrder(t *testing.T) {
-// 	user := Select("user").MustPaginate(QueryParam{
-// 		Orders: []QueryOrder{
-// 			{
-// 				Column: "id",
-// 				Option: "desc",
-// 			},
-// 		},
-// 		Wheres: []QueryWhere{
-// 			{
-// 				Wheres: []QueryWhere{
-// 					{
-// 						Column: "mobile",
-// 						Value:  "13900002222",
-// 					}, {
-// 						Column: "mobile",
-// 						Method: "orwhere",
-// 						Value:  "13900001111",
-// 					},
-// 				},
-// 			},
-// 		},
-// 		Withs: map[string]With{
-// 			"manu":      {},
-// 			"addresses": {},
-// 			"mother":    {},
-// 		},
-// 	}, 1, 2)
-// 	userDot := user.Dot()
-// 	assert.Equal(t, userDot.Get("total"), 2)
-// 	assert.Equal(t, userDot.Get("next"), -1)
-// 	assert.Equal(t, userDot.Get("page"), 1)
-// 	assert.Equal(t, userDot.Get("data.1.id"), int64(1))
-// 	assert.Equal(t, userDot.Get("data.1.manu.name"), "北京云道天成科技有限公司")
-// 	assert.Equal(t, userDot.Get("data.1.mother.extra.sex"), "女")
-// 	assert.Equal(t, userDot.Get("data.1.extra.sex"), "男")
-// 	assert.Equal(t, userDot.Get("data.1.addresses.0.location"), "银海星月9号楼9单元9层1024室")
+func TestModelMustPaginateWithsWheresOrder(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// }
+	res := Select("pet").MustPaginate(QueryParam{
+		Orders: []QueryOrder{{Column: "id", Option: "desc"}},
+		Withs: map[string]With{
+			"category": {},
+			"owner":    {},
+		},
+	}, 1, 2)
+	dot := res.Dot()
+	assert.Equal(t, 4, dot.Get("total"))
+	assert.Equal(t, 1, dot.Get("page"))
+	assert.Equal(t, 2, dot.Get("pagesize"))
+	data := dot.Get("data")
+	assert.Equal(t, 2, len(data.([]maps.MapStr)))
+}
 
 func TestModelMustCreate(t *testing.T) {
 	prepare(t)
@@ -508,85 +489,98 @@ func TestModelMustSaveNew(t *testing.T) {
 	assert.Equal(t, "女", row.Dot().Get("extra.sex"))
 }
 
-// func TestModelWithStringPrimary(t *testing.T) {
-// 	store := Select("store")
+func TestModelWithStringPrimary(t *testing.T) {
+	prepare(t)
+	defer clean()
 
-// 	assert.Equal(t, 2, len(store.MustGet(QueryParam{})))
+	store := Select("store")
+	key := "key-test"
 
-// 	key := "key-test"
-// 	store.MustCreate(maps.MapStr{"key": key, "data": []string{"value-test"}})
-// 	row := store.MustFind(key, QueryParam{})
-// 	assert.Equal(t, []interface{}{"value-test"}, row.Get("data"))
-// 	assert.Equal(t, 3, len(store.MustGet(QueryParam{})))
+	err := capsule.Query().Table(store.MetaData.Table.Name).Insert(
+		maps.MapStr{"key": key, "data": `["value-test"]`},
+	)
+	assert.Nil(t, err)
 
-// 	keyReturn := store.MustSave(maps.MapStr{"key": key, "data": []string{"value-test"}})
-// 	assert.Equal(t, key, keyReturn)
-// 	assert.Equal(t, 3, len(store.MustGet(QueryParam{})))
+	row := store.MustFind(key, QueryParam{})
+	assert.Equal(t, []interface{}{"value-test"}, row.Get("data"))
+	assert.Equal(t, 1, len(store.MustGet(QueryParam{})))
 
-// 	store.MustDelete(key)
-// 	assert.Equal(t, 2, len(store.MustGet(QueryParam{})))
+	store.MustSave(maps.MapStr{"key": key, "data": []string{"value-updated"}})
+	assert.Equal(t, 1, len(store.MustGet(QueryParam{})))
 
-// 	res, err := store.EachSave([]map[string]interface{}{
-// 		{"key": key, "data": []string{"value-test"}},
-// 		{"key": "key-1", "data": []string{"value-key-1"}},
-// 	})
+	row2 := store.MustFind(key, QueryParam{})
+	assert.Equal(t, []interface{}{"value-updated"}, row2.Get("data"))
 
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	assert.Equal(t, 3, len(store.MustGet(QueryParam{})))
-// 	assert.Equal(t, 2, len(res))
-// 	capsule.Query().Table(store.MetaData.Table.Name).Where("key", key).Delete()
+	store.MustDestroy(key)
+	assert.Equal(t, 0, len(store.MustGet(QueryParam{})))
+}
 
-// }
+func TestModelMustSaveUpdate(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestModelMustSaveUpdate(t *testing.T) {
-// 	user := Select("user")
-// 	id := user.MustSave(maps.MapStr{
-// 		"id":      1,
-// 		"balance": 200,
-// 	})
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name":   "SaveUpdate测试",
+		"type":   "admin",
+		"status": "enabled",
+	})
 
-// 	row := user.MustFind(id, QueryParam{})
+	user.MustSave(maps.MapStr{
+		"id":     id,
+		"status": "disabled",
+	})
 
-// 	// 恢复数据
-// 	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Update(maps.MapStr{"balance": 0})
-// 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
-// }
+	row := user.MustFind(id, QueryParam{})
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+	assert.Equal(t, "disabled", row.Get("status"))
+}
 
-// func TestModelMustUpdate(t *testing.T) {
-// 	user := Select("user")
-// 	user.MustUpdate(1, maps.MapStr{"balance": 200})
+func TestModelMustUpdate(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// 	row := user.MustFind(1, QueryParam{})
+	user := Select("user")
+	id := user.MustCreate(maps.MapStr{
+		"name":   "Update测试",
+		"type":   "admin",
+		"status": "enabled",
+	})
 
-// 	// 恢复数据
-// 	capsule.Query().Table(user.MetaData.Table.Name).Where("id", 1).Update(maps.MapStr{"balance": 0})
-// 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
-// }
+	user.MustUpdate(id, maps.MapStr{"status": "disabled"})
+	row := user.MustFind(id, QueryParam{})
 
-// func TestModelMustUpdateWhere(t *testing.T) {
-// 	user := Select("user")
-// 	effect := user.MustUpdateWhere(
-// 		QueryParam{
-// 			Wheres: []QueryWhere{
-// 				{
-// 					Column: "id",
-// 					Value:  1,
-// 				},
-// 			},
-// 		},
-// 		maps.MapStr{
-// 			"balance": 200,
-// 		})
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+	assert.Equal(t, "disabled", row.Get("status"))
+}
 
-// 	row := user.MustFind(1, QueryParam{})
+func TestModelMustUpdateWhere(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// 	// 恢复数据
-// 	capsule.Query().Table(user.MetaData.Table.Name).Where("id", 1).Update(maps.MapStr{"balance": 0})
-// 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
-// 	assert.Equal(t, effect, 1)
-// }
+	user := Select("user")
+	id := user.MustCreate(maps.MapStr{
+		"name":   "UpdateWhere测试",
+		"type":   "admin",
+		"status": "enabled",
+	})
+
+	effect := user.MustUpdateWhere(
+		QueryParam{
+			Wheres: []QueryWhere{
+				{Column: "id", Value: id},
+			},
+		},
+		maps.MapStr{"status": "disabled"})
+
+	row := user.MustFind(id, QueryParam{})
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+	assert.Equal(t, "disabled", row.Get("status"))
+	assert.Equal(t, 1, effect)
+}
 
 func TestModelMustDeleteSoft(t *testing.T) {
 	prepare(t)
@@ -624,231 +618,461 @@ func TestModelMustDestroy(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-// func TestModelMustInsert(t *testing.T) {
-// 	columns := []string{"user_id", "province", "city", "location"}
-// 	rows := [][]interface{}{
-// 		{4, "北京市", "丰台区", "银海星月9号楼9单元9层1024室"},
-// 		{4, "天津市", "塘沽区", "益海星云7号楼3单元1003室"},
-// 	}
-// 	address := Select("address")
-// 	err := address.Insert(columns, rows)
-// 	assert.Nil(t, err)
-// 	capsule.Query().Table(address.MetaData.Table.Name).Where("user_id", 4).Delete()
-// }
+func TestModelMustInsert(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestModelMustInsertError(t *testing.T) {
-// 	columns := []string{"user_id", "province", "city", "location"}
-// 	rows := [][]interface{}{
-// 		{4, "北京市", "丰台区", "银海星月9号楼9单元9层1024室"},
-// 		{4, "天津市", "塘沽区", "益海星云7号楼3单元1003室", 5028},
-// 		{4, "天津市", "塘沽区", "益海星云7号楼3单元1002室"},
-// 	}
-// 	address := Select("address")
-// 	assert.Panics(t, func() {
-// 		address.Insert(columns, rows)
-// 	})
-// }
+	user := Select("user")
+	columns := []string{"name", "type", "status"}
+	rows := [][]interface{}{
+		{"批量插入1", "admin", "enabled"},
+		{"批量插入2", "staff", "enabled"},
+	}
+	err := user.Insert(columns, rows)
+	assert.Nil(t, err)
 
-// func TestModelMustDeleteWhere(t *testing.T) {
-// 	columns := []string{"name", "manu_id", "type", "idcard", "mobile", "password", "key", "secret", "status"}
-// 	rows := [][]interface{}{
-// 		{"用户创建1", 5, "user", "23082619820207006X", "13900004444", "qV@uT1DI", "XZ12MiP1", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
-// 		{"用户创建2", 5, "user", "33082619820207006X", "13900005555", "qV@uT1DI", "XZ12MiP2", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
-// 		{"用户创建3", 5, "user", "43082619820207006X", "13900006666", "qV@uT1DI", "XZ12MiP3", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
-// 	}
+	res := user.MustGet(QueryParam{
+		Wheres: []QueryWhere{{Column: "name", Value: "批量插入", OP: "match"}},
+	})
+	capsule.Query().Table(user.MetaData.Table.Name).Where("name", "like", "批量插入%").Delete()
+	assert.Equal(t, 2, len(res))
+}
 
-// 	user := Select("user")
-// 	user.Insert(columns, rows)
-// 	param := QueryParam{Wheres: []QueryWhere{
-// 		{
-// 			Column: "manu_id",
-// 			Value:  5,
-// 		},
-// 	}}
-// 	effect := user.MustDeleteWhere(param)
+func TestModelMustDeleteWhere(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// 	// 清理数据
-// 	capsule.Query().Table(user.MetaData.Table.Name).Where("name", "like", "用户创建%").Delete()
-// 	assert.Equal(t, effect, 3)
-// }
+	user := Select("user")
+	columns := []string{"name", "type", "status"}
+	rows := [][]interface{}{
+		{"批量软删1", "admin", "enabled"},
+		{"批量软删2", "admin", "enabled"},
+		{"批量软删3", "admin", "enabled"},
+	}
+	user.Insert(columns, rows)
 
-// func TestModelMustDestroyWhere(t *testing.T) {
-// 	columns := []string{"name", "manu_id", "type", "idcard", "mobile", "password", "key", "secret", "status"}
-// 	rows := [][]interface{}{
-// 		{"用户创建1", 5, "user", "23082619820207006X", "13900004444", "qV@uT1DI", "XZ12MiP1", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
-// 		{"用户创建2", 5, "user", "33082619820207006X", "13900005555", "qV@uT1DI", "XZ12MiP2", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
-// 		{"用户创建3", 5, "user", "43082619820207006X", "13900006666", "qV@uT1DI", "XZ12MiP3", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled"},
-// 	}
+	effect := user.MustDeleteWhere(QueryParam{
+		Wheres: []QueryWhere{{Column: "name", Value: "批量软删", OP: "match"}},
+	})
 
-// 	user := Select("user")
-// 	user.Insert(columns, rows)
-// 	param := QueryParam{Wheres: []QueryWhere{
-// 		{
-// 			Column: "manu_id",
-// 			Value:  5,
-// 		},
-// 	}}
-// 	effect := user.MustDestroyWhere(param)
+	capsule.Query().Table(user.MetaData.Table.Name).Where("name", "like", "批量软删%").Delete()
+	assert.Equal(t, 3, effect)
+}
 
-// 	// 清理数据
-// 	assert.Equal(t, effect, 3)
-// }
+func TestModelMustDestroyWhere(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestModelMustEachSave(t *testing.T) {
-// 	user := Select("user")
-// 	ids := user.MustEachSave([]map[string]interface{}{
-// 		{"id": 1, "balance": 200},
-// 		{
-// 			"name":     "用户创建",
-// 			"manu_id":  2,
-// 			"type":     "user",
-// 			"idcard":   "23082619820207006X",
-// 			"mobile":   "13900004444",
-// 			"password": "qV@uT1DI",
-// 			"key":      "XZ12MiPp",
-// 			"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
-// 			"status":   "enabled",
-// 			"extra":    maps.MapStr{"sex": "女"},
-// 		},
-// 	})
+	user := Select("user")
+	columns := []string{"name", "type", "status"}
+	rows := [][]interface{}{
+		{"批量硬删1", "admin", "enabled"},
+		{"批量硬删2", "admin", "enabled"},
+		{"批量硬删3", "admin", "enabled"},
+	}
+	user.Insert(columns, rows)
 
-// 	assert.Equal(t, 2, len(ids))
-// 	row := user.MustFind(1, QueryParam{})
+	effect := user.MustDestroyWhere(QueryParam{
+		Wheres: []QueryWhere{{Column: "name", Value: "批量硬删", OP: "match"}},
+	})
+	assert.Equal(t, 3, effect)
+}
 
-// 	// 恢复数据
-// 	capsule.Query().Table(user.MetaData.Table.Name).Where("id", 1).Update(maps.MapStr{"balance": 0})
-// 	capsule.Query().Table(user.MetaData.Table.Name).Where("id", ids[1]).Delete()
-// 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 200)
-// }
+func TestModelMustEachSave(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestModelMustEachSaveWithIndex(t *testing.T) {
-// 	user := Select("user")
-// 	ids := user.MustEachSave([]map[string]interface{}{
-// 		{
-// 			"name":     "用户创建",
-// 			"manu_id":  2,
-// 			"type":     "user",
-// 			"idcard":   "23082619820207006X",
-// 			"mobile":   "13900004444",
-// 			"password": "qV@uT1DI",
-// 			"key":      "XZ12MiPp",
-// 			"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
-// 			"status":   "enabled",
-// 			"extra":    maps.MapStr{"sex": "女"},
-// 		}, {
-// 			"name":     "用户创建2",
-// 			"manu_id":  2,
-// 			"type":     "user",
-// 			"idcard":   "23012619820207006X",
-// 			"mobile":   "13900004443",
-// 			"password": "qV@uT1DI",
-// 			"key":      "XZ12MiPM",
-// 			"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
-// 			"status":   "enabled",
-// 			"extra":    maps.MapStr{"sex": "男"},
-// 		},
-// 	}, maps.MapStr{"balance": "$index"})
+	user := Select("user")
+	ids, err := user.EachSave([]map[string]interface{}{
+		{
+			"name":   "EachSave新建1",
+			"type":   "admin",
+			"status": "enabled",
+		},
+		{
+			"name":   "EachSave新建2",
+			"type":   "staff",
+			"status": "enabled",
+			"extra":  maps.MapStr{"sex": "女"},
+		},
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(ids))
 
-// 	assert.Equal(t, 2, len(ids))
-// 	row := user.MustFind(ids[0], QueryParam{})
-// 	row1 := user.MustFind(ids[1], QueryParam{})
+	row := user.MustFind(ids[1], QueryParam{})
+	assert.Equal(t, "EachSave新建2", row.Get("name"))
 
-// 	// 恢复数据
-// 	capsule.Query().Table(user.MetaData.Table.Name).WhereIn("id", ids).Delete()
-// 	assert.Equal(t, any.Of(row.Get("balance")).CInt(), 0)
-// 	assert.Equal(t, any.Of(row1.Get("balance")).CInt(), 1)
-// }
+	for _, id := range ids {
+		capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+	}
+}
 
-// func TestModelExportImport(t *testing.T) {
-// 	columns := []string{"name", "manu_id", "type", "idcard", "mobile", "password", "key", "secret", "status", "updated_at"}
-// 	rows := [][]interface{}{
-// 		{"用户创建1", 5, "user", "23082619820207006X", "13900004444", "qV@uT1DI", "XZ12MiP1", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled", "2022-06-13T10:09:01+08:00"},
-// 		{"用户创建2", 5, "user", "33082619820207006X", "13900005555", "qV@uT1DI", "XZ12MiP2", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled", "2022-06-13 10:09:01"},
-// 		{"用户创建3", 5, "user", "43082619820207006X", "13900006666", "qV@uT1DI", "XZ12MiP3", "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN", "enabled", "2022-06-13T10:09:01Z"},
-// 	}
+func TestModelAESCrypt(t *testing.T) {
+	if os.Getenv("GOU_TEST_DB_DRIVER") == "sqlite3" {
+		t.Skip("SQLite3 does not support AES encryption")
+	}
+	prepare(t)
+	defer clean()
 
-// 	user := Select("uimport")
-// 	err := user.Migrate(true)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	err = user.Insert(columns, rows)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer capsule.Query().Table(user.MetaData.Table.Name).Where("name", "like", "用户创建%").MustDelete()
+	user := Select("user")
+	mobile := "13912345678"
+	id := user.MustSave(maps.MapStr{
+		"name":   "AES加密测试",
+		"type":   "admin",
+		"status": "enabled",
+		"mobile": mobile,
+	})
 
-// 	files, err := user.Export(2, func(curr, total int) {
-// 		fmt.Printf("Export: %d/%d\n", curr, total)
-// 	})
+	row := user.MustFind(id, QueryParam{})
+	assert.Equal(t, mobile, row.Get("mobile"))
 
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	rawRow, err := capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).First()
+	assert.Nil(t, err)
+	assert.NotEqual(t, mobile, rawRow.Get("mobile"),
+		"raw DB value should be encrypted, not plaintext")
 
-// 	assert.Greater(t, len(files), 0)
-// 	capsule.Query().Table(user.MetaData.Table.Name).MustDelete()
-// 	for _, file := range files {
-// 		err = user.Import(file)
-// 		if err != nil {
-// 			t.Fatal(err)
-// 		}
-// 	}
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+}
 
-// 	res := user.MustGet(QueryParam{
-// 		Wheres: []QueryWhere{
-// 			{Column: "name", Value: "用户创建", OP: "match"},
-// 		},
-// 	})
-// 	assert.Equal(t, 3, len(res))
-// }
+func TestModelEachSaveWithExisting(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// func TestModelLang(t *testing.T) {
-// 	root := os.Getenv("GOU_TEST_APP_ROOT")
-// 	rootLang := filepath.Join(root, "langs")
-// 	err := lang.Load(rootLang)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name":   "EachSave已有",
+		"type":   "admin",
+		"status": "enabled",
+	})
 
-// 	modelFile := filepath.Join(root, "models", "demo.mod.json")
-// 	mod, err := Load(modelFile, "demo")
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	ids, err := user.EachSave([]map[string]interface{}{
+		{"id": id, "name": "EachSave已更新"},
+		{"name": "EachSave新增", "type": "staff", "status": "enabled"},
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(ids))
 
-// 	dict := lang.Pick("zh-cn")
-// 	dict.ReplaceAll([]string{fmt.Sprintf("model.%s", mod.ID)}, &mod)
-// 	assert.Equal(t, mod.MetaData.Name, "演示")
-// 	assert.Equal(t, mod.Columns["action"].Label, "动作")
+	row := user.MustFind(id, QueryParam{})
+	assert.Equal(t, "EachSave已更新", row.Get("name"))
 
-// 	// Reload
-// 	mod.Reload()
-// 	dict = lang.Pick("zh-hk")
-// 	dict.ReplaceAll([]string{fmt.Sprintf("model.%s", mod.ID)}, &mod)
-// 	assert.Equal(t, mod.MetaData.Name, "演示")
-// 	assert.Equal(t, mod.Columns["action"].Label, "動作")
+	for _, rid := range ids {
+		capsule.Query().Table(user.MetaData.Table.Name).Where("id", rid).Delete()
+	}
+}
 
-// 	// Reload
-// 	mod.Reload()
-// 	dict = lang.Pick("zh-cn")
-// 	new, err := dict.ReplaceClone([]string{fmt.Sprintf("model.%s", mod.ID)}, mod)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	newMod := new.(*Model)
-// 	assert.Equal(t, newMod.MetaData.Name, "演示")
-// 	assert.Equal(t, newMod.Columns["action"].Label, "动作")
-// 	assert.Equal(t, mod.MetaData.Name, "::Demo")
-// 	assert.Equal(t, mod.Columns["action"].Label, "::Action")
+func TestModelEachSaveError(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// 	mod.Reload()
-// 	dict = lang.Pick("zh-hk")
-// 	new, err = dict.ReplaceClone([]string{fmt.Sprintf("model.%s", mod.ID)}, mod)
-// 	newMod = new.(*Model)
-// 	assert.Equal(t, newMod.MetaData.Name, "演示")
-// 	assert.Equal(t, newMod.Columns["action"].Label, "動作")
-// 	assert.Equal(t, mod.MetaData.Name, "::Demo")
-// 	assert.Equal(t, mod.Columns["action"].Label, "::Action")
+	user := Select("user")
+	didPanic := false
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				didPanic = true
+			}
+		}()
+		user.EachSave([]map[string]interface{}{
+			{"name": "ValidRow", "type": "admin", "status": "enabled"},
+			{"name": "InvalidType", "type": "INVALID_TYPE", "status": "enabled"},
+		})
+	}()
+	assert.True(t, didPanic, "EachSave with invalid data should panic via exception.Throw")
+	capsule.Query().Table(user.MetaData.Table.Name).Where("name", "ValidRow").Delete()
+}
 
-// }
+func TestModelUpsert(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name": "Upsert测试", "type": "admin", "status": "enabled",
+	})
+
+	row := maps.MapStr{"id": id, "name": "Upsert测试", "type": "admin", "status": "disabled"}
+	affected, err := user.Upsert(row, []interface{}{"id"}, []interface{}{"status"})
+	assert.Nil(t, err)
+	assert.True(t, affected > 0)
+
+	found := user.MustFind(id, QueryParam{})
+	assert.Equal(t, "disabled", found.Get("status"))
+
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+}
+
+func TestModelUpdate(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name": "Update测试", "type": "admin", "status": "enabled",
+	})
+
+	err := user.Update(id, maps.MapStr{"status": "disabled"})
+	assert.Nil(t, err)
+
+	row := user.MustFind(id, QueryParam{})
+	assert.Equal(t, "disabled", row.Get("status"))
+
+	user.MustUpdate(id, maps.MapStr{"status": "enabled"})
+	row2 := user.MustFind(id, QueryParam{})
+	assert.Equal(t, "enabled", row2.Get("status"))
+
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+}
+
+func TestModelCreate(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	user := Select("user")
+	id, err := user.Create(maps.MapStr{
+		"name": "Create测试", "type": "admin", "status": "enabled",
+	})
+	assert.Nil(t, err)
+	assert.True(t, id > 0)
+
+	row := user.MustFind(id, QueryParam{})
+	assert.Equal(t, "Create测试", row.Get("name"))
+
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+}
+
+func TestModelAESCryptWhereFilter(t *testing.T) {
+	if os.Getenv("GOU_TEST_DB_DRIVER") == "sqlite3" {
+		t.Skip("SQLite3 does not support AES encryption")
+	}
+	prepare(t)
+	defer clean()
+
+	user := Select("user")
+	mobile := "13800001111"
+	id := user.MustSave(maps.MapStr{
+		"name": "AES查询", "type": "admin", "status": "enabled", "mobile": mobile,
+	})
+
+	res := user.MustGet(QueryParam{
+		Wheres: []QueryWhere{{Column: "mobile", Value: mobile}},
+	})
+	assert.Equal(t, 1, len(res))
+	assert.Equal(t, "AES查询", res[0].Get("name"))
+
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+}
+
+func TestModelFliterOut(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name": "FliterOut测试", "type": "admin", "status": "enabled",
+		"extra": maps.MapStr{"level": 5},
+	})
+
+	row := user.MustFind(id, QueryParam{})
+	assert.Equal(t, "FliterOut测试", row.Get("name"))
+	dot := row.Dot()
+	assert.Equal(t, float64(5), dot.Get("extra.level"))
+
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+}
+
+func TestEncryptorPasswordEncodeDecode(t *testing.T) {
+	enc := &Encryptor{Key: "testkey", Name: "PASSWORD"}
+	Encryptors["PASSWORD"] = enc
+	pwd := &EncryptorPassword{}
+	pwd.Set(enc)
+
+	hash, err := pwd.Encode("mypassword")
+	assert.Nil(t, err)
+	assert.NotEmpty(t, hash)
+	assert.NotEqual(t, "mypassword", hash)
+
+	decoded, err := pwd.Decode(hash)
+	assert.Nil(t, err)
+	assert.Equal(t, hash, decoded)
+
+	assert.True(t, pwd.Validate(hash, "mypassword"))
+	assert.False(t, pwd.Validate(hash, "wrongpassword"))
+}
+
+func TestEncryptorAESEncodeDecode(t *testing.T) {
+	enc := &Encryptor{Key: "aes-test-key", Name: "AES"}
+	Encryptors["AES"] = enc
+	aes := &EncryptorAES{}
+	aes.Set(enc)
+
+	encoded, err := aes.Encode("hello")
+	assert.Nil(t, err)
+	assert.Contains(t, encoded, "HEX(AES_ENCRYPT(")
+
+	decoded, err := aes.Decode("mobile")
+	assert.Nil(t, err)
+	assert.Contains(t, decoded, "AES_DECRYPT(UNHEX(")
+
+	decodedDot, err := aes.Decode("user.mobile")
+	assert.Nil(t, err)
+	assert.Contains(t, decodedDot, "`user`.`mobile`")
+
+	assert.False(t, aes.Validate("abc", "abc"))
+}
+
+func TestEncryptorPGCryptoEncodeDecode(t *testing.T) {
+	enc := &Encryptor{Key: "pg-test-key", Name: "AES"}
+	Encryptors["AES"] = enc
+	pg := &EncryptorPGCrypto{}
+	pg.Set(enc)
+
+	encoded, err := pg.Encode("hello")
+	assert.Nil(t, err)
+	assert.Contains(t, encoded, "pgp_sym_encrypt")
+	assert.Contains(t, encoded, "pg-test-key")
+
+	decoded, err := pg.Decode("mobile")
+	assert.Nil(t, err)
+	assert.Contains(t, decoded, "pgp_sym_decrypt")
+	assert.Contains(t, decoded, `"mobile"`)
+
+	decodedDot, err := pg.Decode("user.mobile")
+	assert.Nil(t, err)
+	assert.Contains(t, decodedDot, `"user"."mobile"`)
+
+	assert.False(t, pg.Validate("abc", "abc"))
+}
+
+func TestSelectCrypt(t *testing.T) {
+	enc := &Encryptor{Key: "select-key", Name: "AES"}
+	Encryptors["AES"] = enc
+
+	icrypt, err := SelectCrypt("AES")
+	assert.Nil(t, err)
+	assert.NotNil(t, icrypt)
+
+	_, err = SelectCrypt("NONEXISTENT")
+	assert.NotNil(t, err)
+}
+
+func TestWithCrypt(t *testing.T) {
+	data := []byte(`{"key": "wc-key"}`)
+	enc, err := WithCrypt(data, "TestCrypt")
+	assert.Nil(t, err)
+	assert.Equal(t, "wc-key", enc.Key)
+	assert.Equal(t, "TestCrypt", enc.Name)
+
+	_, err = WithCrypt([]byte(`invalid`), "Bad")
+	assert.NotNil(t, err)
+}
+
+func TestEncryptorSQLEscape(t *testing.T) {
+	enc := &Encryptor{Key: "key'with\"quote", Name: "AES"}
+	Encryptors["AES"] = enc
+
+	aes := &EncryptorAES{}
+	aes.Set(enc)
+	encoded, _ := aes.Encode("val'ue")
+	assert.Contains(t, encoded, "val''ue")
+	assert.Contains(t, encoded, "key''with\"quote")
+	assert.NotContains(t, encoded, "val'u")
+
+	decoded, _ := aes.Decode("field")
+	assert.Contains(t, decoded, "key''with")
+
+	pg := &EncryptorPGCrypto{}
+	pg.Set(enc)
+	pgEncoded, _ := pg.Encode("val'ue")
+	assert.Contains(t, pgEncoded, "val''ue")
+	assert.Contains(t, pgEncoded, "key''with")
+
+	pgDecoded, _ := pg.Decode("field")
+	assert.Contains(t, pgDecoded, "key''with")
+}
+
+func TestModelMustInsertBatch(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	user := Select("user")
+	columns := []string{"name", "type", "status"}
+	rows := [][]interface{}{
+		{"MustInsert1", "admin", "enabled"},
+		{"MustInsert2", "staff", "enabled"},
+	}
+
+	user.MustInsert(columns, rows)
+
+	res := user.MustGet(QueryParam{
+		Wheres: []QueryWhere{{Column: "name", Value: "MustInsert", OP: "match"}},
+	})
+	for _, r := range res {
+		capsule.Query().Table(user.MetaData.Table.Name).Where("id", r.Get("id")).Delete()
+	}
+	assert.Equal(t, 2, len(res))
+}
+
+func TestModelMustEachSaveBatch(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	user := Select("user")
+	ids := user.MustEachSave([]map[string]interface{}{
+		{"name": "MustEach1", "type": "admin", "status": "enabled"},
+		{"name": "MustEach2", "type": "staff", "status": "enabled"},
+	})
+	assert.Equal(t, 2, len(ids))
+
+	for _, id := range ids {
+		capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+	}
+}
+
+func TestModelMustUpsert(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name": "MustUpsert", "type": "admin", "status": "enabled",
+	})
+
+	affected := user.MustUpsert(
+		maps.MapStr{"id": id, "name": "MustUpsert", "type": "admin", "status": "disabled"},
+		[]interface{}{"id"},
+		[]interface{}{"status"},
+	)
+	assert.True(t, affected > 0)
+
+	found := user.MustFind(id, QueryParam{})
+	assert.Equal(t, "disabled", found.Get("status"))
+
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+}
+
+func TestModelFliterOutDirect(t *testing.T) {
+	prepare(t)
+	defer clean()
+
+	user := Select("user")
+	row := maps.MapStrAny{
+		"name":   "Direct",
+		"extra":  `{"level":3}`,
+		"status": "enabled",
+	}
+	user.FliterOut(row)
+	assert.Equal(t, float64(3), row.Dot().Get("extra.level"))
+}

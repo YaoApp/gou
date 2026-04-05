@@ -25,7 +25,7 @@ func (mod *Model) TakeSnapshot(inMemory bool) (string, error) {
 
 	// Copy the data
 	qb := capsule.Global.Query()
-	sql := fmt.Sprintf("INSERT INTO `%s` SELECT * FROM `%s`", name, mod.MetaData.Table.Name)
+	sql := fmt.Sprintf("INSERT INTO %s SELECT * FROM %s", mod.QuoteIdentifier(name), mod.QuoteIdentifier(mod.MetaData.Table.Name))
 	_, err = qb.ExecWrite(sql)
 	if err != nil {
 		// Drop the snapshot table
@@ -144,7 +144,7 @@ func (mod *Model) RestoreSnapshot(name string) error {
 
 	// Restore the snapshot
 	qb := capsule.Global.Query()
-	sql := fmt.Sprintf("INSERT INTO `%s` SELECT * FROM `%s`", mod.MetaData.Table.Name, name)
+	sql := fmt.Sprintf("INSERT INTO %s SELECT * FROM %s", mod.QuoteIdentifier(mod.MetaData.Table.Name), mod.QuoteIdentifier(name))
 	_, err = qb.ExecWrite(sql)
 	if err != nil {
 		color.Red("[RestoreSnapshot] restore snapshot failed: %s", err)
@@ -194,7 +194,7 @@ func (mod *Model) createSnapshotTable(name string, inMemory bool) error {
 	}
 
 	sch := schema.Use(connector)
-	if inMemory {
+	if inMemory && mod.Driver != "postgres" {
 		blueprint.Temporary = true
 	}
 

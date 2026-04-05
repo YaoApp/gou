@@ -153,6 +153,11 @@ func (gou *Query) Load(data interface{}) (share.DSL, error) {
 	query.AESKey = gou.AESKey
 	query.GetTableName = gou.GetTableName
 	query.driver = gou.driver
+	if query.driver == "" {
+		if driver, err := gou.Query.Driver(); err == nil {
+			query.driver = driver
+		}
+	}
 
 	errs := query.Validate()
 	if len(errs) > 0 {

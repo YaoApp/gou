@@ -81,6 +81,8 @@ func (x *Xun) Create(name string) error {
 				return err
 			}
 		}
+		// Enable pgcrypto extension for AES-equivalent encryption
+		db.Exec("CREATE EXTENSION IF NOT EXISTS pgcrypto")
 	case "sqlite3":
 	}
 
@@ -158,6 +160,11 @@ func (x *Xun) TableExists(name string) (bool, error) {
 func (x *Xun) TableCreate(name string, blueprint types.Blueprint) error {
 	sch := x.Manager.Schema()
 	option := dbal.CreateTableOption{}
+
+	// Ensure pgcrypto extension exists for PostgreSQL (idempotent)
+	if m, err := x.Manager.Primary(); err == nil && m.Config.Driver == "postgres" {
+		m.DB.Exec("CREATE EXTENSION IF NOT EXISTS pgcrypto")
+	}
 
 	// Temporary table
 	if blueprint.Temporary {
