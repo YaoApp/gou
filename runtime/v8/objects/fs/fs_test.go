@@ -1076,10 +1076,10 @@ func initTestEngine() {
 		switch TestDriver {
 		case "sqlite3":
 			capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
-			break
+		case "postgres":
+			capsule.AddConn("primary", "postgres", TestDSN).SetAsGlobal()
 		default:
 			capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
-			break
 		}
 	}
 
