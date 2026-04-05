@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/yaoapp/xun/capsule"
@@ -365,6 +366,24 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 	}
 
 	column := m.FliterWhere(alias, where.Column)
+
+	// For JSON columns on PostgreSQL, LIKE/match requires casting to text first.
+	isJSONLike := false
+	colName := ""
+	op := strings.ToLower(where.OP)
+	if (op == "like" || op == "match") && m.Driver == "postgres" {
+		if name, ok := where.Column.(string); ok {
+			if col, has := m.Columns[name]; has && strings.ToLower(col.Type) == "json" {
+				isJSONLike = true
+				quoted := name
+				if alias != "" {
+					quoted = alias + "." + name
+				}
+				colName = fmt.Sprintf("%s::text", m.QuoteIdentifier(quoted))
+			}
+		}
+	}
+
 	switch strings.ToLower(where.Method) {
 	case "where":
 		switch where.OP {
@@ -376,7 +395,11 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 			break
 		case "match":
 			if value, ok := where.Value.(string); ok {
-				qb.Where(column, "like", "%"+value+"%")
+				if isJSONLike {
+					qb.WhereRaw(colName+" LIKE ?", "%"+value+"%")
+				} else {
+					qb.Where(column, "like", "%"+value+"%")
+				}
 			}
 			break
 		case "in":
@@ -390,7 +413,11 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 			if !has {
 				op = "="
 			}
-			qb.Where(column, op, where.Value)
+			if isJSONLike {
+				qb.WhereRaw(colName+" LIKE ?", where.Value)
+			} else {
+				qb.Where(column, op, where.Value)
+			}
 		}
 		break
 	case "orwhere":
@@ -403,7 +430,11 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 			break
 		case "match":
 			if value, ok := where.Value.(string); ok {
-				qb.OrWhere(column, "like", "%"+value+"%")
+				if isJSONLike {
+					qb.OrWhereRaw(colName+" LIKE ?", "%"+value+"%")
+				} else {
+					qb.OrWhere(column, "like", "%"+value+"%")
+				}
 			}
 			break
 		case "in":
@@ -416,7 +447,11 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 			if !has {
 				op = "="
 			}
-			qb.OrWhere(column, op, where.Value)
+			if isJSONLike {
+				qb.OrWhereRaw(colName+" LIKE ?", where.Value)
+			} else {
+				qb.OrWhere(column, op, where.Value)
+			}
 		}
 		break
 	}

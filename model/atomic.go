@@ -12,12 +12,19 @@ import (
 	"github.com/yaoapp/xun/dbal"
 )
 
-// QuoteIdentifier wraps a column/table name with the correct quote character for the active driver.
+// QuoteIdentifier wraps a column/table name with the correct quote character
+// for the active driver. Handles dotted names like "alias.column" by quoting
+// each segment individually (e.g. "alias"."column" for postgres).
 func (mod *Model) QuoteIdentifier(name string) string {
+	q := "`"
 	if mod.Driver == "postgres" {
-		return fmt.Sprintf(`"%s"`, name)
+		q = `"`
 	}
-	return fmt.Sprintf("`%s`", name)
+	parts := strings.Split(name, ".")
+	for i, p := range parts {
+		parts[i] = q + p + q
+	}
+	return strings.Join(parts, ".")
 }
 
 // Find 查询单条记录

@@ -168,3 +168,61 @@ func TestQueryPaginateOrder(t *testing.T) {
 	assert.Equal(t, 4, dot.Get("total"))
 	assert.Equal(t, "Nemo", dot.Get("data.0.name"))
 }
+
+func TestQueryJSONColumnLike(t *testing.T) {
+	prepare(t)
+	defer clean()
+
+	user := Select("user")
+
+	_, err := user.Create(map[string]interface{}{
+		"name":   "JSONLikeTest",
+		"mobile": "13900000001",
+		"type":   "admin",
+		"extra":  map[string]interface{}{"skill": "golang", "level": 5},
+	})
+	assert.NoError(t, err)
+
+	res, err := user.Get(QueryParam{
+		Wheres: []QueryWhere{
+			{Column: "extra", Value: "%golang%", OP: "like"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, len(res), 1)
+
+	res, err = user.Get(QueryParam{
+		Wheres: []QueryWhere{
+			{Column: "extra", Value: "golang", OP: "match"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, len(res), 1)
+}
+
+func TestQueryJSONColumnLikeOrWhere(t *testing.T) {
+	prepare(t)
+	defer clean()
+
+	user := Select("user")
+	_, err := user.Create(map[string]interface{}{
+		"name":   "JSONOrWhereTest",
+		"mobile": "13900000002",
+		"type":   "admin",
+		"extra":  map[string]interface{}{"role": "tester"},
+	})
+	assert.NoError(t, err)
+
+	res, err := user.Get(QueryParam{
+		Wheres: []QueryWhere{
+			{
+				Wheres: []QueryWhere{
+					{Column: "name", Value: "nonexistent_user_xyz"},
+					{Column: "extra", Value: "%tester%", OP: "like", Method: "orwhere"},
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, len(res), 1)
+}
