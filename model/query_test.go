@@ -50,7 +50,7 @@ func TestQueryHasOne(t *testing.T) {
 	prepareTestData(t)
 
 	param := QueryParam{
-		Model: "pet",
+		Model:  "pet",
 		Select: []interface{}{"name", "category_id", "owner_id"},
 		Withs: map[string]With{
 			"category": {
@@ -76,7 +76,7 @@ func TestQueryHasOneWhere(t *testing.T) {
 	prepareTestData(t)
 
 	param := QueryParam{
-		Model: "pet",
+		Model:  "pet",
 		Select: []interface{}{"name", "owner_id"},
 		Withs: map[string]With{
 			"owner": {
@@ -103,7 +103,7 @@ func TestQueryHasOneMultipleRelations(t *testing.T) {
 	prepareTestData(t)
 
 	param := QueryParam{
-		Model: "pet",
+		Model:  "pet",
 		Select: []interface{}{"name", "category_id", "owner_id", "doctor_id"},
 		Withs: map[string]With{
 			"category": {
@@ -135,7 +135,7 @@ func TestQueryPaginate(t *testing.T) {
 	prepareTestData(t)
 
 	param := QueryParam{
-		Model: "pet",
+		Model:  "pet",
 		Select: []interface{}{"name", "category_id"},
 		Withs: map[string]With{
 			"category": {
@@ -156,7 +156,7 @@ func TestQueryPaginateOrder(t *testing.T) {
 	prepareTestData(t)
 
 	param := QueryParam{
-		Model: "pet",
+		Model:  "pet",
 		Select: []interface{}{"name"},
 		Orders: []QueryOrder{
 			{Column: "id", Option: "desc"},
