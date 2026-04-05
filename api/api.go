@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/yaoapp/kun/log"
 
@@ -16,8 +17,9 @@ import (
 
 // APIs is the loaded API list
 var APIs = map[string]*API{}
+var apisMu sync.RWMutex
 
-// Load load the api
+// Load load the api and register it to the global APIs map
 func Load(file, id string, guard ...string) (*API, error) {
 
 	data, err := application.App.Read(file)
@@ -25,10 +27,19 @@ func Load(file, id string, guard ...string) (*API, error) {
 		return nil, err
 	}
 
-	return LoadSource(file, data, id, guard...)
+	api, err := LoadSource(file, data, id, guard...)
+	if err != nil {
+		return nil, err
+	}
+
+	apisMu.Lock()
+	APIs[id] = api
+	apisMu.Unlock()
+
+	return api, nil
 }
 
-// LoadSource load api by source
+// LoadSource parses API source data and returns an *API without modifying global state
 func LoadSource(file string, data []byte, id string, guard ...string) (*API, error) {
 
 	http := HTTP{}
@@ -59,19 +70,19 @@ func LoadSource(file string, data []byte, id string, guard ...string) (*API, err
 		http.Guard = guard[0]
 	}
 
-	APIs[id] = &API{
+	return &API{
 		ID:   id,
 		File: file,
 		HTTP: http,
 		Type: "http",
-	}
-
-	return APIs[id], nil
+	}, nil
 }
 
 // Select select api
 func Select(id string) *API {
+	apisMu.RLock()
 	api, has := APIs[id]
+	apisMu.RUnlock()
 	if !has {
 		exception.New("[API] %s not loaded", 500, id).Throw()
 	}
@@ -114,7 +125,14 @@ func SetRoutes(router *gin.Engine, path string, allows ...string) {
 	}))
 
 	// Load apis
+	apisMu.RLock()
+	snapshot := make([]*API, 0, len(APIs))
 	for _, api := range APIs {
+		snapshot = append(snapshot, api)
+	}
+	apisMu.RUnlock()
+
+	for _, api := range snapshot {
 		api.HTTP.Routes(router, path, allows...)
 	}
 }
@@ -150,12 +168,10 @@ func FindHandler(method, path string) (*API, *Path, gin.HandlerFunc, map[string]
 }
 
 // ReloadAPIs reloads all API definitions from the specified directory
-// This function is thread-safe and performs atomic replacement of the route table
+// This function is thread-safe and performs atomic replacement of both APIs and the route table
 func ReloadAPIs(root string) error {
-	// Load API files from the directory
 	exts := []string{"*.http.yao", "*.http.json", "*.http.jsonc"}
 
-	// Check if directory exists
 	exists, err := application.App.Exists(root)
 	if err != nil {
 		return err
@@ -164,7 +180,7 @@ func ReloadAPIs(root string) error {
 		return nil
 	}
 
-	// Collect new APIs
+	// Build into a local map — no lock needed, single-goroutine Walk callback
 	newAPIs := make(map[string]*API)
 	var loadErr error
 
@@ -173,18 +189,23 @@ func ReloadAPIs(root string) error {
 			return nil
 		}
 
-		// Generate ID from file path
 		id := strings.TrimPrefix(file, "/")
 		id = strings.TrimPrefix(id, root+"/")
 		id = strings.TrimPrefix(id, root)
 		id = strings.TrimSuffix(id, filepath.Ext(id))
-		id = strings.TrimSuffix(id, filepath.Ext(id)) // Remove .http
+		id = strings.TrimSuffix(id, filepath.Ext(id))
 		id = strings.ReplaceAll(id, "/", ".")
 
-		api, err := Load(file, id)
+		data, err := application.App.Read(file)
 		if err != nil {
 			loadErr = err
-			return nil // Continue loading other files
+			return nil
+		}
+
+		api, err := LoadSource(file, data, id)
+		if err != nil {
+			loadErr = err
+			return nil
 		}
 		newAPIs[id] = api
 		return nil
@@ -198,13 +219,16 @@ func ReloadAPIs(root string) error {
 		log.Warn("[API] ReloadAPIs partial error: %s", loadErr.Error())
 	}
 
-	// Rebuild route table with write lock
+	// Atomically replace global APIs and rebuild route table
+	apisMu.Lock()
+	APIs = newAPIs
+	apisMu.Unlock()
+
 	routeTable.mu.Lock()
 	defer routeTable.mu.Unlock()
 
-	// Clear and rebuild
 	routeTable.clear()
-	for _, api := range APIs {
+	for _, api := range newAPIs {
 		for i := range api.HTTP.Paths {
 			path := &api.HTTP.Paths[i]
 			fullPath := buildFullPath(api.HTTP.Group, path.Path)
@@ -215,7 +239,6 @@ func ReloadAPIs(root string) error {
 				Path:    path,
 			}
 
-			// Compile pattern if it has parameters
 			if hasPathParams(fullPath) {
 				entry.Regex, entry.Params = compilePattern(fullPath)
 			}
@@ -230,11 +253,18 @@ func ReloadAPIs(root string) error {
 // BuildRouteTable builds the route table from loaded APIs
 // Should be called after loading APIs and before using FindHandler
 func BuildRouteTable() {
+	apisMu.RLock()
+	snapshot := make(map[string]*API, len(APIs))
+	for k, v := range APIs {
+		snapshot[k] = v
+	}
+	apisMu.RUnlock()
+
 	routeTable.mu.Lock()
 	defer routeTable.mu.Unlock()
 
 	routeTable.clear()
-	for _, api := range APIs {
+	for _, api := range snapshot {
 		for i := range api.HTTP.Paths {
 			path := &api.HTTP.Paths[i]
 			fullPath := buildFullPath(api.HTTP.Group, path.Path)
@@ -245,7 +275,6 @@ func BuildRouteTable() {
 				Path:    path,
 			}
 
-			// Compile pattern if it has parameters
 			if hasPathParams(fullPath) {
 				entry.Regex, entry.Params = compilePattern(fullPath)
 			}

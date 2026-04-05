@@ -21,7 +21,9 @@ func processList(process *process.Process) interface{} {
 		ids = process.ArgsStrings(0)
 	}
 
-	// List all
+	apisMu.RLock()
+	defer apisMu.RUnlock()
+
 	apis := map[string]*API{}
 	if len(ids) == 0 {
 		for id, api := range APIs {
@@ -30,7 +32,6 @@ func processList(process *process.Process) interface{} {
 		return apis
 	}
 
-	// List by ids
 	for _, id := range ids {
 		if api, has := APIs[id]; has {
 			apis[id] = api
@@ -52,9 +53,13 @@ func processReload(process *process.Process) interface{} {
 		exception.New(err.Error(), 500).Throw()
 	}
 
+	apisMu.RLock()
+	count := len(APIs)
+	apisMu.RUnlock()
+
 	return map[string]interface{}{
 		"success": true,
 		"message": "APIs reloaded",
-		"count":   len(APIs),
+		"count":   count,
 	}
 }
