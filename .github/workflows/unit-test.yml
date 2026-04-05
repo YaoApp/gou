@@ -96,7 +96,7 @@ jobs:
     strategy:
       matrix:
         go: [1.24]
-        db: [MySQL8.0, SQLite3]
+        db: [MySQL8.0, SQLite3, Postgres14]
         redis: [6]
         mongo: ["6.0"]
     steps:

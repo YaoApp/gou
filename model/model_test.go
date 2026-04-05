@@ -408,10 +408,10 @@ func dbconnect() {
 	switch TestDriver {
 	case "sqlite3":
 		capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
-		break
+	case "postgres":
+		capsule.AddConn("primary", "postgres", TestDSN).SetAsGlobal()
 	default:
 		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
-		break
 	}
 
 	// query engine
@@ -468,56 +468,45 @@ func dbconnect() {
 
 // }
 
-// func TestModelMustCreate(t *testing.T) {
-// 	user := Select("user")
-// 	id := user.MustCreate(maps.MapStr{
-// 		"name":     "用户创建",
-// 		"manu_id":  2,
-// 		"type":     "user",
-// 		"idcard":   "23082619820207006X",
-// 		"mobile":   "13900004444",
-// 		"password": "qV@uT1DI",
-// 		"key":      "XZ12MiPp",
-// 		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
-// 		"status":   "enabled",
-// 		"extra":    maps.MapStr{"sex": "女"},
-// 	})
+func TestModelMustCreate(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// 	// utils.Dump(id)
+	user := Select("user")
+	id := user.MustCreate(maps.MapStr{
+		"name":   "用户创建",
+		"type":   "admin",
+		"status": "enabled",
+		"extra":  maps.MapStr{"sex": "女"},
+	})
 
-// 	row := user.MustFind(id, QueryParam{})
+	row := user.MustFind(id, QueryParam{})
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
 
-// 	// 清空数据
-// 	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+	assert.Equal(t, "用户创建", row.Get("name"))
+	assert.Equal(t, "女", row.Dot().Get("extra.sex"))
+}
 
-// 	assert.Equal(t, row.Get("name"), "用户创建")
-// 	assert.Equal(t, row.Dot().Get("extra.sex"), "女")
+func TestModelMustSaveNew(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// }
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name":   "用户保存",
+		"type":   "admin",
+		"status": "enabled",
+		"extra":  maps.MapStr{"sex": "女"},
+	})
 
-// func TestModelMustSaveNew(t *testing.T) {
-// 	user := Select("user")
-// 	id := user.MustSave(maps.MapStr{
-// 		"name":     "用户创建",
-// 		"manu_id":  2,
-// 		"type":     "user",
-// 		"idcard":   "23082619820207006X",
-// 		"mobile":   "13900004444",
-// 		"password": "qV@uT1DI",
-// 		"key":      "XZ12MiPp",
-// 		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
-// 		"status":   "enabled",
-// 		"extra":    maps.MapStr{"sex": "女"},
-// 	})
+	row := user.MustFind(id, QueryParam{})
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
 
-// 	row := user.MustFind(id, QueryParam{})
-
-// 	// 清空数据
-// 	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
-// 	assert.Equal(t, row.Get("name"), "用户创建")
-// 	assert.Equal(t, row.Dot().Get("extra.sex"), "女")
-
-// }
+	assert.Equal(t, "用户保存", row.Get("name"))
+	assert.Equal(t, "女", row.Dot().Get("extra.sex"))
+}
 
 // func TestModelWithStringPrimary(t *testing.T) {
 // 	store := Select("store")
@@ -599,48 +588,41 @@ func dbconnect() {
 // 	assert.Equal(t, effect, 1)
 // }
 
-// func TestModelMustDeleteSoft(t *testing.T) {
-// 	user := Select("user")
-// 	id := user.MustSave(maps.MapStr{
-// 		"name":     "用户创建",
-// 		"manu_id":  2,
-// 		"type":     "user",
-// 		"idcard":   "23082619820207006X",
-// 		"mobile":   "13900004444",
-// 		"password": "qV@uT1DI",
-// 		"key":      "XZ12MiPp",
-// 		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
-// 		"status":   "enabled",
-// 		"extra":    maps.MapStr{"sex": "女"},
-// 	})
-// 	user.MustDelete(id)
-// 	row, _ := user.Find(id, QueryParam{})
+func TestModelMustDeleteSoft(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
 
-// 	// 清空数据
-// 	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
-// 	assert.Nil(t, row)
-// }
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name":   "软删除测试",
+		"type":   "admin",
+		"status": "enabled",
+	})
+	user.MustDelete(id)
+	row, _ := user.Find(id, QueryParam{})
 
-// func TestModelMustDestroy(t *testing.T) {
-// 	user := Select("user")
-// 	id := user.MustSave(maps.MapStr{
-// 		"name":     "用户创建",
-// 		"manu_id":  2,
-// 		"type":     "user",
-// 		"idcard":   "23082619820207006X",
-// 		"mobile":   "13900004444",
-// 		"password": "qV@uT1DI",
-// 		"key":      "XZ12MiPp",
-// 		"secret":   "wBeYjL7FjbcvpAdBrxtDFfjydsoPKhRN",
-// 		"status":   "enabled",
-// 		"extra":    maps.MapStr{"sex": "女"},
-// 	})
-// 	user.MustDestroy(id)
+	capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).Delete()
+	assert.Nil(t, row)
+}
 
-// 	row, err := capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).First()
-// 	assert.True(t, row.IsEmpty())
-// 	assert.Nil(t, err)
-// }
+func TestModelMustDestroy(t *testing.T) {
+	prepare(t)
+	defer clean()
+	prepareTestData(t)
+
+	user := Select("user")
+	id := user.MustSave(maps.MapStr{
+		"name":   "硬删除测试",
+		"type":   "admin",
+		"status": "enabled",
+	})
+	user.MustDestroy(id)
+
+	row, err := capsule.Query().Table(user.MetaData.Table.Name).Where("id", id).First()
+	assert.True(t, row.IsEmpty())
+	assert.Nil(t, err)
+}
 
 // func TestModelMustInsert(t *testing.T) {
 // 	columns := []string{"user_id", "province", "city", "location"}

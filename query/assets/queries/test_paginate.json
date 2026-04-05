@@ -1,0 +1,7 @@
+{
+  "select": ["id", "name", "email"],
+  "from": "gou_test_user",
+  "orders": ["id"],
+  "page": 1,
+  "pagesize": 2
+}

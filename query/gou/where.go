@@ -122,7 +122,7 @@ func (gou *Query) setWheres(or bool, wheres []Where) {
 	}
 
 	var whereFun = func(qb query.Query) {
-		gouWheres := New()
+		gouWheres := gou.Clone()
 		gouWheres.Query = qb
 		for _, where := range wheres {
 			gouWheres.buildWhere(where)

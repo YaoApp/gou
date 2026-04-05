@@ -46,6 +46,9 @@ var RegFieldIsArray = regexp.MustCompile("^([A-Za-z0-9_\u4e00-\u9fa5]+)([@\\[]{1
 // RegSelectSTMT SQL语句中的 Select 语句
 var RegSelectSTMT = regexp.MustCompile("^select(.+)from")
 
+// RegOrderBySTMT strips ORDER BY clause (meaningless for COUNT queries, and PostgreSQL rejects it)
+var RegOrderBySTMT = regexp.MustCompile(`(?i)\s+order\s+by\s+.+$`)
+
 // M map[string]interface{} 别名
 type M = map[string]interface{}
 

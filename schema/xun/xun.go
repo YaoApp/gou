@@ -73,6 +73,14 @@ func (x *Xun) Create(name string) error {
 		if err != nil {
 			return err
 		}
+	case "postgres":
+		safeName := strings.ReplaceAll(name, `"`, `""`)
+		_, err := db.Exec(fmt.Sprintf(`CREATE DATABASE "%s"`, safeName))
+		if err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				return err
+			}
+		}
 	case "sqlite3":
 	}
 
@@ -93,6 +101,12 @@ func (x *Xun) Drop(name string) error {
 		_, err := db.Exec(
 			fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", strings.ReplaceAll(name, "`", "\\`")),
 		)
+		if err != nil {
+			return err
+		}
+	case "postgres":
+		safeName := strings.ReplaceAll(name, `"`, `""`)
+		_, err := db.Exec(fmt.Sprintf(`DROP DATABASE IF EXISTS "%s"`, safeName))
 		if err != nil {
 			return err
 		}
@@ -147,8 +161,10 @@ func (x *Xun) TableCreate(name string, blueprint types.Blueprint) error {
 
 	// Temporary table
 	if blueprint.Temporary {
-		option.Engine = "MEMORY"
 		option.Temporary = true
+		if m, err := x.Manager.Primary(); err == nil && m.Config.Driver == "mysql" {
+			option.Engine = "MEMORY"
+		}
 	}
 
 	err := sch.CreateTable(name, func(table schema.Blueprint) {

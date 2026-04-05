@@ -2,6 +2,7 @@ package gou
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -22,6 +23,21 @@ var TestAESKey = "123456"
 
 func should(t assert.TestingT, actual, expected interface{}, msgAndArgs ...interface{}) bool {
 	return assert.Equal(t, expected, actual, msgAndArgs...)
+}
+
+// Q adapts expected SQL strings to the active driver's identifier quoting
+// and placeholder format. Test cases are authored with backticks and ? placeholders
+// (MySQL canonical form).
+func Q(sql string) string {
+	if TestDriver == "postgres" {
+		sql = strings.ReplaceAll(sql, "`", `"`)
+		n := 1
+		for strings.Contains(sql, "?") {
+			sql = strings.Replace(sql, "?", fmt.Sprintf("$%d", n), 1)
+			n++
+		}
+	}
+	return sql
 }
 
 var qb query.Query
@@ -65,18 +81,66 @@ func TestMain(m *testing.M) {
 	switch TestDriver {
 	case "sqlite3":
 		capsule.AddConn("primary", "sqlite3", TestDSN).SetAsGlobal()
-		break
+	case "postgres":
+		capsule.AddConn("primary", "postgres", TestDSN).SetAsGlobal()
 	default:
 		capsule.AddConn("primary", "mysql", TestDSN).SetAsGlobal()
-		break
 	}
 
 	qb = capsule.Query()
 
+	// Setup integration test table
+	setupTestTable()
+
 	// Run test suites
 	exitVal := m.Run()
 
-	// we can do clean up code here
+	// Cleanup
+	teardownTestTable()
 	os.Exit(exitVal)
 
+}
+
+func setupTestTable() {
+	var ddl string
+	switch TestDriver {
+	case "postgres":
+		ddl = `CREATE TABLE IF NOT EXISTS gou_test_user (
+			id SERIAL PRIMARY KEY,
+			name VARCHAR(100),
+			email VARCHAR(100)
+		)`
+	case "sqlite3":
+		ddl = `CREATE TABLE IF NOT EXISTS gou_test_user (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name VARCHAR(100),
+			email VARCHAR(100)
+		)`
+	default:
+		ddl = `CREATE TABLE IF NOT EXISTS gou_test_user (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			name VARCHAR(100),
+			email VARCHAR(100)
+		)`
+	}
+	_, err := qb.DB().Exec(ddl)
+	if err != nil {
+		panic("failed to create test table: " + err.Error())
+	}
+	_, _ = qb.DB().Exec("DELETE FROM gou_test_user")
+	inserts := []string{
+		"INSERT INTO gou_test_user (name, email) VALUES ('Alice', 'alice@test.com')",
+		"INSERT INTO gou_test_user (name, email) VALUES ('Bob', 'bob@test.com')",
+		"INSERT INTO gou_test_user (name, email) VALUES ('Charlie', 'charlie@test.com')",
+	}
+	for _, sql := range inserts {
+		_, err := qb.DB().Exec(sql)
+		if err != nil {
+			panic("failed to insert test data: " + err.Error())
+		}
+	}
+}
+
+func teardownTestTable() {
+	_, _ = qb.DB().Exec("DROP TABLE IF EXISTS gou_test_user")
 }

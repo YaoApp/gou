@@ -1,0 +1,6 @@
+{
+  "select": ["id", "name", "email"],
+  "from": "gou_test_user",
+  "orders": ["id"],
+  "first": true
+}

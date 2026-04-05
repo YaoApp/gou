@@ -67,7 +67,7 @@ func (gou Query) sqlGroup(group Group, selects map[string]FieldNode) (string, []
 		rollup = " WITH ROLLUP"
 	}
 
-	return fmt.Sprintf("`%s`%s", nameGroup, rollup), joins, update
+	return gou.Quote(nameGroup) + rollup, joins, update
 }
 
 // sqlExpression 字段表达式转换为 SQL (MySQL8.0)
@@ -81,14 +81,14 @@ func (gou Query) sqlExpression(exp Expression, withDefaultAlias ...bool) interfa
 	}
 
 	if alias != "" {
-		alias = fmt.Sprintf(" AS `%s`", alias)
+		alias = " AS " + gou.Quote(alias)
 	}
 
 	if exp.Table != "" {
 		if exp.IsModel {
 			table = gou.GetTableName(exp.Table)
 		}
-		table = fmt.Sprintf("`%s`.", table)
+		table = gou.Quote(table) + "."
 	}
 
 	if exp.IsString {
@@ -176,7 +176,7 @@ func (gou Query) sqlExpression(exp Expression, withDefaultAlias ...bool) interfa
 		return dbal.Raw(fmt.Sprintf("JSON_EXTRACT(%s`%s`, '$%s%s')%s", table, exp.Field, index, key, alias))
 	}
 
-	return fmt.Sprintf("%s`%s`%s", table, exp.Field, alias)
+	return fmt.Sprintf("%s%s%s", table, gou.Quote(exp.Field), alias)
 }
 
 // sqlTypeOf 字段类型

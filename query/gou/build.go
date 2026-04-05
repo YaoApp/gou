@@ -197,7 +197,7 @@ func (gou *Query) buildUnions() *Query {
 
 // buildUnion Union
 func (gou *Query) buildUnion(union QueryDSL) *Query {
-	gouUnion := New()
+	gouUnion := gou.Clone()
 	gouUnion.QueryDSL = union
 	gou.Query.UnionAll(func(qb query.Query) {
 		gouUnion.Query = qb
@@ -224,7 +224,7 @@ func (gou *Query) buildSubQuery() *Query {
 	gou.Query.FromSub(func(qb query.Query) {
 		gouSubQuery.Query = qb
 		gouSubQuery.Build()
-	}, fmt.Sprintf("`%s`", alias))
+	}, gou.Quote(alias))
 
 	return gou
 }
@@ -332,8 +332,8 @@ func (gou *Query) WrapNameOf(exp Expression) string {
 		if exp.IsModel {
 			table = gou.GetTableName(table)
 		}
-		return fmt.Sprintf("`%s`.`%s`", exp.Table, exp.Field)
+		return gou.Quote(table) + "." + gou.Quote(exp.Field)
 	}
 
-	return fmt.Sprintf("`%s`", exp.Field)
+	return gou.Quote(exp.Field)
 }

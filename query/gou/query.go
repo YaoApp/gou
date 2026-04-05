@@ -29,6 +29,15 @@ type Query struct {
 	Selects      map[string]FieldNode
 	AESKey       string
 	STMT         string
+	driver       string
+}
+
+// Quote wraps an identifier with the correct quote character for the active database driver.
+func (gou *Query) Quote(name string) string {
+	if gou.driver == "postgres" {
+		return fmt.Sprintf(`"%s"`, name)
+	}
+	return fmt.Sprintf("`%s`", name)
 }
 
 // GetTableName 读取表格名称
@@ -75,6 +84,9 @@ func Open(filename string) *Query {
 // With 关联查询器
 func (gou *Query) With(qb query.Query, getTableName ...GetTableName) *Query {
 	gou.Query = qb.New()
+	if driver, err := qb.Driver(); err == nil {
+		gou.driver = driver
+	}
 	if len(getTableName) > 0 {
 		return gou.TableName(getTableName[0])
 	}
@@ -92,6 +104,7 @@ func (gou *Query) Clone() *Query {
 	var new Query = Query{}
 	new.GetTableName = gou.GetTableName
 	new.AESKey = gou.AESKey
+	new.driver = gou.driver
 	return &new
 }
 
@@ -139,6 +152,7 @@ func (gou *Query) Load(data interface{}) (share.DSL, error) {
 	query.Query = gou.Query.New()
 	query.AESKey = gou.AESKey
 	query.GetTableName = gou.GetTableName
+	query.driver = gou.driver
 
 	errs := query.Validate()
 	if len(errs) > 0 {
@@ -336,7 +350,8 @@ func (gou Query) total(sql string, bindings []interface{}) int {
 	matches := RegSelectSTMT.FindStringSubmatch(sql)
 	total := -1
 	if len(matches) > 0 {
-		sql = strings.ReplaceAll(sql, matches[1], " COUNT(*) as `total` ")
+		sql = strings.ReplaceAll(sql, matches[1], " COUNT(*) as "+gou.Quote("total")+" ")
+		sql = RegOrderBySTMT.ReplaceAllString(sql, "")
 		qb := gou.Query.New().SQL(sql, bindings...)
 		// Debug模式 打印查询信息
 		if gou.Debug {

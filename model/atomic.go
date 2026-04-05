@@ -12,6 +12,14 @@ import (
 	"github.com/yaoapp/xun/dbal"
 )
 
+// QuoteIdentifier wraps a column/table name with the correct quote character for the active driver.
+func (mod *Model) QuoteIdentifier(name string) string {
+	if mod.Driver == "postgres" {
+		return fmt.Sprintf(`"%s"`, name)
+	}
+	return fmt.Sprintf("`%s`", name)
+}
+
 // Find 查询单条记录
 func (mod *Model) Find(id interface{}, param QueryParam) (maps.MapStr, error) {
 	param.Model = mod.Name
@@ -453,18 +461,17 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 
 		for i, col := range mod.UniqueColumns {
 			typ := strings.ToLower(col.Type)
+			q := mod.QuoteIdentifier(col.Name)
 			if typ == "string" {
-				// For batch soft delete, use a unique timestamp per row via SQL expression
-				// The formula generates unique values for each row: original_value + current_timestamp + column_offset
 				data[col.Name] = dbal.Raw(fmt.Sprintf("CONCAT_WS('_', %s, '%d', '%d')", col.Name, baseTimestamp, i))
 				columns = append(
 					columns,
-					fmt.Sprintf("CONCAT('\"%s\":\"', `%s`, '\"')", col.Name, col.Name),
+					fmt.Sprintf("CONCAT('\"%s\":\"', %s, '\"')", col.Name, q),
 				)
-			} else { // 数字, 布尔型等
+			} else {
 				columns = append(
 					columns,
-					fmt.Sprintf("CONCAT('\"%s\":', `%s`)", col.Name, col.Name),
+					fmt.Sprintf("CONCAT('\"%s\":', %s)", col.Name, q),
 				)
 			}
 			if col.Nullable {
@@ -478,7 +485,11 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 
 		// 备份唯一数据
 		if len(columns) > 0 {
-			restore := dbal.Raw("CONCAT('{'," + strings.Join(columns, ",',',") + ",'}')")
+			expr := "CONCAT('{'," + strings.Join(columns, ",',',") + ",'}')"
+			if mod.Driver == "postgres" {
+				expr += "::jsonb"
+			}
+			restore := dbal.Raw(expr)
 			_, err := qb.Update(maps.MapStr{"__restore_data": restore})
 			if err != nil {
 				return 0, err
@@ -486,9 +497,12 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 		}
 
 		// 删除数据
-		field := fmt.Sprintf("%s.%s", mod.MetaData.Table.Name, "deleted_at")
-		// data["deleted_at"] = dbal.Raw("CURRENT_TIMESTAMP")
-		data[field] = dbal.Raw("CURRENT_TIMESTAMP")
+		if mod.Driver == "postgres" {
+			data["deleted_at"] = dbal.Raw("CURRENT_TIMESTAMP")
+		} else {
+			field := fmt.Sprintf("%s.%s", mod.MetaData.Table.Name, "deleted_at")
+			data[field] = dbal.Raw("CURRENT_TIMESTAMP")
+		}
 		effect, err := qb.Update(data)
 		if err != nil {
 			return 0, err
