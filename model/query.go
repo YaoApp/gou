@@ -367,20 +367,11 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 
 	column := m.FliterWhere(alias, where.Column)
 
-	// For JSON columns on PostgreSQL, LIKE/match requires casting to text first.
-	isJSONLike := false
-	colName := ""
-	op := strings.ToLower(where.OP)
-	if (op == "like" || op == "match") && m.Driver == "postgres" {
-		if name, ok := where.Column.(string); ok {
-			if col, has := m.Columns[name]; has && strings.ToLower(col.Type) == "json" {
-				isJSONLike = true
-				quoted := name
-				if alias != "" {
-					quoted = alias + "." + name
-				}
-				colName = fmt.Sprintf("%s::text", m.QuoteIdentifier(quoted))
-			}
+	isJSON := false
+	if name, ok := where.Column.(string); ok {
+		if col, has := m.Columns[name]; has {
+			t := strings.ToLower(col.Type)
+			isJSON = t == "json" || t == "jsonb"
 		}
 	}
 
@@ -395,8 +386,8 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 			break
 		case "match":
 			if value, ok := where.Value.(string); ok {
-				if isJSONLike {
-					qb.WhereRaw(colName+" LIKE ?", "%"+value+"%")
+				if isJSON {
+					qb.WhereJSONContains(column, m.formatJSONContainsValue(value))
 				} else {
 					qb.Where(column, "like", "%"+value+"%")
 				}
@@ -413,8 +404,12 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 			if !has {
 				op = "="
 			}
-			if isJSONLike {
-				qb.WhereRaw(colName+" LIKE ?", where.Value)
+			if isJSON && (strings.ToLower(where.OP) == "like") {
+				if value, ok := where.Value.(string); ok {
+					qb.WhereJSONContains(column, m.formatJSONContainsLike(value))
+				} else {
+					qb.Where(column, op, where.Value)
+				}
 			} else {
 				qb.Where(column, op, where.Value)
 			}
@@ -430,8 +425,8 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 			break
 		case "match":
 			if value, ok := where.Value.(string); ok {
-				if isJSONLike {
-					qb.OrWhereRaw(colName+" LIKE ?", "%"+value+"%")
+				if isJSON {
+					qb.OrWhereJSONContains(column, m.formatJSONContainsValue(value))
 				} else {
 					qb.OrWhere(column, "like", "%"+value+"%")
 				}
@@ -447,14 +442,38 @@ func (param QueryParam) Where(where QueryWhere, qb query.Query, mod *Model) {
 			if !has {
 				op = "="
 			}
-			if isJSONLike {
-				qb.OrWhereRaw(colName+" LIKE ?", where.Value)
+			if isJSON && (strings.ToLower(where.OP) == "like") {
+				if value, ok := where.Value.(string); ok {
+					qb.OrWhereJSONContains(column, m.formatJSONContainsLike(value))
+				} else {
+					qb.OrWhere(column, op, where.Value)
+				}
 			} else {
 				qb.OrWhere(column, op, where.Value)
 			}
 		}
 		break
 	}
+}
+
+// formatJSONContainsValue formats a raw value for WhereJSONContains (from match OP).
+// PG/MySQL need JSON-formatted string (e.g. "test" → `"test"`), SQLite needs LIKE pattern.
+func (m *Model) formatJSONContainsValue(value string) string {
+	if m.Driver == "sqlite3" {
+		return "%" + value + "%"
+	}
+	return fmt.Sprintf(`"%s"`, value)
+}
+
+// formatJSONContainsLike formats a value from like OP (already has % wrapping) for WhereJSONContains.
+// Strips % wrappers for PG/MySQL and wraps in JSON quotes. SQLite keeps as-is.
+func (m *Model) formatJSONContainsLike(value string) string {
+	if m.Driver == "sqlite3" {
+		return value
+	}
+	raw := strings.TrimPrefix(value, "%")
+	raw = strings.TrimSuffix(raw, "%")
+	return fmt.Sprintf(`"%s"`, raw)
 }
 
 // withHasMany hasMany 关联查询

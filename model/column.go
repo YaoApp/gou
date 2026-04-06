@@ -30,7 +30,8 @@ func (column *Column) FliterOut(value interface{}, row maps.MapStrAny, export ..
 
 // fliterInJSON JSON字段处理
 func (column *Column) fliterOutJSON(value interface{}, row maps.MapStrAny, export string) {
-	if strings.ToLower(column.Type) != "json" {
+	t := strings.ToLower(column.Type)
+	if t != "json" && t != "jsonb" {
 		return
 	}
 	name := column.Name
@@ -132,7 +133,8 @@ func (column *Column) fliterInDateTime(value interface{}, row maps.MapStrAny) {
 
 // fliterInJSON JSON字段处理
 func (column *Column) fliterInJSON(value interface{}, row maps.MapStrAny) {
-	if strings.ToLower(column.Type) != "json" {
+	t := strings.ToLower(column.Type)
+	if t != "json" && t != "jsonb" {
 		return
 	}
 	bytes, err := jsoniter.Marshal(value)

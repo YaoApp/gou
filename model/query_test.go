@@ -179,21 +179,23 @@ func TestQueryJSONColumnLike(t *testing.T) {
 		"name":   "JSONLikeTest",
 		"mobile": "13900000001",
 		"type":   "admin",
-		"extra":  map[string]interface{}{"skill": "golang", "level": 5},
+		"roles":  []string{"admin", "editor"},
 	})
 	assert.NoError(t, err)
 
+	// like OP on JSON array column → WhereJSONContains
 	res, err := user.Get(QueryParam{
 		Wheres: []QueryWhere{
-			{Column: "extra", Value: "%golang%", OP: "like"},
+			{Column: "roles", Value: "%admin%", OP: "like"},
 		},
 	})
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(res), 1)
 
+	// match OP on JSON array column → WhereJSONContains
 	res, err = user.Get(QueryParam{
 		Wheres: []QueryWhere{
-			{Column: "extra", Value: "golang", OP: "match"},
+			{Column: "roles", Value: "admin", OP: "match"},
 		},
 	})
 	assert.NoError(t, err)
@@ -209,20 +211,67 @@ func TestQueryJSONColumnLikeOrWhere(t *testing.T) {
 		"name":   "JSONOrWhereTest",
 		"mobile": "13900000002",
 		"type":   "admin",
-		"extra":  map[string]interface{}{"role": "tester"},
+		"roles":  []string{"tester"},
 	})
 	assert.NoError(t, err)
 
+	// Nested where with OR on JSON array column
 	res, err := user.Get(QueryParam{
 		Wheres: []QueryWhere{
 			{
 				Wheres: []QueryWhere{
 					{Column: "name", Value: "nonexistent_user_xyz"},
-					{Column: "extra", Value: "%tester%", OP: "like", Method: "orwhere"},
+					{Column: "roles", Value: "%tester%", OP: "like", Method: "orwhere"},
 				},
 			},
 		},
 	})
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(res), 1)
+}
+
+func TestQueryJSONColumnMatchNonJSON(t *testing.T) {
+	prepare(t)
+	defer clean()
+
+	user := Select("user")
+	_, err := user.Create(map[string]interface{}{
+		"name":   "MatchNonJSONTest",
+		"mobile": "13900000003",
+		"type":   "admin",
+	})
+	assert.NoError(t, err)
+
+	// match OP on non-JSON column uses regular LIKE
+	res, err := user.Get(QueryParam{
+		Wheres: []QueryWhere{
+			{Column: "name", Value: "MatchNonJSON", OP: "match"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, len(res), 1)
+}
+
+func TestQueryJSONContainsMultipleConditions(t *testing.T) {
+	prepare(t)
+	defer clean()
+
+	user := Select("user")
+	_, err := user.Create(map[string]interface{}{
+		"name":   "JSONMultiTest",
+		"mobile": "13900000004",
+		"type":   "admin",
+		"roles":  []string{"admin", "editor"},
+	})
+	assert.NoError(t, err)
+
+	// Multiple JSON column conditions combined
+	res, err := user.Get(QueryParam{
+		Wheres: []QueryWhere{
+			{Column: "roles", Value: "admin", OP: "match"},
+			{Column: "name", Value: "JSONMultiTest"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(res))
 }
