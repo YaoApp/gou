@@ -467,16 +467,27 @@ func (mod *Model) DeleteWhere(param QueryParam) (int, error) {
 		baseTimestamp := time.Now().UnixNano()
 		isPG := mod.Driver == "postgres"
 
+		suffix := fmt.Sprintf("_%d_", baseTimestamp)
 		for i, col := range mod.UniqueColumns {
 			typ := strings.ToLower(col.Type)
 			q := mod.QuoteIdentifier(col.Name)
 			if typ == "string" {
+				suffixLen := len(suffix) + len(fmt.Sprintf("%d", i))
+				colExpr := q
+				if col.Length > 0 && col.Length > suffixLen {
+					maxLen := col.Length - suffixLen
+					if isPG {
+						colExpr = fmt.Sprintf("LEFT(%s, %d)", q, maxLen)
+					} else {
+						colExpr = fmt.Sprintf("LEFT(%s, %d)", q, maxLen)
+					}
+				}
 				if isPG {
-					data[col.Name] = dbal.Raw(fmt.Sprintf("%s || '_' || '%d' || '_' || '%d'", q, baseTimestamp, i))
+					data[col.Name] = dbal.Raw(fmt.Sprintf("%s || '_' || '%d' || '_' || '%d'", colExpr, baseTimestamp, i))
 					columns = append(columns,
 						fmt.Sprintf("'\"' || '%s' || '\":\"' || %s || '\"'", col.Name, q))
 				} else {
-					data[col.Name] = dbal.Raw(fmt.Sprintf("CONCAT_WS('_', %s, '%d', '%d')", q, baseTimestamp, i))
+					data[col.Name] = dbal.Raw(fmt.Sprintf("CONCAT_WS('_', %s, '%d', '%d')", colExpr, baseTimestamp, i))
 					columns = append(columns,
 						fmt.Sprintf("CONCAT('\"%s\":\"', %s, '\"')", col.Name, q))
 				}
@@ -542,13 +553,18 @@ func (mod *Model) sqlite3DeleteWhere(param QueryParam) (int, error) {
 	// data[field] = dbal.Raw("CURRENT_TIMESTAMP")
 	data["deleted_at"] = dbal.Raw("CURRENT_TIMESTAMP")
 	baseTimestamp := time.Now().UnixNano()
+	suffix := fmt.Sprintf("_%d_", baseTimestamp)
 
 	for i, col := range mod.UniqueColumns {
 		typ := strings.ToLower(col.Type)
 		if typ == "string" {
-			// For batch soft delete, use a unique timestamp per row via SQL expression
-			// The formula generates unique values for each row: original_value + current_timestamp + column_offset
-			data[col.Name] = dbal.Raw(fmt.Sprintf("%s || '_' || '%d' || '_' || '%d'", col.Name, baseTimestamp, i))
+			suffixLen := len(suffix) + len(fmt.Sprintf("%d", i))
+			colExpr := col.Name
+			if col.Length > 0 && col.Length > suffixLen {
+				maxLen := col.Length - suffixLen
+				colExpr = fmt.Sprintf("SUBSTR(%s, 1, %d)", col.Name, maxLen)
+			}
+			data[col.Name] = dbal.Raw(fmt.Sprintf("%s || '_' || '%d' || '_' || '%d'", colExpr, baseTimestamp, i))
 		}
 	}
 
