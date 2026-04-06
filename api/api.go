@@ -19,28 +19,30 @@ import (
 var APIs = map[string]*API{}
 var apisMu sync.RWMutex
 
-// Load load the api and register it to the global APIs map
+// Load load the api from file, parse and register it to the global APIs map
 func Load(file, id string, guard ...string) (*API, error) {
-
 	data, err := application.App.Read(file)
 	if err != nil {
 		return nil, err
 	}
+	return LoadSource(file, data, id, guard...)
+}
 
-	api, err := LoadSource(file, data, id, guard...)
+// LoadSource parses API source data, registers it to the global APIs map, and returns the *API
+func LoadSource(file string, data []byte, id string, guard ...string) (*API, error) {
+	api, err := parseSource(file, data, id, guard...)
 	if err != nil {
 		return nil, err
 	}
-
 	apisMu.Lock()
 	APIs[id] = api
 	apisMu.Unlock()
-
 	return api, nil
 }
 
-// LoadSource parses API source data and returns an *API without modifying global state
-func LoadSource(file string, data []byte, id string, guard ...string) (*API, error) {
+// parseSource parses API source data without modifying global state.
+// Used by ReloadAPIs to build a local map before atomic replacement.
+func parseSource(file string, data []byte, id string, guard ...string) (*API, error) {
 
 	http := HTTP{}
 	err := application.Parse(file, data, &http)
@@ -202,7 +204,7 @@ func ReloadAPIs(root string) error {
 			return nil
 		}
 
-		api, err := LoadSource(file, data, id)
+		api, err := parseSource(file, data, id)
 		if err != nil {
 			loadErr = err
 			return nil
