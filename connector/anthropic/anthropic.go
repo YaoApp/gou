@@ -38,6 +38,10 @@ type Options struct {
 	// Request parameters
 	MaxTokens   int      `json:"max_tokens,omitempty"`  // Maximum tokens for response (required for Anthropic)
 	Temperature *float64 `json:"temperature,omitempty"` // Temperature (use pointer to distinguish 0 from unset)
+
+	// Supported API protocols. Defaults to ["anthropic"] when empty.
+	// Dual-protocol gateways declare ["openai", "anthropic"].
+	Protocols []string `json:"protocols,omitempty"`
 }
 
 // Capabilities is an alias for llm.Capabilities for backward compatibility.
@@ -145,6 +149,10 @@ func (c *Connector) Setting() map[string]interface{} {
 	// Add temperature if specified
 	if c.Options.Temperature != nil {
 		setting["temperature"] = *c.Options.Temperature
+	}
+
+	if len(c.Options.Protocols) > 0 {
+		setting["protocols"] = c.Options.Protocols
 	}
 
 	return setting

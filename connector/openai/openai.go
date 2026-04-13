@@ -38,6 +38,10 @@ type Options struct {
 	// Request parameters that can be passed to sandbox proxy
 	MaxTokens   int      `json:"max_tokens,omitempty"`  // Maximum tokens for response
 	Temperature *float64 `json:"temperature,omitempty"` // Temperature for response (use pointer to distinguish 0 from unset)
+
+	// Supported API protocols. Defaults to ["openai"] when empty.
+	// Dual-protocol gateways (e.g. LiteLLM) declare ["openai", "anthropic"].
+	Protocols []string `json:"protocols,omitempty"`
 }
 
 // Capabilities is an alias for llm.Capabilities for backward compatibility.
@@ -157,8 +161,10 @@ func (o *Connector) Setting() map[string]interface{} {
 		setting["temperature"] = *o.Options.Temperature
 	}
 
-	// Note: HTTP proxy is handled via HTTPS_PROXY/HTTP_PROXY environment variables
-	// by http.GetTransport, not configured here
+	if len(o.Options.Protocols) > 0 {
+		setting["protocols"] = o.Options.Protocols
+	}
+
 	return setting
 }
 

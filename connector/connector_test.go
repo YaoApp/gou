@@ -316,6 +316,89 @@ func TestLoadSourceSync(t *testing.T) {
 	// assert.True(t, redis.Is(REDIS))
 }
 
+func TestOpenAI_WithProtocols(t *testing.T) {
+	src := []byte(`{
+		"type": "openai",
+		"name": "dual-proto",
+		"options": {
+			"host": "https://api.yao.run",
+			"model": "kimi-k2.5",
+			"key": "sk-test",
+			"protocols": ["openai", "anthropic"]
+		}
+	}`)
+	conn, err := LoadSource(src, "openai-proto-test", "openai-proto.conn.yao")
+	assert.NoError(t, err)
+
+	setting := conn.Setting()
+	protocols, ok := setting["protocols"].([]string)
+	assert.True(t, ok, "protocols should be []string")
+	assert.Equal(t, []string{"openai", "anthropic"}, protocols)
+
+	delete(Connectors, "openai-proto-test")
+}
+
+func TestOpenAI_WithoutProtocols(t *testing.T) {
+	src := []byte(`{
+		"type": "openai",
+		"name": "standard",
+		"options": {
+			"host": "https://api.openai.com",
+			"model": "gpt-4o",
+			"key": "sk-test"
+		}
+	}`)
+	conn, err := LoadSource(src, "openai-noproto-test", "openai-noproto.conn.yao")
+	assert.NoError(t, err)
+
+	setting := conn.Setting()
+	_, hasProtocols := setting["protocols"]
+	assert.False(t, hasProtocols, "protocols should not be present when not configured")
+
+	delete(Connectors, "openai-noproto-test")
+}
+
+func TestAnthropic_WithProtocols(t *testing.T) {
+	src := []byte(`{
+		"type": "anthropic",
+		"name": "dual-proto",
+		"options": {
+			"host": "https://api.yao.run",
+			"model": "claude-sonnet-4-20250514",
+			"key": "sk-ant-test",
+			"protocols": ["openai", "anthropic"]
+		}
+	}`)
+	conn, err := LoadSource(src, "anthropic-proto-test", "anthropic-proto.conn.yao")
+	assert.NoError(t, err)
+
+	setting := conn.Setting()
+	protocols, ok := setting["protocols"].([]string)
+	assert.True(t, ok, "protocols should be []string")
+	assert.Equal(t, []string{"openai", "anthropic"}, protocols)
+
+	delete(Connectors, "anthropic-proto-test")
+}
+
+func TestAnthropic_WithoutProtocols(t *testing.T) {
+	src := []byte(`{
+		"type": "anthropic",
+		"name": "standard",
+		"options": {
+			"model": "claude-sonnet-4-20250514",
+			"key": "sk-ant-test"
+		}
+	}`)
+	conn, err := LoadSource(src, "anthropic-noproto-test", "anthropic-noproto.conn.yao")
+	assert.NoError(t, err)
+
+	setting := conn.Setting()
+	_, hasProtocols := setting["protocols"]
+	assert.False(t, hasProtocols, "protocols should not be present when not configured")
+
+	delete(Connectors, "anthropic-noproto-test")
+}
+
 func prepare(t *testing.T, name string) string {
 	root := os.Getenv("GOU_TEST_APPLICATION")
 	app, err := application.OpenFromDisk(root) // Load app
