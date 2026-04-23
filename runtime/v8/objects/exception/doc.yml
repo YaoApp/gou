@@ -1,0 +1,29 @@
+group: objects
+type: js_class
+entries:
+  - name: Exception
+    desc: Constructor for creating exception objects with a message and optional error code, extends the built-in Error
+    args:
+      - name: message
+        type: string
+        required: true
+        desc: Error message describing the exception
+      - name: code
+        type: number
+        required: false
+        desc: Numeric error code (defaults to 500 if not provided)
+    return:
+      type: object
+      desc: An Error-like object with code, message, and name properties
+    methods:
+      - name: Code
+        desc: Get the error code of this exception
+        return:
+          type: any
+          desc: The error code value
+
+      - name: Message
+        desc: Get the error message of this exception
+        return:
+          type: any
+          desc: The error message value

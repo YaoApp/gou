@@ -1,0 +1,282 @@
+group: objects
+type: js_class
+entries:
+  - name: Store
+    desc: Key-value store with LRU cache, supporting basic CRUD, TTL, and list/array operations
+    args:
+      - name: name
+        type: string
+        required: true
+        desc: Name of the store pool to use
+    methods:
+      - name: Set
+        desc: Set a key-value pair with optional TTL
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key
+          - name: value
+            type: any
+            required: true
+            desc: Value to store
+          - name: ttl
+            type: number
+            required: false
+            desc: "Time to live in seconds (default: 0, no expiry)"
+        return:
+          type: void
+          desc: Returns nothing
+
+      - name: Get
+        desc: Retrieve a value by key
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key
+        return:
+          type: any
+          desc: The stored value, or undefined if not found
+
+      - name: GetSet
+        desc: Get a value by key; if not found, call the callback to compute and store it
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key
+          - name: callback
+            type: function
+            required: true
+            desc: "Function(key) called to compute the value when the key is missing"
+          - name: ttl
+            type: number
+            required: false
+            desc: "Time to live in seconds (default: 0, no expiry)"
+        return:
+          type: any
+          desc: The existing or newly computed value
+
+      - name: GetDel
+        desc: Retrieve a value by key and delete it from the store
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key
+        return:
+          type: any
+          desc: The stored value, or undefined if not found
+
+      - name: Has
+        desc: Check if a key exists in the store
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key
+        return:
+          type: bool
+          desc: True if the key exists
+
+      - name: Del
+        desc: Delete a key from the store
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key to delete
+        return:
+          type: undefined
+          desc: Returns undefined
+
+      - name: Keys
+        desc: Get all keys in the store
+        args: []
+        return:
+          type: array
+          desc: Array of key strings
+
+      - name: Len
+        desc: Get the number of entries in the store
+        args: []
+        return:
+          type: number
+          desc: Number of stored entries
+
+      - name: Clear
+        desc: Remove all entries from the store
+        args: []
+        return:
+          type: undefined
+          desc: Returns undefined
+
+      - name: Push
+        desc: Push one or more values to the end of an array stored at key
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key for the array
+          - name: values
+            type: any
+            required: true
+            desc: Values to push (variadic)
+        return:
+          type: undefined
+          desc: Returns undefined
+
+      - name: Pop
+        desc: Remove and return the element at the given position from an array
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key for the array
+          - name: position
+            type: number
+            required: true
+            desc: Index position to pop from
+        return:
+          type: any
+          desc: The removed element
+
+      - name: Pull
+        desc: Remove a specific value from an array stored at key
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key for the array
+          - name: value
+            type: any
+            required: true
+            desc: Value to remove
+        return:
+          type: undefined
+          desc: Returns undefined
+
+      - name: PullAll
+        desc: Remove multiple values from an array stored at key
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key for the array
+          - name: values
+            type: any
+            required: true
+            desc: Values to remove (variadic)
+        return:
+          type: undefined
+          desc: Returns undefined
+
+      - name: AddToSet
+        desc: Add values to an array stored at key, only if they are not already present (set behavior)
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key for the set
+          - name: values
+            type: any
+            required: true
+            desc: Values to add (variadic)
+        return:
+          type: undefined
+          desc: Returns undefined
+
+      - name: ArrayLen
+        desc: Get the length of an array stored at key
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key for the array
+        return:
+          type: number
+          desc: Length of the array
+
+      - name: ArrayGet
+        desc: Get the element at a specific index from an array stored at key
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key for the array
+          - name: index
+            type: number
+            required: true
+            desc: Array index
+        return:
+          type: any
+          desc: The element at the given index
+
+      - name: ArraySet
+        desc: Set the element at a specific index in an array stored at key
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key for the array
+          - name: index
+            type: number
+            required: true
+            desc: Array index
+          - name: value
+            type: any
+            required: true
+            desc: Value to set
+        return:
+          type: undefined
+          desc: Returns undefined
+
+      - name: ArraySlice
+        desc: Get a slice of elements from an array stored at key
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key for the array
+          - name: skip
+            type: number
+            required: true
+            desc: Number of elements to skip
+          - name: limit
+            type: number
+            required: true
+            desc: Maximum number of elements to return
+        return:
+          type: array
+          desc: Array of sliced elements
+
+      - name: ArrayPage
+        desc: Get a page of elements from an array stored at key
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key for the array
+          - name: page
+            type: number
+            required: true
+            desc: Page number (1-based)
+          - name: pageSize
+            type: number
+            required: true
+            desc: Number of elements per page
+        return:
+          type: array
+          desc: Array of elements for the requested page
+
+      - name: ArrayAll
+        desc: Get all elements from an array stored at key
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Cache key for the array
+        return:
+          type: array
+          desc: All elements in the array

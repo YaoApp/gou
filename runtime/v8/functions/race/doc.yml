@@ -1,0 +1,13 @@
+group: functions
+type: js_function
+entries:
+  - name: Race
+    desc: Execute multiple processes concurrently and return once the first completes, regardless of success or failure (Promise.race semantics)
+    args:
+      - name: tasks
+        type: array
+        required: true
+        desc: "Array of task objects, each with: process (string, required), args (array, optional), timeout (number in seconds, optional)"
+    return:
+      type: array
+      desc: "Array of result objects ordered by task index, each with: data (return value), index (original position), and error (string, present only on failure); only completed tasks have populated results"

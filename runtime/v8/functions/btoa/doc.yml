@@ -1,0 +1,13 @@
+group: functions
+type: js_function
+entries:
+  - name: btoa
+    desc: Encode a string to its Base64 representation
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: The string to Base64-encode
+    return:
+      type: string
+      desc: The Base64-encoded string

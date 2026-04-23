@@ -1,0 +1,17 @@
+group: functions
+type: js_function
+entries:
+  - name: Process
+    desc: Execute a Yao process by name and return its result synchronously
+    args:
+      - name: name
+        type: string
+        required: true
+        desc: "Process name to execute (e.g. \"models.user.Find\", \"scripts.example.Hello\")"
+      - name: args
+        type: any
+        required: false
+        desc: "Variadic arguments passed to the process"
+    return:
+      type: any
+      desc: The return value of the executed process

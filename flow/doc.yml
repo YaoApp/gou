@@ -1,0 +1,13 @@
+group: flows
+type: process
+entries:
+  - name: flows.*
+    desc: Execute a loaded data flow by name, running its defined node sequence
+    args:
+      - name: args
+        type: any
+        required: false
+        desc: Variable arguments accessible as $in within the flow nodes
+    return:
+      type: any
+      desc: The flow output (formatted by the output template if defined, otherwise the accumulated node results)

@@ -1,0 +1,24 @@
+group: api
+type: process
+entries:
+  - name: list
+    desc: List all loaded APIs or filter by specific IDs
+    args:
+      - name: ids
+        type: array
+        required: false
+        desc: Optional array of API IDs to filter by; if omitted, all APIs are returned
+    return:
+      type: object
+      desc: A map of API ID to API definition objects
+
+  - name: reload
+    desc: Reload all API definitions from the specified directory
+    args:
+      - name: root
+        type: string
+        required: false
+        desc: Directory to load APIs from (default "apis")
+    return:
+      type: object
+      desc: Result object with success status, message, and count of loaded APIs

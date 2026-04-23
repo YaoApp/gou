@@ -1,0 +1,354 @@
+group: models
+type: process
+entries:
+  - name: find
+    desc: Find a single record by primary key with optional query parameters
+    args:
+      - name: id
+        type: any
+        required: true
+        desc: Primary key value of the record
+      - name: params
+        type: object
+        required: false
+        desc: Query parameters (select, withs, etc.)
+    return:
+      type: object
+      desc: The found record as a map
+
+  - name: get
+    desc: Get multiple records matching query parameters
+    args:
+      - name: params
+        type: object
+        required: true
+        desc: Query parameters (select, wheres, orders, limit, etc.)
+    return:
+      type: array
+      desc: Array of matching records
+
+  - name: paginate
+    desc: Get paginated records matching query parameters
+    args:
+      - name: params
+        type: object
+        required: true
+        desc: Query parameters (select, wheres, orders, etc.)
+      - name: page
+        type: number
+        required: true
+        desc: Page number (1-based)
+      - name: pagesize
+        type: number
+        required: true
+        desc: Number of records per page
+    return:
+      type: object
+      desc: Paginated result with data array, total, page, pagesize, etc.
+
+  - name: count
+    desc: Count records matching query parameters
+    args:
+      - name: params
+        type: object
+        required: true
+        desc: Query parameters (wheres, etc.)
+    return:
+      type: number
+      desc: Number of matching records
+
+  - name: create
+    desc: Create a new record
+    args:
+      - name: row
+        type: object
+        required: true
+        desc: Record data as key-value pairs
+    return:
+      type: any
+      desc: Primary key value of the created record
+
+  - name: update
+    desc: Update an existing record by primary key
+    args:
+      - name: id
+        type: any
+        required: true
+        desc: Primary key value of the record to update
+      - name: row
+        type: object
+        required: true
+        desc: Fields to update as key-value pairs
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: save
+    desc: Create or update a record (upsert by primary key)
+    args:
+      - name: row
+        type: object
+        required: true
+        desc: Record data; if primary key is present the record is updated, otherwise created
+    return:
+      type: any
+      desc: Primary key value of the saved record
+
+  - name: delete
+    desc: Soft-delete a record by primary key (sets deleted_at)
+    args:
+      - name: id
+        type: any
+        required: true
+        desc: Primary key value of the record to delete
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: destroy
+    desc: Hard-delete a record by primary key (permanently removes)
+    args:
+      - name: id
+        type: any
+        required: true
+        desc: Primary key value of the record to destroy
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: insert
+    desc: Batch insert multiple records by specifying columns and row values
+    args:
+      - name: columns
+        type: array
+        required: true
+        desc: Array of column names
+      - name: rows
+        type: array
+        required: true
+        desc: Array of row arrays, each containing values matching the columns order
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: updatewhere
+    desc: Update records matching query parameters
+    args:
+      - name: params
+        type: object
+        required: true
+        desc: Query parameters with wheres conditions
+      - name: row
+        type: object
+        required: true
+        desc: Fields to update as key-value pairs
+    return:
+      type: any
+      desc: Number of affected rows
+
+  - name: deletewhere
+    desc: Soft-delete records matching query parameters
+    args:
+      - name: params
+        type: object
+        required: true
+        desc: Query parameters with wheres conditions
+    return:
+      type: any
+      desc: Number of affected rows
+
+  - name: destroywhere
+    desc: Hard-delete records matching query parameters (permanently removes)
+    args:
+      - name: params
+        type: object
+        required: true
+        desc: Query parameters with wheres conditions
+    return:
+      type: any
+      desc: Number of affected rows
+
+  - name: eachsave
+    desc: Save multiple records in a batch, creating or updating each one
+    args:
+      - name: rows
+        type: array
+        required: true
+        desc: Array of record objects to save
+      - name: eachrow
+        type: object
+        required: false
+        desc: Common fields to merge into each row before saving
+    return:
+      type: array
+      desc: Array of primary key values for the saved records
+
+  - name: eachsaveafterdelete
+    desc: Delete records by IDs then batch save new records
+    args:
+      - name: ids
+        type: array
+        required: true
+        desc: Array of primary key values to delete before saving
+      - name: rows
+        type: array
+        required: true
+        desc: Array of record objects to save
+      - name: eachrow
+        type: object
+        required: false
+        desc: Common fields to merge into each row before saving
+    return:
+      type: array
+      desc: Array of primary key values for the saved records
+
+  - name: upsert
+    desc: Insert or update a record based on unique column constraints
+    args:
+      - name: row
+        type: object
+        required: true
+        desc: Record data as key-value pairs
+      - name: uniqueBy
+        type: any
+        required: true
+        desc: Column name (string) or array of column names used to determine uniqueness
+      - name: updateColumns
+        type: array
+        required: false
+        desc: Array of column names to update on conflict; if omitted, all columns are updated
+    return:
+      type: any
+      desc: Primary key value of the upserted record
+
+  - name: selectoption
+    desc: "[Deprecated] Get select options matching a keyword search"
+    args:
+      - name: keyword
+        type: string
+        required: false
+        desc: Search keyword (default matches all)
+      - name: name
+        type: string
+        required: false
+        desc: "Column to use as the option label (default: \"name\")"
+      - name: value
+        type: string
+        required: false
+        desc: "Column to use as the option value (default: \"id\")"
+      - name: limit
+        type: number
+        required: false
+        desc: "Maximum number of results (default: 20)"
+    return:
+      type: array
+      desc: Array of objects with name and id fields
+
+  - name: takesnapshot
+    desc: Create a snapshot (backup copy) of the model's table
+    args:
+      - name: inMemory
+        type: bool
+        required: true
+        desc: Whether to create the snapshot table in memory
+    return:
+      type: string
+      desc: Name of the created snapshot table
+
+  - name: restoresnapshot
+    desc: Restore the model's table data from a snapshot
+    args:
+      - name: name
+        type: string
+        required: true
+        desc: Name of the snapshot table to restore from
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: restoresnapshotbyrename
+    desc: Restore the model's table from a snapshot by renaming tables
+    args:
+      - name: name
+        type: string
+        required: true
+        desc: Name of the snapshot table to restore from
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: dropsnapshot
+    desc: Drop a snapshot table
+    args:
+      - name: name
+        type: string
+        required: true
+        desc: Name of the snapshot table to drop
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: snapshotexists
+    desc: Check if a snapshot table exists
+    args:
+      - name: name
+        type: string
+        required: true
+        desc: Name of the snapshot table to check
+    return:
+      type: bool
+      desc: True if the snapshot table exists
+
+  - name: migrate
+    desc: Run database migration for the model
+    args:
+      - name: force
+        type: bool
+        required: false
+        desc: Whether to force migration (default false)
+    return:
+      type: any
+      desc: Migration result
+
+  - name: load
+    desc: Load a model from a DSL file or source string
+    args:
+      - name: file
+        type: string
+        required: true
+        desc: Path to the model DSL file
+      - name: source
+        type: string
+        required: false
+        desc: Model DSL source string; if provided, file is used as the file path reference
+    return:
+      type: any
+      desc: Error on failure, null on success
+
+  - name: reload
+    desc: Reload the model from its original source
+    args: []
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: metadata
+    desc: Get the model metadata including table schema information
+    args: []
+    return:
+      type: object
+      desc: Model metadata object
+
+  - name: read
+    desc: Read the model DSL source as a string
+    args: []
+    return:
+      type: string
+      desc: The model DSL source content
+
+  - name: exists
+    desc: Check if the model is loaded
+    args: []
+    return:
+      type: bool
+      desc: True if the model is loaded

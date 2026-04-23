@@ -1,0 +1,150 @@
+group: objects
+type: js_class
+entries:
+  - name: Plan
+    desc: Execution plan for orchestrating concurrent tasks with a shared data space and event subscriptions
+    args:
+      - name: id
+        type: string
+        required: true
+        desc: Unique plan identifier
+    methods:
+      - name: Add
+        desc: Add a task to the plan with an execution order and a process or function
+        args:
+          - name: taskId
+            type: string
+            required: true
+            desc: Unique task identifier
+          - name: order
+            type: number
+            required: true
+            desc: Execution order (tasks with the same order run concurrently)
+          - name: handler
+            type: union
+            required: true
+            desc: "Process name string or callback function to execute"
+          - name: args
+            type: any
+            required: false
+            desc: Additional arguments passed to the handler (variadic)
+        return:
+          type: object
+          desc: Returns the Plan instance for chaining
+
+      - name: Run
+        desc: Start executing all tasks in the plan according to their order
+        args: []
+        return:
+          type: object
+          desc: Returns the Plan instance for chaining
+
+      - name: Status
+        desc: Get the status of the plan and all its tasks
+        args: []
+        return:
+          type: object
+          desc: "Object with plan (string) and tasks (map of taskId to status string: created, running, paused, completed, failed, destroyed, unknown)"
+
+      - name: Release
+        desc: Release the plan and free all associated resources
+        args: []
+        return:
+          type: "null"
+          desc: Returns null
+
+      - name: Results
+        desc: Get the result data from all completed tasks
+        args: []
+        return:
+          type: object
+          desc: Map of taskId to result value
+
+      - name: TaskStatus
+        desc: Get the status of a specific task
+        args:
+          - name: taskId
+            type: string
+            required: true
+            desc: Task identifier
+        return:
+          type: string
+          desc: "Task status: created, running, paused, completed, failed, destroyed, or unknown"
+
+      - name: TaskData
+        desc: Get or set the custom data of a specific task
+        args:
+          - name: taskId
+            type: string
+            required: true
+            desc: Task identifier
+          - name: data
+            type: any
+            required: false
+            desc: If provided, sets the task data; if omitted, returns the current task data
+        return:
+          type: any
+          desc: The task data (when getting) or null (when setting)
+
+      - name: Subscribe
+        desc: Subscribe to changes on a key in the shared space
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Key pattern to subscribe to
+          - name: handler
+            type: union
+            required: true
+            desc: Process name string or callback function invoked when the key changes
+          - name: args
+            type: any
+            required: false
+            desc: Additional arguments passed to the handler (variadic)
+        return:
+          type: "null"
+          desc: Returns null
+
+      - name: Set
+        desc: Set a value in the plan's shared data space
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Key name (reserved keys like TaskCompleted, TaskError, TaskStarted, Released are not allowed)
+          - name: value
+            type: any
+            required: true
+            desc: Value to store
+        return:
+          type: "null"
+          desc: Returns null
+
+      - name: Get
+        desc: Get a value from the plan's shared data space
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Key name
+        return:
+          type: any
+          desc: The stored value, or null if the key is not found
+
+      - name: Del
+        desc: Delete a value from the plan's shared data space
+        args:
+          - name: key
+            type: string
+            required: true
+            desc: Key name to delete
+        return:
+          type: "null"
+          desc: Returns null
+
+      - name: Clear
+        desc: Clear all values from the plan's shared data space
+        args: []
+        return:
+          type: "null"
+          desc: Returns null

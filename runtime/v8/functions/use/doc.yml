@@ -1,0 +1,21 @@
+group: functions
+type: js_function
+entries:
+  - name: Use
+    desc: Create an instance from a constructor, pass it to a callback, and automatically release it afterward
+    args:
+      - name: Constructor
+        type: function
+        required: true
+        desc: A constructor function to instantiate with new
+      - name: args
+        type: any
+        required: false
+        desc: "Variadic arguments passed to the constructor (between Constructor and callback)"
+      - name: callback
+        type: function
+        required: true
+        desc: "Callback function receiving the instance; the instance's __release() method is called automatically after the callback completes"
+    return:
+      type: any
+      desc: The return value of the callback function

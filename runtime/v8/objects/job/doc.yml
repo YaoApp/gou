@@ -1,0 +1,39 @@
+group: objects
+type: js_class
+entries:
+  - name: Job
+    desc: Execute a process as a background job, allowing polling and cancellation
+    args:
+      - name: process
+        type: string
+        required: true
+        desc: Process name to execute in the background
+      - name: args
+        type: any
+        required: false
+        desc: Arguments to pass to the process (variadic)
+    methods:
+      - name: Pending
+        desc: Block execution while the job is running, calling a callback function repeatedly until the job completes or the callback returns false
+        args:
+          - name: callback
+            type: function
+            required: true
+            desc: "Callback function invoked while the job is running; return false to stop waiting"
+        return:
+          type: undefined
+          desc: Returns undefined
+
+      - name: Data
+        desc: Retrieve the result data of the completed job and remove it from the job registry
+        args: []
+        return:
+          type: any
+          desc: The result data from the process execution
+
+      - name: Cancel
+        desc: Cancel the running job and remove it from the job registry
+        args: []
+        return:
+          type: undefined
+          desc: Returns undefined

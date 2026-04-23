@@ -1,0 +1,13 @@
+group: functions
+type: js_function
+entries:
+  - name: $L
+    desc: Translate a string using the i18n language pack
+    args:
+      - name: message
+        type: string
+        required: true
+        desc: "The message key to translate, with optional \"::\" prefix (which is automatically stripped)"
+    return:
+      type: string
+      desc: The translated string, or the original message if no translation is found

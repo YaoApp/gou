@@ -1,0 +1,87 @@
+group: objects
+type: js_class
+entries:
+  - name: Query
+    desc: Database query builder using QueryDSL for executing queries against configured engines
+    args:
+      - name: engine
+        type: string
+        required: false
+        desc: "Query engine name (default: \"default\")"
+    methods:
+      - name: Get
+        desc: Execute a query and return all matching records
+        args:
+          - name: dsl
+            type: object
+            required: true
+            desc: "QueryDSL object (e.g. {select: [\"id\"], from: \"user\", limit: 10})"
+        return:
+          type: any
+          desc: Query result data (typically an array of records)
+
+      - name: First
+        desc: Execute a query and return only the first matching record
+        args:
+          - name: dsl
+            type: object
+            required: true
+            desc: "QueryDSL object (e.g. {select: [\"id\"], from: \"user\"})"
+        return:
+          type: any
+          desc: The first matching record or null
+
+      - name: Paginate
+        desc: Execute a query with pagination and return paginated results
+        args:
+          - name: dsl
+            type: object
+            required: true
+            desc: "QueryDSL object with pagination params (e.g. {select: [\"id\"], from: \"user\", pagesize: 20, page: 1})"
+        return:
+          type: any
+          desc: Paginated result object with data, total, page, etc.
+
+      - name: Run
+        desc: Execute a raw query statement
+        args:
+          - name: dsl
+            type: object
+            required: true
+            desc: "QueryDSL object with stmt field (e.g. {stmt: \"show version\"})"
+        return:
+          type: any
+          desc: Query execution result
+
+      - name: Lint
+        desc: Validate a QueryDSL JSON string and return parsing diagnostics
+        args:
+          - name: source
+            type: string
+            required: true
+            desc: QueryDSL as a JSON string
+        return:
+          type: object
+          desc: "Object with valid (bool), diagnostics (array of diagnostic objects), and dsl (parsed QueryDSL if valid)"
+
+      - name: Schema
+        desc: Get the JSON Schema definition for QueryDSL
+        args:
+          - name: format
+            type: string
+            required: false
+            desc: "Pass \"json\" to return as a JSON string; omit to return as an object"
+        return:
+          type: any
+          desc: QueryDSL JSON Schema as an object or JSON string
+
+      - name: Validate
+        desc: Validate a QueryDSL object against the JSON Schema
+        args:
+          - name: data
+            type: any
+            required: true
+            desc: QueryDSL object to validate
+        return:
+          type: object
+          desc: "Object with valid (bool) and error (string, present when invalid)"

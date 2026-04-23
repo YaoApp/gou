@@ -1,0 +1,72 @@
+group: text
+type: process
+entries:
+  - name: extract
+    desc: Extract all code blocks from text (typically LLM output), detecting markdown fences and direct JSON/HTML/code
+    args:
+      - name: text
+        type: string
+        required: true
+        desc: The text to extract code blocks from
+    return:
+      type: array
+      desc: Array of CodeBlock objects with type, content, and data fields
+
+  - name: extractfirst
+    desc: Extract and return only the first code block from text
+    args:
+      - name: text
+        type: string
+        required: true
+        desc: The text to extract from
+    return:
+      type: object
+      desc: The first CodeBlock object, or null if none found
+
+  - name: extractjson
+    desc: Extract the first JSON or YAML block and return the parsed data directly
+    args:
+      - name: text
+        type: string
+        required: true
+        desc: The text containing JSON or YAML
+    return:
+      type: any
+      desc: Parsed data from the first JSON/YAML block, or null if none found
+
+  - name: extractbytype
+    desc: Extract all code blocks of a specific type from text
+    args:
+      - name: text
+        type: string
+        required: true
+        desc: The text to extract from
+      - name: blockType
+        type: string
+        required: true
+        desc: The block type to filter by (e.g. "json", "html", "sql")
+    return:
+      type: array
+      desc: Array of matching CodeBlock objects
+
+  - name: markdowntohtml
+    desc: Convert Markdown text to HTML with GitHub Flavored Markdown support (tables, strikethrough, task lists, autolinks)
+    args:
+      - name: markdown
+        type: string
+        required: true
+        desc: The Markdown text to convert
+    return:
+      type: string
+      desc: The converted HTML content
+
+  - name: htmltomarkdown
+    desc: Convert HTML content to Markdown text
+    args:
+      - name: html
+        type: string
+        required: true
+        desc: The HTML content to convert
+    return:
+      type: string
+      desc: The converted Markdown text

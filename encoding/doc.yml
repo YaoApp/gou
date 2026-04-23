@@ -1,0 +1,134 @@
+group: encoding
+type: process
+entries:
+  - name: encoding.base64.Encode
+    desc: Encode data to a base64 string
+    args:
+      - name: data
+        type: any
+        required: true
+        desc: Data to encode (converted to string representation before encoding)
+    return:
+      type: string
+      desc: Base64 encoded string
+
+  - name: encoding.base64.Decode
+    desc: Decode a base64 encoded string
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: Base64 encoded string to decode
+    return:
+      type: string
+      desc: Decoded string
+
+  - name: encoding.hex.Encode
+    desc: Encode data to a hexadecimal string
+    args:
+      - name: data
+        type: any
+        required: true
+        desc: Data to encode (converted to string representation before encoding)
+    return:
+      type: string
+      desc: Hexadecimal encoded string
+
+  - name: encoding.hex.Decode
+    desc: Decode a hexadecimal encoded string
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: Hexadecimal encoded string to decode
+    return:
+      type: string
+      desc: Decoded string
+
+  - name: encoding.json.Encode
+    desc: Encode a value to a JSON string
+    args:
+      - name: value
+        type: any
+        required: true
+        desc: Value to encode as JSON
+    return:
+      type: string
+      desc: JSON encoded string
+
+  - name: encoding.json.Decode
+    desc: Decode a JSON string to a value
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: JSON string to decode
+    return:
+      type: any
+      desc: Decoded value
+
+  - name: encoding.json.Repair
+    desc: Repair broken JSON strings
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: Broken JSON string to repair
+    return:
+      type: string
+      desc: Repaired JSON string
+
+  - name: encoding.json.Parse
+    desc: Parse a JSON string with automatic repair on failure
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: JSON string to parse
+    return:
+      type: any
+      desc: Parsed value
+
+  - name: encoding.yaml.Encode
+    desc: Encode a value to a YAML string
+    args:
+      - name: value
+        type: any
+        required: true
+        desc: Value to encode as YAML
+    return:
+      type: string
+      desc: YAML encoded string
+
+  - name: encoding.yaml.Decode
+    desc: Decode a YAML string to a value
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: YAML string to decode
+    return:
+      type: any
+      desc: Decoded value
+
+  - name: encoding.xml.Encode
+    desc: Encode a map to an XML string
+    args:
+      - name: data
+        type: object
+        required: true
+        desc: Map of key-value pairs to encode as XML
+    return:
+      type: string
+      desc: XML encoded string wrapped in <xml> tags
+
+  - name: encoding.xml.Decode
+    desc: Decode an XML string to a map
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: XML string to decode
+    return:
+      type: object
+      desc: Decoded map of key-value pairs

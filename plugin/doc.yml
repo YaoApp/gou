@@ -1,0 +1,13 @@
+group: plugins
+type: process
+entries:
+  - name: plugins.*.*
+    desc: Execute a method on a loaded GRPC plugin
+    args:
+      - name: args
+        type: any
+        required: false
+        desc: Variable arguments passed to the plugin method
+    return:
+      type: any
+      desc: The value returned by the plugin method

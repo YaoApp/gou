@@ -1,0 +1,47 @@
+group: tasks
+type: process
+entries:
+  - name: add
+    desc: Add a new job to the task queue for asynchronous execution
+    args:
+      - name: args
+        type: any
+        required: false
+        desc: Variable arguments to pass to the task handler
+    return:
+      type: number
+      desc: The job ID of the newly added task
+
+  - name: progress
+    desc: Update the progress of an existing task job
+    args:
+      - name: id
+        type: number
+        required: true
+        desc: The job ID
+      - name: current
+        type: number
+        required: true
+        desc: Current progress value
+      - name: total
+        type: number
+        required: true
+        desc: Total progress value
+      - name: message
+        type: string
+        required: true
+        desc: Progress status message
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: get
+    desc: Get the status and details of a task job by ID
+    args:
+      - name: id
+        type: number
+        required: true
+        desc: The job ID
+    return:
+      type: object
+      desc: The job details including status, progress, and result

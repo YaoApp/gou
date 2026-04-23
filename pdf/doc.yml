@@ -1,0 +1,43 @@
+group: pdf
+type: process
+entries:
+  - name: info
+    desc: Get PDF file information including page count, metadata, and file size
+    args:
+      - name: filePath
+        type: string
+        required: true
+        desc: Path to the PDF file
+    return:
+      type: object
+      desc: PDF file information including page_count, file_size, title, etc.
+
+  - name: split
+    desc: Split a PDF file into multiple files by page ranges
+    args:
+      - name: filePath
+        type: string
+        required: true
+        desc: Path to the PDF file
+      - name: config
+        type: object
+        required: true
+        desc: "Split configuration: pages (string, e.g. \"1-3,5,7-10\"), pages_per_file (number), output_dir (string), output_prefix (string)"
+    return:
+      type: array
+      desc: Array of file paths to the output PDF files
+
+  - name: convert
+    desc: Convert PDF pages to images (PNG/JPEG)
+    args:
+      - name: filePath
+        type: string
+        required: true
+        desc: Path to the PDF file
+      - name: config
+        type: object
+        required: false
+        desc: "Convert configuration: format (string, default \"png\"), dpi (number, default 150), pages (string, e.g. \"1-3\"), output_dir (string), output_prefix (string), quality (number, 1-100)"
+    return:
+      type: array
+      desc: Array of file paths to the output image files

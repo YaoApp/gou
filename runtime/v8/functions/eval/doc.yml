@@ -1,0 +1,17 @@
+group: functions
+type: js_function
+entries:
+  - name: Eval
+    desc: Evaluate a JavaScript function string and execute it with the given arguments
+    args:
+      - name: source
+        type: string
+        required: true
+        desc: "JavaScript function source code to evaluate (named functions are auto-converted to arrow functions)"
+      - name: args
+        type: any
+        required: false
+        desc: "Variadic arguments passed to the evaluated function"
+    return:
+      type: any
+      desc: The return value of the evaluated function

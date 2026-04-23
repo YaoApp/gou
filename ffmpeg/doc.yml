@@ -1,0 +1,58 @@
+group: ffmpeg
+type: process
+entries:
+  - name: info
+    desc: Get media file information including duration, dimensions, codecs, and file size
+    args:
+      - name: filePath
+        type: string
+        required: true
+        desc: Path to the media file
+    return:
+      type: object
+      desc: Media file information including duration, width, height, audio_codec, etc.
+
+  - name: convert
+    desc: Convert a media file to another format
+    args:
+      - name: inputPath
+        type: string
+        required: true
+        desc: Path to the input media file
+      - name: config
+        type: object
+        required: true
+        desc: "Convert configuration: format (string, required, e.g. \"mp3\", \"wav\", \"mp4\"), output_path (string), bitrate (string, e.g. \"128k\"), sample_rate (number, e.g. 16000)"
+    return:
+      type: string
+      desc: Path to the output file
+
+  - name: extractaudio
+    desc: Extract audio track from a video file
+    args:
+      - name: inputPath
+        type: string
+        required: true
+        desc: Path to the video file
+      - name: config
+        type: object
+        required: false
+        desc: "Extract configuration: format (string, default \"mp3\"), output_path (string), bitrate (string, e.g. \"128k\"), sample_rate (number, e.g. 16000)"
+    return:
+      type: string
+      desc: Path to the extracted audio file
+
+  - name: chunkaudio
+    desc: Split audio file into chunks using silence detection
+    args:
+      - name: inputPath
+        type: string
+        required: true
+        desc: Path to the audio file
+      - name: config
+        type: object
+        required: false
+        desc: "Chunk configuration: max_duration (number, seconds, default 600), max_size (number, bytes, default 25000000), silence_threshold (number, dB, default -40), output_dir (string), format (string, default \"mp3\")"
+    return:
+      type: object
+      desc: Chunk result including chunks array, total_chunks, total_size, and output_dir

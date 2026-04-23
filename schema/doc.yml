@@ -1,0 +1,203 @@
+group: schemas
+type: process
+entries:
+  - name: create
+    desc: Create a new database schema
+    args:
+      - name: name
+        type: string
+        required: true
+        desc: Name of the schema to create
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: drop
+    desc: Drop an existing database schema
+    args:
+      - name: name
+        type: string
+        required: true
+        desc: Name of the schema to drop
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: tables
+    desc: Get the list of tables in the schema
+    args:
+      - name: prefix
+        type: string
+        required: false
+        desc: Optional table name prefix to filter by
+    return:
+      type: array
+      desc: Array of table names
+
+  - name: tableexists
+    desc: Check if a table exists in the schema
+    args:
+      - name: tableName
+        type: string
+        required: true
+        desc: Name of the table to check
+    return:
+      type: bool
+      desc: True if the table exists, false otherwise
+
+  - name: tableget
+    desc: Get the blueprint of a table
+    args:
+      - name: tableName
+        type: string
+        required: true
+        desc: Name of the table
+    return:
+      type: object
+      desc: Table blueprint object describing columns, indexes, and options
+
+  - name: tablecreate
+    desc: Create a new table with the given blueprint
+    args:
+      - name: tableName
+        type: string
+        required: true
+        desc: Name of the table to create
+      - name: blueprint
+        type: object
+        required: true
+        desc: Table blueprint defining columns, indexes, and options
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: tabledrop
+    desc: Drop an existing table
+    args:
+      - name: tableName
+        type: string
+        required: true
+        desc: Name of the table to drop
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: tablerename
+    desc: Rename an existing table
+    args:
+      - name: tableName
+        type: string
+        required: true
+        desc: Current name of the table
+      - name: newTableName
+        type: string
+        required: true
+        desc: New name for the table
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: tablediff
+    desc: Compare two table blueprints and return the differences
+    args:
+      - name: blueprint
+        type: object
+        required: true
+        desc: First table blueprint
+      - name: anotherBlueprint
+        type: object
+        required: true
+        desc: Second table blueprint to compare against
+    return:
+      type: object
+      desc: Object describing the differences between the two blueprints
+
+  - name: tablesave
+    desc: Save a table; creates the table if it does not exist, otherwise updates it
+    args:
+      - name: tableName
+        type: string
+        required: true
+        desc: Name of the table to save
+      - name: blueprint
+        type: object
+        required: true
+        desc: Table blueprint defining columns, indexes, and options
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: columnadd
+    desc: Add a column to the given table
+    args:
+      - name: tableName
+        type: string
+        required: true
+        desc: Name of the table
+      - name: column
+        type: object
+        required: true
+        desc: Column definition object
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: columnalt
+    desc: Alter a column in the given table; adds the column if it does not exist
+    args:
+      - name: tableName
+        type: string
+        required: true
+        desc: Name of the table
+      - name: column
+        type: object
+        required: true
+        desc: Column definition object
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: columndel
+    desc: Delete a column from the given table
+    args:
+      - name: tableName
+        type: string
+        required: true
+        desc: Name of the table
+      - name: columnName
+        type: string
+        required: true
+        desc: Name of the column to delete
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: indexadd
+    desc: Add an index to the given table
+    args:
+      - name: tableName
+        type: string
+        required: true
+        desc: Name of the table
+      - name: index
+        type: object
+        required: true
+        desc: Index definition object
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: indexdel
+    desc: Delete an index from the given table
+    args:
+      - name: tableName
+        type: string
+        required: true
+        desc: Name of the table
+      - name: indexName
+        type: string
+        required: true
+        desc: Name of the index to delete
+    return:
+      type: "null"
+      desc: No return value

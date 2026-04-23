@@ -1,0 +1,182 @@
+group: objects
+type: js_object
+entries:
+  - name: http
+    desc: Global HTTP client object for making HTTP requests from JavaScript
+    methods:
+      - name: Get
+        desc: Send an HTTP GET request
+        args:
+          - name: url
+            type: string
+            required: true
+            desc: Request URL
+          - name: params
+            type: any
+            required: false
+            desc: "Query parameters: object, array of key=value strings, or query string"
+          - name: headers
+            type: any
+            required: false
+            desc: "Request headers: object or array of key-value objects"
+        return:
+          type: object
+          desc: "Response object with status, data, headers, code, and message"
+
+      - name: Post
+        desc: Send an HTTP POST request with optional file uploads
+        args:
+          - name: url
+            type: string
+            required: true
+            desc: Request URL
+          - name: payload
+            type: any
+            required: false
+            desc: "Request body: object, array, string, or file path"
+          - name: files
+            type: object
+            required: false
+            desc: "Files to upload: map of field name to file path"
+          - name: params
+            type: any
+            required: false
+            desc: "Query parameters: object, array of key=value strings, or query string"
+          - name: headers
+            type: any
+            required: false
+            desc: "Request headers: object or array of key-value objects"
+        return:
+          type: object
+          desc: "Response object with status, data, headers, code, and message"
+
+      - name: Put
+        desc: Send an HTTP PUT request
+        args:
+          - name: url
+            type: string
+            required: true
+            desc: Request URL
+          - name: payload
+            type: any
+            required: false
+            desc: "Request body: object, array, string, or file path"
+          - name: params
+            type: any
+            required: false
+            desc: "Query parameters: object, array of key=value strings, or query string"
+          - name: headers
+            type: any
+            required: false
+            desc: "Request headers: object or array of key-value objects"
+        return:
+          type: object
+          desc: "Response object with status, data, headers, code, and message"
+
+      - name: Patch
+        desc: Send an HTTP PATCH request
+        args:
+          - name: url
+            type: string
+            required: true
+            desc: Request URL
+          - name: payload
+            type: any
+            required: false
+            desc: "Request body: object, array, string, or file path"
+          - name: params
+            type: any
+            required: false
+            desc: "Query parameters: object, array of key=value strings, or query string"
+          - name: headers
+            type: any
+            required: false
+            desc: "Request headers: object or array of key-value objects"
+        return:
+          type: object
+          desc: "Response object with status, data, headers, code, and message"
+
+      - name: Delete
+        desc: Send an HTTP DELETE request
+        args:
+          - name: url
+            type: string
+            required: true
+            desc: Request URL
+          - name: payload
+            type: any
+            required: false
+            desc: "Request body: object, array, string, or file path"
+          - name: params
+            type: any
+            required: false
+            desc: "Query parameters: object, array of key=value strings, or query string"
+          - name: headers
+            type: any
+            required: false
+            desc: "Request headers: object or array of key-value objects"
+        return:
+          type: object
+          desc: "Response object with status, data, headers, code, and message"
+
+      - name: Send
+        desc: Send an HTTP request with a specified method, supports file uploads for POST
+        args:
+          - name: method
+            type: string
+            required: true
+            desc: "HTTP method: GET, POST, PUT, HEAD, PATCH, DELETE, etc."
+          - name: url
+            type: string
+            required: true
+            desc: Request URL
+          - name: payload
+            type: any
+            required: false
+            desc: "Request body: object, array, string, or file path"
+          - name: params
+            type: any
+            required: false
+            desc: "Query parameters: object, array of key=value strings, or query string"
+          - name: headers
+            type: any
+            required: false
+            desc: "Request headers: object or array of key-value objects"
+          - name: files
+            type: array
+            required: false
+            desc: "Files to upload (POST only): array of objects with name, path, and base64-encoded data fields"
+        return:
+          type: object
+          desc: "Response object with status, data, headers, code, and message"
+
+      - name: Stream
+        desc: Send a streaming HTTP request and handle chunked responses via a callback function
+        args:
+          - name: method
+            type: string
+            required: true
+            desc: "HTTP method: GET, POST, PUT, PATCH, DELETE, etc."
+          - name: url
+            type: string
+            required: true
+            desc: Request URL
+          - name: callback
+            type: function
+            required: true
+            desc: "Callback function receiving each data chunk as a string; return 1 to continue, 0 to complete, -1 to abort"
+          - name: payload
+            type: any
+            required: false
+            desc: "Request body: object, array, string, or file path"
+          - name: params
+            type: any
+            required: false
+            desc: "Query parameters: object, array of key=value strings, or query string"
+          - name: headers
+            type: any
+            required: false
+            desc: "Request headers: object or array of key-value objects"
+        return:
+          type: object
+          desc: "Response object with status, data, headers, code, and message"

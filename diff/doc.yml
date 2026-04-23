@@ -1,0 +1,51 @@
+group: diff
+type: process
+entries:
+  - name: diff.Patch
+    desc: Compare two strings and return a unified diff patch string
+    args:
+      - name: text1
+        type: string
+        required: true
+        desc: The original text
+      - name: text2
+        type: string
+        required: true
+        desc: The modified text
+      - name: checklines
+        type: bool
+        required: true
+        desc: Whether to check at line-level first for speedup on large texts
+    return:
+      type: string
+      desc: Unified diff patch string
+
+  - name: diff.Apply
+    desc: Apply a unified diff patch string to the original text
+    args:
+      - name: text
+        type: string
+        required: true
+        desc: The original text to apply the patch to
+      - name: patch
+        type: string
+        required: true
+        desc: The unified diff patch string
+    return:
+      type: string
+      desc: The patched text after applying the diff
+
+  - name: diff.Replace
+    desc: Replace text segments using SEARCH/REPLACE block format
+    args:
+      - name: text
+        type: string
+        required: true
+        desc: The original text
+      - name: patch
+        type: string
+        required: true
+        desc: "The SEARCH/REPLACE patch in <<<<<<< SEARCH / ======= / >>>>>>> REPLACE block format"
+    return:
+      type: string
+      desc: The text after applying all search-and-replace blocks

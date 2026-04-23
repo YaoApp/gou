@@ -1,0 +1,98 @@
+group: model
+type: process
+entries:
+  - name: list
+    desc: List all loaded models with optional metadata and columns
+    args:
+      - name: options
+        type: object
+        required: false
+        desc: "Options: metadata (bool) to include full metadata, columns (bool) to include column definitions"
+    return:
+      type: array
+      desc: Array of model info objects with id, name, description, file, table, primary fields
+
+  - name: read
+    desc: Read a model's DSL source by model ID
+    args: []
+    return:
+      type: string
+      desc: The model DSL source content
+
+  - name: dsl
+    desc: Get model DSL information including table and primary key details
+    args:
+      - name: id
+        type: string
+        required: true
+        desc: Model ID
+      - name: options
+        type: object
+        required: false
+        desc: "Options: metadata (bool) to include full metadata, columns (bool) to include column definitions"
+    return:
+      type: object
+      desc: Model DSL object with id, name, description, file, table, primary fields
+
+  - name: exists
+    desc: Check if a model is loaded by model ID
+    args:
+      - name: id
+        type: string
+        required: true
+        desc: Model ID to check
+    return:
+      type: bool
+      desc: True if the model is loaded
+
+  - name: reload
+    desc: Reload a model by model ID
+    args:
+      - name: id
+        type: string
+        required: true
+        desc: Model ID to reload
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: migrate
+    desc: Migrate a model by model ID
+    args:
+      - name: id
+        type: string
+        required: true
+        desc: Model ID to migrate
+      - name: force
+        type: bool
+        required: false
+        desc: Whether to force migration (default false)
+    return:
+      type: any
+      desc: Migration result
+
+  - name: load
+    desc: Load a model from a DSL source string by model ID
+    args:
+      - name: id
+        type: string
+        required: true
+        desc: Model ID to assign
+      - name: source
+        type: string
+        required: true
+        desc: Model DSL source string
+    return:
+      type: any
+      desc: Error on failure, null on success
+
+  - name: unload
+    desc: Unload a model by model ID
+    args:
+      - name: id
+        type: string
+        required: true
+        desc: Model ID to unload
+    return:
+      type: "null"
+      desc: Returns null on success

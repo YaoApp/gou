@@ -1,0 +1,45 @@
+group: objects
+type: js_object
+entries:
+  - name: console
+    desc: Global console object for dumping values to output; log method only works in development mode
+    methods:
+      - name: log
+        desc: Dump values to standard output (only active in development mode, no-op in production)
+        args:
+          - name: args
+            type: any
+            required: true
+            desc: One or more values to dump
+        return:
+          type: null
+
+      - name: info
+        desc: Dump values to standard output at info level
+        args:
+          - name: args
+            type: any
+            required: true
+            desc: One or more values to dump
+        return:
+          type: null
+
+      - name: warn
+        desc: Dump values to standard output at warning level
+        args:
+          - name: args
+            type: any
+            required: true
+            desc: One or more values to dump
+        return:
+          type: null
+
+      - name: error
+        desc: Dump values to standard output at error level
+        args:
+          - name: args
+            type: any
+            required: true
+            desc: One or more values to dump
+        return:
+          type: null

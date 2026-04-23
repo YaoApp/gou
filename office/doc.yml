@@ -1,0 +1,32 @@
+group: office
+type: process
+entries:
+  - name: parse
+    desc: Parse an Office document (DOCX/PPTX) from a file path, extracting markdown content and media files
+    args:
+      - name: filePath
+        type: string
+        required: true
+        desc: Path to the Office document
+      - name: config
+        type: object
+        required: false
+        desc: "Optional configuration: output_dir (string, directory for extracted media files)"
+    return:
+      type: object
+      desc: Parsed result with markdown content, metadata, and media file paths
+
+  - name: parsebytes
+    desc: Parse an Office document from base64-encoded data, extracting markdown content and media files
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: Base64-encoded file content
+      - name: config
+        type: object
+        required: false
+        desc: "Optional configuration: output_dir (string, directory for extracted media files)"
+    return:
+      type: object
+      desc: Parsed result with markdown content, metadata, and media file paths

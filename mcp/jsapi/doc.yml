@@ -1,0 +1,158 @@
+group: objects
+type: js_class
+entries:
+  - name: MCP
+    desc: MCP (Model Context Protocol) client for AI tool calling, resource access, and prompt management
+    args:
+      - name: clientID
+        type: string
+        required: true
+        desc: ID of a registered MCP client to connect to
+    properties:
+      - name: id
+        type: string
+        desc: The client ID used to construct this instance
+    methods:
+      - name: Info
+        desc: Get information about the connected MCP client
+        args: []
+        return:
+          type: object
+          desc: Client information object
+
+      - name: Release
+        desc: Manually release the underlying Go object to free resources (recommended in try-finally blocks)
+        args: []
+        return:
+          type: undefined
+          desc: Returns undefined
+
+      - name: ListTools
+        desc: List available tools from the MCP server
+        args:
+          - name: cursor
+            type: string
+            required: false
+            desc: Pagination cursor for fetching the next page of results
+        return:
+          type: object
+          desc: "Response object with tools array and optional nextCursor"
+
+      - name: CallTool
+        desc: Call a single tool on the MCP server
+        args:
+          - name: name
+            type: string
+            required: true
+            desc: Name of the tool to call
+          - name: arguments
+            type: any
+            required: false
+            desc: Arguments to pass to the tool
+        return:
+          type: object
+          desc: "Tool call response with content array and isError flag"
+
+      - name: CallTools
+        desc: Call multiple tools sequentially on the MCP server
+        args:
+          - name: toolCalls
+            type: array
+            required: true
+            desc: "Array of tool call objects, each with name (string) and optional arguments (any)"
+        return:
+          type: object
+          desc: Response object with results array
+
+      - name: CallToolsParallel
+        desc: Call multiple tools in parallel on the MCP server
+        args:
+          - name: toolCalls
+            type: array
+            required: true
+            desc: "Array of tool call objects, each with name (string) and optional arguments (any)"
+        return:
+          type: object
+          desc: Response object with results array
+
+      - name: ListResources
+        desc: List available resources from the MCP server
+        args:
+          - name: cursor
+            type: string
+            required: false
+            desc: Pagination cursor for fetching the next page of results
+        return:
+          type: object
+          desc: "Response object with resources array and optional nextCursor"
+
+      - name: ReadResource
+        desc: Read a specific resource by URI from the MCP server
+        args:
+          - name: uri
+            type: string
+            required: true
+            desc: "Resource URI (e.g. \"customers://1\")"
+        return:
+          type: object
+          desc: Response object with contents array
+
+      - name: ListPrompts
+        desc: List available prompt templates from the MCP server
+        args:
+          - name: cursor
+            type: string
+            required: false
+            desc: Pagination cursor for fetching the next page of results
+        return:
+          type: object
+          desc: "Response object with prompts array and optional nextCursor"
+
+      - name: GetPrompt
+        desc: Get a specific prompt template with optional arguments
+        args:
+          - name: name
+            type: string
+            required: true
+            desc: Name of the prompt to retrieve
+          - name: arguments
+            type: object
+            required: false
+            desc: Key-value arguments to fill into the prompt template
+        return:
+          type: object
+          desc: Prompt response object with messages
+
+      - name: ListSamples
+        desc: List sample data for a specific item type and name
+        args:
+          - name: itemType
+            type: string
+            required: true
+            desc: "Sample item type (e.g. \"tool\", \"prompt\", \"resource\")"
+          - name: itemName
+            type: string
+            required: true
+            desc: Name of the item to list samples for
+        return:
+          type: object
+          desc: Response object with samples array and total count
+
+      - name: GetSample
+        desc: Get a specific sample by item type, name, and index
+        args:
+          - name: itemType
+            type: string
+            required: true
+            desc: "Sample item type (e.g. \"tool\", \"prompt\", \"resource\")"
+          - name: itemName
+            type: string
+            required: true
+            desc: Name of the item
+          - name: index
+            type: number
+            required: true
+            desc: Zero-based index of the sample to retrieve
+        return:
+          type: object
+          desc: Sample data object with index and content

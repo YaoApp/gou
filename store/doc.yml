@@ -1,0 +1,255 @@
+group: stores
+type: process
+entries:
+  - name: get
+    desc: Get a value by key from the store
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key to retrieve
+    return:
+      type: any
+      desc: The stored value, or null if the key does not exist
+
+  - name: set
+    desc: Set a key-value pair in the store with optional TTL
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key to set
+      - name: value
+        type: any
+        required: true
+        desc: The value to store
+      - name: ttl
+        type: number
+        required: false
+        desc: Time-to-live in seconds (default 0, no expiration)
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: has
+    desc: Check if a key exists in the store
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key to check
+    return:
+      type: bool
+      desc: True if the key exists
+
+  - name: del
+    desc: Delete a key from the store
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key to delete
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: getdel
+    desc: Get a value by key and delete it atomically
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key to retrieve and delete
+    return:
+      type: any
+      desc: The stored value, or null if the key does not exist
+
+  - name: len
+    desc: Get the number of keys in the store
+    args: []
+    return:
+      type: number
+      desc: Number of keys in the store
+
+  - name: keys
+    desc: Get all keys in the store
+    args: []
+    return:
+      type: array
+      desc: Array of all keys in the store
+
+  - name: clear
+    desc: Remove all keys from the store
+    args: []
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: push
+    desc: Push one or more values to the end of an array stored at the given key
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key of the array
+      - name: values
+        type: any
+        required: true
+        desc: One or more values to push (variadic)
+    return:
+      type: any
+      desc: "Null on success, error on failure"
+
+  - name: pop
+    desc: Remove and return an element from an array at the given position
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key of the array
+      - name: position
+        type: number
+        required: true
+        desc: "Position to pop from (0 = first, -1 = last)"
+    return:
+      type: any
+      desc: The removed value, or null on error
+
+  - name: pull
+    desc: Remove the first occurrence of a value from an array
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key of the array
+      - name: value
+        type: any
+        required: true
+        desc: The value to remove
+    return:
+      type: any
+      desc: "Null on success, error on failure"
+
+  - name: pullall
+    desc: Remove all occurrences of the given values from an array
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key of the array
+      - name: values
+        type: any
+        required: true
+        desc: A value, array of values, or multiple values to remove
+    return:
+      type: any
+      desc: "Null on success, error on failure"
+
+  - name: addtoset
+    desc: Add one or more values to an array only if they do not already exist (set-like behavior)
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key of the array
+      - name: values
+        type: any
+        required: true
+        desc: One or more values to add (variadic)
+    return:
+      type: any
+      desc: "Null on success, error on failure"
+
+  - name: arraylen
+    desc: Get the length of an array stored at the given key
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key of the array
+    return:
+      type: number
+      desc: Length of the array
+
+  - name: arrayget
+    desc: Get an element from an array by index
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key of the array
+      - name: index
+        type: number
+        required: true
+        desc: The array index
+    return:
+      type: any
+      desc: The value at the given index, or null on error
+
+  - name: arrayset
+    desc: Set an element in an array at a specific index
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key of the array
+      - name: index
+        type: number
+        required: true
+        desc: The array index to set
+      - name: value
+        type: any
+        required: true
+        desc: The value to set
+    return:
+      type: any
+      desc: "Null on success, error on failure"
+
+  - name: arrayslice
+    desc: Get a slice of an array by skip and limit
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key of the array
+      - name: skip
+        type: number
+        required: true
+        desc: Number of elements to skip
+      - name: limit
+        type: number
+        required: true
+        desc: Maximum number of elements to return
+    return:
+      type: array
+      desc: Array slice, or null on error
+
+  - name: arraypage
+    desc: Get a paginated slice of an array
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key of the array
+      - name: page
+        type: number
+        required: true
+        desc: Page number (1-based)
+      - name: pageSize
+        type: number
+        required: true
+        desc: Number of elements per page
+    return:
+      type: array
+      desc: Paginated array slice, or null on error
+
+  - name: arrayall
+    desc: Get all elements of an array stored at the given key
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: The key of the array
+    return:
+      type: array
+      desc: All elements in the array, or null on error

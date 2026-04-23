@@ -1,0 +1,13 @@
+group: functions
+type: js_function
+entries:
+  - name: atob
+    desc: Decode a Base64-encoded string to its original text representation
+    args:
+      - name: encoded
+        type: string
+        required: true
+        desc: A Base64-encoded string to decode
+    return:
+      type: string
+      desc: The decoded string

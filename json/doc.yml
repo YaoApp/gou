@@ -1,0 +1,76 @@
+group: json
+type: process
+entries:
+  - name: encode
+    desc: Encode a value to a JSON string
+    args:
+      - name: value
+        type: any
+        required: true
+        desc: The value to encode as JSON
+    return:
+      type: string
+      desc: JSON encoded string
+
+  - name: decode
+    desc: Decode a JSON string into a value
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: JSON string to decode
+    return:
+      type: any
+      desc: Decoded value
+
+  - name: parse
+    desc: Universal parser supporting JSON, JSONC, Yao, and YAML formats with auto-repair for broken JSON
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: The data string to parse
+      - name: hint
+        type: string
+        required: false
+        desc: "Format hint (e.g. \"file.yaml\", \".json\", \"yaml\", \".yao\")"
+    return:
+      type: any
+      desc: Parsed value
+
+  - name: repair
+    desc: Repair broken JSON string
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: Broken JSON string to repair
+    return:
+      type: string
+      desc: Repaired JSON string
+
+  - name: validate
+    desc: Validate data against a JSON Schema
+    args:
+      - name: data
+        type: any
+        required: true
+        desc: The data to validate
+      - name: schema
+        type: any
+        required: true
+        desc: The JSON Schema (object, JSON string, or byte array)
+    return:
+      type: any
+      desc: "Null if valid, error message string if invalid"
+
+  - name: validateschema
+    desc: Validate a JSON Schema structure itself
+    args:
+      - name: schema
+        type: any
+        required: true
+        desc: The JSON Schema to validate
+    return:
+      type: any
+      desc: "Null if valid, error message string if invalid"

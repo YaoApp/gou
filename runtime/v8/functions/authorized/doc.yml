@@ -1,0 +1,8 @@
+group: functions
+type: js_function
+entries:
+  - name: Authorized
+    desc: Return the current authorization information from the runtime context
+    return:
+      type: object
+      desc: "The authorized info object, or null if no authorization is present"

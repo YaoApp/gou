@@ -1,0 +1,122 @@
+group: session
+type: process
+entries:
+  - name: id
+    desc: Get the current session ID
+    args: []
+    return:
+      type: string
+      desc: The current session ID
+
+  - name: get
+    desc: Get a value from the session by key
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: Session key to retrieve
+      - name: sid
+        type: string
+        required: false
+        desc: Optional session ID to read from a different session
+    return:
+      type: any
+      desc: The value stored at the given key
+
+  - name: set
+    desc: Set a value in the session
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: Session key to set
+      - name: value
+        type: any
+        required: true
+        desc: Value to store
+      - name: ttl
+        type: number
+        required: false
+        desc: Time-to-live in seconds
+      - name: sid
+        type: string
+        required: false
+        desc: Optional session ID to write to a different session (requires ttl to be set)
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: del
+    desc: Delete a value from the session by key
+    args:
+      - name: key
+        type: string
+        required: true
+        desc: Session key to delete
+      - name: sid
+        type: string
+        required: false
+        desc: Optional session ID to delete from a different session
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: dump
+    desc: Dump all key-value pairs in the session
+    args:
+      - name: sid
+        type: string
+        required: false
+        desc: Optional session ID to dump a different session
+    return:
+      type: object
+      desc: Map of all session key-value pairs
+
+  - name: getmany
+    desc: Get multiple values from the session by keys
+    args:
+      - name: keys
+        type: array
+        required: true
+        desc: Array of session keys to retrieve
+      - name: sid
+        type: string
+        required: false
+        desc: Optional session ID to read from a different session
+    return:
+      type: object
+      desc: Map of key to value for the requested keys
+
+  - name: setmany
+    desc: Set multiple key-value pairs in the session
+    args:
+      - name: values
+        type: object
+        required: true
+        desc: Map of key-value pairs to set
+      - name: ttl
+        type: number
+        required: false
+        desc: Time-to-live in seconds
+      - name: sid
+        type: string
+        required: false
+        desc: Optional session ID to write to a different session (requires ttl to be set)
+    return:
+      type: "null"
+      desc: No return value
+
+  - name: delmany
+    desc: Delete multiple values from the session by keys
+    args:
+      - name: keys
+        type: array
+        required: true
+        desc: Array of session keys to delete
+      - name: sid
+        type: string
+        required: false
+        desc: Optional session ID to delete from a different session
+    return:
+      type: "null"
+      desc: No return value

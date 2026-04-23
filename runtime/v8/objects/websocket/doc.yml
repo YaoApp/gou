@@ -1,0 +1,25 @@
+group: objects
+type: js_class
+entries:
+  - name: WebSocket
+    desc: WebSocket client for sending messages to a WebSocket server
+    args:
+      - name: url
+        type: string
+        required: true
+        desc: WebSocket server URL (e.g. "ws://127.0.0.1:5056/websocket/test")
+      - name: protocols
+        type: string
+        required: false
+        desc: Sub-protocol strings (variadic, each additional argument is a protocol)
+    methods:
+      - name: push
+        desc: Connect to the WebSocket server and send a text message
+        args:
+          - name: message
+            type: string
+            required: true
+            desc: Text message to send
+        return:
+          type: undefined
+          desc: Returns undefined on success

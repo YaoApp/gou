@@ -1,0 +1,16 @@
+group: schedules
+type: process
+entries:
+  - name: start
+    desc: Start a loaded schedule by name (uses process.ID as the schedule name)
+    args: []
+    return:
+      type: object
+      desc: "Object with enabled status, e.g. {\"enabled\": true}"
+
+  - name: stop
+    desc: Stop a running schedule by name (uses process.ID as the schedule name)
+    args: []
+    return:
+      type: object
+      desc: "Object with enabled status, e.g. {\"enabled\": false}"

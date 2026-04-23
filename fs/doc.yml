@@ -1,0 +1,506 @@
+group: fs
+type: process
+entries:
+  - name: readfile
+    desc: Read file content as a string
+    args:
+      - name: file
+        type: string
+        required: true
+        desc: Path to the file
+    return:
+      type: string
+      desc: File content as a string
+
+  - name: readfilebuffer
+    desc: Read file content as a byte buffer
+    args:
+      - name: file
+        type: string
+        required: true
+        desc: Path to the file
+    return:
+      type: bytes
+      desc: File content as a byte buffer
+
+  - name: writefile
+    desc: Write string content to a file, creating or overwriting it
+    args:
+      - name: file
+        type: string
+        required: true
+        desc: Path to the file
+      - name: content
+        type: string
+        required: true
+        desc: String content to write
+      - name: perm
+        type: number
+        required: false
+        desc: File permission mode (default 0777)
+    return:
+      type: number
+      desc: Number of bytes written
+
+  - name: writefilebuffer
+    desc: Write byte buffer content to a file, creating or overwriting it
+    args:
+      - name: file
+        type: string
+        required: true
+        desc: Path to the file
+      - name: content
+        type: bytes
+        required: true
+        desc: Byte buffer content to write
+      - name: perm
+        type: number
+        required: false
+        desc: File permission mode (default 0777)
+    return:
+      type: number
+      desc: Number of bytes written
+
+  - name: appendfile
+    desc: Append string content to a file
+    args:
+      - name: file
+        type: string
+        required: true
+        desc: Path to the file
+      - name: content
+        type: string
+        required: true
+        desc: String content to append
+      - name: perm
+        type: number
+        required: false
+        desc: File permission mode (default 0777)
+    return:
+      type: number
+      desc: Number of bytes written
+
+  - name: appendfilebuffer
+    desc: Append byte buffer content to a file
+    args:
+      - name: file
+        type: string
+        required: true
+        desc: Path to the file
+      - name: content
+        type: bytes
+        required: true
+        desc: Byte buffer content to append
+      - name: perm
+        type: number
+        required: false
+        desc: File permission mode (default 0777)
+    return:
+      type: number
+      desc: Number of bytes written
+
+  - name: insertfile
+    desc: Insert string content into a file at a given byte offset
+    args:
+      - name: file
+        type: string
+        required: true
+        desc: Path to the file
+      - name: offset
+        type: number
+        required: true
+        desc: Byte offset at which to insert content
+      - name: content
+        type: string
+        required: true
+        desc: String content to insert
+      - name: perm
+        type: number
+        required: false
+        desc: File permission mode (default 0777)
+    return:
+      type: number
+      desc: Number of bytes written
+
+  - name: insertfilebuffer
+    desc: Insert byte buffer content into a file at a given byte offset
+    args:
+      - name: file
+        type: string
+        required: true
+        desc: Path to the file
+      - name: offset
+        type: number
+        required: true
+        desc: Byte offset at which to insert content
+      - name: content
+        type: bytes
+        required: true
+        desc: Byte buffer content to insert
+      - name: perm
+        type: number
+        required: false
+        desc: File permission mode (default 0777)
+    return:
+      type: number
+      desc: Number of bytes written
+
+  - name: readdir
+    desc: List files and directories in a directory
+    args:
+      - name: dir
+        type: string
+        required: true
+        desc: Path to the directory
+      - name: recursive
+        type: bool
+        required: false
+        desc: Whether to list recursively (default false)
+    return:
+      type: array
+      desc: Array of file and directory paths
+
+  - name: mkdir
+    desc: Create a single directory
+    args:
+      - name: dir
+        type: string
+        required: true
+        desc: Path to the directory to create
+      - name: perm
+        type: number
+        required: false
+        desc: Directory permission mode (default 0777)
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: mkdirall
+    desc: Create a directory and all necessary parent directories
+    args:
+      - name: dir
+        type: string
+        required: true
+        desc: Path to the directory to create
+      - name: perm
+        type: number
+        required: false
+        desc: Directory permission mode (default 0777)
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: mkdirtemp
+    desc: Create a temporary directory and return its path
+    args:
+      - name: dir
+        type: string
+        required: false
+        desc: Parent directory for the temp directory (default empty)
+      - name: pattern
+        type: string
+        required: false
+        desc: Pattern for the temp directory name (default empty)
+    return:
+      type: string
+      desc: Path of the created temporary directory
+
+  - name: remove
+    desc: Remove a single file or empty directory
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: Path to the file or directory to remove
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: removeall
+    desc: Remove a file or directory and all its contents recursively
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: Path to the file or directory to remove
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: exists
+    desc: Check if a file or directory exists
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: Path to check
+    return:
+      type: bool
+      desc: True if the path exists, false otherwise
+
+  - name: isdir
+    desc: Check if a path is a directory
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: Path to check
+    return:
+      type: bool
+      desc: True if the path is a directory
+
+  - name: isfile
+    desc: Check if a path is a regular file
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: Path to check
+    return:
+      type: bool
+      desc: True if the path is a regular file
+
+  - name: islink
+    desc: Check if a path is a symbolic link
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: Path to check
+    return:
+      type: bool
+      desc: True if the path is a symbolic link
+
+  - name: chmod
+    desc: Change the permission mode of a file or directory
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: Path to the file or directory
+      - name: perm
+        type: number
+        required: true
+        desc: New permission mode
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: size
+    desc: Get the size of a file in bytes
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: Path to the file
+    return:
+      type: number
+      desc: File size in bytes
+
+  - name: mode
+    desc: Get the permission mode of a file or directory
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: Path to the file or directory
+    return:
+      type: number
+      desc: Permission mode as a number
+
+  - name: modtime
+    desc: Get the last modification time of a file as a Unix timestamp
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: Path to the file
+    return:
+      type: number
+      desc: Last modification time as a Unix timestamp (seconds)
+
+  - name: basename
+    desc: Get the last element of a path (file name with extension)
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: File path
+    return:
+      type: string
+      desc: Base name of the path
+
+  - name: dirname
+    desc: Get the directory portion of a path
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: File path
+    return:
+      type: string
+      desc: Directory name of the path
+
+  - name: extname
+    desc: Get the file extension of a path
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: File path
+    return:
+      type: string
+      desc: File extension including the dot (e.g. ".txt")
+
+  - name: mimetype
+    desc: Get the MIME type of a file
+    args:
+      - name: path
+        type: string
+        required: true
+        desc: Path to the file
+    return:
+      type: string
+      desc: MIME type of the file (e.g. "text/plain")
+
+  - name: move
+    desc: Move or rename a file or directory
+    args:
+      - name: src
+        type: string
+        required: true
+        desc: Source path
+      - name: dst
+        type: string
+        required: true
+        desc: Destination path
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: moveappend
+    desc: Move source file content by appending it to the destination file
+    args:
+      - name: src
+        type: string
+        required: true
+        desc: Source file path
+      - name: dst
+        type: string
+        required: true
+        desc: Destination file path
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: moveinsert
+    desc: Move source file content by inserting it into the destination file at a byte offset
+    args:
+      - name: src
+        type: string
+        required: true
+        desc: Source file path
+      - name: dst
+        type: string
+        required: true
+        desc: Destination file path
+      - name: offset
+        type: number
+        required: true
+        desc: Byte offset at which to insert in the destination file
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: copy
+    desc: Copy a file from source to destination
+    args:
+      - name: src
+        type: string
+        required: true
+        desc: Source file path
+      - name: dst
+        type: string
+        required: true
+        desc: Destination file path
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: upload
+    desc: Upload a file to the storage, supports both normal and chunked uploads
+    args:
+      - name: file
+        type: object
+        required: true
+        desc: UploadFile object containing the file data and metadata
+      - name: props
+        type: object
+        required: false
+        desc: "Upload properties: accept (string, allowed MIME types), maxFilesize (string/number, e.g. \"10M\")"
+    return:
+      type: any
+      desc: File path string on completion, or an object with path, uid and progress for chunked uploads
+
+  - name: download
+    desc: Download a file from the storage, returning a readable stream and MIME type
+    args:
+      - name: file
+        type: string
+        required: true
+        desc: Path to the file to download
+    return:
+      type: object
+      desc: "Object with content (reader) and type (MIME type string)"
+
+  - name: zip
+    desc: Compress a file or directory into a zip archive
+    args:
+      - name: src
+        type: string
+        required: true
+        desc: Source file or directory path
+      - name: dst
+        type: string
+        required: true
+        desc: Destination zip file path
+    return:
+      type: "null"
+      desc: Returns null on success
+
+  - name: unzip
+    desc: Extract a zip archive to a directory
+    args:
+      - name: src
+        type: string
+        required: true
+        desc: Source zip file path
+      - name: dst
+        type: string
+        required: true
+        desc: Destination directory path
+    return:
+      type: array
+      desc: Array of extracted file paths
+
+  - name: glob
+    desc: Find files matching a glob pattern
+    args:
+      - name: pattern
+        type: string
+        required: true
+        desc: Glob pattern to match files (e.g. "*.txt", "dir/**/*.json")
+    return:
+      type: array
+      desc: Array of matching file paths relative to the storage root
+
+  - name: abs
+    desc: Get the absolute path of a file relative to the storage root
+    args:
+      - name: file
+        type: string
+        required: true
+        desc: Relative file path
+    return:
+      type: string
+      desc: Absolute file path

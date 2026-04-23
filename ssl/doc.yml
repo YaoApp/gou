@@ -1,0 +1,44 @@
+group: ssl
+type: process
+entries:
+  - name: ssl.sign
+    desc: Compute a cryptographic signature for the given data using an RSA private key
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: The plain text data to sign
+      - name: certName
+        type: string
+        required: true
+        desc: The name of the loaded private key certificate
+      - name: algorithm
+        type: string
+        required: true
+        desc: "The hash algorithm (e.g. SHA256, SHA512, MD5)"
+    return:
+      type: string
+      desc: Base64-encoded RSA signature
+
+  - name: ssl.verify
+    desc: Verify that a signature is valid for the given data using an RSA public key or certificate
+    args:
+      - name: data
+        type: string
+        required: true
+        desc: The original plain text data
+      - name: sign
+        type: string
+        required: true
+        desc: The base64-encoded signature to verify
+      - name: certName
+        type: string
+        required: true
+        desc: The name of the loaded public key or certificate
+      - name: algorithm
+        type: string
+        required: true
+        desc: "The hash algorithm used when signing (e.g. SHA256, SHA512, MD5)"
+    return:
+      type: bool
+      desc: True if the signature is valid, throws on failure

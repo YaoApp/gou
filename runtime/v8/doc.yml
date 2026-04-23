@@ -1,0 +1,13 @@
+group: scripts
+type: process
+entries:
+  - name: scripts.*.*
+    desc: Execute an exported function from a loaded JavaScript/TypeScript script
+    args:
+      - name: args
+        type: any
+        required: false
+        desc: Variable arguments passed to the script function
+    return:
+      type: any
+      desc: The value returned by the script function

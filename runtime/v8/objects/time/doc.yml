@@ -1,0 +1,33 @@
+group: objects
+type: js_object
+entries:
+  - name: time
+    desc: Global time utility object for sleeping and scheduling delayed process execution
+    methods:
+      - name: Sleep
+        desc: Block execution for the specified number of milliseconds
+        args:
+          - name: ms
+            type: number
+            required: true
+            desc: Duration to sleep in milliseconds
+        return:
+          type: null
+
+      - name: After
+        desc: Execute a named process asynchronously after a delay in milliseconds
+        args:
+          - name: ms
+            type: number
+            required: true
+            desc: Delay before execution in milliseconds
+          - name: process
+            type: string
+            required: true
+            desc: Name of the process to execute after the delay
+          - name: args
+            type: any
+            required: false
+            desc: Variable arguments passed to the process
+        return:
+          type: null

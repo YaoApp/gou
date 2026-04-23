@@ -1,0 +1,103 @@
+group: objects
+type: js_object
+entries:
+  - name: log
+    desc: Global logging object for writing structured log messages at various severity levels
+    methods:
+      - name: Trace
+        desc: Write a trace-level log message with optional format arguments
+        args:
+          - name: message
+            type: string
+            required: true
+            desc: Log message, supports printf-style format verbs
+          - name: args
+            type: any
+            required: false
+            desc: Variable arguments for format string substitution
+        return:
+          type: null
+
+      - name: Debug
+        desc: Write a debug-level log message with optional format arguments
+        args:
+          - name: message
+            type: string
+            required: true
+            desc: Log message, supports printf-style format verbs
+          - name: args
+            type: any
+            required: false
+            desc: Variable arguments for format string substitution
+        return:
+          type: null
+
+      - name: Info
+        desc: Write an info-level log message with optional format arguments
+        args:
+          - name: message
+            type: string
+            required: true
+            desc: Log message, supports printf-style format verbs
+          - name: args
+            type: any
+            required: false
+            desc: Variable arguments for format string substitution
+        return:
+          type: null
+
+      - name: Warn
+        desc: Write a warning-level log message with optional format arguments
+        args:
+          - name: message
+            type: string
+            required: true
+            desc: Log message, supports printf-style format verbs
+          - name: args
+            type: any
+            required: false
+            desc: Variable arguments for format string substitution
+        return:
+          type: null
+
+      - name: Error
+        desc: Write an error-level log message with optional format arguments
+        args:
+          - name: message
+            type: string
+            required: true
+            desc: Log message, supports printf-style format verbs
+          - name: args
+            type: any
+            required: false
+            desc: Variable arguments for format string substitution
+        return:
+          type: null
+
+      - name: Fatal
+        desc: Write a fatal-level log message with optional format arguments, then terminate the process
+        args:
+          - name: message
+            type: string
+            required: true
+            desc: Log message, supports printf-style format verbs
+          - name: args
+            type: any
+            required: false
+            desc: Variable arguments for format string substitution
+        return:
+          type: null
+
+      - name: Panic
+        desc: Write a panic-level log message with optional format arguments, then panic
+        args:
+          - name: message
+            type: string
+            required: true
+            desc: Log message, supports printf-style format verbs
+          - name: args
+            type: any
+            required: false
+            desc: Variable arguments for format string substitution
+        return:
+          type: null
