@@ -1,354 +1,442 @@
 group: models
 type: process
+desc: |
+  Model instance CRUD processes. Process names follow the pattern "models.<model_id>.<handler>".
+  The model ID is extracted from the process name (process.ID), not from function arguments.
+  Example: "models.user.find", "models.category.get", "models.user.pet.paginate"
+  All handlers throw exceptions on fatal errors (e.g. model not found → 400, database error → 500).
+
+  QueryParam structure (used by find, get, paginate, count, updatewhere, deletewhere, destroywhere):
+    - select ([]string, optional): Columns to select. Values must be valid column names defined in the model. Example: ["id", "name", "email"]
+    - wheres ([]QueryWhere, optional): Array of filter conditions. See QueryWhere below.
+    - orders ([]QueryOrder, optional): Array of sort rules. Example: [{"column": "id", "option": "desc"}]
+    - limit (int, optional): Maximum number of records to return.
+    - page (int, optional): Page number (1-based) for internal pagination.
+    - pagesize (int, optional): Records per page for internal pagination.
+    - withs (map[string]With, optional): Eager-load relations. Key is relation name, value is {"name": "...", "query": QueryParam}. Example: {"category": {"query": {"select": ["id", "name"]}}}
+
+  QueryWhere structure:
+    - column (string): Column name to filter on. Example: "name", "status"
+    - value (any): The value to compare against. Type depends on the operator.
+    - op (string, optional): Comparison operator. Values: "eq" (=, default), "gt" (>), "lt" (<), "ge" (>=), "le" (<=), "like" (LIKE), "match" (LIKE %value%), "in" (IN array), "ne" (!=). Default is "eq" if omitted.
+    - method (string, optional): Logic connector. Values: "where" (AND, default), "orwhere" (OR), "wherein", "orwherein".
+    - wheres ([]QueryWhere, optional): Nested conditions for grouped logic (e.g. WHERE (A AND B) OR C).
+    - rel (string, optional): Relation name for filtering on related models.
+
+  QueryOrder structure:
+    - column (string): Column name to sort by.
+    - option (string, optional): Sort direction. Values: "asc" (ascending, default), "desc" (descending).
+    - rel (string, optional): Relation name for sorting on related models.
+
 entries:
   - name: find
     desc: Find a single record by primary key with optional query parameters
     args:
       - name: id
-        type: any
+        type: "any (int | string)"
         required: true
-        desc: Primary key value of the record
+        desc: "Primary key value of the record to find."
       - name: params
-        type: object
-        required: false
-        desc: Query parameters (select, withs, etc.)
+        type: "QueryParam object"
+        required: true
+        desc: |
+          Query parameters to control field selection and relation loading. ValidateArgNums(2) requires this argument to be present.
+          Pass an empty object {} if no filtering is needed.
+          Commonly used fields: select (to pick columns), withs (to eager-load relations).
+          If the value cannot be parsed as a valid QueryParam, it defaults to an empty QueryParam (no exception thrown).
     return:
       type: object
-      desc: The found record as a map
+      desc: "The found record as a key-value object (map[string]interface{}). Column names are keys. Returns null if no record matches the given ID (no exception thrown). Throws a 500 exception only on database errors."
 
   - name: get
     desc: Get multiple records matching query parameters
     args:
       - name: params
-        type: object
+        type: "QueryParam object"
         required: true
-        desc: Query parameters (select, wheres, orders, limit, etc.)
+        desc: |
+          Query parameters for filtering, sorting and limiting. Throws a 400 exception if the value cannot be parsed as a valid QueryParam.
+          Example: {"select": ["id", "name"], "wheres": [{"column": "status", "value": "enabled"}], "orders": [{"column": "id", "option": "desc"}], "limit": 100}
     return:
       type: array
-      desc: Array of matching records
+      desc: "Array of record objects (each is a key-value map). Returns an empty array if no records match."
 
   - name: paginate
     desc: Get paginated records matching query parameters
     args:
       - name: params
-        type: object
+        type: "QueryParam object"
         required: true
-        desc: Query parameters (select, wheres, orders, etc.)
+        desc: "Query parameters for filtering and sorting. Throws a 400 exception if invalid."
       - name: page
-        type: number
+        type: int
         required: true
-        desc: Page number (1-based)
+        desc: "Page number, 1-based. Converted to int via CInt()."
       - name: pagesize
-        type: number
+        type: int
         required: true
-        desc: Number of records per page
+        desc: "Number of records per page. Converted to int via CInt()."
     return:
       type: object
-      desc: Paginated result with data array, total, page, pagesize, etc.
+      desc: |
+        Paginated result object with the following fields:
+          - data (array): Array of record objects for the current page.
+          - total (int): Total number of matching records across all pages.
+          - page (int): Current page number.
+          - pagesize (int): Number of records per page.
+          - pagecnt (int): Total number of pages.
+          - next (int): Next page number. -1 if there is no next page.
+          - prev (int): Previous page number. -1 if there is no previous page.
 
   - name: count
     desc: Count records matching query parameters
     args:
       - name: params
-        type: object
+        type: "QueryParam object"
         required: true
-        desc: Query parameters (wheres, etc.)
+        desc: "Query parameters with wheres conditions. Throws a 400 exception if invalid. Pass {} to count all records."
     return:
-      type: number
-      desc: Number of matching records
+      type: int
+      desc: "Number of matching records (integer)."
 
   - name: create
-    desc: Create a new record
+    desc: Create a new record and return the new record's primary key value
     args:
       - name: row
         type: object
         required: true
-        desc: Record data as key-value pairs
+        desc: |
+          Record data as key-value pairs. Keys are column names, values are the data.
+          Example: {"name": "John", "email": "john@example.com", "status": "enabled"}
+          Invalid columns are filtered out. Data validation is performed before insert.
     return:
-      type: any
-      desc: Primary key value of the created record
+      type: int
+      desc: "Primary key value (typically int) of the newly created record."
 
   - name: update
     desc: Update an existing record by primary key
     args:
       - name: id
-        type: any
+        type: "any (int | string)"
         required: true
-        desc: Primary key value of the record to update
+        desc: "Primary key value of the record to update."
       - name: row
         type: object
         required: true
-        desc: Fields to update as key-value pairs
+        desc: |
+          Fields to update as key-value pairs. Only provided fields are updated.
+          Example: {"name": "Jane", "status": "disabled"}
+          If timestamps option is enabled, updated_at is set automatically.
     return:
       type: "null"
-      desc: Returns null on success
+      desc: "Returns null on success. Throws a 500 exception if no record matches the given ID (0 rows affected)."
 
   - name: save
-    desc: Create or update a record (upsert by primary key)
+    desc: Create or update a record — if the primary key field is present in the row, updates the existing record; otherwise creates a new one
     args:
       - name: row
         type: object
         required: true
-        desc: Record data; if primary key is present the record is updated, otherwise created
+        desc: |
+          Record data as key-value pairs.
+          - If the row contains the primary key field (e.g. "id"): performs an UPDATE on the matching record.
+          - If the row does NOT contain the primary key field: performs an INSERT to create a new record.
+          Example (update): {"id": 1, "name": "Updated Name"}
+          Example (create): {"name": "New Name", "status": "enabled"}
     return:
-      type: any
-      desc: Primary key value of the saved record
+      type: int
+      desc: "Primary key value (int) of the saved record — either the existing ID (update) or the newly generated ID (create)."
 
   - name: delete
-    desc: Soft-delete a record by primary key (sets deleted_at)
+    desc: "Delete a record by primary key. If the model has soft_deletes enabled, sets deleted_at (soft delete). Otherwise performs a hard delete."
     args:
       - name: id
-        type: any
+        type: "any (int | string)"
         required: true
-        desc: Primary key value of the record to delete
+        desc: "Primary key value of the record to delete."
     return:
       type: "null"
-      desc: Returns null on success
+      desc: "Returns null on success. Throws a 500 exception on database error."
 
   - name: destroy
-    desc: Hard-delete a record by primary key (permanently removes)
+    desc: Permanently remove a record by primary key (hard delete, ignores soft_deletes setting)
     args:
       - name: id
-        type: any
+        type: "any (int | string)"
         required: true
-        desc: Primary key value of the record to destroy
+        desc: "Primary key value of the record to permanently delete."
     return:
       type: "null"
-      desc: Returns null on success
+      desc: "Returns null on success. Throws a 500 exception on database error."
 
   - name: insert
-    desc: Batch insert multiple records by specifying columns and row values
+    desc: Batch insert multiple records by specifying column names and rows of values
     args:
       - name: columns
-        type: array
+        type: "array of strings"
         required: true
-        desc: Array of column names
+        desc: |
+          Array of column names defining the order of values in each row.
+          Accepts string[] or interface[] (each element converted to string).
+          Example: ["name", "email", "status"]
       - name: rows
-        type: array
+        type: "array of arrays"
         required: true
-        desc: Array of row arrays, each containing values matching the columns order
+        desc: |
+          Array of row arrays. Each inner array contains values matching the columns order.
+          Accepts [][]interface{} or []interface{} (each element must be an array).
+          Example: [["John", "john@example.com", "enabled"], ["Jane", "jane@example.com", "disabled"]]
     return:
       type: "null"
-      desc: Returns null on success
+      desc: "Returns null on success. Throws a 500 exception on database error."
 
   - name: updatewhere
-    desc: Update records matching query parameters
+    desc: Update multiple records matching query conditions
     args:
       - name: params
-        type: object
+        type: "QueryParam object"
         required: true
-        desc: Query parameters with wheres conditions
+        desc: "Query parameters with wheres conditions to select records to update. Throws a 400 exception if invalid."
       - name: row
         type: object
         required: true
-        desc: Fields to update as key-value pairs
+        desc: "Fields to update as key-value pairs. Data validation is performed. If timestamps option is enabled, updated_at is set automatically."
     return:
-      type: any
-      desc: Number of affected rows
+      type: int
+      desc: "Number of affected rows (int)."
 
   - name: deletewhere
-    desc: Soft-delete records matching query parameters
+    desc: "Soft-delete multiple records matching query conditions (sets deleted_at). Only applies soft delete logic if the model has soft_deletes enabled."
     args:
       - name: params
-        type: object
+        type: "QueryParam object"
         required: true
-        desc: Query parameters with wheres conditions
+        desc: |
+          Query parameters with wheres conditions. ValidateArgNums(1) requires this argument.
+          If the value cannot be parsed as a valid QueryParam, defaults to an empty QueryParam (matches ALL records — use with caution).
     return:
-      type: any
-      desc: Number of affected rows
+      type: int
+      desc: "Number of affected rows (int)."
 
   - name: destroywhere
-    desc: Hard-delete records matching query parameters (permanently removes)
+    desc: Hard-delete (permanently remove) multiple records matching query conditions, ignoring soft_deletes setting
     args:
       - name: params
-        type: object
+        type: "QueryParam object"
         required: true
-        desc: Query parameters with wheres conditions
+        desc: |
+          Query parameters with wheres conditions. ValidateArgNums(1) requires this argument.
+          If the value cannot be parsed as a valid QueryParam, defaults to an empty QueryParam (matches ALL records — use with extreme caution).
     return:
-      type: any
-      desc: Number of affected rows
+      type: int
+      desc: "Number of affected rows (int)."
 
   - name: eachsave
-    desc: Save multiple records in a batch, creating or updating each one
+    desc: Save multiple records in a batch — each row is individually created or updated via the Save logic (upsert by primary key)
     args:
       - name: rows
-        type: array
+        type: "array of objects"
         required: true
-        desc: Array of record objects to save
+        desc: "Array of record objects. Each object follows the same rules as the save handler (creates if no primary key, updates if primary key present)."
       - name: eachrow
         type: object
         required: false
-        desc: Common fields to merge into each row before saving
+        desc: |
+          Common fields to merge into every row before saving. Useful for setting shared values like a foreign key.
+          Example: {"category_id": 5}
     return:
       type: array
-      desc: Array of primary key values for the saved records
+      desc: "Array of primary key values (int or interface{}) for all saved records, in the same order as the input rows."
 
   - name: eachsaveafterdelete
-    desc: Delete records by IDs then batch save new records
+    desc: Delete specified records by IDs, then batch save new records
     args:
       - name: ids
-        type: array
+        type: "array of int"
         required: true
-        desc: Array of primary key values to delete before saving
+        desc: |
+          Array of primary key values to delete before saving.
+          Accepts []int or []interface{} (each element converted to int).
+          NOTE: Deletion uses a hard-coded "id" column name (WHERE id IN ...), not the model's actual primary key. If empty, no deletion is performed.
       - name: rows
-        type: array
+        type: "array of objects"
         required: true
-        desc: Array of record objects to save
+        desc: "Array of record objects to save. Same behavior as eachsave."
       - name: eachrow
         type: object
         required: false
-        desc: Common fields to merge into each row before saving
+        desc: "Common fields to merge into every row before saving."
     return:
       type: array
-      desc: Array of primary key values for the saved records
+      desc: "Array of primary key values for all saved records."
 
   - name: upsert
-    desc: Insert or update a record based on unique column constraints
+    desc: Insert a new record or update an existing one based on unique column constraints (database-level UPSERT)
     args:
       - name: row
         type: object
         required: true
-        desc: Record data as key-value pairs
+        desc: "Record data as key-value pairs. Data validation is performed before operation."
       - name: uniqueBy
-        type: any
+        type: "string | array of strings"
         required: true
-        desc: Column name (string) or array of column names used to determine uniqueness
+        desc: |
+          Column name(s) used to determine uniqueness for conflict detection.
+          - String: a single column name. Example: "email"
+          - Array of strings: multiple columns for composite uniqueness. Example: ["email", "tenant_id"]
+          Throws a 400 exception if empty or invalid type.
       - name: updateColumns
-        type: array
+        type: "array of strings"
         required: false
-        desc: Array of column names to update on conflict; if omitted, all columns are updated
+        desc: |
+          Column names to update when a conflict is detected. If omitted, ALL model columns are updated on conflict.
+          Example: ["name", "status"]
+          Accepts []string or []interface{}.
     return:
-      type: any
-      desc: Primary key value of the upserted record
+      type: int
+      desc: "Number of affected rows (int). Typically 1 for insert, or the number of updated rows."
 
   - name: selectoption
-    desc: "[Deprecated] Get select options matching a keyword search"
+    desc: "[DEPRECATED — use get instead] Get select dropdown options matching a keyword search"
     args:
       - name: keyword
         type: string
         required: false
-        desc: Search keyword (default matches all)
+        desc: "Search keyword for LIKE matching. Default matches all records (\"%%\")."
       - name: name
         type: string
         required: false
-        desc: "Column to use as the option label (default: \"name\")"
+        desc: "Column to use as the display label. Default: \"name\"."
       - name: value
         type: string
         required: false
-        desc: "Column to use as the option value (default: \"id\")"
+        desc: "Column to use as the option value. Default: \"id\"."
       - name: limit
-        type: number
+        type: int
         required: false
-        desc: "Maximum number of results (default: 20)"
+        desc: "Maximum number of results. Default: 20."
     return:
       type: array
-      desc: Array of objects with name and id fields
+      desc: |
+        Array of option objects, each with:
+          - name (any): The value of the display label column.
+          - id (any): The value of the option value column.
+        Note: The returned field names are always "name" and "id" regardless of the column arguments.
 
   - name: takesnapshot
-    desc: Create a snapshot (backup copy) of the model's table
+    desc: Create a snapshot (backup copy) of the model's database table
     args:
       - name: inMemory
         type: bool
         required: true
-        desc: Whether to create the snapshot table in memory
+        desc: "Whether to create the snapshot table in memory (true) or as a regular table (false)."
     return:
       type: string
-      desc: Name of the created snapshot table
+      desc: "Name of the created snapshot table (e.g. \"user_snapshot_1234567890\"). Throws a 500 exception on failure."
 
   - name: restoresnapshot
-    desc: Restore the model's table data from a snapshot
+    desc: Restore the model's table data from a previously created snapshot
     args:
       - name: name
         type: string
         required: true
-        desc: Name of the snapshot table to restore from
+        desc: "Name of the snapshot table to restore from (as returned by takesnapshot)."
     return:
       type: "null"
-      desc: Returns null on success
+      desc: "Returns null on success. Throws a 500 exception if the snapshot does not exist or restoration fails."
 
   - name: restoresnapshotbyrename
-    desc: Restore the model's table from a snapshot by renaming tables
+    desc: Restore the model's table from a snapshot by renaming tables (faster but more destructive)
     args:
       - name: name
         type: string
         required: true
-        desc: Name of the snapshot table to restore from
+        desc: "Name of the snapshot table to restore from."
     return:
       type: "null"
-      desc: Returns null on success
+      desc: "Returns null on success. Throws a 500 exception on failure."
 
   - name: dropsnapshot
-    desc: Drop a snapshot table
+    desc: Drop (permanently delete) a snapshot table
     args:
       - name: name
         type: string
         required: true
-        desc: Name of the snapshot table to drop
+        desc: "Name of the snapshot table to drop."
     return:
       type: "null"
-      desc: Returns null on success
+      desc: "Returns null on success. Throws a 500 exception if the snapshot table does not exist or cannot be dropped."
 
   - name: snapshotexists
-    desc: Check if a snapshot table exists
+    desc: Check if a snapshot table exists in the database
     args:
       - name: name
         type: string
         required: true
-        desc: Name of the snapshot table to check
+        desc: "Name of the snapshot table to check."
     return:
       type: bool
-      desc: True if the snapshot table exists
+      desc: "true if the snapshot table exists, false otherwise. Throws a 500 exception on database query error."
 
   - name: migrate
-    desc: Run database migration for the model
+    desc: Run database migration for this model (create or update the table schema)
     args:
       - name: force
         type: bool
         required: false
-        desc: Whether to force migration (default false)
+        desc: "When true, drops the existing table before creating a new one (destructive). Default is false."
     return:
-      type: any
-      desc: Migration result
+      type: "error | null"
+      desc: "Returns null on success. Returns an error object if the migration fails."
 
   - name: load
-    desc: Load a model from a DSL file or source string
+    desc: Load or reload the model from a DSL file or source string
     args:
       - name: file
         type: string
         required: true
-        desc: Path to the model DSL file
+        desc: "Path to the model DSL file. If source is also provided, this is used as the file path reference only."
       - name: source
         type: string
         required: false
-        desc: Model DSL source string; if provided, file is used as the file path reference
+        desc: "Model DSL source as a JSON string. If provided, the model is loaded from this string instead of reading the file."
     return:
-      type: any
-      desc: Error on failure, null on success
+      type: "error | null"
+      desc: "Returns null on success. Returns an error object if the file cannot be read or the DSL is invalid."
 
   - name: reload
-    desc: Reload the model from its original source
+    desc: Reload the model from its original DSL source file
     args: []
     return:
       type: "null"
-      desc: Returns null on success
+      desc: "Returns null on success. Throws a 500 exception if the reload operation fails."
 
   - name: metadata
-    desc: Get the model metadata including table schema information
+    desc: Get the model's full metadata definition
     args: []
     return:
       type: object
-      desc: Model metadata object
+      desc: |
+        MetaData object with the following fields:
+          - name (string): Model display name.
+          - connector (string): Database connector name (default is the global connector).
+          - table (Table): Table definition with name, prefix, comment, engine, collation, primarykeys.
+          - columns ([]Column): Array of column definitions. Each has: label, name, type, length, comment, nullable, index, unique, primary, default, etc.
+          - indexes ([]Index): Array of index definitions. Each has: name, columns, type (primary/unique/index/fulltext).
+          - relations (map[string]Relation): Map of relation name to relation definition.
+          - values ([]map): Initial seed data.
+          - option (Option): Model options including timestamps (bool) and soft_deletes (bool).
 
   - name: read
-    desc: Read the model DSL source as a string
+    desc: Read the model's raw DSL source as a string
     args: []
     return:
       type: string
-      desc: The model DSL source content
+      desc: "The raw DSL source string (JSON) used to define this model."
 
   - name: exists
-    desc: Check if the model is loaded
+    desc: Check if this model is loaded
     args: []
     return:
       type: bool
-      desc: True if the model is loaded
+      desc: "true if the model is loaded, false otherwise."

@@ -2,7 +2,7 @@ group: objects
 type: js_object
 entries:
   - name: http
-    desc: Global HTTP client object for making HTTP requests from JavaScript
+    desc: Global HTTP client object for making HTTP requests from JavaScript (V8 runtime)
     methods:
       - name: Get
         desc: Send an HTTP GET request
@@ -10,18 +10,37 @@ entries:
           - name: url
             type: string
             required: true
-            desc: Request URL
+            desc: The full request URL (e.g. "https://example.com/api/data"). If the URL contains query string parameters, they will be merged with the `params` argument.
           - name: params
-            type: any
+            type: "[object | string | array] Query parameters appended to the URL."
             required: false
-            desc: "Query parameters: object, array of key=value strings, or query string"
+            desc: |
+              Accepts multiple formats:
+                - Object: {"page": "1", "size": "20"} — each key-value pair becomes a query parameter.
+                - Query string: "page=1&size=20" — parsed as standard URL query string (leading "?" is stripped automatically).
+                - Array of strings: ["page=1", "size=20"] — each element is a "key=value" string.
+                - Array of objects: [{"page": "1"}, {"size": "20"}] — each object is merged; same key across objects produces multi-value parameter.
+                - Mixed array: ["page=1", {"size": "20"}] — string and object elements are both supported.
           - name: headers
-            type: any
+            type: "[object | string | array] Custom HTTP request headers."
             required: false
-            desc: "Request headers: object or array of key-value objects"
+            desc: |
+              Same format as params. Common usage:
+                - Object: {"Authorization": "Bearer token", "Content-Type": "application/json"}
+                - Array of objects: [{"Authorization": "Bearer token"}, {"Accept": "text/html"}]
+                - Multiple values for one key: [{"Accept": "text/html"}, {"Accept": "application/json"}]
         return:
           type: object
-          desc: "Response object with status, data, headers, code, and message"
+          desc: |
+            Response object with the following fields:
+              - status (int): HTTP status code from the server (e.g. 200, 404, 500). Returns 0 if the request failed before reaching the server (e.g. DNS error, connection refused).
+              - code (int): Same as status on success. Returns 0 on connection-level errors.
+              - data (any): Response body content. The type depends on the response Content-Type:
+                  - If Content-Type is "application/json": automatically parsed into a JavaScript object or array.
+                  - If Content-Type is NOT "application/json": the raw body bytes are converted to a BASE64-ENCODED STRING. This happens because the Go []byte is JSON-serialized (Go's json.Marshal base64-encodes []byte), then parsed into JS. To get the original content as a string, use atob(data) or decode the base64 string. For example: var text = atob(resp.data);
+                  - If body is empty: null or undefined.
+              - headers (object): Response headers as {"Header-Name": ["value1", "value2"]}. Each header value is an array (HTTP headers can have multiple values).
+              - message (string): Error description on failure. On success, extracted from JSON response body if a "message" field exists, otherwise empty string.
 
       - name: Post
         desc: Send an HTTP POST request with optional file uploads
@@ -29,26 +48,35 @@ entries:
           - name: url
             type: string
             required: true
-            desc: Request URL
+            desc: The full request URL.
           - name: payload
-            type: any
+            type: "[object | array | string] Request body."
             required: false
-            desc: "Request body: object, array, string, or file path"
+            desc: |
+              The request body. Behavior depends on Content-Type header (defaults to "application/json; charset=utf-8" if not set):
+                - application/json (default): Object/array is JSON-serialized. String or bytes sent as-is.
+                - multipart/form-data: Object {"field1": "value1"} becomes form fields. String is treated as a local file path to upload (field name "file").
+                - application/x-www-form-urlencoded: Object {"key": "value"} is URL-encoded. String sent as-is.
+                - text/plain or application/xml: String or bytes sent as-is.
           - name: files
-            type: object
+            type: "[object] File upload map: field name → file path."
             required: false
-            desc: "Files to upload: map of field name to file path"
+            desc: |
+              Map of form field names to local file paths for multipart upload.
+              Example: {"avatar": "/data/avatar.png", "document": "/data/resume.pdf"}
+              When provided, Content-Type is automatically set to "multipart/form-data".
+              Only string values are processed; non-string values are ignored.
           - name: params
-            type: any
+            type: "[object | string | array] Query parameters."
             required: false
-            desc: "Query parameters: object, array of key=value strings, or query string"
+            desc: "Query parameters appended to the URL. Same formats as http.Get params."
           - name: headers
-            type: any
+            type: "[object | string | array] Custom HTTP request headers."
             required: false
-            desc: "Request headers: object or array of key-value objects"
+            desc: "Custom request headers. Same formats as http.Get headers."
         return:
           type: object
-          desc: "Response object with status, data, headers, code, and message"
+          desc: "Response object. Same structure as http.Get return value."
 
       - name: Put
         desc: Send an HTTP PUT request
@@ -56,22 +84,22 @@ entries:
           - name: url
             type: string
             required: true
-            desc: Request URL
+            desc: The full request URL.
           - name: payload
-            type: any
+            type: "[object | array | string] Request body."
             required: false
-            desc: "Request body: object, array, string, or file path"
+            desc: "Request body. Same behavior as http.Post payload. Default Content-Type is \"application/json; charset=utf-8\"."
           - name: params
-            type: any
+            type: "[object | string | array] Query parameters."
             required: false
-            desc: "Query parameters: object, array of key=value strings, or query string"
+            desc: "Query parameters appended to the URL. Same formats as http.Get params."
           - name: headers
-            type: any
+            type: "[object | string | array] Custom HTTP request headers."
             required: false
-            desc: "Request headers: object or array of key-value objects"
+            desc: "Custom request headers. Same formats as http.Get headers."
         return:
           type: object
-          desc: "Response object with status, data, headers, code, and message"
+          desc: "Response object. Same structure as http.Get return value."
 
       - name: Patch
         desc: Send an HTTP PATCH request
@@ -79,22 +107,22 @@ entries:
           - name: url
             type: string
             required: true
-            desc: Request URL
+            desc: The full request URL.
           - name: payload
-            type: any
+            type: "[object | array | string] Request body."
             required: false
-            desc: "Request body: object, array, string, or file path"
+            desc: "Request body. Same behavior as http.Post payload. Default Content-Type is \"application/json; charset=utf-8\"."
           - name: params
-            type: any
+            type: "[object | string | array] Query parameters."
             required: false
-            desc: "Query parameters: object, array of key=value strings, or query string"
+            desc: "Query parameters appended to the URL. Same formats as http.Get params."
           - name: headers
-            type: any
+            type: "[object | string | array] Custom HTTP request headers."
             required: false
-            desc: "Request headers: object or array of key-value objects"
+            desc: "Custom request headers. Same formats as http.Get headers."
         return:
           type: object
-          desc: "Response object with status, data, headers, code, and message"
+          desc: "Response object. Same structure as http.Get return value."
 
       - name: Delete
         desc: Send an HTTP DELETE request
@@ -102,81 +130,115 @@ entries:
           - name: url
             type: string
             required: true
-            desc: Request URL
+            desc: The full request URL.
           - name: payload
-            type: any
+            type: "[object | array | string] Request body."
             required: false
-            desc: "Request body: object, array, string, or file path"
+            desc: "Request body. Same behavior as http.Post payload. Default Content-Type is \"application/json; charset=utf-8\"."
           - name: params
-            type: any
+            type: "[object | string | array] Query parameters."
             required: false
-            desc: "Query parameters: object, array of key=value strings, or query string"
+            desc: "Query parameters appended to the URL. Same formats as http.Get params."
           - name: headers
-            type: any
+            type: "[object | string | array] Custom HTTP request headers."
             required: false
-            desc: "Request headers: object or array of key-value objects"
+            desc: "Custom request headers. Same formats as http.Get headers."
         return:
           type: object
-          desc: "Response object with status, data, headers, code, and message"
+          desc: "Response object. Same structure as http.Get return value."
 
       - name: Send
-        desc: Send an HTTP request with a specified method, supports file uploads for POST
+        desc: Send an HTTP request with a specified method, supports file uploads via base64 data for POST
         args:
           - name: method
             type: string
             required: true
-            desc: "HTTP method: GET, POST, PUT, HEAD, PATCH, DELETE, etc."
+            desc: "HTTP method string. Must be uppercase: \"GET\", \"POST\", \"PUT\", \"HEAD\", \"PATCH\", \"DELETE\", etc."
           - name: url
             type: string
             required: true
-            desc: Request URL
+            desc: The full request URL.
           - name: payload
-            type: any
+            type: "[object | array | string] Request body."
             required: false
-            desc: "Request body: object, array, string, or file path"
+            desc: |
+              Request body. Ignored for GET and HEAD methods (body construction is skipped).
+              IMPORTANT: Unlike http.Post/Put/Patch/Delete which default Content-Type to "application/json; charset=utf-8", http.Send does NOT set a default Content-Type. If no Content-Type header is provided via the headers argument, it falls back to "text/plain" for non-GET/HEAD methods. To send JSON, you must explicitly set the Content-Type header:
+                headers: {"Content-Type": "application/json; charset=utf-8"}
+              Payload encoding depends on the Content-Type header:
+                - application/json: Object/array is JSON-serialized. String or bytes sent as-is.
+                - multipart/form-data: Object becomes form fields. String is treated as a local file path.
+                - application/x-www-form-urlencoded: Object is URL-encoded. String sent as-is.
+                - text/plain (default if no Content-Type set): String or bytes sent as-is. Other types are JSON-serialized.
           - name: params
-            type: any
+            type: "[object | string | array] Query parameters."
             required: false
-            desc: "Query parameters: object, array of key=value strings, or query string"
+            desc: "Query parameters appended to the URL. Same formats as http.Get params."
           - name: headers
-            type: any
+            type: "[object | string | array] Custom HTTP request headers."
             required: false
-            desc: "Request headers: object or array of key-value objects"
+            desc: "Custom request headers. Same formats as http.Get headers."
           - name: files
-            type: array
+            type: "[array] Array of file objects with base64-encoded content. Only processed when method is \"POST\"."
             required: false
-            desc: "Files to upload (POST only): array of objects with name, path, and base64-encoded data fields"
+            desc: |
+              Array of file objects for uploading. Only used when method is "POST". Each object has these fields:
+                - name (string, required): The form field name for the file.
+                - path (string, optional): The filename to use in the multipart form.
+                - data (string, required): Base64-encoded (standard encoding) file content.
+              Example: [{"name": "avatar", "path": "photo.png", "data": "iVBORw0KGgo..."}]
+              NOTE: This differs from http.Post files — here files use base64 data instead of local file paths.
+              NOTE: In the V8 version, files are only processed when method is "POST". In the process version (http.send), files are processed regardless of method.
         return:
           type: object
-          desc: "Response object with status, data, headers, code, and message"
+          desc: "Response object. Same structure as http.Get return value."
 
       - name: Stream
-        desc: Send a streaming HTTP request and handle chunked responses via a callback function
+        desc: Send a streaming HTTP request, reading response line by line and invoking a JavaScript callback for each line
         args:
           - name: method
             type: string
             required: true
-            desc: "HTTP method: GET, POST, PUT, PATCH, DELETE, etc."
+            desc: "HTTP method string. Must be uppercase: \"GET\", \"POST\", \"PUT\", \"PATCH\", \"DELETE\", etc."
           - name: url
             type: string
             required: true
-            desc: Request URL
+            desc: The full request URL.
           - name: callback
             type: function
             required: true
-            desc: "Callback function receiving each data chunk as a string; return 1 to continue, 0 to complete, -1 to abort"
+            desc: |
+              JavaScript callback function invoked for each line of streamed response data.
+              Signature: function(data) where data is a string containing one line of the response.
+              The function must return an integer to control stream behavior:
+                - 1: Continue reading the next line.
+                - 0: Stop reading and close the stream gracefully.
+                - -1: Abort the stream with an error.
+              Example:
+                http.Stream("GET", url, function(data) {
+                  console.log(data);
+                  return 1; // continue
+                });
           - name: payload
-            type: any
+            type: "[object | array | string] Request body."
             required: false
-            desc: "Request body: object, array, string, or file path"
+            desc: |
+              Request body. Ignored for GET and HEAD methods (body construction is skipped).
+              IMPORTANT: Like http.Send, http.Stream does NOT default Content-Type to "application/json". If no Content-Type header is provided, it falls back to "text/plain" for non-GET/HEAD methods. To send JSON, explicitly set the header:
+                headers: {"Content-Type": "application/json; charset=utf-8"}
+              Payload encoding depends on the Content-Type header (same rules as http.Send payload).
           - name: params
-            type: any
+            type: "[object | string | array] Query parameters."
             required: false
-            desc: "Query parameters: object, array of key=value strings, or query string"
+            desc: "Query parameters appended to the URL. Same formats as http.Get params."
           - name: headers
-            type: any
+            type: "[object | string | array] Custom HTTP request headers."
             required: false
-            desc: "Request headers: object or array of key-value objects"
+            desc: "Custom request headers. Same formats as http.Get headers."
         return:
           type: object
-          desc: "Response object with status, data, headers, code, and message"
+          desc: |
+            Response object (different from process version http.stream):
+              - On success: {status: 200, code: 200, message: "ok", headers: {}, data: null}
+              - On error (callback error, network error, etc.): {status: 400, code: 400, message: "error description", headers: {}, data: null}
+            NOTE: The process version (http.stream) returns error|nil instead of a Response object. This V8 version always returns a Response object.

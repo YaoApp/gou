@@ -2,16 +2,31 @@ group: functions
 type: js_function
 entries:
   - name: Process
-    desc: Execute a Yao process by name and return its result synchronously
+    desc: |
+      Execute a Yao process by name and return its result synchronously.
+      The current session context (SID, Global data, Authorized info) is automatically passed to the process.
+      Execution is synchronous — blocks until the process completes and returns the result.
     args:
       - name: name
         type: string
         required: true
-        desc: "Process name to execute (e.g. \"models.user.Find\", \"scripts.example.Hello\")"
-      - name: args
-        type: any
+        desc: |
+          Process name to execute. Uses dot-separated naming convention.
+          Examples: "models.user.find", "models.user.get", "scripts.example.Hello", "http.get"
+          Throws an exception if the first argument is missing or is not a string.
+      - name: "...args"
+        type: "any (variadic)"
         required: false
-        desc: "Variadic arguments passed to the process"
+        desc: |
+          Zero or more arguments passed to the process, in positional order. Each JS argument is individually converted to a Go value via bridge.GoValue.
+          The arguments map to process.Args[0], process.Args[1], process.Args[2], etc. on the Go side.
+          Type conversions: JS object → Go map[string]interface{}, JS array → Go []interface{}, JS number → Go float64, JS string → Go string, JS boolean → Go bool, JS null/undefined → Go nil.
+          Example: Process("models.user.find", 1, {"select": ["id","name"]}) — args[0]=1 (primary key), args[1]=QueryParam object.
+          Example: Process("models.user.save", {"name": "John", "email": "john@test.com"}) — args[0]=row data.
+          Example: Process("http.get", "https://example.com/api", {}, {"Authorization": "Bearer token"}) — args[0]=URL, args[1]=params, args[2]=headers.
     return:
       type: any
-      desc: The return value of the executed process
+      desc: |
+        The return value of the executed process, converted from Go to JavaScript via bridge.JsValue.
+        Type conversions: Go map → JS object, Go slice → JS array, Go int/float → JS number, Go string → JS string, Go bool → JS boolean, Go nil → JS null.
+        Throws a JS exception if the process execution fails or if argument conversion fails.

@@ -1,5 +1,8 @@
 group: model
 type: process
+desc: |
+  Model DSL management processes. Process names follow the pattern "model.<handler>" or "model.<model_id>.<handler>".
+  NOTE: model.read uses the model ID from the process name (model.<id>.read), while all other handlers take the model ID as args[0].
 entries:
   - name: list
     desc: List all loaded models with optional metadata and columns
@@ -7,92 +10,135 @@ entries:
       - name: options
         type: object
         required: false
-        desc: "Options: metadata (bool) to include full metadata, columns (bool) to include column definitions"
+        desc: |
+          Optional filter object. If omitted or empty, returns basic info only. Supported fields:
+            - metadata (bool): When true, includes the full MetaData object for each model (name, connector, table, columns definitions, indexes, relations, values, option).
+            - columns (bool): When true, includes the Columns map (map of column name to Column definition pointer) for each model.
+          Example: {"metadata": true, "columns": true}
     return:
       type: array
-      desc: Array of model info objects with id, name, description, file, table, primary fields
+      desc: |
+        Array of model info objects. Each object contains:
+          - id (string): The model ID (e.g. "user", "category").
+          - name (string): The model display name from MetaData.Name (e.g. "User").
+          - description (string): From MetaData.Table.Comment. Empty string if not set.
+          - file (string): DSL file path. If the original path does not start with "/", it is prefixed with "/models/" (e.g. "/models/user.mod.yao").
+          - table (object): The Table definition object with fields: name (string), prefix (string), comment (string), engine (string), collation (string), primarykeys ([]string).
+          - primary (string): Primary key column name (default "id").
+          - metadata (MetaData, optional): Full model metadata. Only present when options.metadata is true.
+          - columns (object, optional): Map of column name → Column definition. Only present when options.columns is true.
+        Returns an empty array if no models are loaded.
 
   - name: read
-    desc: Read a model's DSL source by model ID
+    desc: Read a model's raw DSL source content
     args: []
     return:
       type: string
-      desc: The model DSL source content
+      desc: |
+        The raw DSL source string (JSON) that was used to load this model.
+        NOTE: This handler uses process.ID to identify the model, NOT args[0]. The model ID must be embedded in the process name: "model.<model_id>.read" (e.g. "model.user.read"). Calling "model.read" without a model ID in the process name will throw "Model:; not found" exception.
+        This is different from other model.* handlers (dsl, exists, reload, etc.) which take the model ID as args[0].
 
   - name: dsl
-    desc: Get model DSL information including table and primary key details
+    desc: Get structured model DSL information including table and primary key details
     args:
       - name: id
         type: string
         required: true
-        desc: Model ID
+        desc: "Model ID (e.g. \"user\", \"category\"). Throws a 400 exception if the model is not loaded."
       - name: options
         type: object
         required: false
-        desc: "Options: metadata (bool) to include full metadata, columns (bool) to include column definitions"
+        desc: |
+          Optional filter object. Same as model.list options:
+            - metadata (bool): When true, includes the full MetaData object.
+            - columns (bool): When true, includes the Columns map.
+          Example: {"metadata": true}
     return:
       type: object
-      desc: Model DSL object with id, name, description, file, table, primary fields
+      desc: |
+        Model DSL info object with the following fields:
+          - id (string): The model ID passed as the argument.
+          - name (string): The model display name from MetaData.Name.
+          - description (string): From MetaData.Table.Comment.
+          - file (string): DSL file path (original path, not prefixed like model.list).
+          - table (object): The Table definition object with fields: name, prefix, comment, engine, collation, primarykeys.
+          - primary (string): Primary key column name.
+          - metadata (MetaData, optional): Full model metadata. Only present when options.metadata is true.
+          - columns (object, optional): Map of column name → Column definition. Only present when options.columns is true.
 
   - name: exists
-    desc: Check if a model is loaded by model ID
+    desc: Check if a model is currently loaded in memory
     args:
       - name: id
         type: string
         required: true
-        desc: Model ID to check
+        desc: "Model ID to check (e.g. \"user\")."
     return:
       type: bool
-      desc: True if the model is loaded
+      desc: "true if the model is loaded in the Models registry, false otherwise. Does not throw exceptions — always returns a boolean."
 
   - name: reload
-    desc: Reload a model by model ID
+    desc: Reload a model from its original DSL file
     args:
       - name: id
         type: string
         required: true
-        desc: Model ID to reload
+        desc: "Model ID to reload. Must be an already-loaded model."
     return:
       type: "null"
-      desc: Returns null on success
+      desc: |
+        Returns null on success.
+        Error handling: Throws a 400 exception if the model ID is not found. Throws a 500 exception if the reload operation fails (e.g. file read error, DSL parse error).
 
   - name: migrate
-    desc: Migrate a model by model ID
+    desc: Migrate a model's database table schema (create or update the table to match the model definition)
     args:
       - name: id
         type: string
         required: true
-        desc: Model ID to migrate
+        desc: "Model ID to migrate. Throws a 400 exception if the model is not loaded."
       - name: force
         type: bool
         required: false
-        desc: Whether to force migration (default false)
+        desc: "When true, drops the existing table before creating a new one (destructive). Default is false (non-destructive, only applies schema changes)."
     return:
-      type: any
-      desc: Migration result
+      type: "error | null"
+      desc: "Returns null on success. Returns an error object if the migration fails (e.g. database connection error, SQL error)."
 
   - name: load
-    desc: Load a model from a DSL source string by model ID
+    desc: Load a model from a DSL source string and register it with the given model ID
     args:
       - name: id
         type: string
         required: true
-        desc: Model ID to assign
+        desc: "Model ID to register. This becomes the model's identifier for all subsequent operations (e.g. \"my_model\")."
       - name: source
         type: string
         required: true
-        desc: Model DSL source string
+        desc: |
+          The complete model DSL as a JSON string. Must be valid JSON containing at minimum: name, table (with name), and columns array.
+          Example:
+            {
+              "name": "Category",
+              "table": {"name": "categories", "comment": "Product categories"},
+              "columns": [
+                {"label": "ID", "name": "id", "type": "ID"},
+                {"label": "Name", "name": "name", "type": "string", "length": 256}
+              ],
+              "option": {"timestamps": true, "soft_deletes": true}
+            }
     return:
-      type: any
-      desc: Error on failure, null on success
+      type: "error | null"
+      desc: "Returns null on success (model is loaded and registered). Returns an error object if the DSL source is invalid JSON or fails validation."
 
   - name: unload
-    desc: Unload a model by model ID
+    desc: Unload a model by removing it from the in-memory model registry
     args:
       - name: id
         type: string
         required: true
-        desc: Model ID to unload
+        desc: "Model ID to unload."
     return:
       type: "null"
-      desc: Returns null on success
+      desc: "Always returns null. Does NOT throw an exception even if the model ID does not exist (the delete operation on the map is a no-op for non-existent keys)."

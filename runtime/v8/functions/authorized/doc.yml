@@ -2,7 +2,34 @@ group: functions
 type: js_function
 entries:
   - name: Authorized
-    desc: Return the current authorization information from the runtime context
+    desc: |
+      Return the current authorization information from the V8 runtime context.
+      This function takes no arguments. The auth info is set by the OAuth guard or process context before script execution.
+    args: []
     return:
-      type: object
-      desc: "The authorized info object, or null if no authorization is present"
+      type: "object | null"
+      desc: |
+        Returns null if no authorization context is present (share.Authorized is nil).
+        Returns an empty object {} if the authorization was set but has no fields.
+        Otherwise returns an object with the following fields (all optional, only present when non-empty):
+          - sub (string): Subject identifier (OAuth subject).
+          - client_id (string): OAuth client ID.
+          - scope (string): Access scope string (e.g. "read write").
+          - session_id (string): Session ID.
+          - user_id (string): User ID.
+          - team_id (string): Team identifier (for multi-team support).
+          - tenant_id (string): Tenant identifier (for multi-tenancy support).
+          - remember_me (bool): Remember Me flag preserved from login. Only present when true.
+          - constraints (object): Data access constraints. Only present when any constraint is set. Contains:
+              - owner_only (bool): Only access owner's data. Only present when true.
+              - creator_only (bool): Only access creator's data. Only present when true.
+              - editor_only (bool): Only access editor's data. Only present when true.
+              - team_only (bool): Only access team's data (filtered by team_id). Only present when true.
+              - extra (object): Custom user-defined constraints as key-value pairs (e.g. {"region": "us-west", "department": "engineering"}). Only present when non-empty.
+
+        Example usage:
+          var auth = Authorized();
+          if (auth === null) { /* no auth context */ }
+          var userId = auth.user_id;
+          var teamId = auth.team_id;
+          var isTeamOnly = auth.constraints && auth.constraints.team_only;

@@ -1,72 +1,152 @@
 group: text
 type: process
+desc: |
+  Text processing utilities for extracting code blocks from LLM output and converting between Markdown/HTML.
+  Process names follow the pattern "text.<handler>".
+
+  CodeBlock structure (returned by extract, extractfirst, extractbytype):
+    - type (string): Detected language/format, always lowercase.
+      Known values: "json", "yaml", "yml", "html", "xml", "sql", "go", "python", "javascript", "typescript",
+      "rust", "java", "csharp", "cpp", "c", "ruby", "php", "shell", "css", "markdown", "text" (fallback).
+      Can also be "" (empty string) when a markdown fenced block has no language specifier and content cannot be auto-detected.
+    - content (string): Raw content of the code block (trimmed of leading/trailing whitespace, without the ``` fences).
+    - data (any, optional): Parsed data for structured formats. Only populated for blocks with type "json", "yaml", or "yml"
+      when parsing succeeds. JSON parsing uses a 3-stage fallback: standard JSON → remove comments (JSONC) → auto-repair
+      (jsonrepair). YAML parsing uses direct yaml.Unmarshal with no repair. The parsing format is auto-detected from
+      content structure (not from the block's type label), so a block typed "yaml" with JSON content will be parsed as JSON.
+      The "data" field uses json tag "omitempty", so it is absent from JSON output when nil (parse failure or non-JSON/YAML type).
+    - start (int): Start byte position in the trimmed input text.
+      Uses json tag "omitempty": omitted from JSON output when value is 0 (e.g., first block or fallback block).
+    - end (int): End byte position in the trimmed input text.
+      Uses json tag "omitempty": omitted from JSON output when value is 0 (unlikely for non-empty blocks).
+
+  Markdown fence extraction regex: ```(\w*)\s*\n?(.*?)\n?```
+    - Language specifier only accepts word characters (a-z, A-Z, 0-9, _). Fences like ```c++ or ```c# will NOT match.
+    - Language specifier is lowercased: ```JSON becomes type "json".
+    - Content between fences is captured non-greedy, so nested ``` may cause incorrect matching.
+
 entries:
   - name: extract
-    desc: Extract all code blocks from text (typically LLM output), detecting markdown fences and direct JSON/HTML/code
+    desc: |
+      Extract all code blocks from text (typically LLM output).
+      Detection steps (in order):
+        1. Markdown fenced code blocks (```lang ... ```). Extracts all fenced blocks. If language specifier is present, uses it
+           (lowercased). If omitted, auto-detects language from content; if detection fails, type is "" (empty string).
+        2. Direct content detection (only when NO markdown fences found): checks first characters/lines to identify format.
+           Detection order: JSON ({/[) → PHP (<?php/<?=) → XML (<?xml/<root) → HTML (<div/<html/etc.) → YAML (---) →
+           Shell shebang (#!/) → SQL (SELECT/INSERT/UPDATE/DELETE/CREATE/DROP/ALTER, case-insensitive) → C/C++ (#include) →
+           Markdown (#/##/###) → Go (package/func/import) → TypeScript → Java → C# → Rust → Python → JavaScript → Ruby →
+           Shell (echo $) → CSS → YAML fallback (key: value pattern in first line, excluding JSON/URL/TypeScript patterns).
+           If nothing detected, returns nil (falls through to step 3).
+        3. Fallback: returns entire input as a single block with type "text" and content = the trimmed input.
+      After extraction, all blocks with type "json", "yaml", or "yml" are parsed via json.Parse (auto-detecting format from
+      content, with 3-stage JSON fallback). Successfully parsed data is stored in the "data" field.
     args:
       - name: text
         type: string
         required: true
-        desc: The text to extract code blocks from
+        desc: |
+          The text to extract code blocks from. Retrieved via ArgsString(0).
+          Input is trimmed (leading/trailing whitespace stripped) before processing.
+          Empty or whitespace-only input returns null (not empty array).
     return:
-      type: array
-      desc: Array of CodeBlock objects with type, content, and data fields
+      type: "array | null"
+      desc: |
+        null if input is empty/whitespace-only.
+        Array of CodeBlock objects for non-empty input. Always contains at least one block (fallback type "text" ensures this).
+        Example: [{"type": "json", "content": "{\"key\": \"value\"}", "data": {"key": "value"}, "end": 42}]
+        Note: "start" field is absent when 0 due to omitempty.
 
   - name: extractfirst
-    desc: Extract and return only the first code block from text
+    desc: |
+      Extract and return only the first code block from text.
+      Internally calls extract() and returns the first element.
     args:
       - name: text
         type: string
         required: true
-        desc: The text to extract from
+        desc: "The text to extract from."
     return:
-      type: object
-      desc: The first CodeBlock object, or null if none found
+      type: "object | null"
+      desc: |
+        null only when input is empty/whitespace-only.
+        For any non-empty input, always returns a CodeBlock (never null), because extract() guarantees at least one block
+        (the fallback "text" block). So in practice, null means the caller passed an empty string.
+        Typical usage:
+          var block = Process("text.extractfirst", llmResponse);
+          if (block && block.data) { /* use block.data as parsed object */ }
 
   - name: extractjson
-    desc: Extract the first JSON or YAML block and return the parsed data directly
+    desc: |
+      Extract the first JSON or YAML block and return the parsed data directly (not the CodeBlock wrapper).
+      Iterates all extracted blocks, returns block.data from the first block where:
+        type is "json", "yaml", or "yml" AND data is not null (parsing succeeded).
     args:
       - name: text
         type: string
         required: true
-        desc: The text containing JSON or YAML
+        desc: |
+          The text containing JSON or YAML. Supports:
+            - Markdown-wrapped: ```json\n{"key": "value"}\n``` or ```yaml\nkey: value\n```
+            - Direct JSON: {"key": "value"} or [1, 2, 3] (detected by first character { or [)
+            - Direct YAML with --- prefix
+            - Direct YAML without --- prefix: "key: value" pattern in first line is also detected as YAML
+            - Mixed text with embedded code blocks (scans all blocks, returns first JSON/YAML with valid parse)
+          Broken JSON with common LLM errors (trailing commas, missing quotes) is auto-repaired via jsonrepair.
     return:
-      type: any
-      desc: Parsed data from the first JSON/YAML block, or null if none found
+      type: "any | null"
+      desc: |
+        The parsed data (object, array, or scalar) from the first valid JSON/YAML block.
+        Returns null if: input is empty, no JSON/YAML blocks found, or all JSON/YAML blocks failed to parse.
+        Note: for plain text input with no recognizable code, extract() returns a fallback block with type "text"
+        (not "json"/"yaml"), so extractjson returns null. This is the expected behavior.
+        This is the most convenient method for processing LLM structured output.
 
   - name: extractbytype
-    desc: Extract all code blocks of a specific type from text
+    desc: Extract all code blocks matching a specific type from text
     args:
       - name: text
         type: string
         required: true
-        desc: The text to extract from
+        desc: "The text to extract from."
       - name: blockType
         type: string
         required: true
-        desc: The block type to filter by (e.g. "json", "html", "sql")
+        desc: |
+          The block type to filter by. Matching is case-insensitive (both blockType and block.type are lowercased).
+          Examples: "json", "html", "sql", "python", "yaml", "go", "javascript", "text"
     return:
       type: array
-      desc: Array of matching CodeBlock objects
+      desc: |
+        Array of matching CodeBlock objects. Always returns an array (never null), even for empty input.
+        This differs from extract which returns null for empty input — extractbytype always returns [] or [...].
+        The fallback "text" block is also filterable: passing blockType="text" will match it.
 
   - name: markdowntohtml
-    desc: Convert Markdown text to HTML with GitHub Flavored Markdown support (tables, strikethrough, task lists, autolinks)
+    desc: |
+      Convert Markdown text to HTML using goldmark with GitHub Flavored Markdown (GFM) extensions.
+      Supported GFM features: tables, strikethrough (~~text~~), task lists (- [x] / - [ ]), autolinks.
+      Additional rendering options: auto-generated heading IDs (e.g., "# Hello" → id="hello"),
+      hard line wraps (single newline → <br>), XHTML-compliant output (self-closing tags).
     args:
       - name: markdown
         type: string
         required: true
-        desc: The Markdown text to convert
+        desc: "The Markdown text to convert."
     return:
       type: string
-      desc: The converted HTML content
+      desc: "The converted HTML string. Throws a 500 exception if conversion fails."
 
   - name: htmltomarkdown
-    desc: Convert HTML content to Markdown text
+    desc: |
+      Convert HTML content to Markdown text.
+      Uses html-to-markdown library (goquery-based parsing) for reliable HTML handling.
+      Supports: headings, bold/italic, links, images, lists (ordered/unordered), code blocks, blockquotes, tables.
     args:
       - name: html
         type: string
         required: true
-        desc: The HTML content to convert
+        desc: "The HTML content to convert."
     return:
       type: string
-      desc: The converted Markdown text
+      desc: "The converted Markdown string. Throws a 500 exception if conversion fails."

@@ -2,67 +2,237 @@ group: objects
 type: js_class
 entries:
   - name: Query
-    desc: Database query builder using QueryDSL for executing queries against configured engines
+    desc: |
+      Database query engine using Gou QueryDSL. Constructed via: var query = new Query("engine_name").
+      If the engine name is omitted, uses "default". Throws an exception if the specified engine is not loaded.
+
+      NOTE: This is a completely separate query system from the model QueryParam used by models.<id>.get/find/paginate.
+      QueryDSL uses its own Expression syntax for field references, functions, JSON paths, etc.
+
+      === QueryDSL Structure ===
+      The DSL object passed to Get/First/Paginate/Run has these fields:
+        - select ([]Expression, REQUIRED for non-SQL mode): Array of field expression strings. Example: ["id", "name", ":COUNT(id) as cnt"]
+        - from (string, REQUIRED if no query/sql): Table or model reference. Example: "users", "$user", "users as u"
+        - wheres ([]Where, optional): Array of filter conditions.
+        - orders (Orders, optional): Sort rules. Can be a comma-separated string, array of strings, or array of objects.
+        - groups (Groups, optional): Group-by rules. Can be a comma-separated string, array of strings, or array of objects.
+        - havings ([]Having, optional): Filter on aggregated results. Requires groups to be set.
+        - joins ([]Join, optional): Table join definitions.
+        - unions ([]QueryDSL, optional): Union queries. Each element is a full QueryDSL object.
+        - query (QueryDSL, optional): Sub-query used as the FROM source. When set, from is not required. Uses the sub-query's "name" field as alias (default "_SUB_").
+        - limit (int | string, optional): Max records to return. Defaults to 100 if not set and not in SQL mode. String values are resolved as bindings.
+        - offset (int | string, optional): Number of records to skip. String values are resolved as bindings.
+        - first (any, optional): When set (any truthy value), Run() returns only the first record instead of an array.
+        - page (int | string, optional): Page number (1-based). When set, Run() returns paginated results. Default: 1.
+        - pagesize (int | string, optional): Records per page. Default: 20. When set, Run() returns paginated results.
+        - data-only (any, optional): Reserved field. Bindings are resolved but not currently used in query execution.
+        - sql (object, optional): Raw SQL mode. When set, select/from are NOT required. Structure: {"stmt": "SELECT ...", "args": []}
+        - debug (bool, optional): When true, prints the generated SQL and bindings to stdout.
+        - comment (string, optional): Query comment (documentation only, not included in SQL).
+
+      === Expression Syntax (string) ===
+      All field references in select, wheres.field, orders, groups, joins.key/foreign use Expression strings:
+        - Plain field: "name", "id", "status"
+        - Table-qualified: "users.name", "t.id"
+        - Model-qualified: "$user.name" ($ prefix = model reference, resolved to actual table name at runtime)
+        - Alias: "name as n", "id as user_id", ":COUNT(id) as total" (case-insensitive "as")
+        - Function: ":COUNT(id)", ":MAX(score)", ":SUM(amount)", ":IF(a, b, c)" (: prefix = function call)
+        - Number constant: "1", "0.618"
+        - String constant: "'hello'", "'active'" (single-quoted)
+        - Encrypted field: "password*" (* suffix = AES-encrypted column, auto-decrypted in SQL)
+        - JSON object field: "profile$.name", "config$.settings.theme" ($ separator = JSON object access)
+        - JSON array field: "tags[0]", "tags[*]", "items@" ([index] or @ = JSON array access)
+        - Array-object: "items[*].name", "tags@.label" (array element → object key)
+        - Binding: "?:name", "?:extra.score" (?:prefix = resolved from the data parameter at execution time)
+        - Type declaration: "amount(decimal 10,2)", "name(string 50)" (appended type for JSON_TABLE columns)
+
+      === Table Syntax (string, used in "from" and "joins.from") ===
+        - Plain table: "users"
+        - With alias: "users as u"
+        - Model reference: "$user" ($ prefix, resolved to table name via GetTableName)
+        - Model with alias: "$user as u"
+
+      === Where/Having Condition Syntax ===
+      Each condition object supports two formats:
+
+      Standard format:
+        {"field": "score", "op": "=", "value": 20}
+        {"field": "name", "op": "like", "value": "%test%"}
+        {"field": "status", "op": "is", "value": "null"}
+        {"field": "id", "op": "in", "value": [1, 2, 3]}
+
+      Shorthand format:
+        {"field": "score", "=": 20}
+        {":score": "comment text", "=": 20}         — field via : prefix, value in the key's value is the comment
+        {"or :name": "comment", "=": "test"}         — OR condition via "or :" prefix
+
+      Value expressions (comparing two columns):
+        {"field": "a", "=": "{b}"}                   — {curly braces} around the value = column reference, not a literal
+
+      Sub-query condition:
+        {"field": "id", "op": "in", "query": {"select": ["user_id"], "from": "orders"}}
+
+      Nested conditions (grouped logic):
+        {"wheres": [{"field": "a", "=": 1}, {"or": true, "field": "b", "=": 2}]}
+        → generates: WHERE (a = 1 OR b = 2)
+
+      Available operators (op field):
+        "="     : Equal
+        ">"     : Greater than
+        ">="    : Greater than or equal
+        "<"     : Less than
+        "<="    : Less than or equal
+        "<>"    : Not equal
+        "like"  : SQL LIKE pattern matching
+        "match" : Convenience for LIKE %value% (wraps string value with % automatically, converted to "like" operator at runtime)
+        "in"    : SQL IN (value must be an array)
+        "is"    : SQL IS NULL / IS NOT NULL (value must be "null" or "not null")
+
+      Condition fields:
+        - field (Expression string, required): The column/expression to filter on.
+        - op (string, required): One of the operators listed above. In shorthand format, the operator key itself (e.g. "=", ">") serves as both op and value container, so a separate "op" field is not needed.
+        - value (any): The value to compare against. In shorthand format, the operator key's value is used. Ignored when query is set.
+        - or (bool, optional): true = OR logic, false/omitted = AND logic.
+        - query (QueryDSL, optional): Sub-query for IN clauses. When set, value is ignored.
+        - wheres/havings (array, optional): Nested grouped conditions.
+        - comment (string, optional): Condition comment (documentation only).
+
+      NOTE: In Having conditions, "is" and "in" operators throw 400 exceptions (not yet supported).
+
+      === Orders Syntax ===
+      Multiple input formats (all are equivalent):
+        - String: "id desc, name asc" (comma-separated, sort defaults to "asc" if omitted)
+        - Array of strings: ["id desc", "name"]
+        - Array of objects: [{"field": "id", "sort": "desc"}, {"field": "name", "sort": "asc"}]
+        - Mixed array: ["id desc", {"field": "name", "sort": "asc"}]
+      Valid sort values: "asc", "desc". Validation rejects other values.
+
+      === Groups Syntax ===
+      Multiple input formats:
+        - String: "kind, city rollup ALL" (comma-separated, "rollup LABEL" adds multi-level aggregation)
+        - Array of strings: ["kind", "city rollup ALL"]
+        - Array of objects: [{"field": "kind"}, {"field": "city", "rollup": "ALL"}]
+        - Mixed array: ["kind", {"field": "city", "rollup": "ALL"}]
+
+      === Join Syntax ===
+      Each join object:
+        - from (string, required): Table or model reference. Example: "orders", "$order as o"
+        - key (Expression string, required): The join column on the joined table.
+        - foreign (Expression string, required): The join column on the current/target table.
+        - left (bool, optional): true = LEFT JOIN. Default: false (INNER JOIN).
+        - right (bool, optional): true = RIGHT JOIN. Default: false.
+
+      === SQL Mode ===
+      When the "sql" field is set, the query bypasses DSL building and executes raw SQL:
+        {"sql": {"stmt": "SELECT * FROM users WHERE id = ?", "args": [1]}}
+      In SQL mode, "select" and "from" are NOT required. Validation only checks that stmt is non-empty.
+
     args:
       - name: engine
         type: string
         required: false
-        desc: "Query engine name (default: \"default\")"
+        desc: |
+          Query engine name. Default: "default".
+          Throws an exception ("Query Engine X does not loaded") if the engine is not registered.
     methods:
       - name: Get
-        desc: Execute a query and return all matching records
+        desc: Execute a QueryDSL query and return all matching records as an array
         args:
           - name: dsl
             type: object
             required: true
-            desc: "QueryDSL object (e.g. {select: [\"id\"], from: \"user\", limit: 10})"
+            desc: |
+              QueryDSL object. Required fields: select, from (or query for sub-query source).
+              The same object also serves as the data source for binding resolution (?:key references are resolved from this object).
+              Example: {"select": ["id", "name"], "from": "users", "wheres": [{"field": "status", "=": "active"}], "limit": 50}
         return:
-          type: any
-          desc: Query result data (typically an array of records)
+          type: array
+          desc: |
+            Array of record objects (each record is a key-value map).
+            Returns an empty array if no records match.
+            IMPORTANT: If "limit" is not specified, defaults to 100 records maximum.
+            JSON object/array fields (declared via $ or @ in select expressions) are automatically parsed from JSON strings into JS objects/arrays.
 
       - name: First
-        desc: Execute a query and return only the first matching record
+        desc: Execute a QueryDSL query and return only the first matching record
         args:
           - name: dsl
             type: object
             required: true
-            desc: "QueryDSL object (e.g. {select: [\"id\"], from: \"user\"})"
+            desc: |
+              QueryDSL object. Same structure as Get. Internally sets limit=1 and returns the first result.
+              Example: {"select": ["id", "name", "email"], "from": "users", "wheres": [{"field": "id", "=": 1}]}
         return:
-          type: any
-          desc: The first matching record or null
+          type: "object | null"
+          desc: "The first matching record as a key-value map, or null if no record matches."
 
       - name: Paginate
-        desc: Execute a query with pagination and return paginated results
+        desc: Execute a QueryDSL query with pagination and return paginated results
         args:
           - name: dsl
             type: object
             required: true
-            desc: "QueryDSL object with pagination params (e.g. {select: [\"id\"], from: \"user\", pagesize: 20, page: 1})"
+            desc: |
+              QueryDSL object. When calling Paginate directly, "page" and "pagesize" are optional (default: page=1, pagesize=20).
+              When using Run() for auto-detection, at least one of "page" or "pagesize" must be present to trigger pagination mode.
+              Values can be numbers or binding strings (e.g. "?:page") resolved from the same object.
+              Example: {"select": ["id", "name"], "from": "users", "page": 1, "pagesize": 20}
         return:
-          type: any
-          desc: Paginated result object with data, total, page, etc.
+          type: object
+          desc: |
+            Paginated result object with the following fields:
+              - items (array): Array of record objects for the current page.
+              - total (int): Total number of matching records. -1 if the count query fails to match.
+              - page (int): Current page number.
+              - pagesize (int): Records per page.
+              - pagecnt (int): Total number of pages. -1 if total is 0 or pagesize is 0.
+              - next (int): Next page number. -1 if on the last page.
+              - prev (int): Previous page number. -1 if on the first page.
 
       - name: Run
-        desc: Execute a raw query statement
+        desc: |
+          Execute a QueryDSL query with automatic mode detection based on DSL fields.
+          Execution mode is determined by the DSL content:
+            1. If "page" or "pagesize" is set → calls Paginate, returns paginated result object.
+            2. If "first" is set (any truthy value) → calls First, returns a single record or null.
+            3. If "sql" is NOT set → calls Get, returns array of records (limit defaults to 100).
+            4. If "sql" IS set → executes raw SQL via DB.Exec(), returns the database driver result.
         args:
           - name: dsl
             type: object
             required: true
-            desc: "QueryDSL object with stmt field (e.g. {stmt: \"show version\"})"
+            desc: |
+              QueryDSL object. The execution mode depends on which fields are present.
+              For standard queries: {"select": ["id"], "from": "users", "limit": 10}
+              For pagination: {"select": ["id"], "from": "users", "page": 1, "pagesize": 20}
+              For first record: {"select": ["id"], "from": "users", "first": true}
+              For raw SQL: {"sql": {"stmt": "SHOW TABLES", "args": []}}
         return:
           type: any
-          desc: Query execution result
+          desc: "Return type depends on execution mode: array (Get), object (First/Paginate), or database result (SQL mode)."
 
       - name: Lint
-        desc: Validate a QueryDSL JSON string and return parsing diagnostics
+        desc: Validate a QueryDSL JSON string and return parsing diagnostics without executing the query
         args:
           - name: source
             type: string
             required: true
-            desc: QueryDSL as a JSON string
+            desc: |
+              QueryDSL as a JSON string (not an object — must be a string).
+              Example: '{"select":["id"], "from":"user"}'
         return:
           type: object
-          desc: "Object with valid (bool), diagnostics (array of diagnostic objects), and dsl (parsed QueryDSL if valid)"
+          desc: |
+            Lint result object with the following fields:
+              - valid (bool): true if the DSL is syntactically valid.
+              - diagnostics (array): Array of diagnostic objects, each with:
+                  - severity (string): "error", "warning", or "info".
+                  - message (string): Human-readable description of the issue.
+                  - code (string): Error code (e.g. "E100" for missing select, "E110" for missing from).
+                  - path (string): JSON path to the problematic field (e.g. "select", "wheres[0].field").
+                  - position (object): {line, column, end_line, end_column} in the source string.
+                  - source (string, optional): The problematic source fragment.
+              - dsl (object, optional): The parsed QueryDSL object. Only present when valid is true.
 
       - name: Schema
         desc: Get the JSON Schema definition for QueryDSL
@@ -70,18 +240,21 @@ entries:
           - name: format
             type: string
             required: false
-            desc: "Pass \"json\" to return as a JSON string; omit to return as an object"
+            desc: "Pass \"json\" to return the schema as a JSON string. Omit to return as a parsed JavaScript object."
         return:
-          type: any
-          desc: QueryDSL JSON Schema as an object or JSON string
+          type: "object | string"
+          desc: "QueryDSL JSON Schema. As a JS object by default, or as a JSON string if format is \"json\"."
 
       - name: Validate
-        desc: Validate a QueryDSL object against the JSON Schema
+        desc: Validate a QueryDSL object against the JSON Schema (structural validation, not expression parsing)
         args:
           - name: data
             type: any
             required: true
-            desc: QueryDSL object to validate
+            desc: "QueryDSL object to validate against the schema."
         return:
           type: object
-          desc: "Object with valid (bool) and error (string, present when invalid)"
+          desc: |
+            Validation result:
+              - valid (bool): true if the data conforms to the JSON Schema.
+              - error (string, present when invalid): Description of the schema violation.
