@@ -138,6 +138,34 @@ func Remove(id string) error {
 	return connector.Close()
 }
 
+// Unregister closes and fully removes a connector from Connectors map and AIConnectors slice.
+// Safe for concurrent use.
+func Unregister(id string) error {
+	rwlock.Lock()
+	defer rwlock.Unlock()
+
+	conn, has := Connectors[id]
+	if !has {
+		return nil
+	}
+
+	if err := conn.Close(); err != nil {
+		return fmt.Errorf("connector %s close error: %w", id, err)
+	}
+
+	delete(Connectors, id)
+
+	filtered := make([]Option, 0, len(AIConnectors))
+	for _, opt := range AIConnectors {
+		if opt.Value != id {
+			filtered = append(filtered, opt)
+		}
+	}
+	AIConnectors = filtered
+
+	return nil
+}
+
 func makeConnector(typ string) (Connector, error) {
 
 	t, has := types[typ]
