@@ -13,4 +13,6 @@ type Capabilities struct {
 	JSON                  bool        `json:"json,omitempty" yaml:"json,omitempty"`                                     // Supports JSON mode
 	Multimodal            bool        `json:"multimodal,omitempty" yaml:"multimodal,omitempty"`                         // Supports multimodal input
 	TemperatureAdjustable bool        `json:"temperature_adjustable,omitempty" yaml:"temperature_adjustable,omitempty"` // Supports temperature adjustment (reasoning models typically don't)
+	MaxInputTokens        int         `json:"max_input_tokens,omitempty" yaml:"max_input_tokens,omitempty"`             // Maximum input context window size (aligned with Anthropic Models API)
+	MaxOutputTokens       int         `json:"max_output_tokens,omitempty" yaml:"max_output_tokens,omitempty"`           // Maximum output tokens the model can generate
 }

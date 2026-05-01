@@ -16,6 +16,7 @@ import (
 	mongo "github.com/yaoapp/gou/connector/mongo"
 	"github.com/yaoapp/gou/connector/openai"
 	"github.com/yaoapp/gou/connector/redis"
+	"github.com/yaoapp/gou/llm"
 )
 
 func TestLoadMysql(t *testing.T) {
@@ -397,6 +398,228 @@ func TestAnthropic_WithoutProtocols(t *testing.T) {
 	assert.False(t, hasProtocols, "protocols should not be present when not configured")
 
 	delete(Connectors, "anthropic-noproto-test")
+}
+
+// --- LLMConnector interface tests ---
+
+func TestOpenAI_LLMConnector_Default(t *testing.T) {
+	src := []byte(`{
+		"type": "openai",
+		"name": "standard",
+		"options": {
+			"host": "https://api.openai.com",
+			"model": "gpt-4o",
+			"key": "sk-test-key"
+		}
+	}`)
+	conn, err := LoadSource(src, "openai-llm-default", "openai-llm-default.conn.yao")
+	assert.NoError(t, err)
+	defer delete(Connectors, "openai-llm-default")
+
+	lc, ok := conn.(llm.LLMConnector)
+	assert.True(t, ok, "openai.Connector should implement llm.LLMConnector")
+
+	assert.Equal(t, llm.AuthBearer, lc.GetAuthMode())
+	assert.Equal(t, "https://api.openai.com", lc.GetURL())
+	assert.Equal(t, "sk-test-key", lc.GetKey())
+	assert.Equal(t, "gpt-4o", lc.GetModel())
+	assert.Nil(t, lc.GetSupportedParams(), "no supported_params configured")
+	assert.NotNil(t, lc.GetCapabilities())
+}
+
+func TestOpenAI_LLMConnector_AzureAuthMode(t *testing.T) {
+	src := []byte(`{
+		"type": "openai",
+		"name": "Azure GPT-4",
+		"auth_mode": "api-key",
+		"options": {
+			"host": "https://myorg.openai.azure.com/openai/deployments/gpt-4",
+			"model": "gpt-4",
+			"key": "azure-key-123"
+		}
+	}`)
+	conn, err := LoadSource(src, "openai-azure-compat", "openai-azure-compat.conn.yao")
+	assert.NoError(t, err)
+	defer delete(Connectors, "openai-azure-compat")
+
+	lc, ok := conn.(llm.LLMConnector)
+	assert.True(t, ok)
+	assert.Equal(t, llm.AuthAPIKey, lc.GetAuthMode(), "auth_mode=api-key should resolve to AuthAPIKey")
+	assert.Equal(t, "azure-key-123", lc.GetKey())
+
+	setting := conn.Setting()
+	assert.Equal(t, "api-key", setting["auth_mode"])
+}
+
+func TestOpenAI_LLMConnector_TopLevelAuthMode(t *testing.T) {
+	src := []byte(`{
+		"type": "openai",
+		"name": "Azure Explicit",
+		"auth_mode": "api-key",
+		"options": {
+			"host": "https://myorg.openai.azure.com",
+			"model": "gpt-4",
+			"key": "explicit-key"
+		}
+	}`)
+	conn, err := LoadSource(src, "openai-authmode-explicit", "openai-authmode.conn.yao")
+	assert.NoError(t, err)
+	defer delete(Connectors, "openai-authmode-explicit")
+
+	lc, ok := conn.(llm.LLMConnector)
+	assert.True(t, ok)
+	assert.Equal(t, llm.AuthAPIKey, lc.GetAuthMode(), "top-level auth_mode should take priority")
+}
+
+func TestOpenAI_LLMConnector_SupportedParams(t *testing.T) {
+	src := []byte(`{
+		"type": "openai",
+		"name": "with params",
+		"supported_params": {
+			"temperature": {"max": 0.6},
+			"max_tokens": {},
+			"tools": {}
+		},
+		"options": {
+			"host": "https://api.openai.com",
+			"model": "gpt-4o",
+			"key": "sk-test"
+		}
+	}`)
+	conn, err := LoadSource(src, "openai-params", "openai-params.conn.yao")
+	assert.NoError(t, err)
+	defer delete(Connectors, "openai-params")
+
+	lc, ok := conn.(llm.LLMConnector)
+	assert.True(t, ok)
+
+	params := lc.GetSupportedParams()
+	assert.NotNil(t, params, "supported_params should be parsed")
+	assert.Len(t, params, 3)
+
+	tempSpec := params["temperature"]
+	assert.NotNil(t, tempSpec, "temperature spec should exist")
+	assert.NotNil(t, tempSpec.Max)
+	assert.Equal(t, 0.6, *tempSpec.Max)
+
+	assert.Contains(t, params, "max_tokens")
+	assert.Contains(t, params, "tools")
+}
+
+func TestOpenAI_LLMConnector_ProxyFallback(t *testing.T) {
+	src := []byte(`{
+		"type": "openai",
+		"name": "proxy test",
+		"options": {
+			"proxy": "https://proxy.example.com",
+			"model": "gpt-4o",
+			"key": "sk-test"
+		}
+	}`)
+	conn, err := LoadSource(src, "openai-proxy", "openai-proxy.conn.yao")
+	assert.NoError(t, err)
+	defer delete(Connectors, "openai-proxy")
+
+	lc, ok := conn.(llm.LLMConnector)
+	assert.True(t, ok)
+	assert.Equal(t, "https://proxy.example.com", lc.GetURL(), "should fall back to proxy when host is empty")
+}
+
+func TestOpenAI_LLMConnector_DefaultURL(t *testing.T) {
+	src := []byte(`{
+		"type": "openai",
+		"name": "no host",
+		"options": {
+			"model": "gpt-4o",
+			"key": "sk-test"
+		}
+	}`)
+	conn, err := LoadSource(src, "openai-nohost", "openai-nohost.conn.yao")
+	assert.NoError(t, err)
+	defer delete(Connectors, "openai-nohost")
+
+	lc, ok := conn.(llm.LLMConnector)
+	assert.True(t, ok)
+	assert.Equal(t, "https://api.openai.com", lc.GetURL())
+}
+
+func TestAnthropic_LLMConnector_Default(t *testing.T) {
+	src := []byte(`{
+		"type": "anthropic",
+		"name": "standard",
+		"options": {
+			"model": "claude-sonnet-4-20250514",
+			"key": "sk-ant-test"
+		}
+	}`)
+	conn, err := LoadSource(src, "anthropic-llm-default", "anthropic-llm.conn.yao")
+	assert.NoError(t, err)
+	defer delete(Connectors, "anthropic-llm-default")
+
+	lc, ok := conn.(llm.LLMConnector)
+	assert.True(t, ok, "anthropic.Connector should implement llm.LLMConnector")
+
+	assert.Equal(t, llm.AuthXAPIKey, lc.GetAuthMode(), "default Anthropic auth should be x-api-key")
+	assert.Equal(t, "https://api.anthropic.com", lc.GetURL())
+	assert.Equal(t, "sk-ant-test", lc.GetKey())
+	assert.Equal(t, "claude-sonnet-4-20250514", lc.GetModel())
+	assert.Nil(t, lc.GetSupportedParams())
+	assert.NotNil(t, lc.GetCapabilities())
+	assert.True(t, lc.GetCapabilities().ToolCalls)
+}
+
+func TestAnthropic_LLMConnector_CustomAuthMode(t *testing.T) {
+	src := []byte(`{
+		"type": "anthropic",
+		"name": "via proxy",
+		"auth_mode": "bearer",
+		"options": {
+			"host": "https://proxy.example.com",
+			"model": "claude-sonnet-4-20250514",
+			"key": "proxy-key"
+		}
+	}`)
+	conn, err := LoadSource(src, "anthropic-bearer", "anthropic-bearer.conn.yao")
+	assert.NoError(t, err)
+	defer delete(Connectors, "anthropic-bearer")
+
+	lc, ok := conn.(llm.LLMConnector)
+	assert.True(t, ok)
+	assert.Equal(t, llm.AuthBearer, lc.GetAuthMode(), "explicit auth_mode should override default")
+	assert.Equal(t, "https://proxy.example.com", lc.GetURL())
+}
+
+func TestAnthropic_LLMConnector_SupportedParams(t *testing.T) {
+	src := []byte(`{
+		"type": "anthropic",
+		"name": "with params",
+		"supported_params": {
+			"temperature": {"max": 1.0, "min": 0.0},
+			"max_tokens": {},
+			"thinking": {}
+		},
+		"options": {
+			"model": "claude-sonnet-4-20250514",
+			"key": "sk-ant-test"
+		}
+	}`)
+	conn, err := LoadSource(src, "anthropic-params", "anthropic-params.conn.yao")
+	assert.NoError(t, err)
+	defer delete(Connectors, "anthropic-params")
+
+	lc, ok := conn.(llm.LLMConnector)
+	assert.True(t, ok)
+
+	params := lc.GetSupportedParams()
+	assert.NotNil(t, params)
+	assert.Len(t, params, 3)
+
+	tempSpec := params["temperature"]
+	assert.NotNil(t, tempSpec)
+	assert.NotNil(t, tempSpec.Min)
+	assert.NotNil(t, tempSpec.Max)
+	assert.Equal(t, 0.0, *tempSpec.Min)
+	assert.Equal(t, 1.0, *tempSpec.Max)
 }
 
 func prepare(t *testing.T, name string) string {

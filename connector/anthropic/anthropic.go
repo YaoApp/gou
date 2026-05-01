@@ -13,10 +13,12 @@ import (
 
 // Connector anthropic connector
 type Connector struct {
-	id      string
-	file    string
-	Name    string  `json:"name"`
-	Options Options `json:"options"`
+	id              string
+	file            string
+	Name            string                    `json:"name"`
+	AuthModeVal     llm.AuthMode              `json:"auth_mode,omitempty"`
+	SupportedParams map[string]*llm.ParamSpec `json:"supported_params,omitempty"`
+	Options         Options                   `json:"options"`
 	types.MetaInfo
 }
 
@@ -62,6 +64,10 @@ func (c *Connector) Register(file string, id string, dsl []byte) error {
 	c.Options.Model = helper.EnvString(c.Options.Model)
 	c.Options.Key = helper.EnvString(c.Options.Key)
 	c.Options.Version = helper.EnvString(c.Options.Version)
+
+	if c.AuthModeVal == "" {
+		c.AuthModeVal = llm.AuthXAPIKey
+	}
 	return nil
 }
 
@@ -90,67 +96,35 @@ func (c *Connector) Close() error {
 	return nil
 }
 
-// Setting get the connection setting
+// Setting get the connection setting.
+// Returns ALL data for backward compatibility. New code should prefer LLMConnector methods.
 func (c *Connector) Setting() map[string]interface{} {
+	host := c.GetURL()
 
-	// Determine API endpoint
-	host := "https://api.anthropic.com"
-	if c.Options.Host != "" {
-		host = c.Options.Host
-	} else if c.Options.Proxy != "" {
-		host = c.Options.Proxy
-	}
-
-	// API version
 	version := "2023-06-01"
 	if c.Options.Version != "" {
 		version = c.Options.Version
 	}
 
 	setting := map[string]interface{}{
-		"host":    host,
-		"key":     c.Options.Key,
-		"model":   c.Options.Model,
-		"version": version,
+		"host":      host,
+		"key":       c.Options.Key,
+		"model":     c.Options.Model,
+		"version":   version,
+		"auth_mode": string(c.AuthModeVal),
 	}
 
-	// Add capabilities with defaults if not provided
-	capabilities := c.Options.Capabilities
-	if capabilities == nil {
-		modelLower := strings.ToLower(c.Options.Model)
-		capabilities = GetDefaultCapabilities(modelLower)
+	setting["capabilities"] = c.resolveCapabilities()
 
-		if capabilities == nil {
-			capabilities = &Capabilities{
-				Vision:                "claude",
-				ToolCalls:             true,
-				Audio:                 false,
-				Reasoning:             false,
-				Streaming:             true,
-				JSON:                  true,
-				Multimodal:            true,
-				TemperatureAdjustable: true,
-			}
-		}
-	}
-
-	setting["capabilities"] = capabilities
-
-	// Add thinking configuration if present
 	if c.Options.Thinking != nil {
 		setting["thinking"] = c.Options.Thinking
 	}
-
-	// Add max_tokens if specified
 	if c.Options.MaxTokens > 0 {
 		setting["max_tokens"] = c.Options.MaxTokens
 	}
-
-	// Add temperature if specified
 	if c.Options.Temperature != nil {
 		setting["temperature"] = *c.Options.Temperature
 	}
-
 	if len(c.Options.Protocols) > 0 {
 		setting["protocols"] = c.Options.Protocols
 	}
@@ -158,7 +132,64 @@ func (c *Connector) Setting() map[string]interface{} {
 	return setting
 }
 
+// --- LLMConnector interface implementation ---
+
+// GetAuthMode returns the authentication mode (default: x-api-key for Anthropic).
+func (c *Connector) GetAuthMode() llm.AuthMode {
+	return c.AuthModeVal
+}
+
+// GetURL returns the API base URL. Does NOT include endpoint paths.
+func (c *Connector) GetURL() string {
+	if c.Options.Host != "" {
+		return c.Options.Host
+	}
+	if c.Options.Proxy != "" {
+		return c.Options.Proxy
+	}
+	return "https://api.anthropic.com"
+}
+
+// GetKey returns the API key.
+func (c *Connector) GetKey() string {
+	return c.Options.Key
+}
+
+// GetModel returns the configured model name.
+func (c *Connector) GetModel() string {
+	return c.Options.Model
+}
+
+// GetSupportedParams returns the explicit supported_params whitelist.
+func (c *Connector) GetSupportedParams() map[string]*llm.ParamSpec {
+	return c.SupportedParams
+}
+
+// GetCapabilities returns the model capabilities with defaults applied.
+func (c *Connector) GetCapabilities() *llm.Capabilities {
+	return c.resolveCapabilities()
+}
+
 // GetMetaInfo returns the meta information
 func (c *Connector) GetMetaInfo() types.MetaInfo {
 	return c.MetaInfo
+}
+
+func (c *Connector) resolveCapabilities() *llm.Capabilities {
+	capabilities := c.Options.Capabilities
+	if capabilities == nil {
+		modelLower := strings.ToLower(c.Options.Model)
+		capabilities = GetDefaultCapabilities(modelLower)
+		if capabilities == nil {
+			capabilities = &Capabilities{
+				Vision:                "claude",
+				ToolCalls:             true,
+				Streaming:             true,
+				JSON:                  true,
+				Multimodal:            true,
+				TemperatureAdjustable: true,
+			}
+		}
+	}
+	return capabilities
 }

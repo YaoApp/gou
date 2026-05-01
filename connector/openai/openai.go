@@ -13,10 +13,12 @@ import (
 
 // Connector connector
 type Connector struct {
-	id      string
-	file    string
-	Name    string  `json:"name"`
-	Options Options `json:"options"`
+	id              string
+	file            string
+	Name            string                    `json:"name"`
+	AuthModeVal     llm.AuthMode              `json:"auth_mode,omitempty"`
+	SupportedParams map[string]*llm.ParamSpec `json:"supported_params,omitempty"`
+	Options         Options                   `json:"options"`
 	types.MetaInfo
 }
 
@@ -26,7 +28,6 @@ type Options struct {
 	Proxy string `json:"proxy,omitempty"` // (Deprecated) API endpoint, use Host instead. For backward compatibility only.
 	Model string `json:"model,omitempty"` // Model name, e.g. "gpt-4o"
 	Key   string `json:"key"`             // API key
-	Azure string `json:"azure,omitempty"` // "true" or "false" for Azure OpenAI
 
 	// Model Capabilities
 	Capabilities *Capabilities `json:"capabilities,omitempty"`
@@ -63,7 +64,10 @@ func (o *Connector) Register(file string, id string, dsl []byte) error {
 	o.Options.Proxy = helper.EnvString(o.Options.Proxy)
 	o.Options.Model = helper.EnvString(o.Options.Model)
 	o.Options.Key = helper.EnvString(o.Options.Key)
-	o.Options.Azure = helper.EnvString(o.Options.Azure)
+
+	if o.AuthModeVal == "" {
+		o.AuthModeVal = llm.AuthBearer
+	}
 	return nil
 }
 
@@ -92,75 +96,30 @@ func (o *Connector) Close() error {
 	return nil
 }
 
-// Setting get the connection setting
+// Setting get the connection setting.
+// Returns ALL data (metadata + API params + capabilities) for backward compatibility.
+// New code should prefer the typed LLMConnector methods instead.
 func (o *Connector) Setting() map[string]interface{} {
-
-	// Determine API endpoint
-	// Priority: Host > Proxy (backward compatibility) > default
-	host := "https://api.openai.com"
-	if o.Options.Host != "" {
-		host = o.Options.Host
-	} else if o.Options.Proxy != "" {
-		// Backward compatibility: use Proxy as API endpoint
-		host = o.Options.Proxy
-	}
+	host := o.GetURL()
 
 	setting := map[string]interface{}{
-		"host":  host,
-		"key":   o.Options.Key,
-		"model": o.Options.Model,
-		"azure": o.Options.Azure,
+		"host":      host,
+		"key":       o.Options.Key,
+		"model":     o.Options.Model,
+		"auth_mode": string(o.AuthModeVal),
 	}
 
-	// Add capabilities with defaults if not provided
-	capabilities := o.Options.Capabilities
-	if capabilities == nil {
-		// Try to get default capabilities based on model name (convert to lowercase first)
-		modelLower := strings.ToLower(o.Options.Model)
-		capabilities = GetDefaultCapabilities(modelLower)
+	setting["capabilities"] = o.resolveCapabilities()
 
-		// If no matching pattern found, use minimal standard (all disabled)
-		if capabilities == nil {
-			capabilities = &Capabilities{
-				Vision:                false,
-				ToolCalls:             false,
-				Audio:                 false,
-				Reasoning:             false,
-				Streaming:             false,
-				JSON:                  false,
-				Multimodal:            false,
-				TemperatureAdjustable: true, // Default to true for non-reasoning models
-			}
-		}
-	}
-
-	// Auto-detect TemperatureAdjustable if not explicitly set in config
-	// Reasoning models typically don't support temperature adjustment
-	// If Reasoning is true but TemperatureAdjustable wasn't explicitly set, default to false
-	if capabilities.Reasoning && !capabilities.TemperatureAdjustable {
-		// Reasoning model with TemperatureAdjustable=false is expected
-	} else if !capabilities.Reasoning && !capabilities.TemperatureAdjustable {
-		// Non-reasoning model should support temperature by default
-		capabilities.TemperatureAdjustable = true
-	}
-
-	setting["capabilities"] = capabilities
-
-	// Add thinking configuration if present (for models that support reasoning/thinking mode)
 	if o.Options.Thinking != nil {
 		setting["thinking"] = o.Options.Thinking
 	}
-
-	// Add max_tokens if specified (for sandbox proxy)
 	if o.Options.MaxTokens > 0 {
 		setting["max_tokens"] = o.Options.MaxTokens
 	}
-
-	// Add temperature if specified (for sandbox proxy)
 	if o.Options.Temperature != nil {
 		setting["temperature"] = *o.Options.Temperature
 	}
-
 	if len(o.Options.Protocols) > 0 {
 		setting["protocols"] = o.Options.Protocols
 	}
@@ -168,7 +127,65 @@ func (o *Connector) Setting() map[string]interface{} {
 	return setting
 }
 
+// --- LLMConnector interface implementation ---
+
+// GetAuthMode returns the authentication mode (bearer/api-key/x-api-key).
+func (o *Connector) GetAuthMode() llm.AuthMode {
+	return o.AuthModeVal
+}
+
+// GetURL returns the API base URL. Does NOT include endpoint paths like /chat/completions.
+func (o *Connector) GetURL() string {
+	if o.Options.Host != "" {
+		return o.Options.Host
+	}
+	if o.Options.Proxy != "" {
+		return o.Options.Proxy
+	}
+	return "https://api.openai.com"
+}
+
+// GetKey returns the API key.
+func (o *Connector) GetKey() string {
+	return o.Options.Key
+}
+
+// GetModel returns the configured model name.
+func (o *Connector) GetModel() string {
+	return o.Options.Model
+}
+
+// GetSupportedParams returns the explicit supported_params whitelist.
+// nil means "use provider-type defaults" in FilterRequestBodyParams.
+func (o *Connector) GetSupportedParams() map[string]*llm.ParamSpec {
+	return o.SupportedParams
+}
+
+// GetCapabilities returns the model capabilities with defaults applied.
+func (o *Connector) GetCapabilities() *llm.Capabilities {
+	return o.resolveCapabilities()
+}
+
 // GetMetaInfo returns the meta information
 func (o *Connector) GetMetaInfo() types.MetaInfo {
 	return o.MetaInfo
+}
+
+// resolveCapabilities returns capabilities with model-based defaults applied.
+func (o *Connector) resolveCapabilities() *llm.Capabilities {
+	capabilities := o.Options.Capabilities
+	if capabilities == nil {
+		modelLower := strings.ToLower(o.Options.Model)
+		capabilities = GetDefaultCapabilities(modelLower)
+		if capabilities == nil {
+			capabilities = &Capabilities{
+				TemperatureAdjustable: true,
+			}
+		}
+	}
+
+	if !capabilities.Reasoning && !capabilities.TemperatureAdjustable {
+		capabilities.TemperatureAdjustable = true
+	}
+	return capabilities
 }
