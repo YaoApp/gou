@@ -15,6 +15,7 @@ var defaultParamsByType = map[string]map[string]*llm.ParamSpec{
 		"tools": nil, "tool_choice": nil,
 		"reasoning_effort": nil, "audio": nil, "thinking": nil,
 		"stream_options": nil,
+		"reasoning":      nil, "enable_thinking": nil, "thinkingConfig": nil,
 	},
 	"anthropic": {
 		"temperature": nil, "max_tokens": nil,

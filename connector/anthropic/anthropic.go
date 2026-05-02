@@ -44,6 +44,10 @@ type Options struct {
 	// Supported API protocols. Defaults to ["anthropic"] when empty.
 	// Dual-protocol gateways declare ["openai", "anthropic"].
 	Protocols []string `json:"protocols,omitempty"`
+
+	// Extra parameters forwarded verbatim into the API request body.
+	// Aligned with LiteLLM's extra_body convention.
+	ExtraBody map[string]interface{} `json:"extra_body,omitempty"`
 }
 
 // Capabilities is an alias for llm.Capabilities for backward compatibility.
@@ -127,6 +131,12 @@ func (c *Connector) Setting() map[string]interface{} {
 	}
 	if len(c.Options.Protocols) > 0 {
 		setting["protocols"] = c.Options.Protocols
+	}
+
+	for k, v := range c.Options.ExtraBody {
+		if _, exists := setting[k]; !exists {
+			setting[k] = v
+		}
 	}
 
 	return setting
