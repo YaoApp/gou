@@ -278,6 +278,22 @@ var DefaultModelCapabilities = map[string]Capabilities{
 		JSON:       true,
 		Multimodal: false,
 	},
+
+	// Embedding Models
+	"text-embedding": {
+		Embedding: true,
+	},
+
+	// Image Generation Models
+	"dall-e": {
+		ImageGeneration: true,
+	},
+	"gpt-image": {
+		ImageGeneration: true,
+	},
+	"seedream": {
+		ImageGeneration: true,
+	},
 }
 
 // GetDefaultCapabilities returns default capabilities based on model name

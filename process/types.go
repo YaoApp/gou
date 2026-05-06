@@ -52,6 +52,22 @@ type DataConstraints struct {
 	Extra map[string]interface{} // Custom constraints like department_only, region_only, etc.
 }
 
+// GetUserID returns the user ID from the authorized info.
+func (auth *AuthorizedInfo) GetUserID() string {
+	if auth == nil {
+		return ""
+	}
+	return auth.UserID
+}
+
+// GetTeamID returns the team ID from the authorized info.
+func (auth *AuthorizedInfo) GetTeamID() string {
+	if auth == nil {
+		return ""
+	}
+	return auth.TeamID
+}
+
 // CallbackFunc the callback function
 type CallbackFunc func(process *Process, data map[string]interface{}) error
 
