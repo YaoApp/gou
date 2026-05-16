@@ -3,7 +3,7 @@ package schema
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -298,7 +298,7 @@ func newXunSchema(t *testing.T) types.Schema {
 
 func newUserBlueprint(t *testing.T) types.Blueprint {
 	root := os.Getenv("GOU_TEST_APPLICATION")
-	file := path.Join(root, "models", "tests", "user.mod.yao")
+	file := filepath.Join(root, "models", "tests", "user.mod.yao")
 
 	blueprint, err := types.NewFile(file)
 	if err != nil {
@@ -309,7 +309,7 @@ func newUserBlueprint(t *testing.T) types.Blueprint {
 
 func newUser2Blueprint(t *testing.T) types.Blueprint {
 	root := os.Getenv("GOU_TEST_APPLICATION")
-	file := path.Join(root, "models", "tests", "user.mod.yao")
+	file := filepath.Join(root, "models", "tests", "user.mod.yao")
 	user, err := types.NewFile(file)
 	if err != nil {
 		t.Fatal(err)

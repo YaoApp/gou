@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"path/filepath"
+	stdpath "path"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -143,7 +143,7 @@ func IsAllowed(c *gin.Context, allowsMap map[string]bool) bool {
 func (http HTTP) Routes(router *gin.Engine, path string, allows ...string) {
 	var group gin.IRoutes = router
 	if http.Group != "" {
-		path = filepath.Join(path, "/", http.Group)
+		path = stdpath.Join(path, "/", http.Group)
 	}
 	group = router.Group(path)
 	for _, path := range http.Paths {

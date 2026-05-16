@@ -3,7 +3,6 @@ package fs
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/types"
+	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
 	"github.com/yaoapp/kun/maps"
@@ -235,10 +235,10 @@ func processAbs(process *process.Process) interface{} {
 	stor := stor(process)
 	file := process.ArgsString(0)
 	root := stor.Root()
-	if root == "" {
+	if root == "" || filepath.IsAbs(file) {
 		return file
 	}
-	return filepath.Join(root, file)
+	return utils.AbsJoinPath(root, file)
 }
 
 func processMkdir(process *process.Process) interface{} {
@@ -489,7 +489,7 @@ func processUpload(process *process.Process) interface{} {
 	}
 
 	uid := tmpfile.Hash()
-	dir := strings.Join([]string{string(os.PathSeparator), time.Now().Format("20060102")}, "")
+	dir := "/" + time.Now().Format("20060102")
 	ext := filepath.Ext(tmpfile.Name)
 	filename := filepath.Join(dir, fmt.Sprintf("%s%s", uid, ext))
 
@@ -540,7 +540,7 @@ func processUpload(process *process.Process) interface{} {
 		}
 
 		// Async upload, the chunk file will be saved to the temp directory.
-		tmpDir := path.Join("upload", "tmp", uid)
+		tmpDir := utils.JoinPath("upload", "tmp", uid)
 		err := stor.MkdirAll(tmpDir, uint32(os.ModePerm))
 		if err != nil {
 			exception.New(err.Error(), 500).Throw()

@@ -2,7 +2,7 @@ package v8
 
 import (
 	"fmt"
-	"os"
+	stdpath "path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -13,6 +13,7 @@ import (
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
+	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/gou/runtime/v8/objects/console"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
@@ -203,6 +204,7 @@ func CLearModules() {
 // TransformTS transform the typescript
 func TransformTS(file string, source []byte) ([]byte, error) {
 
+	source = utils.BytesLF(source)
 	tsCode, err := tsImports(file, removeCommentsAndKeepLines(source))
 	if err != nil {
 		return nil, err
@@ -284,7 +286,7 @@ func removeCommentsAndKeepLines(code []byte) []byte {
 func getEntryPoints(file string, tsCode string, loaded map[string]bool) (string, []entry, error) {
 	entryPoints := []entry{}
 	root := application.App.Root()
-	absFile := filepath.Join(root, file)
+	absFile := utils.AbsJoinPath(root, file)
 
 	tsCode, imports, err := replaceImportCode(file, []byte(tsCode))
 	if err != nil {
@@ -318,7 +320,7 @@ func loadModule(file string, tsCode string) error {
 
 	errors := []string{}
 	root := application.App.Root()
-	absFile := filepath.Join(root, file)
+	absFile := utils.AbsJoinPath(root, file)
 
 	// Check if the module loaded
 	if _, has := Modules[absFile]; has {
@@ -340,9 +342,9 @@ func loadModule(file string, tsCode string) error {
 		codes[entry.absfile] = entry.source
 	}
 
-	paths := strings.Split(file, string(os.PathSeparator))
+	paths := strings.Split(file, "/")
 	dir := filepath.Join(root, paths[0]) // <app_root>/scripts, <app_root>/services, etc..
-	outdir := filepath.Join(string(os.PathSeparator), "outdir")
+	outdir := "/outdir"
 
 	result := api.Build(api.BuildOptions{
 		EntryPoints: files,
@@ -458,7 +460,7 @@ func replaceImportCode(file string, source []byte) (string, []Import, error) {
 				return m
 			}
 
-			absImportPath := filepath.Join(application.App.Root(), relImportPath)
+			absImportPath := utils.AbsJoinPath(application.App.Root(), relImportPath)
 
 			name := strings.TrimSpace(importClause)
 			if strings.Index(importClause, "*") >= 0 {
@@ -504,8 +506,8 @@ func getImportPath(file string, path string) (string, error) {
 	}
 
 	if !fromTsConfig {
-		relpath := filepath.Dir(file)
-		file = filepath.Join(relpath, path)
+		relpath := stdpath.Dir(file)
+		file = stdpath.Join(relpath, path)
 	}
 
 	if !strings.HasSuffix(path, ".ts") {

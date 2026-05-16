@@ -12,6 +12,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/fs"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
+	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
 )
@@ -519,7 +520,7 @@ func (obj *Object) abs(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return obj.error(info, err)
 		}
 
-		file := filepath.Join(stor.Root(), args[0].String())
+		file := utils.SlashPath(filepath.Join(stor.Root(), args[0].String()))
 		return obj.stringValue(info, file)
 	})
 }

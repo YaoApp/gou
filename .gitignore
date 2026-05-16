@@ -31,3 +31,4 @@ graphrag/tests/structured
 graphrag/tests/semantic
 graphrag/cmd/cmd.md
 POSTGRESQL_COMPAT.md
+.github/ci-analysis

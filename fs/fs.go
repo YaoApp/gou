@@ -11,6 +11,7 @@ import (
 
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/fs/system"
+	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/exception"
 )
 
@@ -389,9 +390,9 @@ func Zip(xfs FileSystem, name string, target string) error {
 	}
 
 	root := xfs.Root()
-	absPath := filepath.Join(root, name)
+	absPath := utils.AbsJoinPath(root, name)
 	// basePath := filepath.Base(absPath)
-	targetPath := filepath.Join(root, target)
+	targetPath := utils.AbsJoinPath(root, target)
 
 	targetWriter, err := os.Create(targetPath)
 	if err != nil {
@@ -447,7 +448,7 @@ func Unzip(xfs FileSystem, name string, target string) ([]string, error) {
 	}
 
 	root := xfs.Root()
-	absPath := filepath.Join(root, name)
+	absPath := utils.AbsJoinPath(root, name)
 	reader, err := zip.OpenReader(absPath)
 	if err != nil {
 		return nil, err
@@ -467,7 +468,7 @@ func Unzip(xfs FileSystem, name string, target string) ([]string, error) {
 
 	files := []string{}
 	for _, file := range reader.File {
-		name := filepath.Join(root, target, file.Name)
+		name := utils.AbsJoinPath(root, target, file.Name)
 		if file.FileInfo().IsDir() {
 			continue
 		}

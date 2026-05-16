@@ -2,12 +2,12 @@ package v8
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/yaoapp/gou/utils"
 	"github.com/go-sourcemap/sourcemap"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/application"
@@ -255,12 +255,12 @@ func parseStackTrace(trace string) StackLogEntryList {
 }
 
 func fmtFilePath(file string, rootMapping interface{}) string {
-	file = strings.ReplaceAll(file, ".."+string(os.PathSeparator), "")
-	if !strings.HasPrefix(file, string(os.PathSeparator)) {
-		file = string(os.PathSeparator) + file
-	}
-
 	file = strings.TrimPrefix(file, application.App.Root())
+	file = utils.SlashPath(file)
+	file = strings.ReplaceAll(file, "../", "")
+	if !strings.HasPrefix(file, "/") {
+		file = "/" + file
+	}
 	if rootMapping != nil {
 		switch mapping := rootMapping.(type) {
 		case map[string]string:
@@ -281,6 +281,5 @@ func fmtFilePath(file string, rootMapping interface{}) string {
 }
 
 func cntSource(source string) int {
-	source = strings.ReplaceAll(source, "\r\n", "\n")
-	return strings.Count(source, "\n")
+	return strings.Count(utils.StringLF(source), "\n")
 }

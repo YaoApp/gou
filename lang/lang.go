@@ -2,8 +2,6 @@ package lang
 
 import (
 	"fmt"
-	"os"
-	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -47,13 +45,13 @@ func Pick(name string) *Dict {
 
 // Load the language dictionaries from the path
 func Load(root string) error {
-	root = path.Join(root, string(os.PathSeparator))
+	root = root + "/"
 
 	return application.App.Walk(root, func(root, filename string, isdir bool) error {
 
 		if isdir {
 
-			if filename == string(os.PathSeparator) || strings.Count(strings.TrimPrefix(filename, root), string(os.PathSeparator)) != 1 {
+			if filename == "/" || strings.Count(strings.TrimPrefix(filename, root), "/") != 1 {
 				return nil
 			}
 
@@ -78,7 +76,7 @@ func Load(root string) error {
 // Open the dictionary from the language dictionary root
 func Open(langRoot string) (*Dict, error) {
 
-	langName := strings.ToLower(path.Base(langRoot))
+	langName := strings.ToLower(filepath.Base(langRoot))
 	dict := &Dict{
 		Name:    langName,
 		Global:  Words{},
@@ -124,7 +122,7 @@ func Open(langRoot string) (*Dict, error) {
 
 // getWidgetName   root: "/tests"  file: "/tests/apis/foo/bar.http.json"
 func getWidgetName(root string, file string) (string, string) {
-	sep := string(os.PathSeparator)
+	sep := "/"
 	filename := strings.TrimPrefix(file, root+sep) // "apis/foo/bar.http.json"
 
 	parts := strings.SplitN(filename, sep, 2)

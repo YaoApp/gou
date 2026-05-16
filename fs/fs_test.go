@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -1030,6 +1031,9 @@ func checkFileSize(stor FileSystem, t assert.TestingT, path string, size int, na
 }
 
 func checkFileMode(stor FileSystem, t assert.TestingT, path string, mode uint32, name string) {
+	if runtime.GOOS == "windows" {
+		return
+	}
 	realMode, _ := Mode(stor, path)
 	assert.Equal(t, mode, realMode, name)
 }

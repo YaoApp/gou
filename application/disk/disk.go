@@ -10,6 +10,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/fsnotify/fsnotify"
 	"github.com/yaoapp/gou/application/ignore"
+	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/log"
 )
 
@@ -107,12 +108,12 @@ func (disk *Disk) Walk(root string, handler func(root, file string, isdir bool) 
 			}
 		}
 
-		name := strings.TrimPrefix(filename, rootAbs)
+		name := utils.SlashPath(strings.TrimPrefix(filename, rootAbs))
 		if name == "" && isdir {
-			name = string(os.PathSeparator)
+			name = "/"
 		}
 
-		if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "/.") || strings.HasPrefix(name, "\\.") {
+		if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "/.") {
 			return nil
 		}
 
@@ -196,7 +197,7 @@ func (disk *Disk) Watch(handler func(event string, name string), interrupt chan 
 	// Add path
 	err = disk.Walk("/", func(root, file string, isdir bool) error {
 
-		rel := strings.TrimPrefix(file, string(os.PathSeparator))
+		rel := strings.TrimPrefix(file, "/")
 		if gitignore.MatchesPath(rel) {
 			return nil
 		}

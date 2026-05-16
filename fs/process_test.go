@@ -740,7 +740,7 @@ func TestProcessFsAbs(t *testing.T) {
 	// Test fs.system.Abs — system root is "/"
 	t.Run("fs.system.Abs", func(t *testing.T) {
 		processName := "fs.system.Abs"
-		args := []interface{}{"/tmp/foo"}
+		args := []interface{}{"tmp/foo"}
 		res, err := process.New(processName, args...).Exec()
 		if err != nil {
 			t.Fatal(err)
@@ -748,8 +748,8 @@ func TestProcessFsAbs(t *testing.T) {
 
 		absPath, ok := res.(string)
 		assert.True(t, ok)
-		assert.Equal(t, filepath.Join("/", "/tmp/foo"), absPath)
-		t.Logf("fs.system.Abs(\"/tmp/foo\") = %s", absPath)
+		assert.True(t, filepath.IsAbs(absPath), "expected absolute path, got: %s", absPath)
+		t.Logf("fs.system.Abs(\"tmp/foo\") = %s", absPath)
 	})
 
 	// Test fs.data.Abs — data root is app_root + "/data"
@@ -762,7 +762,7 @@ func TestProcessFsAbs(t *testing.T) {
 		Register("data", system.New(dataRoot))
 
 		processName := "fs.data.Abs"
-		args := []interface{}{"/tmp/foo"}
+		args := []interface{}{"tmp/foo"}
 		res, err := process.New(processName, args...).Exec()
 		if err != nil {
 			t.Fatal(err)
@@ -770,9 +770,9 @@ func TestProcessFsAbs(t *testing.T) {
 
 		absPath, ok := res.(string)
 		assert.True(t, ok)
-		expected := filepath.Join(dataRoot, "/tmp/foo")
+		expected := filepath.Join(dataRoot, "tmp", "foo")
 		assert.Equal(t, expected, absPath)
-		t.Logf("fs.data.Abs(\"/tmp/foo\") = %s", absPath)
+		t.Logf("fs.data.Abs(\"tmp/foo\") = %s", absPath)
 	})
 
 	// Test fs.dsl.Abs — dsl root is app_root
@@ -784,7 +784,7 @@ func TestProcessFsAbs(t *testing.T) {
 		Register("dsl", system.New(appRoot))
 
 		processName := "fs.dsl.Abs"
-		args := []interface{}{"/models/user.yao"}
+		args := []interface{}{"models/user.yao"}
 		res, err := process.New(processName, args...).Exec()
 		if err != nil {
 			t.Fatal(err)
@@ -792,9 +792,9 @@ func TestProcessFsAbs(t *testing.T) {
 
 		absPath, ok := res.(string)
 		assert.True(t, ok)
-		expected := filepath.Join(appRoot, "/models/user.yao")
+		expected := filepath.Join(appRoot, "models", "user.yao")
 		assert.Equal(t, expected, absPath)
-		t.Logf("fs.dsl.Abs(\"/models/user.yao\") = %s", absPath)
+		t.Logf("fs.dsl.Abs(\"models/user.yao\") = %s", absPath)
 	})
 }
 

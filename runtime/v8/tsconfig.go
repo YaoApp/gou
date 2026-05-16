@@ -1,7 +1,6 @@
 package v8
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -51,7 +50,7 @@ func (tsconfg *TSConfig) GetFileName(path string) (string, bool, error) {
 
 // Match match the pattern
 func (tsconfg *TSConfig) Match(pattern, path string) bool {
-	prefix := strings.Split(pattern, "/*")[0] + string(os.PathSeparator)
+	prefix := strings.Split(pattern, "/*")[0] + "/"
 	return strings.HasPrefix(path, prefix)
 }
 

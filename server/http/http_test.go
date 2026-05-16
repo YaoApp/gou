@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/yaoapp/gou/utils"
 )
 
 func TestStart(t *testing.T) {
@@ -96,11 +97,11 @@ func TestWithStatic(t *testing.T) {
 
 	status, data = get(t, server, "/tests/http.html")
 	assert.Equal(t, 200, status)
-	assert.Equal(t, []byte("<div>It works!</div>\n"), data)
+	assert.Equal(t, []byte("<div>It works!</div>\n"), utils.BytesLF(data))
 
 	status, data = get(t, server, "/admin/tests/http.html")
 	assert.Equal(t, 200, status)
-	assert.Equal(t, []byte("<div>It works! ADMIN</div>\n"), data)
+	assert.Equal(t, []byte("<div>It works! ADMIN</div>\n"), utils.BytesLF(data))
 
 }
 

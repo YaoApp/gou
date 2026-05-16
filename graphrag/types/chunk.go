@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/log"
 )
 
@@ -48,18 +49,7 @@ func (chunk *Chunk) TextLines() []string {
 		return []string{}
 	}
 
-	// Handle different line ending styles:
-	// \r\n (Windows), \n (Unix/Linux), \r (Mac Classic)
-	text := chunk.Text
-
-	// First, normalize \r\n to \n
-	text = strings.ReplaceAll(text, "\r\n", "\n")
-
-	// Then, replace remaining \r with \n
-	text = strings.ReplaceAll(text, "\r", "\n")
-
-	// Finally, split by \n
-	return strings.Split(text, "\n")
+	return strings.Split(utils.StringLF(chunk.Text), "\n")
 }
 
 // TextLinesJSON returns the text split into individual lines as JSON
