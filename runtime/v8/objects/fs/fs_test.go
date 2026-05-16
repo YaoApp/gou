@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -498,7 +500,7 @@ func TestFSObjectExistRemove(t *testing.T) {
 	assert.Equal(t, false, retval["IsFileFalse"])
 	assert.Nil(t, retval["Remove"])
 	assert.Nil(t, retval["RemoveNotExists"])
-	assert.Contains(t, retval["RemoveError"], "directory not empty")
+	assert.True(t, strings.Contains(strings.ToLower(retval["RemoveError"].(string)), "not empty"), "expected 'not empty' in error: "+retval["RemoveError"].(string))
 	assert.Nil(t, retval["RemoveAll"])
 	assert.Nil(t, retval["RemoveAllNotExists"])
 }
@@ -553,12 +555,17 @@ func TestFSObjectFileInfo(t *testing.T) {
 
 	ret := res.(map[string]interface{})
 	assert.Equal(t, "f1.file", ret["BaseName"])
-	assert.Equal(t, f["root"], ret["DirName"])
+	assert.Equal(t, f["root"], filepath.ToSlash(ret["DirName"].(string)))
 	assert.Equal(t, "file", ret["ExtName"])
 	assert.Equal(t, "text/plain; charset=utf-8", ret["MimeType"])
 	assert.Equal(t, len(data), int(ret["Size"].(float64)))
-	assert.Equal(t, iofs.FileMode(0644), iofs.FileMode(int(ret["Mode"].(float64))))
-	assert.Equal(t, iofs.FileMode(0755), iofs.FileMode(int(ret["ModeAfter"].(float64))))
+	if runtime.GOOS == "windows" {
+		assert.Equal(t, iofs.FileMode(0666), iofs.FileMode(int(ret["Mode"].(float64))))
+		assert.Equal(t, iofs.FileMode(0666), iofs.FileMode(int(ret["ModeAfter"].(float64))))
+	} else {
+		assert.Equal(t, iofs.FileMode(0644), iofs.FileMode(int(ret["Mode"].(float64))))
+		assert.Equal(t, iofs.FileMode(0755), iofs.FileMode(int(ret["ModeAfter"].(float64))))
+	}
 	assert.Equal(t, true, int(time.Now().Unix()) >= int(ret["ModTime"].(float64)))
 	assert.Nil(t, ret["Chmod"])
 
@@ -791,8 +798,8 @@ func TestFSObjectZip(t *testing.T) {
 	ctx := v8go.NewContext(iso, global)
 	defer ctx.Close()
 
-	zipfile := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test.zip")
-	unzipdir := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test")
+	zipfile := filepath.ToSlash(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test.zip"))
+	unzipdir := filepath.ToSlash(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test"))
 
 	v, err := ctx.RunScript(fmt.Sprintf(`
 	function Zip() {
@@ -949,6 +956,126 @@ func TestFSObjectGlob(t *testing.T) {
 	assert.Equal(t, 3, len(res.([]interface{})))
 }
 
+func TestFSObjectNew(t *testing.T) {
+	obj := New()
+	assert.NotNil(t, obj)
+}
+
+func TestFSObjectAbs(t *testing.T) {
+	testFsClear(t)
+	testFsMakeF1(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsObj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsObj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	v, err := ctx.RunScript(`
+	function TestAbs() {
+		var fs = new FS("system")
+		return fs.Abs("/some/path")
+	}
+	TestAbs()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	absPath, ok := res.(string)
+	assert.True(t, ok)
+	assert.Contains(t, absPath, "some/path")
+}
+
+func TestFSObjectIsLink(t *testing.T) {
+	testFsClear(t)
+	f := testFsFiles(t)
+	testFsMakeF1(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsObj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsObj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function TestIsLink() {
+		var fs = new FS("system")
+		return fs.IsLink("%s")
+	}
+	TestIsLink()
+	`, f["F1"]), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, false, res)
+}
+
+func TestFSObjectErrorBranches(t *testing.T) {
+	testFsClear(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsObj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsObj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	missingArgsTests := []struct {
+		name string
+		js   string
+	}{
+		{"ReadFile", `var fs = new FS("system"); return fs.ReadFile();`},
+		{"IsLink", `var fs = new FS("system"); return fs.IsLink();`},
+		{"Abs", `var fs = new FS("system"); return fs.Abs();`},
+		{"Exists", `var fs = new FS("system"); return fs.Exists();`},
+		{"Move", `var fs = new FS("system"); return fs.Move();`},
+		{"MimeType", `var fs = new FS("system"); return fs.MimeType();`},
+		{"Size", `var fs = new FS("system"); return fs.Size();`},
+		{"Copy", `var fs = new FS("system"); return fs.Copy();`},
+		{"Zip", `var fs = new FS("system"); return fs.Zip();`},
+	}
+
+	for _, tc := range missingArgsTests {
+		script := fmt.Sprintf(`(function() { try { %s } catch(e) { return e.message || e.toString(); } })()`, tc.js)
+		v, err := ctx.RunScript(script, "")
+		if err != nil {
+			t.Logf("%s: RunScript error (expected): %v", tc.name, err)
+			assert.Contains(t, err.Error(), "Missing parameters", tc.name)
+			continue
+		}
+		res, _ := bridge.GoValue(v, ctx)
+		if resStr, ok := res.(string); ok {
+			assert.Contains(t, resStr, "Missing parameters", tc.name)
+		}
+	}
+}
+
 func testFsMakeF1(t *testing.T) []byte {
 	data := testFsData(t)
 	f := testFsFiles(t)
@@ -1019,21 +1146,21 @@ func testFsData(t *testing.T) []byte {
 
 func testFsFiles(t *testing.T) map[string]string {
 
-	root := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")
+	root := filepath.ToSlash(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data"))
 	return map[string]string{
 		"root":     root,
-		"F1":       filepath.Join(root, "f1.file"),
-		"F2":       filepath.Join(root, "f2.file"),
-		"F3":       filepath.Join(root, "f3.js"),
-		"D1_F1":    filepath.Join(root, "d1", "f1.file"),
-		"D1_F2":    filepath.Join(root, "d1", "f2.file"),
-		"D2_F1":    filepath.Join(root, "d2", "f1.file"),
-		"D2_F2":    filepath.Join(root, "d2", "f2.file"),
-		"D1_D2_F1": filepath.Join(root, "d1", "d2", "f1.file"),
-		"D1_D2_F2": filepath.Join(root, "d1", "d2", "f2.file"),
-		"D1":       filepath.Join(root, "d1"),
-		"D2":       filepath.Join(root, "d2"),
-		"D1_D2":    filepath.Join(root, "d1", "d2"),
+		"F1":       root + "/f1.file",
+		"F2":       root + "/f2.file",
+		"F3":       root + "/f3.js",
+		"D1_F1":    root + "/d1/f1.file",
+		"D1_F2":    root + "/d1/f2.file",
+		"D2_F1":    root + "/d2/f1.file",
+		"D2_F2":    root + "/d2/f2.file",
+		"D1_D2_F1": root + "/d1/d2/f1.file",
+		"D1_D2_F2": root + "/d1/d2/f2.file",
+		"D1":       root + "/d1",
+		"D2":       root + "/d2",
+		"D1_D2":    root + "/d1/d2",
 	}
 
 }
@@ -1044,7 +1171,7 @@ func testFsClear(t *testing.T) {
 	fs.RootRegister("dsl", system.New())
 
 	stor := fs.FileSystems["system"]
-	root := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")
+	root := filepath.ToSlash(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data"))
 	err := os.RemoveAll(root)
 	if err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)

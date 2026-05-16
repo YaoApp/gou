@@ -2,7 +2,7 @@ package v8
 
 import (
 	"fmt"
-	"os"
+	stdpath "path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -14,6 +14,7 @@ import (
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/runtime/v8/objects/console"
+	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
@@ -80,6 +81,7 @@ func (script *Script) Open(source []byte) error {
 
 // MakeScript make a script from source
 func MakeScript(source []byte, file string, timeout time.Duration, isroot ...bool) (*Script, error) {
+	file = utils.SlashPath(file)
 	syncLock.Lock()
 	defer syncLock.Unlock()
 	script := NewScript(file, file, timeout)
@@ -167,6 +169,7 @@ func Exists(id string) bool {
 
 // Load load the script
 func Load(file string, id string) (*Script, error) {
+	file = utils.SlashPath(file)
 	source, err := application.App.Read(file)
 	if err != nil {
 		return nil, err
@@ -181,6 +184,7 @@ func Load(file string, id string) (*Script, error) {
 
 // LoadRoot load the script with root privileges
 func LoadRoot(file string, id string) (*Script, error) {
+	file = utils.SlashPath(file)
 	source, err := application.App.Read(file)
 	if err != nil {
 		return nil, err
@@ -202,7 +206,8 @@ func CLearModules() {
 
 // TransformTS transform the typescript
 func TransformTS(file string, source []byte) ([]byte, error) {
-
+	file = utils.SlashPath(file)
+	source = utils.BytesLF(source)
 	tsCode, err := tsImports(file, removeCommentsAndKeepLines(source))
 	if err != nil {
 		return nil, err
@@ -284,7 +289,7 @@ func removeCommentsAndKeepLines(code []byte) []byte {
 func getEntryPoints(file string, tsCode string, loaded map[string]bool) (string, []entry, error) {
 	entryPoints := []entry{}
 	root := application.App.Root()
-	absFile := filepath.Join(root, file)
+	absFile := utils.SlashPath(utils.AbsJoinPath(root, file))
 
 	tsCode, imports, err := replaceImportCode(file, []byte(tsCode))
 	if err != nil {
@@ -302,6 +307,7 @@ func getEntryPoints(file string, tsCode string, loaded map[string]bool) (string,
 		if err != nil {
 			return "", nil, err
 		}
+		source = utils.BytesLF(source)
 
 		_, subEntryPoints, err := getEntryPoints(imp.Path, string(source), loaded)
 		if err != nil {
@@ -318,7 +324,7 @@ func loadModule(file string, tsCode string) error {
 
 	errors := []string{}
 	root := application.App.Root()
-	absFile := filepath.Join(root, file)
+	absFile := utils.SlashPath(utils.AbsJoinPath(root, file))
 
 	// Check if the module loaded
 	if _, has := Modules[absFile]; has {
@@ -337,12 +343,12 @@ func loadModule(file string, tsCode string) error {
 	codes := map[string]string{}
 	for _, entry := range entryPoints {
 		files = append(files, entry.absfile)
-		codes[entry.absfile] = entry.source
+		codes[entry.absfile] = utils.StringLF(entry.source)
 	}
 
-	paths := strings.Split(file, string(os.PathSeparator))
-	dir := filepath.Join(root, paths[0]) // <app_root>/scripts, <app_root>/services, etc..
-	outdir := filepath.Join(string(os.PathSeparator), "outdir")
+	paths := strings.Split(file, "/")
+	dir := utils.SlashPath(filepath.Join(root, paths[0])) // <app_root>/scripts, <app_root>/services, etc..
+	outdir := "/outdir"
 
 	result := api.Build(api.BuildOptions{
 		EntryPoints: files,
@@ -361,7 +367,7 @@ func loadModule(file string, tsCode string) error {
 				Name: "custom-import-plugin",
 				Setup: func(build api.PluginBuild) {
 					build.OnLoad(api.OnLoadOptions{Filter: `.*\.ts$`}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
-						contents := codes[args.Path]
+						contents := codes[utils.SlashPath(args.Path)]
 						return api.OnLoadResult{
 							Contents: &contents,
 							Loader:   api.LoaderTS,
@@ -382,16 +388,21 @@ func loadModule(file string, tsCode string) error {
 		return fmt.Errorf("transform module error: %v.\n%s", strings.Join(errors, "\n"), tsCode)
 	}
 
+	outdirMarker := "/outdir/"
 	if len(result.OutputFiles) > 1 {
 		for _, out := range result.OutputFiles {
-			if strings.HasSuffix(out.Path, ".js.map") {
-				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js.map", ".ts"), outdir)
-				key = filepath.Join(dir, key)
+			outPath := utils.SlashPath(out.Path)
+			relPath := outPath
+			if idx := strings.Index(outPath, outdirMarker); idx >= 0 {
+				relPath = outPath[idx+len(outdirMarker):]
+			}
+
+			if strings.HasSuffix(outPath, ".js.map") {
+				key := utils.SlashPath(filepath.Join(dir, strings.ReplaceAll(relPath, ".js.map", ".ts")))
 				ModuleSourceMaps[key] = out.Contents
 
-			} else if strings.HasSuffix(out.Path, ".js") {
-				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js", ".ts"), outdir)
-				key = filepath.Join(dir, key)
+			} else if strings.HasSuffix(outPath, ".js") {
+				key := utils.SlashPath(filepath.Join(dir, strings.ReplaceAll(relPath, ".js", ".ts")))
 				Modules[key] = Module{
 					File:       file,
 					GlobalName: globalName,
@@ -458,7 +469,7 @@ func replaceImportCode(file string, source []byte) (string, []Import, error) {
 				return m
 			}
 
-			absImportPath := filepath.Join(application.App.Root(), relImportPath)
+			absImportPath := utils.SlashPath(utils.AbsJoinPath(application.App.Root(), relImportPath))
 
 			name := strings.TrimSpace(importClause)
 			if strings.Index(importClause, "*") >= 0 {
@@ -504,8 +515,8 @@ func getImportPath(file string, path string) (string, error) {
 	}
 
 	if !fromTsConfig {
-		relpath := filepath.Dir(file)
-		file = filepath.Join(relpath, path)
+		relpath := stdpath.Dir(file)
+		file = stdpath.Join(relpath, path)
 	}
 
 	if !strings.HasSuffix(path, ".ts") {

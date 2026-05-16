@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -91,18 +92,24 @@ func TestMkdirTemp(t *testing.T) {
 
 		tempPath, err = MkdirTemp(stor, f["D1_D2"], "")
 		assert.Nil(t, err, name)
-		assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		if runtime.GOOS != "windows" || stor.Root() == "" {
+			assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		}
 		checkFileExists(stor, t, tempPath, name)
 
 		tempPath, err = MkdirTemp(stor, f["D1_D2"], "*-logs")
 		assert.Nil(t, err, name)
-		assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		if runtime.GOOS != "windows" || stor.Root() == "" {
+			assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		}
 		assert.True(t, strings.HasSuffix(tempPath, "-logs"))
 		checkFileExists(stor, t, tempPath, name)
 
 		tempPath, err = MkdirTemp(stor, f["D1_D2"], "logs-")
 		assert.Nil(t, err, name)
-		assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		if runtime.GOOS != "windows" || stor.Root() == "" {
+			assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		}
 		assert.True(t, strings.HasPrefix(filepath.Base(tempPath), "logs-"))
 		checkFileExists(stor, t, tempPath, name)
 
@@ -221,21 +228,23 @@ func TestWriteFile(t *testing.T) {
 		checkFileSize(stor, t, f["F2"], l22, name)
 		checkFileMode(stor, t, f["F2"], 0644, name)
 
-		// permission denied
-		err = Chmod(stor, f["F2"], 0400)
-		assert.Nil(t, err, name)
-		l31, err := WriteFile(stor, f["F2"], data, 0644)
-		assert.NotNil(t, err, name)
-		assert.Equal(t, l31, 0)
+		// permission denied (skip on Windows: chmod does not restrict writes)
+		if runtime.GOOS != "windows" {
+			err = Chmod(stor, f["F2"], 0400)
+			assert.Nil(t, err, name)
+			l31, err := WriteFile(stor, f["F2"], data, 0644)
+			assert.NotNil(t, err, name)
+			assert.Equal(t, l31, 0)
 
-		err = MkdirAll(stor, f["D1"], uint32(os.ModePerm))
-		assert.Nil(t, err, name)
-		err = Chmod(stor, f["D1"], 0400)
-		assert.Nil(t, err, name)
+			err = MkdirAll(stor, f["D1"], uint32(os.ModePerm))
+			assert.Nil(t, err, name)
+			err = Chmod(stor, f["D1"], 0400)
+			assert.Nil(t, err, name)
 
-		l32, err := WriteFile(stor, f["D1_D2_F1"], data, 0644)
-		assert.NotNil(t, err, name)
-		assert.Equal(t, l32, 0)
+			l32, err := WriteFile(stor, f["D1_D2_F1"], data, 0644)
+			assert.NotNil(t, err, name)
+			assert.Equal(t, l32, 0)
+		}
 	}
 }
 
@@ -268,22 +277,24 @@ func TestWrite(t *testing.T) {
 		checkFileSize(stor, t, f["F2"], l22, name)
 		checkFileMode(stor, t, f["F2"], 0644, name)
 
-		// permission denied
-		err = Chmod(stor, f["F2"], 0400)
-		assert.Nil(t, err, name)
-		l31, err := Write(stor, f["F2"], f2, 0644)
-		assert.NotNil(t, err, name)
-		assert.Equal(t, l31, 0)
+		// permission denied (skip on Windows: chmod does not restrict writes)
+		if runtime.GOOS != "windows" {
+			err = Chmod(stor, f["F2"], 0400)
+			assert.Nil(t, err, name)
+			l31, err := Write(stor, f["F2"], f2, 0644)
+			assert.NotNil(t, err, name)
+			assert.Equal(t, l31, 0)
 
-		err = MkdirAll(stor, f["D1"], uint32(os.ModePerm))
-		assert.Nil(t, err, name)
-		err = Chmod(stor, f["D1"], 0400)
-		assert.Nil(t, err, name)
+			err = MkdirAll(stor, f["D1"], uint32(os.ModePerm))
+			assert.Nil(t, err, name)
+			err = Chmod(stor, f["D1"], 0400)
+			assert.Nil(t, err, name)
 
-		d1d2f1 := strings.NewReader("Hello D1_D2_F1")
-		l32, err := Write(stor, f["D1_D2_F1"], d1d2f1, 0644)
-		assert.NotNil(t, err, name)
-		assert.Equal(t, l32, 0)
+			d1d2f1 := strings.NewReader("Hello D1_D2_F1")
+			l32, err := Write(stor, f["D1_D2_F1"], d1d2f1, 0644)
+			assert.NotNil(t, err, name)
+			assert.Equal(t, l32, 0)
+		}
 	}
 }
 
@@ -589,7 +600,9 @@ func TestFileInfo(t *testing.T) {
 		// Mode
 		mode, err := Mode(stor, f["F1"])
 		assert.Nil(t, err, name)
-		assert.Equal(t, uint32(0644), mode)
+		if runtime.GOOS != "windows" {
+			assert.Equal(t, uint32(0644), mode)
+		}
 
 		// ModTime Time
 		modTime, err := ModTime(stor, f["F1"])
@@ -599,6 +612,9 @@ func TestFileInfo(t *testing.T) {
 }
 
 func TestChmod(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support Unix file permission bits")
+	}
 	stores := testStores(t)
 	f := testFiles(t)
 	for name, stor := range stores {
@@ -973,6 +989,176 @@ func TestBase(t *testing.T) {
 	assert.Equal(t, "", ExtName(f["D1"]))
 }
 
+func TestGet(t *testing.T) {
+	testStores(t)
+
+	fs, err := Get("system")
+	assert.Nil(t, err)
+	assert.NotNil(t, fs)
+
+	fs, err = Get("not-found")
+	assert.NotNil(t, err)
+	assert.Nil(t, fs)
+}
+
+func TestIsLink(t *testing.T) {
+	stores := testStores(t)
+	stor := stores["system"]
+	clear(stor, t)
+	f := testFiles(t)
+
+	data := testData(t)
+	_, err := WriteFile(stor, f["F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.False(t, IsLink(stor, f["F1"]))
+	assert.False(t, IsLink(stor, filepath.Join(f["root"], "nonexistent_path")))
+
+	linkPath := f["F1"] + ".link"
+	err = os.Symlink(f["F1"], linkPath)
+	if err != nil {
+		t.Skipf("Cannot create symlink (need privileges on Windows): %v", err)
+	}
+	defer os.Remove(linkPath)
+
+	assert.True(t, IsLink(stor, linkPath))
+}
+
+func TestMoveAppend_ErrorBranches(t *testing.T) {
+	stores := testStores(t)
+	stor := stores["system"]
+	clear(stor, t)
+	f := testFiles(t)
+
+	data := testData(t)
+	_, err := WriteFile(stor, f["F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = MoveAppend(stor, filepath.Join(f["root"], "nonexistent_src"), f["F1"])
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "does not exists")
+
+	err = MkdirAll(stor, f["D1"], 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = MoveAppend(stor, f["D1"], f["F1"])
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a file")
+
+	_, err = WriteFile(stor, f["F2"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = MoveAppend(stor, f["F2"], f["D1"])
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a file")
+
+	data2 := testData(t)
+	_, err = WriteFile(stor, f["D1_F1"], data2, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newDst := filepath.Join(f["root"], "newdir", "dst.file")
+	err = MoveAppend(stor, f["D1_F1"], newDst)
+	assert.Nil(t, err)
+}
+
+func TestMoveInsert_ErrorBranches(t *testing.T) {
+	stores := testStores(t)
+	stor := stores["system"]
+	clear(stor, t)
+	f := testFiles(t)
+
+	data := testData(t)
+	_, err := WriteFile(stor, f["F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = MoveInsert(stor, filepath.Join(f["root"], "nonexistent_src"), f["F1"], 0)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "does not exists")
+
+	err = MkdirAll(stor, f["D1"], 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = MoveInsert(stor, f["D1"], f["F1"], 0)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a file")
+
+	_, err = WriteFile(stor, f["F2"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = MoveInsert(stor, f["F2"], f["D1"], 0)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a file")
+
+	data2 := testData(t)
+	_, err = WriteFile(stor, f["D1_F1"], data2, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newDst := filepath.Join(f["root"], "newdir2", "dst.file")
+	err = MoveInsert(stor, f["D1_F1"], newDst, 0)
+	assert.Nil(t, err)
+}
+
+func TestZip_ErrorBranches(t *testing.T) {
+	stores := testStores(t)
+	stor := stores["system-relpath"]
+	clear(stores["system"], t)
+
+	err := Zip(stor, "nonexistent_dir", "out.zip")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "does not exists")
+
+	data := testData(t)
+	f := testFiles(t)
+	_, err = WriteFile(stores["system"], f["F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = Zip(stor, "f1.file", "out.zip")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a dir")
+}
+
+func TestUnzip_ErrorBranches(t *testing.T) {
+	stores := testStores(t)
+	stor := stores["system-relpath"]
+	clear(stores["system"], t)
+
+	_, err := Unzip(stor, "not-a-zip.txt", "out")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a zip file")
+
+	_, err = Unzip(stor, "nonexistent.zip", "out")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "does not exists")
+
+	data := testData(t)
+	f := testFiles(t)
+	_, err = WriteFile(stores["system"], f["F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	zipSrc := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "fake.zip")
+	err = os.WriteFile(zipSrc, []byte("not a zip"), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Unzip(stor, "fake.zip", "out")
+	assert.NotNil(t, err)
+}
+
 func testStores(t *testing.T) map[string]FileSystem {
 	Register("system", system.New())
 	Register("system-relpath", system.New(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")))
@@ -1030,6 +1216,9 @@ func checkFileSize(stor FileSystem, t assert.TestingT, path string, size int, na
 }
 
 func checkFileMode(stor FileSystem, t assert.TestingT, path string, mode uint32, name string) {
+	if runtime.GOOS == "windows" {
+		return
+	}
 	realMode, _ := Mode(stor, path)
 	assert.Equal(t, mode, realMode, name)
 }
@@ -1037,12 +1226,18 @@ func checkFileMode(stor FileSystem, t assert.TestingT, path string, mode uint32,
 func clear(stor FileSystem, t *testing.T) {
 
 	root := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")
-	err := os.RemoveAll(root)
-	if err != nil && !os.IsNotExist(err) {
-		t.Fatal(err)
+	for i := 0; i < 3; i++ {
+		err := os.RemoveAll(root)
+		if err == nil || os.IsNotExist(err) {
+			break
+		}
+		if i == 2 {
+			t.Fatal(err)
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 
-	err = MkdirAll(stor, root, uint32(os.ModePerm))
+	err := MkdirAll(stor, root, uint32(os.ModePerm))
 	if err != nil {
 		t.Fatal(err)
 	}

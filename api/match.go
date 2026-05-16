@@ -1,7 +1,7 @@
 package api
 
 import (
-	"path/filepath"
+	stdpath "path"
 	"regexp"
 	"strings"
 	"sync"
@@ -107,7 +107,7 @@ func buildFullPath(apiGroup, pathPattern string) string {
 	if apiGroup == "" {
 		return pathPattern
 	}
-	return filepath.Join("/", apiGroup, pathPattern)
+	return stdpath.Join("/", apiGroup, pathPattern)
 }
 
 // addEntry adds a route entry to the route table

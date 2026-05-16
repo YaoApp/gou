@@ -2,7 +2,7 @@ package v8
 
 import (
 	"fmt"
-	"os"
+	stdpath "path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -12,6 +12,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/helper"
+	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/exception"
 	"rogchap.com/v8go"
 )
@@ -255,12 +256,26 @@ func parseStackTrace(trace string) StackLogEntryList {
 }
 
 func fmtFilePath(file string, rootMapping interface{}) string {
-	file = strings.ReplaceAll(file, ".."+string(os.PathSeparator), "")
-	if !strings.HasPrefix(file, string(os.PathSeparator)) {
-		file = string(os.PathSeparator) + file
+	file = utils.SlashPath(file)
+	file = strings.ReplaceAll(file, "../", "")
+	if !strings.HasPrefix(file, "/") {
+		file = "/" + file
 	}
 
-	file = strings.TrimPrefix(file, application.App.Root())
+	root := utils.SlashPath(application.App.Root())
+	file = strings.TrimPrefix(file, root)
+
+	// On Windows, after removing "../" from relative sourcemap paths like
+	// "../../gou-dev-app/scripts/...", the result "/gou-dev-app/scripts/..."
+	// won't match the absolute root "D:/a/gou/gou/gou-dev-app".
+	// Fall back to stripping by the root's basename.
+	if rootBase := stdpath.Base(root); rootBase != "" && rootBase != "/" {
+		marker := "/" + rootBase + "/"
+		if idx := strings.Index(file, marker); idx >= 0 {
+			file = file[idx+len(marker)-1:]
+		}
+	}
+
 	if rootMapping != nil {
 		switch mapping := rootMapping.(type) {
 		case map[string]string:
@@ -281,6 +296,5 @@ func fmtFilePath(file string, rootMapping interface{}) string {
 }
 
 func cntSource(source string) int {
-	source = strings.ReplaceAll(source, "\r\n", "\n")
-	return strings.Count(source, "\n")
+	return strings.Count(utils.StringLF(source), "\n")
 }

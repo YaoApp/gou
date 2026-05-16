@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/log"
 	"golang.org/x/crypto/md4"
 )
@@ -118,17 +119,17 @@ func (yaz *Yaz) Walk(root string, handler func(root, filename string, isdir bool
 			}
 		}
 
-		name := strings.TrimPrefix(filename, rootAbs)
+		name := utils.SlashPath(strings.TrimPrefix(filename, rootAbs))
 		if name == "" && isdir {
-			name = string(os.PathSeparator)
+			name = "/"
 		}
 
-		if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "/.") || strings.HasPrefix(name, "\\.") {
+		if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "/.") {
 			return nil
 		}
 
 		if !isdir {
-			name = filepath.Join(root, name)
+			name = utils.SlashPath(filepath.Join(root, name))
 		}
 
 		err = handler(root, name, isdir)

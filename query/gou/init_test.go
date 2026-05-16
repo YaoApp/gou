@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -44,7 +44,7 @@ var qb query.Query
 
 // GetFileName
 func GetFileName(name string) string {
-	return path.Join(TestQueryRoot, name)
+	return filepath.Join(TestQueryRoot, name)
 }
 
 // TableName
@@ -54,7 +54,7 @@ func TableName(name string) string {
 
 // ReadFile
 func ReadFile(name string) []byte {
-	fullname := path.Join(TestQueryRoot, name)
+	fullname := filepath.Join(TestQueryRoot, name)
 
 	file, err := os.Open(fullname)
 	if err != nil {

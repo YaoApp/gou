@@ -3,6 +3,7 @@ package ffmpeg
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -37,11 +38,10 @@ func ensureProcessTestDataExists(t *testing.T) {
 // isFFmpegAvailable checks if ffmpeg is available on the system
 func isFFmpegAvailable(t *testing.T) bool {
 	t.Helper()
-	info, err := defaultFFmpeg.GetSystemInfo()
-	if err != nil {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		return false
 	}
-	return info.FFmpeg != ""
+	return true
 }
 
 // getProcessTestVideoFile returns a test MP4 video file path

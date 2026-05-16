@@ -12,6 +12,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/fs"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
+	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/log"
 	"rogchap.com/v8go"
 )
@@ -519,7 +520,7 @@ func (obj *Object) abs(iso *v8go.Isolate) *v8go.FunctionTemplate {
 			return obj.error(info, err)
 		}
 
-		file := filepath.Join(stor.Root(), args[0].String())
+		file := utils.SlashPath(filepath.Join(stor.Root(), args[0].String()))
 		return obj.stringValue(info, file)
 	})
 }
@@ -1171,14 +1172,6 @@ func (obj *Object) stringArrayValue(info *v8go.FunctionCallbackInfo, value []str
 }
 
 func (obj *Object) intValue(info *v8go.FunctionCallbackInfo, value int32) *v8go.Value {
-	res, err := v8go.NewValue(info.Context().Isolate(), value)
-	if err != nil {
-		return obj.error(info, err)
-	}
-	return res
-}
-
-func (obj *Object) int64Value(info *v8go.FunctionCallbackInfo, value int64) *v8go.Value {
 	res, err := v8go.NewValue(info.Context().Isolate(), value)
 	if err != nil {
 		return obj.error(info, err)

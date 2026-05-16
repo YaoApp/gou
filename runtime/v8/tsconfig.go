@@ -1,11 +1,11 @@
 package v8
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/utils"
 )
 
 // GetFileName get the file name from the tsconfig
@@ -24,7 +24,7 @@ func (tsconfg *TSConfig) GetFileName(path string) (string, bool, error) {
 			for _, p := range paths {
 				matched := false
 				dir := filepath.Clean(filepath.Dir(p))
-				f = filepath.Join(dir, f)
+				f = utils.SlashPath(filepath.Join(dir, f))
 				err := application.App.Walk(dir, func(root, filename string, isdir bool) error {
 					if isdir {
 						return nil
@@ -51,7 +51,7 @@ func (tsconfg *TSConfig) GetFileName(path string) (string, bool, error) {
 
 // Match match the pattern
 func (tsconfg *TSConfig) Match(pattern, path string) bool {
-	prefix := strings.Split(pattern, "/*")[0] + string(os.PathSeparator)
+	prefix := strings.Split(pattern, "/*")[0] + "/"
 	return strings.HasPrefix(path, prefix)
 }
 

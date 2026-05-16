@@ -1,7 +1,7 @@
 package v8
 
 import (
-	"path/filepath"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -34,8 +34,8 @@ func TestStackTrace(t *testing.T) {
 	defer Stop()
 
 	files := map[string]string{
-		"page.ts":      filepath.Join("scripts", "runtime", "ts", "page.ts"),
-		"lib.hello.ts": filepath.Join("scripts", "runtime", "ts", "lib", "hello.ts"),
+		"page.ts":      path.Join("scripts", "runtime", "ts", "page.ts"),
+		"lib.hello.ts": path.Join("scripts", "runtime", "ts", "lib", "hello.ts"),
 	}
 
 	source, err := application.App.Read(files["page.ts"])

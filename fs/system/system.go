@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/log"
 	"golang.org/x/image/draw"
 )
@@ -336,6 +337,7 @@ func (f *File) InsertFile(file string, offset int64, data []byte, perm uint32) (
 		currentPos += int64(n)
 	}
 
+	origin.Close()
 	if err := tempFile.Close(); err != nil {
 		return 0, err
 	}
@@ -422,6 +424,7 @@ func (f *File) Insert(file string, offset int64, reader io.Reader, perm uint32) 
 		currentPos += int64(n)
 	}
 
+	origin.Close()
 	if err := tempFile.Close(); err != nil {
 		return 0, err
 	}
@@ -698,7 +701,7 @@ func (f *File) IsLink(name string) bool {
 		log.Warn("[IsLink] %s %s", name, err.Error())
 		return false
 	}
-	info, err := os.Stat(name)
+	info, err := os.Lstat(name)
 	if err != nil {
 		log.Warn("[IsLink] %s %s", name, err.Error())
 		return false
@@ -829,17 +832,17 @@ func (f *File) Walk(root string, handler func(root, file string, isdir bool) err
 			}
 		}
 
-		name := strings.TrimPrefix(filename, rootAbs)
+		name := utils.SlashPath(strings.TrimPrefix(filename, rootAbs))
 		if name == "" && isdir {
-			name = string(os.PathSeparator)
+			name = "/"
 		}
 
-		if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "/.") || strings.HasPrefix(name, "\\.") {
+		if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "/.") {
 			return nil
 		}
 
 		if !isdir {
-			name = filepath.Join(root, name)
+			name = utils.SlashPath(filepath.Join(root, name))
 		}
 
 		err = handler(root, name, isdir)
@@ -1068,8 +1071,8 @@ func (f *File) isTemp(path string) bool {
 // absPath returns an absolute representation of path
 func (f *File) absPath(path string) (string, error) {
 	if f.root != "" {
-		if !f.isTemp(path) {
-			path = filepath.Join(f.root, path)
+		if !f.isTemp(path) && filepath.VolumeName(path) == "" {
+			path = utils.AbsJoinPath(f.root, path)
 		}
 	}
 
@@ -1094,7 +1097,7 @@ func (f *File) relPath(path string) string {
 	if f.root == "" {
 		return path
 	}
-	return strings.TrimPrefix(path, strings.TrimRight(f.root, string(os.PathSeparator)))
+	return strings.TrimPrefix(path, strings.TrimRight(f.root, "/\\"))
 }
 
 // pathSafe returns true if the path is safe

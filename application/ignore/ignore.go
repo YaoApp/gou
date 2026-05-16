@@ -67,6 +67,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/yaoapp/gou/utils"
 )
 
 ////////////////////////////////////////////////////////////
@@ -246,7 +248,7 @@ func (gi *GitIgnore) MatchesPath(f string) bool {
 // The Pattern has the Line, LineNo fields.
 func (gi *GitIgnore) MatchesPathHow(f string) (bool, *Pattern) {
 	// Replace OS-specific path separator.
-	f = strings.Replace(f, string(os.PathSeparator), "/", -1)
+	f = utils.SlashPath(f)
 
 	matchesPath := false
 	var mip *Pattern

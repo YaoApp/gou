@@ -1587,6 +1587,10 @@ func TestEnvironmentProxyConfiguration(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" && strings.Contains(tc.name, "precedence") {
+				t.Skip("Windows env vars are case-insensitive, precedence tests not applicable")
+			}
+
 			// Clear all proxy environment variables
 			os.Unsetenv("HTTP_PROXY")
 			os.Unsetenv("HTTPS_PROXY")

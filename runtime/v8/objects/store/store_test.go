@@ -2,9 +2,11 @@ package store
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
@@ -26,6 +28,7 @@ func TestStoreObjectRedis(t *testing.T) {
 }
 
 func TestStoreObjectMongo(t *testing.T) {
+	skipIfMongoUnavailable(t)
 	mongo := newStore(t, makeConnector(t, "mongo"))
 	testStoreObject(t, mongo)
 }
@@ -41,6 +44,7 @@ func TestStoreListObjectRedis(t *testing.T) {
 }
 
 func TestStoreListObjectMongo(t *testing.T) {
+	skipIfMongoUnavailable(t)
 	mongo := newStore(t, makeConnector(t, "mongo"))
 	testStoreListObject(t, mongo)
 }
@@ -253,6 +257,23 @@ func newStore(t *testing.T, c connector.Connector) store.Store {
 		t.Fatal(err)
 	}
 	return s
+}
+
+func skipIfMongoUnavailable(t *testing.T) {
+	t.Helper()
+	host := os.Getenv("MONGO_TEST_HOST")
+	port := os.Getenv("MONGO_TEST_PORT")
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if port == "" {
+		port = "27017"
+	}
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), 2*time.Second)
+	if err != nil {
+		t.Skipf("MongoDB not available at %s:%s: %v", host, port, err)
+	}
+	conn.Close()
 }
 
 func makeConnector(t *testing.T, id string) connector.Connector {
