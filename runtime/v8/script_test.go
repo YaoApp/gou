@@ -1,6 +1,7 @@
 package v8
 
 import (
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -27,8 +28,8 @@ func TestTransformTS(t *testing.T) {
 	defer Stop()
 
 	files := map[string]string{
-		"app.ts":       filepath.Join("scripts", "runtime", "ts", "app.ts"),
-		"lib.hello.ts": filepath.Join("scripts", "runtime", "ts", "lib", "hello.ts"),
+		"app.ts":       path.Join("scripts", "runtime", "ts", "app.ts"),
+		"lib.hello.ts": path.Join("scripts", "runtime", "ts", "lib", "hello.ts"),
 	}
 
 	app, err := application.App.Read(files["app.ts"])
@@ -72,8 +73,8 @@ func TestTransformTSWithTSConfig(t *testing.T) {
 	defer Stop()
 
 	files := map[string]string{
-		"page.ts":      filepath.Join("scripts", "runtime", "ts", "page.ts"),
-		"lib.hello.ts": filepath.Join("scripts", "runtime", "ts", "lib", "hello.ts"),
+		"page.ts":      path.Join("scripts", "runtime", "ts", "page.ts"),
+		"lib.hello.ts": path.Join("scripts", "runtime", "ts", "lib", "hello.ts"),
 	}
 
 	page, err := application.App.Read(files["page.ts"])
