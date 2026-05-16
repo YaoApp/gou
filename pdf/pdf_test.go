@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -186,6 +187,20 @@ func TestConvert(t *testing.T) {
 			if !pdf.cmd.IsAvailable(tool) {
 				t.Skipf("Tool %s is not available", tool)
 				return
+			}
+
+			// ImageMagick PDF conversion requires Ghostscript as a delegate
+			if tool == ToolImageMagick {
+				gsAvailable := false
+				for _, gs := range []string{"gswin64c", "gswin32c", "gs"} {
+					if _, err := exec.LookPath(gs); err == nil {
+						gsAvailable = true
+						break
+					}
+				}
+				if !gsAvailable {
+					t.Skip("ImageMagick PDF conversion requires Ghostscript (not installed)")
+				}
 			}
 
 			// Test with first available PDF file

@@ -200,8 +200,11 @@ jobs:
         run: choco install ffmpeg -y
 
       # ── 12. Install PDF tools ──────────────────────────────────────────
-      - name: Install PDF tools
-        run: choco install poppler mupdf ghostscript imagemagick -y
+      # pdftoppm (poppler) is the default convert tool, mutool is fallback.
+      # Ghostscript is NOT installed: only needed as ImageMagick PDF delegate,
+      # but pdftoppm/mutool handle PDF->image natively without it.
+      - name: Install PDF tools (poppler + mupdf)
+        run: choco install poppler mupdf -y
 
       - name: Fix poppler PATH (choco shim missing)
         shell: bash
@@ -212,27 +215,6 @@ jobs:
             echo "$POPPLER_DIR" >> $GITHUB_PATH
           else
             echo "::warning::pdftoppm not found in poppler package"
-          fi
-
-      - name: Fix ImageMagick module path (choco registry issue)
-        shell: bash
-        run: |
-          MAGICK_DIR=$(find /c/ProgramData/chocolatey/lib/imagemagick -name "magick.exe" -exec dirname {} \; 2>/dev/null | head -1)
-          if [ -n "$MAGICK_DIR" ]; then
-            echo "Found ImageMagick at: $MAGICK_DIR"
-            echo "MAGICK_HOME=$MAGICK_DIR" >> $GITHUB_ENV
-            if [ -d "$MAGICK_DIR/modules/coders" ]; then
-              echo "MAGICK_CODER_MODULE_PATH=$MAGICK_DIR/modules/coders" >> $GITHUB_ENV
-              echo "MAGICK_CODER_FILTER_PATH=$MAGICK_DIR/modules/filters" >> $GITHUB_ENV
-            fi
-          else
-            echo "::warning::ImageMagick not found in chocolatey package"
-          fi
-
-          GS_PATH=$(find /c/ProgramData/chocolatey/lib/ghostscript -name "gswin*.exe" -exec dirname {} \; 2>/dev/null | head -1)
-          if [ -n "$GS_PATH" ]; then
-            echo "Found Ghostscript at: $GS_PATH"
-            echo "$GS_PATH" >> $GITHUB_PATH
           fi
 
       # ── 13. Setup PostgreSQL (conditional) ─────────────────────────────
@@ -296,9 +278,6 @@ jobs:
           echo "=== MongoDB ===" && (mongosh --version 2>&1) || echo "MongoDB not available"
           echo "=== pdftoppm ===" && (pdftoppm -v 2>&1) || echo "pdftoppm not available"
           echo "=== mutool ===" && (mutool -v 2>&1) || echo "mutool not available"
-          echo "=== ImageMagick ===" && (magick -version 2>&1 | head -3) || echo "ImageMagick not available"
-          echo "=== ImageMagick PDF ===" && (magick -list format 2>&1 | grep -i pdf) || echo "ImageMagick PDF delegate not available"
-          echo "=== Ghostscript ===" && (gswin64c -version 2>&1 | head -1) || (gswin32c -version 2>&1 | head -1) || echo "Ghostscript not available"
 
       # ── 17. Go Test (Windows x64) ─────────────────────────────────────
       - name: Go Test (Windows x64)
