@@ -146,9 +146,8 @@ jobs:
       - name: Start Redis
         shell: powershell
         run: |
-          redis-server --service-install
-          redis-server --service-start
-          Start-Sleep -Seconds 2
+          Start-Process -FilePath "redis-server" -WindowStyle Hidden
+          Start-Sleep -Seconds 3
           redis-cli ping
 
       # ── 9. Setup MySQL 8.0 (x64: ankane action, ARM64: choco) ────────
