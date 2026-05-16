@@ -1,0 +1,300 @@
+name: Windows-Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: "Comment"
+
+env:
+  GOU_TEST_AES_KEY: "^*aNBue!loLTTiP*4i&BSK7s#QRbe0^g"
+  GOU_TEST_REDIS_HOST: "127.0.0.1"
+  GOU_TEST_REDIS_PORT: "6379"
+  GOU_TEST_GITHUB_TOKEN: ${{ secrets.GOU_TEST_GITHUB_TOKEN }}
+  GOU_TEST_GITHUB_REPO: github.com/YaoApp/workshop-tests-private
+  GOU_TEST_DSL_TABLE_NAME: test_env
+  GOU_TEST_APPLICATION: ${{ github.workspace }}\gou-dev-app
+  GOU_TEST_PLUGIN: ${{ github.workspace }}\gou-dev-app\plugins\linux
+  SEND_MAIL_WORKER_NUMS: 2
+  SEND_MAIL_TEST_MAIL: max@iqka.com
+  REPO_KUN: ${{ github.repository_owner }}/kun
+  REPO_XUN: ${{ github.repository_owner }}/xun
+  REPO_APP: YaoApp/gou-dev-app
+
+  MYSQL_TEST_HOST: "127.0.0.1"
+  MYSQL_TEST_PORT: "3306"
+  MYSQL_TEST_USER: test
+  MYSQL_TEST_PASS: "123456"
+
+  SQLITE_DB: "./app/db/yao.db"
+
+  REDIS_TEST_HOST: "127.0.0.1"
+  REDIS_TEST_PORT: "6379"
+  REDIS_TEST_DB: "2"
+
+  MONGO_TEST_HOST: "127.0.0.1"
+  MONGO_TEST_PORT: "27017"
+  MONGO_TEST_USER: "root"
+  MONGO_TEST_PASS: "123456"
+
+  OPENAI_TEST_KEY: ${{ secrets.OPENAI_TEST_KEY }}
+  ANTHROPIC_TEST_KEY: "sk-ant-test-placeholder"
+  RAG_LLM_TEST_URL: ${{ secrets.RAG_LLM_TEST_URL }}
+  RAG_LLM_TEST_KEY: ${{ secrets.RAG_LLM_TEST_KEY }}
+  RAG_LLM_TEST_SMODEL: ${{ secrets.RAG_LLM_TEST_SMODEL }}
+
+  QDRANT_TEST_HOST: "127.0.0.1"
+  QDRANT_TEST_PORT: "6334"
+  QDRANT_TEST_HTTP_PORT: "6333"
+
+  FASTEMBED_TEST_HOST: "127.0.0.1:6001"
+  FASTEMBED_TEST_KEY: "Yao@2026"
+  FASTEMBED_TEST_MODEL: "BAAI/bge-small-en-v1.5"
+
+  NEO4J_TEST_URL: "neo4j://127.0.0.1:7687"
+  NEO4J_TEST_USER: "neo4j"
+  NEO4J_TEST_PASS: "Yao2026Neo4j"
+
+  MCP_CLIENT_TEST_HTTP_URL: "http://127.0.0.1:3022/mcp"
+  MCP_CLIENT_TEST_HTTP_AUTHORIZATION_TOKEN: "Bearer 123456"
+  MCP_CLIENT_TEST_SSE_URL: "http://127.0.0.1:3021/sse"
+  MCP_CLIENT_TEST_SSE_AUTHORIZATION_TOKEN: "Bearer 123456"
+
+jobs:
+  unit-test:
+    name: ${{ matrix.platform }} / ${{ matrix.db }}
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows-2022, windows-11-arm]
+        db: [SQLite3, Postgres14]
+
+    steps:
+      # ── 1. Checkout dependency repos ──────────────────────────────────
+      - name: Checkout Kun
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.REPO_KUN }}
+          path: kun
+
+      - name: Checkout Xun
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.REPO_XUN }}
+          path: xun
+
+      - name: Checkout Application
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.REPO_APP }}
+          path: gou-dev-app
+
+      - name: Checkout V8Go
+        uses: actions/checkout@v4
+        with:
+          repository: yaoapp/v8go
+          lfs: true
+          path: v8go
+
+      # ── 2. Unzip libv8 ────────────────────────────────────────────────
+      - name: Unzip libv8
+        shell: bash
+        run: |
+          files=$(find ./v8go -name "libv8*.zip")
+          for file in $files; do
+            dir=$(dirname "$file")
+            echo "Extracting $file to directory $dir"
+            unzip -o -d "$dir" "$file"
+            rm -rf "$dir/__MACOSX"
+          done
+
+      # ── 3. Move deps to parent directory ──────────────────────────────
+      - name: Move dependencies
+        shell: bash
+        run: |
+          mv kun ../
+          mv xun ../
+          mv v8go ../
+          mv gou-dev-app ../
+
+      # ── 4. Checkout gou itself ────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 5. Move gou-dev-app into workspace ────────────────────────────
+      - name: Move Application
+        shell: bash
+        run: mv ../gou-dev-app .
+
+      # ── 6. Setup Go ───────────────────────────────────────────────────
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      # ── 7. Install LLVM (clang + lld) ─────────────────────────────────
+      - name: Install LLVM
+        run: choco install llvm -y
+
+      # ── 8. Install & Start Redis ──────────────────────────────────────
+      - name: Install Redis
+        run: choco install redis -y
+
+      - name: Start Redis
+        shell: powershell
+        run: |
+          redis-server --service-install
+          redis-server --service-start
+          Start-Sleep -Seconds 2
+          redis-cli ping
+
+      # ── 9. Setup MySQL 8.0 (x64: ankane action, ARM64: choco) ────────
+      - name: Setup MySQL (x64)
+        if: runner.arch == 'X64'
+        uses: ankane/setup-mysql@v1
+        with:
+          mysql-version: "8.0"
+          database: test
+
+      - name: Create MySQL user (x64)
+        if: runner.arch == 'X64'
+        run: |
+          mysql -u root -e "CREATE USER 'test'@'localhost' IDENTIFIED BY '123456';"
+          mysql -u root -e "GRANT ALL PRIVILEGES ON test.* TO 'test'@'localhost';"
+          mysql -u root -e "FLUSH PRIVILEGES;"
+
+      - name: Setup MySQL (ARM64)
+        if: runner.arch == 'ARM64'
+        shell: powershell
+        run: |
+          choco install mysql --version=8.0.36 -y
+          refreshenv
+          mysql -u root -e "CREATE DATABASE test;"
+          mysql -u root -e "CREATE USER 'test'@'localhost' IDENTIFIED BY '123456';"
+          mysql -u root -e "GRANT ALL PRIVILEGES ON test.* TO 'test'@'localhost';"
+          mysql -u root -e "FLUSH PRIVILEGES;"
+
+      # ── 10. Setup MongoDB 7.0 ─────────────────────────────────────────
+      - name: Setup MongoDB (x64)
+        if: runner.arch == 'X64'
+        uses: ankane/setup-mongodb@v1
+        with:
+          mongodb-version: "7.0"
+
+      - name: Create MongoDB user (x64)
+        if: runner.arch == 'X64'
+        run: mongosh admin --eval "db.createUser({user:'root',pwd:'123456',roles:['root']})"
+
+      - name: Setup MongoDB (ARM64)
+        if: runner.arch == 'ARM64'
+        shell: powershell
+        run: |
+          choco install mongodb -y
+          Start-Service MongoDB
+          Start-Sleep -Seconds 3
+          mongosh admin --eval "db.createUser({user:'root',pwd:'123456',roles:['root']})"
+
+      # ── 11. Install FFmpeg ─────────────────────────────────────────────
+      - name: Install FFmpeg
+        run: choco install ffmpeg -y
+
+      # ── 12. Install PDF tools ──────────────────────────────────────────
+      - name: Install PDF tools
+        run: choco install poppler mupdf -y
+
+      - name: Install ImageMagick (ARM64)
+        if: runner.arch == 'ARM64'
+        run: choco install imagemagick -y
+
+      # ── 13. Setup PostgreSQL (conditional) ─────────────────────────────
+      - name: Setup PostgreSQL (x64)
+        if: matrix.db == 'Postgres14' && runner.arch == 'X64'
+        uses: ankane/setup-postgres@v1
+        with:
+          postgres-version: "14"
+          database: gou
+          user: gou
+
+      - name: Set PostgreSQL password (x64)
+        if: matrix.db == 'Postgres14' && runner.arch == 'X64'
+        run: psql -U postgres -c "ALTER USER gou PASSWORD '123456';"
+
+      - name: Setup PostgreSQL (ARM64)
+        if: matrix.db == 'Postgres14' && runner.arch == 'ARM64'
+        shell: powershell
+        run: |
+          choco install postgresql14 -y --params '/Password:postgres'
+          refreshenv
+          $pgBin = "C:\Program Files\PostgreSQL\14\bin"
+          & "$pgBin\createuser" -U postgres gou
+          & "$pgBin\createdb" -U postgres -O gou gou
+          & "$pgBin\psql" -U postgres -c "ALTER USER gou PASSWORD '123456';"
+
+      - name: Set DB env (Postgres14)
+        if: matrix.db == 'Postgres14'
+        shell: bash
+        run: |
+          echo "GOU_TEST_DSN=postgres://gou:123456@127.0.0.1:5432/gou?sslmode=disable" >> $GITHUB_ENV
+          echo "GOU_TEST_DB_DRIVER=postgres" >> $GITHUB_ENV
+
+      # ── 14. Setup SQLite (conditional) ─────────────────────────────────
+      - name: Set DB env (SQLite3)
+        if: matrix.db == 'SQLite3'
+        shell: bash
+        run: |
+          echo "GOU_TEST_DSN=file:gou.db?cache=shared" >> $GITHUB_ENV
+          echo "GOU_TEST_DB_DRIVER=sqlite3" >> $GITHUB_ENV
+
+      # ── 15. Additional env vars ────────────────────────────────────────
+      - name: Setup ENV
+        shell: bash
+        run: |
+          echo "GOU_TEST_API_ROOT=$GITHUB_WORKSPACE/app/apis" >> $GITHUB_ENV
+          echo "GOU_TEST_FLW_ROOT=$GITHUB_WORKSPACE/app/flows" >> $GITHUB_ENV
+          echo "GOU_TEST_MOD_ROOT=$GITHUB_WORKSPACE/app/models" >> $GITHUB_ENV
+          echo "GOU_TEST_PLG_ROOT=$HOME/data/gou-unit/plugins" >> $GITHUB_ENV
+          echo "GOU_TEST_SCRIPT_ROOT=$GITHUB_WORKSPACE/app/scripts" >> $GITHUB_ENV
+          echo "GOU_TEST_QUERY_ROOT=$GITHUB_WORKSPACE/query/assets" >> $GITHUB_ENV
+          echo "GOU_TEST_PLG_LOG=$HOME/data/gou-unit/logs" >> $GITHUB_ENV
+          echo "GOU_TEST_APP_ROOT=$GITHUB_WORKSPACE/tests/app" >> $GITHUB_ENV
+          echo "YAO_PATH=$GITHUB_WORKSPACE/tests/yao" >> $GITHUB_ENV
+
+      # ── 16. Verify tools ───────────────────────────────────────────────
+      - name: Verify tools
+        shell: bash
+        run: |
+          echo "=== Go ===" && go version
+          echo "=== Clang ===" && clang --version
+          echo "=== FFmpeg ===" && ffmpeg -version 2>&1 | head -1
+          echo "=== Redis ===" && redis-cli ping
+          echo "=== MySQL ===" && mysql --version
+          echo "=== MongoDB ===" && mongosh --version
+          echo "=== pdftoppm ===" && pdftoppm -v 2>&1 || true
+          echo "=== mutool ===" && mutool -v 2>&1 || true
+
+      # ── 17. Go Test (Windows x64) ─────────────────────────────────────
+      - name: Go Test (Windows x64)
+        if: runner.arch == 'X64'
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+          CC: clang --target=x86_64-pc-windows-msvc -fuse-ld=lld
+          CXX: clang++ --target=x86_64-pc-windows-msvc -fuse-ld=lld -fno-exceptions
+        run: |
+          PKGS=$(go list ./... | grep -v -E 'plugin$|/plugin/|/graphrag')
+          go test -v -timeout 60m $PKGS
+
+      # ── 18. Go Test (Windows ARM64) ────────────────────────────────────
+      - name: Go Test (Windows ARM64)
+        if: runner.arch == 'ARM64'
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+          CC: python ${{ github.workspace }}/../v8go/deps/clang_arm64_cc.py
+          CXX: python ${{ github.workspace }}/../v8go/deps/clang_arm64_cxx.py
+        run: |
+          PKGS=$(go list ./... | grep -v -E 'plugin$|/plugin/|/graphrag')
+          go test -v -timeout 60m $PKGS
