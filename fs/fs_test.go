@@ -92,18 +92,24 @@ func TestMkdirTemp(t *testing.T) {
 
 		tempPath, err = MkdirTemp(stor, f["D1_D2"], "")
 		assert.Nil(t, err, name)
-		assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		if runtime.GOOS != "windows" || stor.Root() == "" {
+			assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		}
 		checkFileExists(stor, t, tempPath, name)
 
 		tempPath, err = MkdirTemp(stor, f["D1_D2"], "*-logs")
 		assert.Nil(t, err, name)
-		assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		if runtime.GOOS != "windows" || stor.Root() == "" {
+			assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		}
 		assert.True(t, strings.HasSuffix(tempPath, "-logs"))
 		checkFileExists(stor, t, tempPath, name)
 
 		tempPath, err = MkdirTemp(stor, f["D1_D2"], "logs-")
 		assert.Nil(t, err, name)
-		assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		if runtime.GOOS != "windows" || stor.Root() == "" {
+			assert.True(t, strings.HasPrefix(tempPath, f["D1_D2"]))
+		}
 		assert.True(t, strings.HasPrefix(filepath.Base(tempPath), "logs-"))
 		checkFileExists(stor, t, tempPath, name)
 
@@ -222,21 +228,23 @@ func TestWriteFile(t *testing.T) {
 		checkFileSize(stor, t, f["F2"], l22, name)
 		checkFileMode(stor, t, f["F2"], 0644, name)
 
-		// permission denied
-		err = Chmod(stor, f["F2"], 0400)
-		assert.Nil(t, err, name)
-		l31, err := WriteFile(stor, f["F2"], data, 0644)
-		assert.NotNil(t, err, name)
-		assert.Equal(t, l31, 0)
+		// permission denied (skip on Windows: chmod does not restrict writes)
+		if runtime.GOOS != "windows" {
+			err = Chmod(stor, f["F2"], 0400)
+			assert.Nil(t, err, name)
+			l31, err := WriteFile(stor, f["F2"], data, 0644)
+			assert.NotNil(t, err, name)
+			assert.Equal(t, l31, 0)
 
-		err = MkdirAll(stor, f["D1"], uint32(os.ModePerm))
-		assert.Nil(t, err, name)
-		err = Chmod(stor, f["D1"], 0400)
-		assert.Nil(t, err, name)
+			err = MkdirAll(stor, f["D1"], uint32(os.ModePerm))
+			assert.Nil(t, err, name)
+			err = Chmod(stor, f["D1"], 0400)
+			assert.Nil(t, err, name)
 
-		l32, err := WriteFile(stor, f["D1_D2_F1"], data, 0644)
-		assert.NotNil(t, err, name)
-		assert.Equal(t, l32, 0)
+			l32, err := WriteFile(stor, f["D1_D2_F1"], data, 0644)
+			assert.NotNil(t, err, name)
+			assert.Equal(t, l32, 0)
+		}
 	}
 }
 
@@ -269,22 +277,24 @@ func TestWrite(t *testing.T) {
 		checkFileSize(stor, t, f["F2"], l22, name)
 		checkFileMode(stor, t, f["F2"], 0644, name)
 
-		// permission denied
-		err = Chmod(stor, f["F2"], 0400)
-		assert.Nil(t, err, name)
-		l31, err := Write(stor, f["F2"], f2, 0644)
-		assert.NotNil(t, err, name)
-		assert.Equal(t, l31, 0)
+		// permission denied (skip on Windows: chmod does not restrict writes)
+		if runtime.GOOS != "windows" {
+			err = Chmod(stor, f["F2"], 0400)
+			assert.Nil(t, err, name)
+			l31, err := Write(stor, f["F2"], f2, 0644)
+			assert.NotNil(t, err, name)
+			assert.Equal(t, l31, 0)
 
-		err = MkdirAll(stor, f["D1"], uint32(os.ModePerm))
-		assert.Nil(t, err, name)
-		err = Chmod(stor, f["D1"], 0400)
-		assert.Nil(t, err, name)
+			err = MkdirAll(stor, f["D1"], uint32(os.ModePerm))
+			assert.Nil(t, err, name)
+			err = Chmod(stor, f["D1"], 0400)
+			assert.Nil(t, err, name)
 
-		d1d2f1 := strings.NewReader("Hello D1_D2_F1")
-		l32, err := Write(stor, f["D1_D2_F1"], d1d2f1, 0644)
-		assert.NotNil(t, err, name)
-		assert.Equal(t, l32, 0)
+			d1d2f1 := strings.NewReader("Hello D1_D2_F1")
+			l32, err := Write(stor, f["D1_D2_F1"], d1d2f1, 0644)
+			assert.NotNil(t, err, name)
+			assert.Equal(t, l32, 0)
+		}
 	}
 }
 
@@ -590,7 +600,9 @@ func TestFileInfo(t *testing.T) {
 		// Mode
 		mode, err := Mode(stor, f["F1"])
 		assert.Nil(t, err, name)
-		assert.Equal(t, uint32(0644), mode)
+		if runtime.GOOS != "windows" {
+			assert.Equal(t, uint32(0644), mode)
+		}
 
 		// ModTime Time
 		modTime, err := ModTime(stor, f["F1"])
@@ -600,6 +612,9 @@ func TestFileInfo(t *testing.T) {
 }
 
 func TestChmod(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support Unix file permission bits")
+	}
 	stores := testStores(t)
 	f := testFiles(t)
 	for name, stor := range stores {

@@ -286,7 +286,7 @@ func removeCommentsAndKeepLines(code []byte) []byte {
 func getEntryPoints(file string, tsCode string, loaded map[string]bool) (string, []entry, error) {
 	entryPoints := []entry{}
 	root := application.App.Root()
-	absFile := utils.AbsJoinPath(root, file)
+	absFile := utils.SlashPath(utils.AbsJoinPath(root, file))
 
 	tsCode, imports, err := replaceImportCode(file, []byte(tsCode))
 	if err != nil {
@@ -320,7 +320,7 @@ func loadModule(file string, tsCode string) error {
 
 	errors := []string{}
 	root := application.App.Root()
-	absFile := utils.AbsJoinPath(root, file)
+	absFile := utils.SlashPath(utils.AbsJoinPath(root, file))
 
 	// Check if the module loaded
 	if _, has := Modules[absFile]; has {
@@ -388,12 +388,12 @@ func loadModule(file string, tsCode string) error {
 		for _, out := range result.OutputFiles {
 			if strings.HasSuffix(out.Path, ".js.map") {
 				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js.map", ".ts"), outdir)
-				key = filepath.Join(dir, key)
+				key = utils.SlashPath(filepath.Join(dir, key))
 				ModuleSourceMaps[key] = out.Contents
 
 			} else if strings.HasSuffix(out.Path, ".js") {
 				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js", ".ts"), outdir)
-				key = filepath.Join(dir, key)
+				key = utils.SlashPath(filepath.Join(dir, key))
 				Modules[key] = Module{
 					File:       file,
 					GlobalName: globalName,
@@ -460,7 +460,7 @@ func replaceImportCode(file string, source []byte) (string, []Import, error) {
 				return m
 			}
 
-			absImportPath := utils.AbsJoinPath(application.App.Root(), relImportPath)
+			absImportPath := utils.SlashPath(utils.AbsJoinPath(application.App.Root(), relImportPath))
 
 			name := strings.TrimSpace(importClause)
 			if strings.Index(importClause, "*") >= 0 {

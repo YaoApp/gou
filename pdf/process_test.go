@@ -32,6 +32,15 @@ func ensureProcessTestData(t *testing.T) {
 	}
 }
 
+// ensureConvertToolAvailable checks if the default convert tool is available
+func ensureConvertToolAvailable(t *testing.T) {
+	t.Helper()
+	pdf := getPDF()
+	if !pdf.cmd.IsAvailable(pdf.convertTool) {
+		t.Skipf("Default conversion tool %s is not available", pdf.convertTool)
+	}
+}
+
 // ==== Process Registration Tests ====
 
 func TestProcessRegistration(t *testing.T) {
@@ -118,6 +127,7 @@ func TestProcessInfo_NonExistentFile(t *testing.T) {
 
 func TestProcessConvert(t *testing.T) {
 	ensureProcessTestData(t)
+	ensureConvertToolAvailable(t)
 
 	testFile := getProcessTestPDFFile()
 	outputDir := filepath.Join(os.TempDir(), "gou_pdf_process_test_convert")
@@ -193,6 +203,7 @@ func TestProcessConvert(t *testing.T) {
 
 func TestProcessConvert_AutoTempDir(t *testing.T) {
 	ensureProcessTestData(t)
+	ensureConvertToolAvailable(t)
 
 	testFile := getProcessTestPDFFile()
 
@@ -374,6 +385,7 @@ func TestProcessSplit_NonExistentFile(t *testing.T) {
 
 func TestProcessPDF_Comprehensive(t *testing.T) {
 	ensureProcessTestData(t)
+	ensureConvertToolAvailable(t)
 
 	testFile := getProcessTestPDFFile()
 

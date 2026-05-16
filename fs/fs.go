@@ -408,7 +408,7 @@ func Zip(xfs FileSystem, name string, target string) error {
 			return err
 		}
 
-		zipPath := strings.TrimPrefix(path, absPath)
+		zipPath := utils.SlashPath(strings.TrimPrefix(path, absPath))
 		if zipPath == "" {
 			return nil
 		}
@@ -494,7 +494,7 @@ func Unzip(xfs FileSystem, name string, target string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		files = append(files, filepath.Join(target, file.Name))
+		files = append(files, utils.SlashPath(filepath.Join(target, file.Name)))
 	}
 
 	return files, nil

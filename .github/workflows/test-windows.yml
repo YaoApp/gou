@@ -199,11 +199,18 @@ jobs:
 
       # ── 12. Install PDF tools ──────────────────────────────────────────
       - name: Install PDF tools
-        run: choco install poppler mupdf -y
+        run: choco install poppler mupdf ghostscript imagemagick -y
 
-      - name: Install ImageMagick (ARM64)
-        if: runner.arch == 'ARM64'
-        run: choco install imagemagick -y
+      - name: Fix poppler PATH (choco shim missing)
+        shell: bash
+        run: |
+          POPPLER_DIR=$(find /c/ProgramData/chocolatey/lib/poppler -name "pdftoppm.exe" -exec dirname {} \; 2>/dev/null | head -1)
+          if [ -n "$POPPLER_DIR" ]; then
+            echo "Found poppler at: $POPPLER_DIR"
+            echo "$POPPLER_DIR" >> $GITHUB_PATH
+          else
+            echo "::warning::pdftoppm not found in poppler package"
+          fi
 
       # ── 13. Setup PostgreSQL (conditional) ─────────────────────────────
       - name: Setup PostgreSQL (x64)

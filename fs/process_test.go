@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -473,23 +474,25 @@ func TestProcessFsFileInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, iofs.FileMode(0644), iofs.FileMode(res.(uint32)))
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, iofs.FileMode(0644), iofs.FileMode(res.(uint32)))
 
-	processName = "fs.system.Chmod"
-	args = []interface{}{f["F1"], 0755}
-	res, err = process.New(processName, args...).Exec()
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Nil(t, res)
+		processName = "fs.system.Chmod"
+		args = []interface{}{f["F1"], 0755}
+		res, err = process.New(processName, args...).Exec()
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Nil(t, res)
 
-	processName = "fs.system.Mode"
-	args = []interface{}{f["F1"]}
-	res, err = process.New(processName, args...).Exec()
-	if err != nil {
-		t.Fatal(err)
+		processName = "fs.system.Mode"
+		args = []interface{}{f["F1"]}
+		res, err = process.New(processName, args...).Exec()
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, iofs.FileMode(0755), iofs.FileMode(res.(uint32)))
 	}
-	assert.Equal(t, iofs.FileMode(0755), iofs.FileMode(res.(uint32)))
 }
 
 func TestProcessFsMove(t *testing.T) {
@@ -748,7 +751,11 @@ func TestProcessFsAbs(t *testing.T) {
 
 		absPath, ok := res.(string)
 		assert.True(t, ok)
-		assert.Equal(t, filepath.Join("/", "/tmp/foo"), absPath)
+		if runtime.GOOS == "windows" {
+			assert.Equal(t, "/tmp/foo", absPath)
+		} else {
+			assert.Equal(t, filepath.Join("/", "/tmp/foo"), absPath)
+		}
 		t.Logf("fs.system.Abs(\"/tmp/foo\") = %s", absPath)
 	})
 

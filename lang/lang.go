@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/yaoapp/gou/application"
+	"github.com/yaoapp/gou/utils"
 )
 
 var regVar, _ = regexp.Compile(`([\\]*)\$L\(([^\)]+)\)`)
@@ -55,7 +56,7 @@ func Load(root string) error {
 				return nil
 			}
 
-			dict, err := Open(filepath.Join(root, filename))
+			dict, err := Open(utils.SlashPath(filepath.Join(root, filename)))
 			if err != nil {
 				return err
 			}

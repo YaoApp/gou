@@ -135,7 +135,7 @@ func (d *WindowsDriver) ConvertWithImageMagick(ctx context.Context, filePath str
 		return nil, fmt.Errorf("ImageMagick tool not found")
 	}
 
-	args := []string{"convert", "-density", fmt.Sprintf("%d", config.DPI)}
+	args := []string{"-density", fmt.Sprintf("%d", config.DPI)}
 
 	startPage, endPage := d.parsePageRange(config.PageRange, pageCount)
 	inputFile := filePath
