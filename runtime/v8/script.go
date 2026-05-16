@@ -206,7 +206,7 @@ func CLearModules() {
 
 // TransformTS transform the typescript
 func TransformTS(file string, source []byte) ([]byte, error) {
-
+	file = utils.SlashPath(file)
 	source = utils.BytesLF(source)
 	tsCode, err := tsImports(file, removeCommentsAndKeepLines(source))
 	if err != nil {

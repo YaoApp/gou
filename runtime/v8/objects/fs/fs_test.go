@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -498,7 +500,7 @@ func TestFSObjectExistRemove(t *testing.T) {
 	assert.Equal(t, false, retval["IsFileFalse"])
 	assert.Nil(t, retval["Remove"])
 	assert.Nil(t, retval["RemoveNotExists"])
-	assert.Contains(t, retval["RemoveError"], "directory not empty")
+	assert.True(t, strings.Contains(strings.ToLower(retval["RemoveError"].(string)), "not empty"), "expected 'not empty' in error: "+retval["RemoveError"].(string))
 	assert.Nil(t, retval["RemoveAll"])
 	assert.Nil(t, retval["RemoveAllNotExists"])
 }
@@ -553,12 +555,17 @@ func TestFSObjectFileInfo(t *testing.T) {
 
 	ret := res.(map[string]interface{})
 	assert.Equal(t, "f1.file", ret["BaseName"])
-	assert.Equal(t, f["root"], ret["DirName"])
+	assert.Equal(t, f["root"], filepath.ToSlash(ret["DirName"].(string)))
 	assert.Equal(t, "file", ret["ExtName"])
 	assert.Equal(t, "text/plain; charset=utf-8", ret["MimeType"])
 	assert.Equal(t, len(data), int(ret["Size"].(float64)))
-	assert.Equal(t, iofs.FileMode(0644), iofs.FileMode(int(ret["Mode"].(float64))))
-	assert.Equal(t, iofs.FileMode(0755), iofs.FileMode(int(ret["ModeAfter"].(float64))))
+	if runtime.GOOS == "windows" {
+		assert.Equal(t, iofs.FileMode(0666), iofs.FileMode(int(ret["Mode"].(float64))))
+		assert.Equal(t, iofs.FileMode(0666), iofs.FileMode(int(ret["ModeAfter"].(float64))))
+	} else {
+		assert.Equal(t, iofs.FileMode(0644), iofs.FileMode(int(ret["Mode"].(float64))))
+		assert.Equal(t, iofs.FileMode(0755), iofs.FileMode(int(ret["ModeAfter"].(float64))))
+	}
 	assert.Equal(t, true, int(time.Now().Unix()) >= int(ret["ModTime"].(float64)))
 	assert.Nil(t, ret["Chmod"])
 
