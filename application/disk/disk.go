@@ -118,7 +118,7 @@ func (disk *Disk) Walk(root string, handler func(root, file string, isdir bool) 
 		}
 
 		if !isdir {
-			name = filepath.Join(root, name)
+			name = utils.SlashPath(filepath.Join(root, name))
 		}
 
 		err = handler(root, name, isdir)

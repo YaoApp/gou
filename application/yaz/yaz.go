@@ -129,7 +129,7 @@ func (yaz *Yaz) Walk(root string, handler func(root, filename string, isdir bool
 		}
 
 		if !isdir {
-			name = filepath.Join(root, name)
+			name = utils.SlashPath(filepath.Join(root, name))
 		}
 
 		err = handler(root, name, isdir)

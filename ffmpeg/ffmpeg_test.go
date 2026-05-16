@@ -174,159 +174,78 @@ func TestAllPlatforms_Implementation(t *testing.T) {
 // ==== Windows Implementation Tests ====
 
 func TestWindowsImplementation(t *testing.T) {
-	windows := NewWindowsFFmpeg()
+	w := NewWindowsFFmpeg()
 
-	// Test Init
 	config := Config{
 		MaxProcesses: 1,
 		MaxThreads:   2,
 	}
 
-	err := windows.Init(config)
+	err := w.Init(config)
+	if err != nil {
+		t.Skipf("FFmpeg not available, skipping functional tests: %v", err)
+	}
+
+	info, err := w.GetSystemInfo()
+	if err != nil {
+		t.Fatalf("GetSystemInfo failed: %v", err)
+	}
+	if info.OS != "windows" {
+		t.Errorf("Expected OS 'windows', got '%s'", info.OS)
+	}
+
+	cfg := w.GetConfig()
+	if cfg.MaxProcesses != 1 {
+		t.Errorf("Expected MaxProcesses 1, got %d", cfg.MaxProcesses)
+	}
+	if cfg.MaxThreads != 2 {
+		t.Errorf("Expected MaxThreads 2, got %d", cfg.MaxThreads)
+	}
+
+	jobID := w.AddJob(BatchJob{
+		Type:    JobTypeConvert,
+		Options: ConvertOptions{Input: "in.mp3", Output: "out.wav", Format: "wav"},
+	})
+	if jobID == "" {
+		t.Fatal("AddJob returned empty job ID")
+	}
+
+	job, err := w.GetJob(jobID)
+	if err != nil {
+		t.Fatalf("GetJob failed: %v", err)
+	}
+	if job.Status != JobStatusPending {
+		t.Errorf("Expected job status '%s', got '%s'", JobStatusPending, job.Status)
+	}
+
+	err = w.CancelJob(jobID)
+	if err != nil {
+		t.Fatalf("CancelJob failed: %v", err)
+	}
+
+	jobs := w.ListJobs()
+	if len(jobs) == 0 {
+		t.Fatal("ListJobs returned empty list")
+	}
+
+	_, err = w.GetJob("nonexistent")
 	if err == nil {
-		t.Fatal("Expected error for Windows implementation, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
+		t.Fatal("Expected error for non-existent job, got nil")
 	}
 
-	// Test GetSystemInfo
-	_, err = windows.GetSystemInfo()
-	if err == nil {
-		t.Fatal("Expected error for Windows GetSystemInfo, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
-	}
-
-	// Test GetMediaInfo
-	ctx := context.Background()
-	_, err = windows.GetMediaInfo(ctx, "test.mp4")
-	if err == nil {
-		t.Fatal("Expected error for Windows GetMediaInfo, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
-	}
-
-	// Test Convert
-	err = windows.Convert(ctx, ConvertOptions{})
-	if err == nil {
-		t.Fatal("Expected error for Windows Convert, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
-	}
-
-	// Test Extract
-	err = windows.Extract(ctx, ExtractOptions{})
-	if err == nil {
-		t.Fatal("Expected error for Windows Extract, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
-	}
-
-	// Test ConvertBatch
-	err = windows.ConvertBatch(ctx, []ConvertOptions{})
-	if err == nil {
-		t.Fatal("Expected error for Windows ConvertBatch, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
-	}
-
-	// Test ExtractBatch
-	err = windows.ExtractBatch(ctx, []ExtractOptions{})
-	if err == nil {
-		t.Fatal("Expected error for Windows ExtractBatch, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
-	}
-
-	// Test AddJob
-	jobID := windows.AddJob(BatchJob{})
-	if jobID != "" {
-		t.Fatalf("Expected empty job ID for Windows AddJob, got: %s", jobID)
-	}
-
-	// Test GetJob
-	_, err = windows.GetJob("test")
-	if err == nil {
-		t.Fatal("Expected error for Windows GetJob, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
-	}
-
-	// Test CancelJob
-	err = windows.CancelJob("test")
-	if err == nil {
-		t.Fatal("Expected error for Windows CancelJob, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
-	}
-
-	// Test ListJobs
-	jobs := windows.ListJobs()
-	if len(jobs) != 0 {
-		t.Fatalf("Expected empty job list for Windows ListJobs, got: %d jobs", len(jobs))
-	}
-
-	// Test GetActiveProcesses
-	activeProcesses := windows.GetActiveProcesses()
+	activeProcesses := w.GetActiveProcesses()
 	if activeProcesses != 0 {
-		t.Fatalf("Expected 0 active processes for Windows GetActiveProcesses, got: %d", activeProcesses)
+		t.Errorf("Expected 0 active processes, got %d", activeProcesses)
 	}
 
-	// Test KillAllProcesses
-	err = windows.KillAllProcesses()
-	if err == nil {
-		t.Fatal("Expected error for Windows KillAllProcesses, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
+	err = w.KillAllProcesses()
+	if err != nil {
+		t.Fatalf("KillAllProcesses failed: %v", err)
 	}
 
-	// Test Close
-	err = windows.Close()
-	if err == nil {
-		t.Fatal("Expected error for Windows Close, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
-	}
-
-	// Test GetConfig
-	config = windows.GetConfig()
-	if config.FFmpegPath != "" {
-		t.Fatalf("Expected empty FFmpegPath for Windows implementation, got: %s", config.FFmpegPath)
-	}
-	if config.FFprobePath != "" {
-		t.Fatalf("Expected empty FFprobePath for Windows implementation, got: %s", config.FFprobePath)
-	}
-	if config.MaxProcesses != 0 {
-		t.Fatalf("Expected 0 MaxProcesses for Windows implementation, got: %d", config.MaxProcesses)
-	}
-
-	// Test ChunkAudio
-	_, err = windows.ChunkAudio(ctx, ChunkOptions{})
-	if err == nil {
-		t.Fatal("Expected error for Windows ChunkAudio, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
-	}
-
-	// Test ChunkVideo
-	_, err = windows.ChunkVideo(ctx, ChunkOptions{})
-	if err == nil {
-		t.Fatal("Expected error for Windows ChunkVideo, got nil")
-	}
-	if !strings.Contains(err.Error(), "Windows implementation not yet supported") {
-		t.Fatalf("Expected 'Windows implementation not yet supported' error, got: %v", err)
+	err = w.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
 	}
 }
 

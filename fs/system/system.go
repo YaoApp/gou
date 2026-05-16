@@ -842,7 +842,7 @@ func (f *File) Walk(root string, handler func(root, file string, isdir bool) err
 		}
 
 		if !isdir {
-			name = filepath.Join(root, name)
+			name = utils.SlashPath(filepath.Join(root, name))
 		}
 
 		err = handler(root, name, isdir)
@@ -1071,7 +1071,7 @@ func (f *File) isTemp(path string) bool {
 // absPath returns an absolute representation of path
 func (f *File) absPath(path string) (string, error) {
 	if f.root != "" {
-		if !f.isTemp(path) {
+		if !f.isTemp(path) && filepath.VolumeName(path) == "" {
 			path = utils.AbsJoinPath(f.root, path)
 		}
 	}
