@@ -167,14 +167,10 @@ jobs:
 
       - name: Setup MySQL (ARM64)
         if: runner.arch == 'ARM64'
-        shell: powershell
+        continue-on-error: true
+        shell: bash
         run: |
-          choco install mysql --version=8.0.36 -y
-          refreshenv
-          mysql -u root -e "CREATE DATABASE test;"
-          mysql -u root -e "CREATE USER 'test'@'localhost' IDENTIFIED BY '123456';"
-          mysql -u root -e "GRANT ALL PRIVILEGES ON test.* TO 'test'@'localhost';"
-          mysql -u root -e "FLUSH PRIVILEGES;"
+          echo "::warning::MySQL does not provide Windows ARM64 builds - MySQL tests will fail on ARM64"
 
       # ── 10. Setup MongoDB 7.0 ─────────────────────────────────────────
       - name: Setup MongoDB (x64)
@@ -189,12 +185,10 @@ jobs:
 
       - name: Setup MongoDB (ARM64)
         if: runner.arch == 'ARM64'
-        shell: powershell
+        continue-on-error: true
+        shell: bash
         run: |
-          choco install mongodb -y
-          Start-Service MongoDB
-          Start-Sleep -Seconds 3
-          mongosh admin --eval "db.createUser({user:'root',pwd:'123456',roles:['root']})"
+          echo "::warning::MongoDB does not provide Windows ARM64 builds - MongoDB tests will fail on ARM64"
 
       # ── 11. Install FFmpeg ─────────────────────────────────────────────
       - name: Install FFmpeg
@@ -223,14 +217,10 @@ jobs:
 
       - name: Setup PostgreSQL (ARM64)
         if: matrix.db == 'Postgres14' && runner.arch == 'ARM64'
-        shell: powershell
+        continue-on-error: true
+        shell: bash
         run: |
-          choco install postgresql14 -y --params '/Password:postgres'
-          refreshenv
-          $pgBin = "C:\Program Files\PostgreSQL\14\bin"
-          & "$pgBin\createuser" -U postgres gou
-          & "$pgBin\createdb" -U postgres -O gou gou
-          & "$pgBin\psql" -U postgres -c "ALTER USER gou PASSWORD '123456';"
+          echo "::warning::PostgreSQL may not be available for Windows ARM64 - Postgres tests will fail on ARM64"
 
       - name: Set DB env (Postgres14)
         if: matrix.db == 'Postgres14'
@@ -267,12 +257,12 @@ jobs:
         run: |
           echo "=== Go ===" && go version
           echo "=== Clang ===" && clang --version
-          echo "=== FFmpeg ===" && ffmpeg -version 2>&1 | head -1
-          echo "=== Redis ===" && redis-cli ping
-          echo "=== MySQL ===" && mysql --version
-          echo "=== MongoDB ===" && mongosh --version
-          echo "=== pdftoppm ===" && pdftoppm -v 2>&1 || true
-          echo "=== mutool ===" && mutool -v 2>&1 || true
+          echo "=== FFmpeg ===" && (ffmpeg -version 2>&1 | head -1) || echo "FFmpeg not available"
+          echo "=== Redis ===" && redis-cli ping || echo "Redis not available"
+          echo "=== MySQL ===" && (mysql --version 2>&1) || echo "MySQL not available"
+          echo "=== MongoDB ===" && (mongosh --version 2>&1) || echo "MongoDB not available"
+          echo "=== pdftoppm ===" && (pdftoppm -v 2>&1) || echo "pdftoppm not available"
+          echo "=== mutool ===" && (mutool -v 2>&1) || echo "mutool not available"
 
       # ── 17. Go Test (Windows x64) ─────────────────────────────────────
       - name: Go Test (Windows x64)
