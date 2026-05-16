@@ -238,16 +238,8 @@ func TransformTS(file string, source []byte) ([]byte, error) {
 	if runtimeOption.Import {
 		importCodes := []string{}
 		if imports, has := ImportMap[file]; has {
-			fmt.Printf("[DEBUG-TransformTS] file=%s imports=%d\n", file, len(imports))
 			for _, imp := range imports {
 				module, has := Modules[imp.AbsPath]
-				fmt.Printf("[DEBUG-TransformTS] imp.AbsPath=%q found=%v\n", imp.AbsPath, has)
-				if !has {
-					fmt.Printf("[DEBUG-TransformTS] All Modules keys:\n")
-					for k := range Modules {
-						fmt.Printf("[DEBUG-TransformTS]   key=%q\n", k)
-					}
-				}
 				if has {
 					importCodes = append(importCodes, fmt.Sprintf("%s;const %s = %s;", module.Source, imp.Name, module.GlobalName))
 				}
@@ -397,7 +389,6 @@ func loadModule(file string, tsCode string) error {
 	}
 
 	outdirMarker := "/outdir/"
-	fmt.Printf("[DEBUG-loadModule] file=%s root=%s dir=%s outdir=%s OutputFiles=%d\n", file, root, dir, outdir, len(result.OutputFiles))
 	if len(result.OutputFiles) > 1 {
 		for _, out := range result.OutputFiles {
 			outPath := utils.SlashPath(out.Path)
@@ -405,16 +396,13 @@ func loadModule(file string, tsCode string) error {
 			if idx := strings.Index(outPath, outdirMarker); idx >= 0 {
 				relPath = outPath[idx+len(outdirMarker):]
 			}
-			fmt.Printf("[DEBUG-loadModule] out.Path=%q outPath=%q relPath=%q\n", out.Path, outPath, relPath)
 
 			if strings.HasSuffix(outPath, ".js.map") {
 				key := utils.SlashPath(filepath.Join(dir, strings.ReplaceAll(relPath, ".js.map", ".ts")))
-				fmt.Printf("[DEBUG-loadModule] SourceMap key=%s\n", key)
 				ModuleSourceMaps[key] = out.Contents
 
 			} else if strings.HasSuffix(outPath, ".js") {
 				key := utils.SlashPath(filepath.Join(dir, strings.ReplaceAll(relPath, ".js", ".ts")))
-				fmt.Printf("[DEBUG-loadModule] Modules key=%s source_len=%d\n", key, len(out.Contents))
 				Modules[key] = Module{
 					File:       file,
 					GlobalName: globalName,
