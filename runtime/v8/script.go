@@ -390,13 +390,14 @@ func loadModule(file string, tsCode string) error {
 
 	if len(result.OutputFiles) > 1 {
 		for _, out := range result.OutputFiles {
-			if strings.HasSuffix(out.Path, ".js.map") {
-				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js.map", ".ts"), outdir)
+			outPath := utils.SlashPath(out.Path)
+			if strings.HasSuffix(outPath, ".js.map") {
+				key := strings.TrimPrefix(strings.ReplaceAll(outPath, ".js.map", ".ts"), outdir)
 				key = utils.SlashPath(filepath.Join(dir, key))
 				ModuleSourceMaps[key] = out.Contents
 
-			} else if strings.HasSuffix(out.Path, ".js") {
-				key := strings.TrimPrefix(strings.ReplaceAll(out.Path, ".js", ".ts"), outdir)
+			} else if strings.HasSuffix(outPath, ".js") {
+				key := strings.TrimPrefix(strings.ReplaceAll(outPath, ".js", ".ts"), outdir)
 				key = utils.SlashPath(filepath.Join(dir, key))
 				Modules[key] = Module{
 					File:       file,
