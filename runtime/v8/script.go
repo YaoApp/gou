@@ -81,6 +81,7 @@ func (script *Script) Open(source []byte) error {
 
 // MakeScript make a script from source
 func MakeScript(source []byte, file string, timeout time.Duration, isroot ...bool) (*Script, error) {
+	file = utils.SlashPath(file)
 	syncLock.Lock()
 	defer syncLock.Unlock()
 	script := NewScript(file, file, timeout)
@@ -168,6 +169,7 @@ func Exists(id string) bool {
 
 // Load load the script
 func Load(file string, id string) (*Script, error) {
+	file = utils.SlashPath(file)
 	source, err := application.App.Read(file)
 	if err != nil {
 		return nil, err
@@ -182,6 +184,7 @@ func Load(file string, id string) (*Script, error) {
 
 // LoadRoot load the script with root privileges
 func LoadRoot(file string, id string) (*Script, error) {
+	file = utils.SlashPath(file)
 	source, err := application.App.Read(file)
 	if err != nil {
 		return nil, err
@@ -304,6 +307,7 @@ func getEntryPoints(file string, tsCode string, loaded map[string]bool) (string,
 		if err != nil {
 			return "", nil, err
 		}
+		source = utils.BytesLF(source)
 
 		_, subEntryPoints, err := getEntryPoints(imp.Path, string(source), loaded)
 		if err != nil {
@@ -339,11 +343,11 @@ func loadModule(file string, tsCode string) error {
 	codes := map[string]string{}
 	for _, entry := range entryPoints {
 		files = append(files, entry.absfile)
-		codes[entry.absfile] = entry.source
+		codes[entry.absfile] = utils.StringLF(entry.source)
 	}
 
 	paths := strings.Split(file, "/")
-	dir := filepath.Join(root, paths[0]) // <app_root>/scripts, <app_root>/services, etc..
+	dir := utils.SlashPath(filepath.Join(root, paths[0])) // <app_root>/scripts, <app_root>/services, etc..
 	outdir := "/outdir"
 
 	result := api.Build(api.BuildOptions{
@@ -363,7 +367,7 @@ func loadModule(file string, tsCode string) error {
 				Name: "custom-import-plugin",
 				Setup: func(build api.PluginBuild) {
 					build.OnLoad(api.OnLoadOptions{Filter: `.*\.ts$`}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
-						contents := codes[args.Path]
+						contents := codes[utils.SlashPath(args.Path)]
 						return api.OnLoadResult{
 							Contents: &contents,
 							Loader:   api.LoaderTS,

@@ -1056,12 +1056,18 @@ func checkFileMode(stor FileSystem, t assert.TestingT, path string, mode uint32,
 func clear(stor FileSystem, t *testing.T) {
 
 	root := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")
-	err := os.RemoveAll(root)
-	if err != nil && !os.IsNotExist(err) {
-		t.Fatal(err)
+	for i := 0; i < 3; i++ {
+		err := os.RemoveAll(root)
+		if err == nil || os.IsNotExist(err) {
+			break
+		}
+		if i == 2 {
+			t.Fatal(err)
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 
-	err = MkdirAll(stor, root, uint32(os.ModePerm))
+	err := MkdirAll(stor, root, uint32(os.ModePerm))
 	if err != nil {
 		t.Fatal(err)
 	}

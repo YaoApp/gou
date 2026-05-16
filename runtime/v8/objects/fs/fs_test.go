@@ -791,8 +791,8 @@ func TestFSObjectZip(t *testing.T) {
 	ctx := v8go.NewContext(iso, global)
 	defer ctx.Close()
 
-	zipfile := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test.zip")
-	unzipdir := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test")
+	zipfile := filepath.ToSlash(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test.zip"))
+	unzipdir := filepath.ToSlash(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "test"))
 
 	v, err := ctx.RunScript(fmt.Sprintf(`
 	function Zip() {
@@ -1019,21 +1019,21 @@ func testFsData(t *testing.T) []byte {
 
 func testFsFiles(t *testing.T) map[string]string {
 
-	root := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")
+	root := filepath.ToSlash(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data"))
 	return map[string]string{
 		"root":     root,
-		"F1":       filepath.Join(root, "f1.file"),
-		"F2":       filepath.Join(root, "f2.file"),
-		"F3":       filepath.Join(root, "f3.js"),
-		"D1_F1":    filepath.Join(root, "d1", "f1.file"),
-		"D1_F2":    filepath.Join(root, "d1", "f2.file"),
-		"D2_F1":    filepath.Join(root, "d2", "f1.file"),
-		"D2_F2":    filepath.Join(root, "d2", "f2.file"),
-		"D1_D2_F1": filepath.Join(root, "d1", "d2", "f1.file"),
-		"D1_D2_F2": filepath.Join(root, "d1", "d2", "f2.file"),
-		"D1":       filepath.Join(root, "d1"),
-		"D2":       filepath.Join(root, "d2"),
-		"D1_D2":    filepath.Join(root, "d1", "d2"),
+		"F1":       root + "/f1.file",
+		"F2":       root + "/f2.file",
+		"F3":       root + "/f3.js",
+		"D1_F1":    root + "/d1/f1.file",
+		"D1_F2":    root + "/d1/f2.file",
+		"D2_F1":    root + "/d2/f1.file",
+		"D2_F2":    root + "/d2/f2.file",
+		"D1_D2_F1": root + "/d1/d2/f1.file",
+		"D1_D2_F2": root + "/d1/d2/f2.file",
+		"D1":       root + "/d1",
+		"D2":       root + "/d2",
+		"D1_D2":    root + "/d1/d2",
 	}
 
 }
@@ -1044,7 +1044,7 @@ func testFsClear(t *testing.T) {
 	fs.RootRegister("dsl", system.New())
 
 	stor := fs.FileSystems["system"]
-	root := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")
+	root := filepath.ToSlash(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data"))
 	err := os.RemoveAll(root)
 	if err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
