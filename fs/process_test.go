@@ -2,17 +2,20 @@ package fs
 
 import (
 	"fmt"
+	"io"
 	iofs "io/fs"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/fs/system"
 	"github.com/yaoapp/gou/process"
+	"github.com/yaoapp/gou/types"
 )
 
 func TestProcessFsReadFile(t *testing.T) {
@@ -803,6 +806,265 @@ func TestProcessFsAbs(t *testing.T) {
 		assert.Equal(t, expected, absPath)
 		t.Logf("fs.dsl.Abs(\"/models/user.yao\") = %s", absPath)
 	})
+}
+
+func TestProcessFsIsLink(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(FileSystems["system"], t)
+	testFsMakeF1(t)
+
+	res, err := process.New("fs.system.IsLink", f["F1"]).Exec()
+	assert.Nil(t, err)
+	assert.Equal(t, false, res)
+
+	absF1 := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "f1.file")
+	absLink := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "f1.file.link")
+	err = os.Symlink(absF1, absLink)
+	if err != nil {
+		t.Skipf("Cannot create symlink (need privileges on Windows): %v", err)
+	}
+	defer os.Remove(absLink)
+
+	linkPath := f["F1"] + ".link"
+	res, err = process.New("fs.system.IsLink", linkPath).Exec()
+	assert.Nil(t, err)
+	assert.Equal(t, true, res)
+}
+
+func TestProcessFsUpload(t *testing.T) {
+	appRoot := os.Getenv("GOU_TEST_APP_ROOT")
+	if appRoot == "" {
+		t.Skip("GOU_TEST_APP_ROOT not set")
+	}
+	dataRoot := filepath.Join(appRoot, "data")
+	Register("system-upload", system.New(dataRoot))
+	testFsClear(FileSystems["system"], t)
+
+	tmpFile := filepath.Join(dataRoot, "upload_tmp.txt")
+	err := os.WriteFile(tmpFile, []byte("hello upload"), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	uf := types.UploadFile{
+		Name:     "test.txt",
+		TempFile: "upload_tmp.txt",
+	}
+
+	res, err := process.New("fs.system-upload.Upload", uf).Exec()
+	assert.Nil(t, err)
+	filename, ok := res.(string)
+	assert.True(t, ok)
+	assert.NotEmpty(t, filename)
+	assert.True(t, strings.HasSuffix(filename, ".txt"))
+}
+
+func TestProcessFsUploadChunkSync(t *testing.T) {
+	appRoot := os.Getenv("GOU_TEST_APP_ROOT")
+	if appRoot == "" {
+		t.Skip("GOU_TEST_APP_ROOT not set")
+	}
+	dataRoot := filepath.Join(appRoot, "data")
+	Register("system-upload", system.New(dataRoot))
+	testFsClear(FileSystems["system"], t)
+
+	chunk1 := filepath.Join(dataRoot, "chunk1.tmp")
+	err := os.WriteFile(chunk1, []byte("hello"), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	uf1 := types.UploadFile{
+		UID:      "test-chunk-uid",
+		Name:     "test.txt",
+		TempFile: "chunk1.tmp",
+		Range:    "bytes 0-4/10",
+		Sync:     true,
+	}
+
+	res, err := process.New("fs.system-upload.Upload", uf1).Exec()
+	assert.Nil(t, err)
+	resMap, ok := res.(map[string]interface{})
+	assert.True(t, ok)
+	assert.NotNil(t, resMap["progress"])
+
+	chunk2 := filepath.Join(dataRoot, "chunk2.tmp")
+	err = os.WriteFile(chunk2, []byte("world"), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	uf2 := types.UploadFile{
+		UID:      "test-chunk-uid",
+		Name:     "test.txt",
+		TempFile: "chunk2.tmp",
+		Range:    "bytes 5-9/10",
+		Sync:     true,
+	}
+
+	res, err = process.New("fs.system-upload.Upload", uf2).Exec()
+	assert.Nil(t, err)
+	filename, ok := res.(string)
+	assert.True(t, ok)
+	assert.NotEmpty(t, filename)
+}
+
+func TestProcessFsDownload(t *testing.T) {
+	f := testFsFiles(t)
+	testFsClear(FileSystems["system"], t)
+	testFsMakeF1(t)
+
+	res, err := process.New("fs.system.Download", f["F1"]).Exec()
+	assert.Nil(t, err)
+
+	resMap, ok := res.(map[string]interface{})
+	assert.True(t, ok)
+
+	content, ok := resMap["content"].(io.ReadCloser)
+	assert.True(t, ok)
+	if content != nil {
+		content.Close()
+	}
+
+	mimeType, ok := resMap["type"].(string)
+	assert.True(t, ok)
+	assert.NotEmpty(t, mimeType)
+}
+
+func TestParseFileSize(t *testing.T) {
+	size, err := parseFileSize(nil)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1024*1024), size)
+
+	size, err = parseFileSize(int(1024))
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1024), size)
+
+	size, err = parseFileSize(int64(2048))
+	assert.Nil(t, err)
+	assert.Equal(t, int64(2048), size)
+
+	size, err = parseFileSize("10M")
+	assert.Nil(t, err)
+	assert.Equal(t, int64(10*1024*1024), size)
+
+	size, err = parseFileSize("5K")
+	assert.Nil(t, err)
+	assert.Equal(t, int64(5*1024), size)
+
+	_, err = parseFileSize(true)
+	assert.NotNil(t, err)
+}
+
+func TestValidateAcceptType(t *testing.T) {
+	testFsClear(FileSystems["system"], t)
+	stor := FileSystems["system"]
+
+	root := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")
+	txtFile := filepath.Join(root, "test.txt")
+	err := os.WriteFile(txtFile, []byte("hello"), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NotPanics(t, func() {
+		validateAcceptType(stor, txtFile, ".txt", false)
+	})
+
+	assert.NotPanics(t, func() {
+		validateAcceptType(stor, txtFile, "text/plain; charset=utf-8", true)
+	})
+
+	assert.NotPanics(t, func() {
+		validateAcceptType(stor, txtFile, "text/*", true)
+	})
+
+	txtFile2 := filepath.Join(root, "test2.txt")
+	err = os.WriteFile(txtFile2, []byte("hello"), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Panics(t, func() {
+		validateAcceptType(stor, txtFile2, ".pdf", true)
+	})
+
+	assert.Panics(t, func() {
+		validateAcceptType(stor, txtFile, 12345, false)
+	})
+}
+
+func TestValidateFileSize(t *testing.T) {
+	testFsClear(FileSystems["system"], t)
+	stor := FileSystems["system"]
+
+	root := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")
+	txtFile := filepath.Join(root, "test_size.txt")
+	err := os.WriteFile(txtFile, []byte("hello"), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NotPanics(t, func() {
+		validateFileSize(stor, txtFile, "1M")
+	})
+
+	txtFile2 := filepath.Join(root, "test_size2.txt")
+	err = os.WriteFile(txtFile2, []byte("hello"), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Panics(t, func() {
+		validateFileSize(stor, txtFile2, int(1))
+	})
+}
+
+func TestProcessFsArgValidation(t *testing.T) {
+	testFsClear(FileSystems["system"], t)
+
+	handlers := []string{
+		"fs.system.ReadFile",
+		"fs.system.ReadFileBuffer",
+		"fs.system.WriteFile",
+		"fs.system.WriteFileBuffer",
+		"fs.system.AppendFile",
+		"fs.system.AppendFileBuffer",
+		"fs.system.InsertFile",
+		"fs.system.InsertFileBuffer",
+		"fs.system.ReadDir",
+		"fs.system.Mkdir",
+		"fs.system.MkdirAll",
+		"fs.system.Remove",
+		"fs.system.RemoveAll",
+		"fs.system.Exists",
+		"fs.system.IsDir",
+		"fs.system.IsFile",
+		"fs.system.IsLink",
+		"fs.system.Chmod",
+		"fs.system.Size",
+		"fs.system.Mode",
+		"fs.system.ModTime",
+		"fs.system.BaseName",
+		"fs.system.DirName",
+		"fs.system.ExtName",
+		"fs.system.MimeType",
+		"fs.system.Move",
+		"fs.system.MoveAppend",
+		"fs.system.MoveInsert",
+		"fs.system.Copy",
+		"fs.system.Upload",
+		"fs.system.Download",
+		"fs.system.Zip",
+		"fs.system.Unzip",
+		"fs.system.Glob",
+		"fs.system.Abs",
+	}
+
+	for _, name := range handlers {
+		t.Run(name, func(t *testing.T) {
+			_, err := process.New(name).Exec()
+			assert.NotNil(t, err, "should error with 0 args: %s", name)
+		})
+	}
 }
 
 func testFsClear(stor FileSystem, t *testing.T) {

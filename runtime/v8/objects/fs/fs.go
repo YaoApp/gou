@@ -1179,14 +1179,6 @@ func (obj *Object) intValue(info *v8go.FunctionCallbackInfo, value int32) *v8go.
 	return res
 }
 
-func (obj *Object) int64Value(info *v8go.FunctionCallbackInfo, value int64) *v8go.Value {
-	res, err := v8go.NewValue(info.Context().Isolate(), value)
-	if err != nil {
-		return obj.error(info, err)
-	}
-	return res
-}
-
 func (obj *Object) uint32Value(info *v8go.FunctionCallbackInfo, value uint32) *v8go.Value {
 	res, err := v8go.NewValue(info.Context().Isolate(), value)
 	if err != nil {

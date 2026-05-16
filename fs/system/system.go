@@ -701,7 +701,7 @@ func (f *File) IsLink(name string) bool {
 		log.Warn("[IsLink] %s %s", name, err.Error())
 		return false
 	}
-	info, err := os.Stat(name)
+	info, err := os.Lstat(name)
 	if err != nil {
 		log.Warn("[IsLink] %s %s", name, err.Error())
 		return false

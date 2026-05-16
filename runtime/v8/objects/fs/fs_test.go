@@ -956,6 +956,126 @@ func TestFSObjectGlob(t *testing.T) {
 	assert.Equal(t, 3, len(res.([]interface{})))
 }
 
+func TestFSObjectNew(t *testing.T) {
+	obj := New()
+	assert.NotNil(t, obj)
+}
+
+func TestFSObjectAbs(t *testing.T) {
+	testFsClear(t)
+	testFsMakeF1(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsObj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsObj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	v, err := ctx.RunScript(`
+	function TestAbs() {
+		var fs = new FS("system")
+		return fs.Abs("/some/path")
+	}
+	TestAbs()
+	`, "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	absPath, ok := res.(string)
+	assert.True(t, ok)
+	assert.Contains(t, absPath, "some/path")
+}
+
+func TestFSObjectIsLink(t *testing.T) {
+	testFsClear(t)
+	f := testFsFiles(t)
+	testFsMakeF1(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsObj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsObj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	v, err := ctx.RunScript(fmt.Sprintf(`
+	function TestIsLink() {
+		var fs = new FS("system")
+		return fs.IsLink("%s")
+	}
+	TestIsLink()
+	`, f["F1"]), "")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := bridge.GoValue(v, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, false, res)
+}
+
+func TestFSObjectErrorBranches(t *testing.T) {
+	testFsClear(t)
+
+	initTestEngine()
+	iso := v8go.NewIsolate()
+	defer iso.Dispose()
+
+	fsObj := &Object{}
+	global := v8go.NewObjectTemplate(iso)
+	global.Set("FS", fsObj.ExportFunction(iso))
+
+	ctx := v8go.NewContext(iso, global)
+	defer ctx.Close()
+
+	missingArgsTests := []struct {
+		name string
+		js   string
+	}{
+		{"ReadFile", `var fs = new FS("system"); return fs.ReadFile();`},
+		{"IsLink", `var fs = new FS("system"); return fs.IsLink();`},
+		{"Abs", `var fs = new FS("system"); return fs.Abs();`},
+		{"Exists", `var fs = new FS("system"); return fs.Exists();`},
+		{"Move", `var fs = new FS("system"); return fs.Move();`},
+		{"MimeType", `var fs = new FS("system"); return fs.MimeType();`},
+		{"Size", `var fs = new FS("system"); return fs.Size();`},
+		{"Copy", `var fs = new FS("system"); return fs.Copy();`},
+		{"Zip", `var fs = new FS("system"); return fs.Zip();`},
+	}
+
+	for _, tc := range missingArgsTests {
+		script := fmt.Sprintf(`(function() { try { %s } catch(e) { return e.message || e.toString(); } })()`, tc.js)
+		v, err := ctx.RunScript(script, "")
+		if err != nil {
+			t.Logf("%s: RunScript error (expected): %v", tc.name, err)
+			assert.Contains(t, err.Error(), "Missing parameters", tc.name)
+			continue
+		}
+		res, _ := bridge.GoValue(v, ctx)
+		if resStr, ok := res.(string); ok {
+			assert.Contains(t, resStr, "Missing parameters", tc.name)
+		}
+	}
+}
+
 func testFsMakeF1(t *testing.T) []byte {
 	data := testFsData(t)
 	f := testFsFiles(t)

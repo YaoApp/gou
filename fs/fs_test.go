@@ -989,6 +989,176 @@ func TestBase(t *testing.T) {
 	assert.Equal(t, "", ExtName(f["D1"]))
 }
 
+func TestGet(t *testing.T) {
+	testStores(t)
+
+	fs, err := Get("system")
+	assert.Nil(t, err)
+	assert.NotNil(t, fs)
+
+	fs, err = Get("not-found")
+	assert.NotNil(t, err)
+	assert.Nil(t, fs)
+}
+
+func TestIsLink(t *testing.T) {
+	stores := testStores(t)
+	stor := stores["system"]
+	clear(stor, t)
+	f := testFiles(t)
+
+	data := testData(t)
+	_, err := WriteFile(stor, f["F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.False(t, IsLink(stor, f["F1"]))
+	assert.False(t, IsLink(stor, filepath.Join(f["root"], "nonexistent_path")))
+
+	linkPath := f["F1"] + ".link"
+	err = os.Symlink(f["F1"], linkPath)
+	if err != nil {
+		t.Skipf("Cannot create symlink (need privileges on Windows): %v", err)
+	}
+	defer os.Remove(linkPath)
+
+	assert.True(t, IsLink(stor, linkPath))
+}
+
+func TestMoveAppend_ErrorBranches(t *testing.T) {
+	stores := testStores(t)
+	stor := stores["system"]
+	clear(stor, t)
+	f := testFiles(t)
+
+	data := testData(t)
+	_, err := WriteFile(stor, f["F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = MoveAppend(stor, filepath.Join(f["root"], "nonexistent_src"), f["F1"])
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "does not exists")
+
+	err = MkdirAll(stor, f["D1"], 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = MoveAppend(stor, f["D1"], f["F1"])
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a file")
+
+	_, err = WriteFile(stor, f["F2"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = MoveAppend(stor, f["F2"], f["D1"])
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a file")
+
+	data2 := testData(t)
+	_, err = WriteFile(stor, f["D1_F1"], data2, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newDst := filepath.Join(f["root"], "newdir", "dst.file")
+	err = MoveAppend(stor, f["D1_F1"], newDst)
+	assert.Nil(t, err)
+}
+
+func TestMoveInsert_ErrorBranches(t *testing.T) {
+	stores := testStores(t)
+	stor := stores["system"]
+	clear(stor, t)
+	f := testFiles(t)
+
+	data := testData(t)
+	_, err := WriteFile(stor, f["F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = MoveInsert(stor, filepath.Join(f["root"], "nonexistent_src"), f["F1"], 0)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "does not exists")
+
+	err = MkdirAll(stor, f["D1"], 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = MoveInsert(stor, f["D1"], f["F1"], 0)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a file")
+
+	_, err = WriteFile(stor, f["F2"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = MoveInsert(stor, f["F2"], f["D1"], 0)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a file")
+
+	data2 := testData(t)
+	_, err = WriteFile(stor, f["D1_F1"], data2, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newDst := filepath.Join(f["root"], "newdir2", "dst.file")
+	err = MoveInsert(stor, f["D1_F1"], newDst, 0)
+	assert.Nil(t, err)
+}
+
+func TestZip_ErrorBranches(t *testing.T) {
+	stores := testStores(t)
+	stor := stores["system-relpath"]
+	clear(stores["system"], t)
+
+	err := Zip(stor, "nonexistent_dir", "out.zip")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "does not exists")
+
+	data := testData(t)
+	f := testFiles(t)
+	_, err = WriteFile(stores["system"], f["F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = Zip(stor, "f1.file", "out.zip")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a dir")
+}
+
+func TestUnzip_ErrorBranches(t *testing.T) {
+	stores := testStores(t)
+	stor := stores["system-relpath"]
+	clear(stores["system"], t)
+
+	_, err := Unzip(stor, "not-a-zip.txt", "out")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "is not a zip file")
+
+	_, err = Unzip(stor, "nonexistent.zip", "out")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "does not exists")
+
+	data := testData(t)
+	f := testFiles(t)
+	_, err = WriteFile(stores["system"], f["F1"], data, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	zipSrc := filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data", "fake.zip")
+	err = os.WriteFile(zipSrc, []byte("not a zip"), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Unzip(stor, "fake.zip", "out")
+	assert.NotNil(t, err)
+}
+
 func testStores(t *testing.T) map[string]FileSystem {
 	Register("system", system.New())
 	Register("system-relpath", system.New(filepath.Join(os.Getenv("GOU_TEST_APP_ROOT"), "data")))
