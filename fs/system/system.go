@@ -1071,7 +1071,7 @@ func (f *File) isTemp(path string) bool {
 // absPath returns an absolute representation of path
 func (f *File) absPath(path string) (string, error) {
 	if f.root != "" {
-		if !filepath.IsAbs(path) && !f.isTemp(path) {
+		if !f.isTemp(path) {
 			path = utils.AbsJoinPath(f.root, path)
 		}
 	}

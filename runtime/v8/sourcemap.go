@@ -255,12 +255,12 @@ func parseStackTrace(trace string) StackLogEntryList {
 }
 
 func fmtFilePath(file string, rootMapping interface{}) string {
-	file = strings.TrimPrefix(file, application.App.Root())
 	file = utils.SlashPath(file)
 	file = strings.ReplaceAll(file, "../", "")
 	if !strings.HasPrefix(file, "/") {
 		file = "/" + file
 	}
+	file = strings.TrimPrefix(file, utils.SlashPath(application.App.Root()))
 	if rootMapping != nil {
 		switch mapping := rootMapping.(type) {
 		case map[string]string:

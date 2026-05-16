@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	stdpath "path"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"

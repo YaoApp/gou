@@ -235,7 +235,7 @@ func processAbs(process *process.Process) interface{} {
 	stor := stor(process)
 	file := process.ArgsString(0)
 	root := stor.Root()
-	if root == "" || filepath.IsAbs(file) {
+	if root == "" {
 		return file
 	}
 	return utils.AbsJoinPath(root, file)
