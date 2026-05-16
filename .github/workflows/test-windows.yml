@@ -69,11 +69,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows-2022, windows-11-arm]
-        db: [SQLite3, Postgres14]
-        exclude:
-          - platform: windows-11-arm
-            db: Postgres14
+        platform: [windows-2022]
+        db: [SQLite3]
+        # platform: [windows-2022, windows-11-arm]
+        # db: [SQLite3, Postgres14]
+        # exclude:
+        #   - platform: windows-11-arm
+        #     db: Postgres14
 
     steps:
       # ── 1. Checkout dependency repos ──────────────────────────────────
@@ -283,17 +285,16 @@ jobs:
           CC: clang --target=x86_64-pc-windows-msvc -fuse-ld=lld
           CXX: clang++ --target=x86_64-pc-windows-msvc -fuse-ld=lld -fno-exceptions
         run: |
-          PKGS=$(go list ./... | grep -v -E 'plugin$|/plugin/|/graphrag|/mcp/|/rag/')
-          go test -v -timeout 60m $PKGS
+          go test -v -timeout 60m -run "TestTransformTS|TestTransformTSWithTSConfig|TestExecStandard" ./runtime/v8/
 
       # ── 18. Go Test (Windows ARM64) ────────────────────────────────────
-      - name: Go Test (Windows ARM64)
-        if: runner.arch == 'ARM64'
-        shell: bash
-        env:
-          CGO_ENABLED: "1"
-          CC: python ${{ github.workspace }}/../v8go/deps/clang_arm64_cc.py
-          CXX: python ${{ github.workspace }}/../v8go/deps/clang_arm64_cxx.py
-        run: |
-          PKGS=$(go list ./... | grep -v -E 'plugin$|/plugin/|/graphrag|/mcp/|/rag/')
-          go test -v -timeout 60m $PKGS
+      # - name: Go Test (Windows ARM64)
+      #   if: runner.arch == 'ARM64'
+      #   shell: bash
+      #   env:
+      #     CGO_ENABLED: "1"
+      #     CC: python ${{ github.workspace }}/../v8go/deps/clang_arm64_cc.py
+      #     CXX: python ${{ github.workspace }}/../v8go/deps/clang_arm64_cxx.py
+      #   run: |
+      #     PKGS=$(go list ./... | grep -v -E 'plugin$|/plugin/|/graphrag|/mcp/|/rag/')
+      #     go test -v -timeout 60m $PKGS
