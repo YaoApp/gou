@@ -32,3 +32,4 @@ graphrag/tests/semantic
 graphrag/cmd/cmd.md
 POSTGRESQL_COMPAT.md
 .github/ci-analysis
+WINDOWS_SUPPORT.md
