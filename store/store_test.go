@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -93,6 +94,7 @@ func TestRedis(t *testing.T) {
 }
 
 func TestMongo(t *testing.T) {
+	skipIfMongoUnavailable(t)
 	store := newStore(t, getConnector(t, "mongo"))
 	testBasic(t, store)
 	testMulti(t, store)
@@ -138,6 +140,7 @@ func TestRedisTTL(t *testing.T) {
 }
 
 func TestMongoTTL(t *testing.T) {
+	skipIfMongoUnavailable(t)
 	mongo := newStore(t, getConnector(t, "mongo"))
 	testTTL(t, mongo)
 }
@@ -157,6 +160,7 @@ func TestRedisConcurrency(t *testing.T) {
 }
 
 func TestMongoConcurrency(t *testing.T) {
+	skipIfMongoUnavailable(t)
 	mongo := newStore(t, getConnector(t, "mongo"))
 	testConcurrency(t, mongo)
 	testMemoryLeak(t, mongo)
@@ -443,6 +447,23 @@ func testTTL(t *testing.T, kv Store) {
 	kv.Clear()
 }
 
+func skipIfMongoUnavailable(t *testing.T) {
+	t.Helper()
+	host := os.Getenv("MONGO_TEST_HOST")
+	port := os.Getenv("MONGO_TEST_PORT")
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if port == "" {
+		port = "27017"
+	}
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), 2*time.Second)
+	if err != nil {
+		t.Skipf("MongoDB not available at %s:%s: %v", host, port, err)
+	}
+	conn.Close()
+}
+
 func getConnector(t *testing.T, name string) connector.Connector {
 	return connector.Connectors[name]
 }
@@ -458,6 +479,10 @@ func prepareStores(t *testing.T) {
 	for id, file := range stores {
 		_, err := Load(file, id)
 		if err != nil {
+			if id == "data" {
+				t.Logf("Skipping mongo store: %v", err)
+				continue
+			}
 			t.Fatal(err)
 		}
 	}
