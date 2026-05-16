@@ -26,6 +26,10 @@ func TestStoreListProcess(t *testing.T) {
 
 func testStoreProcess(t *testing.T, name string) {
 
+	if _, has := Pools[name]; !has {
+		t.Skipf("Store %s not loaded (dependency unavailable)", name)
+	}
+
 	process.New(fmt.Sprintf("stores.%s.Clear", name)).Run()
 	value := process.New(fmt.Sprintf("stores.%s.Len", name)).Run()
 	assert.Equal(t, 0, value)
@@ -58,6 +62,10 @@ func testStoreProcess(t *testing.T, name string) {
 }
 
 func testStoreListProcess(t *testing.T, name string) {
+
+	if _, has := Pools[name]; !has {
+		t.Skipf("Store %s not loaded (dependency unavailable)", name)
+	}
 
 	// Clear and test empty list
 	process.New(fmt.Sprintf("stores.%s.Clear", name)).Run()
