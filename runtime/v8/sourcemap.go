@@ -2,6 +2,7 @@ package v8
 
 import (
 	"fmt"
+	stdpath "path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -260,7 +261,21 @@ func fmtFilePath(file string, rootMapping interface{}) string {
 	if !strings.HasPrefix(file, "/") {
 		file = "/" + file
 	}
-	file = strings.TrimPrefix(file, utils.SlashPath(application.App.Root()))
+
+	root := utils.SlashPath(application.App.Root())
+	file = strings.TrimPrefix(file, root)
+
+	// On Windows, after removing "../" from relative sourcemap paths like
+	// "../../gou-dev-app/scripts/...", the result "/gou-dev-app/scripts/..."
+	// won't match the absolute root "D:/a/gou/gou/gou-dev-app".
+	// Fall back to stripping by the root's basename.
+	if rootBase := stdpath.Base(root); rootBase != "" && rootBase != "/" {
+		marker := "/" + rootBase + "/"
+		if idx := strings.Index(file, marker); idx >= 0 {
+			file = file[idx+len(marker)-1:]
+		}
+	}
+
 	if rootMapping != nil {
 		switch mapping := rootMapping.(type) {
 		case map[string]string:
