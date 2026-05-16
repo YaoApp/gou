@@ -396,20 +396,24 @@ func loadModule(file string, tsCode string) error {
 		return fmt.Errorf("transform module error: %v.\n%s", strings.Join(errors, "\n"), tsCode)
 	}
 
+	outdirMarker := "/outdir/"
 	fmt.Printf("[DEBUG-loadModule] file=%s root=%s dir=%s outdir=%s OutputFiles=%d\n", file, root, dir, outdir, len(result.OutputFiles))
 	if len(result.OutputFiles) > 1 {
 		for _, out := range result.OutputFiles {
 			outPath := utils.SlashPath(out.Path)
-			fmt.Printf("[DEBUG-loadModule] out.Path=%q outPath=%q\n", out.Path, outPath)
+			relPath := outPath
+			if idx := strings.Index(outPath, outdirMarker); idx >= 0 {
+				relPath = outPath[idx+len(outdirMarker):]
+			}
+			fmt.Printf("[DEBUG-loadModule] out.Path=%q outPath=%q relPath=%q\n", out.Path, outPath, relPath)
+
 			if strings.HasSuffix(outPath, ".js.map") {
-				key := strings.TrimPrefix(strings.ReplaceAll(outPath, ".js.map", ".ts"), outdir)
-				key = utils.SlashPath(filepath.Join(dir, key))
+				key := utils.SlashPath(filepath.Join(dir, strings.ReplaceAll(relPath, ".js.map", ".ts")))
 				fmt.Printf("[DEBUG-loadModule] SourceMap key=%s\n", key)
 				ModuleSourceMaps[key] = out.Contents
 
 			} else if strings.HasSuffix(outPath, ".js") {
-				key := strings.TrimPrefix(strings.ReplaceAll(outPath, ".js", ".ts"), outdir)
-				key = utils.SlashPath(filepath.Join(dir, key))
+				key := utils.SlashPath(filepath.Join(dir, strings.ReplaceAll(relPath, ".js", ".ts")))
 				fmt.Printf("[DEBUG-loadModule] Modules key=%s source_len=%d\n", key, len(out.Contents))
 				Modules[key] = Module{
 					File:       file,
