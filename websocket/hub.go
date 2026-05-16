@@ -3,9 +3,6 @@ package websocket
 import (
 	"encoding/binary"
 	"sync"
-
-	"github.com/gorilla/websocket"
-	"github.com/yaoapp/kun/log"
 )
 
 func newHub() *Hub {
@@ -99,10 +96,9 @@ LOOP:
 		case exit := <-h.interrupt:
 			if exit == 1 {
 				for client := range h.clients {
-					err := client.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseServiceRestart, "Repair"))
-					log.Trace("Close Client Connection, %v", err)
-					// close(client.send)
-					// delete(h.clients, client)
+					close(client.send)
+					delete(h.indexes, client.id)
+					delete(h.clients, client)
 				}
 				break LOOP
 			}
