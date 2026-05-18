@@ -240,6 +240,9 @@ func (cache *Cache) Keys(pattern ...string) []string {
 	return res
 }
 
+// Flush is a no-op for in-memory LRU store.
+func (cache *Cache) Flush() {}
+
 // Clear is used to clear the cache
 // If prefix is set, only clears keys with that prefix
 func (cache *Cache) Clear() {

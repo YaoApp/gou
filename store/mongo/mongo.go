@@ -281,6 +281,9 @@ func (store *Store) Keys(pattern ...string) []string {
 	return keys
 }
 
+// Flush is a no-op for Mongo store (writes are synchronous).
+func (store *Store) Flush() {}
+
 // Clear is used to clear the cache
 // If prefix is set, only clears keys with that prefix
 func (store *Store) Clear() {

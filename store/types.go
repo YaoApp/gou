@@ -38,6 +38,11 @@ type Store interface {
 	ArraySlice(key string, skip, limit int) ([]interface{}, error)
 	ArrayPage(key string, page, pageSize int) ([]interface{}, error)
 	ArrayAll(key string) ([]interface{}, error)
+
+	// Flush persists any pending writes to the backing store.
+	// For async-persist stores (e.g. xun) this drains the dirty queue;
+	// for purely in-memory stores (e.g. lru) this is a no-op.
+	Flush()
 }
 
 // Instance the kv-store setting

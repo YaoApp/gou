@@ -168,6 +168,9 @@ func (store *Store) Keys(pattern ...string) []string {
 	return keys
 }
 
+// Flush is a no-op for Redis store (writes are synchronous).
+func (store *Store) Flush() {}
+
 // Clear is used to clear the cache
 func (store *Store) Clear() {
 	keys := store.Keys()
