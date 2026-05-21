@@ -734,7 +734,8 @@ func (f *File) Move(oldpath string, newpath string) error {
 	}
 
 	err = os.Rename(oldpath, newpath)
-	if err != nil && strings.Contains(err.Error(), "invalid cross-device link") {
+	if err != nil && (strings.Contains(err.Error(), "invalid cross-device link") ||
+		strings.Contains(err.Error(), "cannot move the file to a different disk drive")) {
 		return f.copyRemove(f.relPath(oldpath), f.relPath(newpath))
 	}
 	return err
