@@ -14,6 +14,7 @@ type Capabilities struct {
 	Multimodal            bool        `json:"multimodal,omitempty" yaml:"multimodal,omitempty"`                         // Supports multimodal input
 	Embedding             bool        `json:"embedding,omitempty" yaml:"embedding,omitempty"`                           // Text embedding model (e.g. text-embedding-3-large)
 	ImageGeneration       bool        `json:"image_generation,omitempty" yaml:"image_generation,omitempty"`             // Image generation model (e.g. DALL-E, Seedream)
+	ImageEditing          interface{} `json:"image_editing,omitempty" yaml:"image_editing,omitempty"`                   // Image editing: bool or protocol string ("multipart" = form-data /images/edits, "json" = JSON /images/generations + image field)
 	TemperatureAdjustable bool        `json:"temperature_adjustable,omitempty" yaml:"temperature_adjustable,omitempty"` // Supports temperature adjustment (reasoning models typically don't)
 	MaxInputTokens        int         `json:"max_input_tokens,omitempty" yaml:"max_input_tokens,omitempty"`             // Maximum input context window size (aligned with Anthropic Models API)
 	MaxOutputTokens       int         `json:"max_output_tokens,omitempty" yaml:"max_output_tokens,omitempty"`           // Maximum output tokens the model can generate
@@ -45,6 +46,35 @@ func (c *Capabilities) HasToolCalls() bool {
 	return c != nil && c.ToolCalls
 }
 
+// HasImageEditing reports whether the model supports image editing / image-to-image.
+// ImageEditing is interface{} and may be bool, string (protocol name), or nil.
+func (c *Capabilities) HasImageEditing() bool {
+	if c == nil || c.ImageEditing == nil {
+		return false
+	}
+	switch v := c.ImageEditing.(type) {
+	case bool:
+		return v
+	case string:
+		return v != ""
+	default:
+		return true
+	}
+}
+
+// GetImageEditingFormat returns the image editing API protocol.
+// Returns "multipart" or "json" when explicitly set, empty string otherwise.
+// Callers should treat empty as "json" (the most common default).
+func (c *Capabilities) GetImageEditingFormat() string {
+	if c == nil || c.ImageEditing == nil {
+		return ""
+	}
+	if s, ok := c.ImageEditing.(string); ok {
+		return s
+	}
+	return ""
+}
+
 // ToMap converts Capabilities to map[string]interface{} for API responses.
 // This is the canonical implementation; yao-layer wrappers should delegate here.
 func (c *Capabilities) ToMap() map[string]interface{} {
@@ -64,6 +94,9 @@ func (c *Capabilities) ToMap() map[string]interface{} {
 	result["multimodal"] = c.Multimodal
 	result["embedding"] = c.Embedding
 	result["image_generation"] = c.ImageGeneration
+	if c.ImageEditing != nil {
+		result["image_editing"] = c.ImageEditing
+	}
 	result["temperature_adjustable"] = c.TemperatureAdjustable
 	return result
 }

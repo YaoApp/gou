@@ -62,3 +62,60 @@ func TestHasToolCalls(t *testing.T) {
 		t.Error("ToolCalls=true should return true")
 	}
 }
+
+func TestHasImageEditing_Nil(t *testing.T) {
+	var c *Capabilities
+	if c.HasImageEditing() {
+		t.Error("nil receiver should return false")
+	}
+	c = &Capabilities{}
+	if c.HasImageEditing() {
+		t.Error("nil ImageEditing field should return false")
+	}
+}
+
+func TestHasImageEditing_Bool(t *testing.T) {
+	c := &Capabilities{ImageEditing: true}
+	if !c.HasImageEditing() {
+		t.Error("ImageEditing=true should return true")
+	}
+	c.ImageEditing = false
+	if c.HasImageEditing() {
+		t.Error("ImageEditing=false should return false")
+	}
+}
+
+func TestHasImageEditing_String(t *testing.T) {
+	for _, proto := range []string{"multipart", "json"} {
+		c := &Capabilities{ImageEditing: proto}
+		if !c.HasImageEditing() {
+			t.Errorf("ImageEditing=%q should return true", proto)
+		}
+	}
+	c := &Capabilities{ImageEditing: ""}
+	if c.HasImageEditing() {
+		t.Error("ImageEditing=\"\" should return false")
+	}
+}
+
+func TestGetImageEditingFormat(t *testing.T) {
+	var c *Capabilities
+	if f := c.GetImageEditingFormat(); f != "" {
+		t.Errorf("nil receiver should return empty, got %q", f)
+	}
+
+	c = &Capabilities{ImageEditing: "multipart"}
+	if f := c.GetImageEditingFormat(); f != "multipart" {
+		t.Errorf("expected \"multipart\", got %q", f)
+	}
+
+	c.ImageEditing = "json"
+	if f := c.GetImageEditingFormat(); f != "json" {
+		t.Errorf("expected \"json\", got %q", f)
+	}
+
+	c.ImageEditing = true
+	if f := c.GetImageEditingFormat(); f != "" {
+		t.Errorf("bool true should return empty, got %q", f)
+	}
+}
