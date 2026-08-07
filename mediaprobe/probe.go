@@ -52,6 +52,8 @@ func ProbeReader(r io.ReadSeeker, hint string) (*MediaInfo, error) {
 		return probeFLAC(r)
 	case "ogg":
 		return probeOGG(r)
+	case "webm":
+		return probeWebM(r)
 	case "jpeg", "jpg", "png", "gif", "webp", "bmp", "tiff":
 		return probeImage(r, format)
 	default:
@@ -79,6 +81,8 @@ func detectFormat(r io.ReadSeeker, hint string) string {
 		return "flac"
 	case bytes.Equal(buf[:4], []byte("OggS")):
 		return "ogg"
+	case bytes.Equal(buf[:4], []byte{0x1A, 0x45, 0xDF, 0xA3}):
+		return "webm"
 	case n >= 8 && bytes.Equal(buf[4:8], []byte("ftyp")):
 		return "mp4"
 	case buf[0] == 0xFF && (buf[1]&0xE0) == 0xE0:
@@ -105,7 +109,7 @@ func detectFormat(r io.ReadSeeker, hint string) string {
 func normalizeHint(hint string) string {
 	h := strings.ToLower(strings.TrimPrefix(hint, "."))
 	switch h {
-	case "wav", "mp3", "flac", "ogg", "opus":
+	case "wav", "mp3", "flac", "ogg", "opus", "webm":
 		return h
 	case "mp4", "m4a", "m4v", "mov":
 		return "mp4"
@@ -126,6 +130,8 @@ func normalizeHint(hint string) string {
 		return "flac"
 	case "audio/ogg", "audio/opus":
 		return "ogg"
+	case "audio/webm", "video/webm":
+		return "webm"
 	case "image/jpeg":
 		return "jpeg"
 	case "image/png":

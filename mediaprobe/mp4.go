@@ -14,6 +14,9 @@ var mp4ContainerAtoms = map[string]bool{
 	"stbl": true,
 	"udta": true,
 	"edts": true,
+	"mvex": true,
+	"moof": true,
+	"traf": true,
 }
 
 type atomVisitor func(path string, r io.ReadSeeker, size int64) error
@@ -97,10 +100,14 @@ func probeMP4(r io.ReadSeeker) (*MediaInfo, error) {
 	}
 
 	var (
-		foundMoov bool
-		duration  float64
-		width     int
-		height    int
+		foundMoov        bool
+		duration         float64
+		width            int
+		height           int
+		mdhdTimescale    uint32
+		defaultSampleDur uint32 // from trex
+		currentFragDur   uint32 // per-fragment default from tfhd
+		fragDurationSum  uint64
 	)
 
 	visitor := func(path string, payload io.ReadSeeker, size int64) error {
@@ -126,6 +133,28 @@ func probeMP4(r io.ReadSeeker) (*MediaInfo, error) {
 					height = h
 				}
 			}
+		case "mdhd":
+			if ts, err := parseMP4MDHD(payload, size); err == nil && ts > 0 {
+				mdhdTimescale = ts
+			}
+		case "trex":
+			if defDur, err := parseMP4TREX(payload, size); err == nil {
+				defaultSampleDur = defDur
+			}
+		case "traf":
+			currentFragDur = 0
+		case "tfhd":
+			if defDur, err := parseMP4TFHD(payload, size); err == nil && defDur > 0 {
+				currentFragDur = defDur
+			}
+		case "trun":
+			defDur := currentFragDur
+			if defDur == 0 {
+				defDur = defaultSampleDur
+			}
+			if sum, err := parseMP4TRUN(payload, size, defDur); err == nil {
+				fragDurationSum += sum
+			}
 		}
 		return nil
 	}
@@ -136,6 +165,10 @@ func probeMP4(r io.ReadSeeker) (*MediaInfo, error) {
 
 	if !foundMoov {
 		return nil, fmt.Errorf("mediaprobe: mp4: %w", ErrInvalidFile)
+	}
+
+	if duration == 0 && fragDurationSum > 0 && mdhdTimescale > 0 {
+		duration = float64(fragDurationSum) / float64(mdhdTimescale)
 	}
 
 	return &MediaInfo{
@@ -237,4 +270,134 @@ func parseMP4TKHD(r io.ReadSeeker, size int64) (int, int, error) {
 	w := int(binary.BigEndian.Uint32(dims[0:4]) >> 16)
 	h := int(binary.BigEndian.Uint32(dims[4:8]) >> 16)
 	return w, h, nil
+}
+
+// parseMP4MDHD extracts timescale from Media Header Box.
+func parseMP4MDHD(r io.ReadSeeker, size int64) (uint32, error) {
+	if size < 4 {
+		return 0, fmt.Errorf("mediaprobe: mp4 mdhd: %w", ErrInvalidFile)
+	}
+	var vf [4]byte
+	if _, err := io.ReadFull(r, vf[:]); err != nil {
+		return 0, err
+	}
+	switch vf[0] {
+	case 0:
+		if size < 20 {
+			return 0, fmt.Errorf("mediaprobe: mp4 mdhd: %w", ErrInvalidFile)
+		}
+		var buf [12]byte
+		if _, err := io.ReadFull(r, buf[:]); err != nil {
+			return 0, err
+		}
+		return binary.BigEndian.Uint32(buf[8:12]), nil
+	case 1:
+		if size < 32 {
+			return 0, fmt.Errorf("mediaprobe: mp4 mdhd: %w", ErrInvalidFile)
+		}
+		var buf [20]byte
+		if _, err := io.ReadFull(r, buf[:]); err != nil {
+			return 0, err
+		}
+		return binary.BigEndian.Uint32(buf[16:20]), nil
+	}
+	return 0, fmt.Errorf("mediaprobe: mp4 mdhd: %w", ErrInvalidFile)
+}
+
+// parseMP4TREX extracts default_sample_duration from Track Extends Box.
+func parseMP4TREX(r io.ReadSeeker, size int64) (uint32, error) {
+	if size < 24 {
+		return 0, fmt.Errorf("mediaprobe: mp4 trex: %w", ErrInvalidFile)
+	}
+	var buf [24]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
+		return 0, err
+	}
+	// [0:4] version+flags, [4:8] trackID, [8:12] defSampleDescIdx,
+	// [12:16] defSampleDuration, [16:20] defSampleSize, [20:24] defSampleFlags
+	return binary.BigEndian.Uint32(buf[12:16]), nil
+}
+
+// parseMP4TFHD extracts default_sample_duration from Track Fragment Header.
+func parseMP4TFHD(r io.ReadSeeker, size int64) (uint32, error) {
+	if size < 8 {
+		return 0, nil
+	}
+	var buf [8]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
+		return 0, err
+	}
+	flags := uint32(buf[1])<<16 | uint32(buf[2])<<8 | uint32(buf[3])
+	offset := int64(8) // past version+flags + trackID
+
+	if flags&0x01 != 0 { // base-data-offset-present
+		offset += 8
+	}
+	if flags&0x02 != 0 { // sample-description-index-present
+		offset += 4
+	}
+	if flags&0x08 == 0 { // default-sample-duration NOT present
+		return 0, nil
+	}
+	toSkip := offset - 8
+	if toSkip > 0 {
+		if _, err := r.Seek(toSkip, io.SeekCurrent); err != nil {
+			return 0, err
+		}
+	}
+	var dur [4]byte
+	if _, err := io.ReadFull(r, dur[:]); err != nil {
+		return 0, err
+	}
+	return binary.BigEndian.Uint32(dur[:]), nil
+}
+
+// parseMP4TRUN sums sample durations from a Track Run Box.
+// defDur is used when individual sample durations are absent.
+func parseMP4TRUN(r io.ReadSeeker, size int64, defDur uint32) (uint64, error) {
+	if size < 8 {
+		return 0, fmt.Errorf("mediaprobe: mp4 trun: %w", ErrInvalidFile)
+	}
+	var hdr [8]byte
+	if _, err := io.ReadFull(r, hdr[:]); err != nil {
+		return 0, err
+	}
+	flags := uint32(hdr[1])<<16 | uint32(hdr[2])<<8 | uint32(hdr[3])
+	sampleCount := binary.BigEndian.Uint32(hdr[4:8])
+
+	// Skip optional header fields
+	if flags&0x001 != 0 { // data-offset-present
+		r.Seek(4, io.SeekCurrent)
+	}
+	if flags&0x004 != 0 { // first-sample-flags-present
+		r.Seek(4, io.SeekCurrent)
+	}
+
+	hasDuration := flags&0x100 != 0
+	hasSize := flags&0x200 != 0
+	hasFlags := flags&0x400 != 0
+	hasCTO := flags&0x800 != 0
+
+	if !hasDuration {
+		return uint64(sampleCount) * uint64(defDur), nil
+	}
+
+	var total uint64
+	for i := uint32(0); i < sampleCount; i++ {
+		var dur [4]byte
+		if _, err := io.ReadFull(r, dur[:]); err != nil {
+			return total, err
+		}
+		total += uint64(binary.BigEndian.Uint32(dur[:]))
+		if hasSize {
+			r.Seek(4, io.SeekCurrent)
+		}
+		if hasFlags {
+			r.Seek(4, io.SeekCurrent)
+		}
+		if hasCTO {
+			r.Seek(4, io.SeekCurrent)
+		}
+	}
+	return total, nil
 }
