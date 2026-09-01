@@ -45,6 +45,15 @@ type Store interface {
 	Flush()
 }
 
+// FreshReader is an optional interface for stores with internal caching.
+// GetFresh bypasses the in-process cache and reads directly from the
+// backing store (e.g. database), then updates the cache with fresh data.
+// Stores without internal caching (redis, mongo) do not need this;
+// their Get already reads from the external store.
+type FreshReader interface {
+	GetFresh(key string) (value interface{}, ok bool)
+}
+
 // Instance the kv-store setting
 type Instance struct {
 	types.MetaInfo

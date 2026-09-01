@@ -318,6 +318,72 @@ func (store *Store) unprefixKey(key string) string {
 	return strings.TrimPrefix(key, store.prefix)
 }
 
+// GetFresh reads directly from the database, bypassing the ARC cache.
+// The ARC cache is updated with the fresh value on success.
+// Keys pending async deletion in this process are still excluded.
+// Use when cached data may be stale due to cross-process writes.
+func (store *Store) GetFresh(key string) (value interface{}, ok bool) {
+	prefixedKey := store.prefixKey(key)
+
+	// Respect pending deletions from this process
+	store.deletedMu.RLock()
+	isDeleted := store.deleted[prefixedKey]
+	store.deletedMu.RUnlock()
+	if isDeleted {
+		return nil, false
+	}
+
+	row, err := capsule.Query().
+		Table(store.tableName).
+		Where("key", prefixedKey).
+		Where(func(qb query.Query) {
+			qb.WhereNull("expired_at").OrWhere("expired_at", ">", time.Now())
+		}).
+		First()
+
+	if err != nil {
+		if !strings.Contains(err.Error(), "no rows") {
+			log.Error("Store xun GetFresh %s: %s", prefixedKey, err.Error())
+		}
+		return nil, false
+	}
+
+	if row.IsEmpty() {
+		return nil, false
+	}
+
+	valueStr, ok := row.Get("value").(string)
+	if !ok {
+		return nil, false
+	}
+
+	var result interface{}
+	if err := jsoniter.UnmarshalFromString(valueStr, &result); err != nil {
+		log.Error("Store xun GetFresh unmarshal %s: %s", prefixedKey, err.Error())
+		return nil, false
+	}
+
+	typ := "value"
+	if t, ok := row.Get("type").(string); ok {
+		typ = t
+	}
+
+	var expiredAt *time.Time
+	if exp := row.Get("expired_at"); exp != nil {
+		if t, ok := exp.(time.Time); ok {
+			expiredAt = &t
+		}
+	}
+
+	store.cache.Add(prefixedKey, &cacheEntry{
+		Value:     result,
+		ExpiredAt: expiredAt,
+		Type:      typ,
+	})
+
+	return result, true
+}
+
 // Get looks up a key's value from the store (cache-first, lazy load from DB)
 func (store *Store) Get(key string) (value interface{}, ok bool) {
 	prefixedKey := store.prefixKey(key)

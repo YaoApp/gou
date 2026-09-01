@@ -1286,3 +1286,107 @@ func BenchmarkMongoConcurrentWrite(b *testing.B) {
 	store := newStore(&testing.T{}, getConnector(&testing.T{}, "mongo"))
 	benchmarkConcurrentWrite(b, store)
 }
+
+// TestXunGetFresh verifies that GetFresh bypasses the ARC cache and reads
+// directly from the database, then updates the cache.
+func TestXunGetFresh(t *testing.T) {
+	kv := newXunStore(t)
+
+	fr, ok := kv.(FreshReader)
+	if !ok {
+		t.Fatal("xun store does not implement FreshReader")
+	}
+
+	kv.Clear()
+
+	// Write data and flush to DB
+	kv.Set("fresh_key", "fresh_value", 0)
+	kv.Flush()
+
+	// GetFresh should return the value from DB
+	val, ok := fr.GetFresh("fresh_key")
+	assert.True(t, ok)
+	assert.Equal(t, "fresh_value", val)
+
+	// Overwrite via Set (updates ARC cache + dirty queue)
+	kv.Set("fresh_key", "updated_value", 0)
+	kv.Flush()
+
+	// Regular Get returns updated value from ARC cache
+	val, ok = kv.Get("fresh_key")
+	assert.True(t, ok)
+	assert.Equal(t, "updated_value", val)
+
+	// GetFresh also returns updated value (from DB, bypassing ARC)
+	val, ok = fr.GetFresh("fresh_key")
+	assert.True(t, ok)
+	assert.Equal(t, "updated_value", val)
+
+	// Non-existent key
+	_, ok = fr.GetFresh("nonexistent")
+	assert.False(t, ok)
+
+	// Deleted key: delete and flush, then GetFresh should not find it
+	kv.Del("fresh_key")
+	kv.Flush()
+	_, ok = fr.GetFresh("fresh_key")
+	assert.False(t, ok)
+}
+
+// TestXunGetFreshBypassesCache verifies GetFresh reads from DB even when
+// the ARC cache holds stale data, simulating a cross-process write.
+func TestXunGetFreshBypassesCache(t *testing.T) {
+	kv := newXunStore(t)
+
+	fr, ok := kv.(FreshReader)
+	if !ok {
+		t.Fatal("xun store does not implement FreshReader")
+	}
+
+	kv.Clear()
+
+	// Write "v1" and flush to DB
+	kv.Set("bypass_key", "v1", 0)
+	kv.Flush()
+
+	// Regular Get populates ARC cache with "v1"
+	val, ok := kv.Get("bypass_key")
+	assert.True(t, ok)
+	assert.Equal(t, "v1", val)
+
+	// Simulate cross-process write: update the DB row directly without
+	// touching the ARC cache. We do this by writing "v2" + flush, then
+	// restoring "v1" in the ARC cache via a second Set + immediate Get
+	// that re-populates the cache, then writing "v2" to DB only.
+
+	// Simpler approach: write v2, flush to DB, then overwrite ARC with v1
+	kv.Set("bypass_key", "v2", 0)
+	kv.Flush()
+
+	// Force ARC cache to hold stale value "v1" by writing then reading
+	kv.Set("bypass_key", "v1_stale", 0)
+	// ARC cache now has "v1_stale", but DB has "v2" (not yet flushed)
+
+	// Regular Get returns stale ARC value
+	val, ok = kv.Get("bypass_key")
+	assert.True(t, ok)
+	assert.Equal(t, "v1_stale", val)
+
+	// GetFresh bypasses ARC and reads "v2" from DB
+	val, ok = fr.GetFresh("bypass_key")
+	assert.True(t, ok)
+	assert.Equal(t, "v2", val, "GetFresh should return DB value, not stale ARC cache")
+
+	// After GetFresh, ARC cache is updated — regular Get now returns "v2"
+	val, ok = kv.Get("bypass_key")
+	assert.True(t, ok)
+	assert.Equal(t, "v2", val, "ARC cache should be refreshed after GetFresh")
+}
+
+// TestLRUNotFreshReader verifies that the LRU store does not implement
+// FreshReader (it has no backing store to read from).
+func TestLRUNotFreshReader(t *testing.T) {
+	kv := newStore(t, nil)
+	_, ok := kv.(FreshReader)
+	assert.False(t, ok, "LRU store should not implement FreshReader")
+}
