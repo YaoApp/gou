@@ -225,6 +225,16 @@ var DefaultModelCapabilities = map[string]Capabilities{
 		JSON:       true,
 		Multimodal: false,
 	},
+	"qwen3.5-ocr": {
+		Vision:    "openai",
+		OCR:       true,
+		Streaming: true,
+	},
+	"qwen-vl-ocr": {
+		Vision:    "openai",
+		OCR:       true,
+		Streaming: true,
+	},
 
 	// ByteDance Models (Index: 57)
 	"doubao-seed": {

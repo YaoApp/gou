@@ -15,6 +15,7 @@ type Capabilities struct {
 	Embedding             bool        `json:"embedding,omitempty" yaml:"embedding,omitempty"`                           // Text embedding model (e.g. text-embedding-3-large)
 	ImageGeneration       bool        `json:"image_generation,omitempty" yaml:"image_generation,omitempty"`             // Image generation model (e.g. DALL-E, Seedream)
 	ImageEditing          interface{} `json:"image_editing,omitempty" yaml:"image_editing,omitempty"`                   // Image editing: bool or protocol string ("multipart" = form-data /images/edits, "json" = JSON /images/generations + image field)
+	OCR                   bool        `json:"ocr,omitempty" yaml:"ocr,omitempty"`                                       // OCR text extraction model (e.g. Qwen3.5-OCR, Qwen-VL-OCR)
 	TemperatureAdjustable bool        `json:"temperature_adjustable,omitempty" yaml:"temperature_adjustable,omitempty"` // Supports temperature adjustment (reasoning models typically don't)
 	MaxInputTokens        int         `json:"max_input_tokens,omitempty" yaml:"max_input_tokens,omitempty"`             // Maximum input context window size (aligned with Anthropic Models API)
 	MaxOutputTokens       int         `json:"max_output_tokens,omitempty" yaml:"max_output_tokens,omitempty"`           // Maximum output tokens the model can generate
@@ -62,6 +63,11 @@ func (c *Capabilities) HasImageEditing() bool {
 	}
 }
 
+// HasOCR reports whether the model supports OCR text extraction.
+func (c *Capabilities) HasOCR() bool {
+	return c != nil && c.OCR
+}
+
 // GetImageEditingFormat returns the image editing API protocol.
 // Returns "multipart" or "json" when explicitly set, empty string otherwise.
 // Callers should treat empty as "json" (the most common default).
@@ -97,6 +103,7 @@ func (c *Capabilities) ToMap() map[string]interface{} {
 	if c.ImageEditing != nil {
 		result["image_editing"] = c.ImageEditing
 	}
+	result["ocr"] = c.OCR
 	result["temperature_adjustable"] = c.TemperatureAdjustable
 	return result
 }

@@ -98,6 +98,65 @@ func TestHasImageEditing_String(t *testing.T) {
 	}
 }
 
+func TestHasOCR(t *testing.T) {
+	var c *Capabilities
+	if c.HasOCR() {
+		t.Error("nil receiver should return false")
+	}
+	c = &Capabilities{OCR: false}
+	if c.HasOCR() {
+		t.Error("OCR=false should return false")
+	}
+	c.OCR = true
+	if !c.HasOCR() {
+		t.Error("OCR=true should return true")
+	}
+}
+
+func TestToMap_Nil(t *testing.T) {
+	var c *Capabilities
+	if m := c.ToMap(); m != nil {
+		t.Error("nil receiver should return nil")
+	}
+}
+
+func TestToMap(t *testing.T) {
+	c := &Capabilities{
+		Vision:          "openai",
+		OCR:             true,
+		Streaming:       true,
+		ImageGeneration: true,
+		Embedding:       false,
+	}
+	m := c.ToMap()
+	if m == nil {
+		t.Fatal("ToMap should not return nil for non-nil receiver")
+	}
+
+	if v, ok := m["ocr"].(bool); !ok || !v {
+		t.Error("ToMap must include ocr=true")
+	}
+	if v, ok := m["vision"]; !ok || v != "openai" {
+		t.Error("ToMap must include vision=\"openai\"")
+	}
+	if v, ok := m["streaming"].(bool); !ok || !v {
+		t.Error("ToMap must include streaming=true")
+	}
+	if v, ok := m["image_generation"].(bool); !ok || !v {
+		t.Error("ToMap must include image_generation=true")
+	}
+	if v, ok := m["embedding"].(bool); !ok || v {
+		t.Error("ToMap must include embedding=false")
+	}
+
+	// Zero-value Capabilities: all bools should be present as false
+	zero := &Capabilities{}
+	zm := zero.ToMap()
+	if v, ok := zm["ocr"].(bool); !ok || v {
+		t.Error("zero Capabilities: ocr should be false")
+	}
+}
+
 func TestGetImageEditingFormat(t *testing.T) {
 	var c *Capabilities
 	if f := c.GetImageEditingFormat(); f != "" {
