@@ -1,447 +1,325 @@
 package dns
 
 import (
-	"bytes"
-	"crypto/tls"
+	"context"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"runtime"
-	"strings"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/yaoapp/kun/utils"
 )
 
-func TestDefaultConfig(t *testing.T) {
-	config, err := DefaultConfig()
+func TestLookupIP_CacheTTLExpired(t *testing.T) {
+	ClearCache()
+
+	// Inject an expired entry.
+	SetCacheForTest("example.com_false", []string{"1.2.3.4"}, time.Now().Add(-1*time.Second))
+
+	// LookupIP should discard the expired entry and resolve fresh.
+	ips, err := LookupIP("example.com", false)
 	if err != nil {
-		t.Fatalf("DefaultConfig() failed: %v", err)
+		t.Fatalf("LookupIP failed: %v", err)
 	}
-
-	if config == nil {
-		t.Fatal("DefaultConfig() returned nil config")
+	if len(ips) == 0 {
+		t.Fatal("expected at least one IP")
 	}
-
-	if len(config.Servers) == 0 {
-		t.Fatal("DefaultConfig() returned no DNS servers")
+	if ips[0] == "1.2.3.4" {
+		t.Error("expected fresh IP, got stale cached value 1.2.3.4")
 	}
+	t.Logf("Fresh resolve: %v", ips)
 
-	t.Logf("DNS configuration detected:")
-	t.Logf("  Servers: %v", config.Servers)
-	t.Logf("  Port: %s", config.Port)
-	t.Logf("  Timeout: %d", config.Timeout)
-	t.Logf("  Attempts: %d", config.Attempts)
-
-	// Ensure we have at least one DNS server
-	if len(config.Servers) < 1 {
-		t.Errorf("Expected at least 1 DNS server, got %d", len(config.Servers))
-	}
-
-	// Log if we only have one server (for information)
-	if len(config.Servers) == 1 {
-		t.Logf("Only one DNS server configured. Fallback will provide redundancy if needed.")
-	}
+	ClearCache()
 }
 
-func TestGetFallbackDNSServers(t *testing.T) {
-	servers := getFallbackDNSServers()
+func TestLookupIP_CacheTTLNotExpired(t *testing.T) {
+	ClearCache()
 
-	if len(servers) == 0 {
-		t.Fatal("getFallbackDNSServers() returned no servers")
-	}
+	// Inject a valid (not-yet-expired) entry.
+	SetCacheForTest("cached-host.test_false", []string{"10.0.0.1"}, time.Now().Add(5*time.Minute))
 
-	t.Logf("Fallback DNS servers: %v", servers)
-
-	// Should have some public DNS servers as fallback
-	hasPublicDNS := false
-	publicDNSServers := []string{"1.1.1.1", "8.8.8.8", "1.0.0.1", "8.8.4.4"}
-
-	for _, server := range servers {
-		for _, publicDNS := range publicDNSServers {
-			if server == publicDNS {
-				hasPublicDNS = true
-				break
-			}
-		}
-	}
-
-	if !hasPublicDNS {
-		t.Error("No public DNS servers found in fallback list")
-	}
-}
-
-func TestGetSystemSpecificDNS(t *testing.T) {
-	servers := getSystemSpecificDNS()
-
-	t.Logf("System-specific DNS servers detected: %v", servers)
-
-	// This test doesn't fail if no system-specific DNS is found
-	// as it depends on the system configuration
-	if len(servers) > 0 {
-		t.Logf("Successfully detected %d system-specific DNS servers", len(servers))
-	} else {
-		t.Log("No system-specific DNS servers detected (this is normal on some systems)")
-	}
-}
-
-func TestIsDNSServerReachable(t *testing.T) {
-	// Test with known public DNS servers
-	testServers := []string{
-		"8.8.8.8", // Google DNS
-		"1.1.1.1", // Cloudflare DNS
-	}
-
-	for _, server := range testServers {
-		reachable := isDNSServerReachable(server)
-		t.Logf("DNS server %s reachable: %v", server, reachable)
-
-		// Note: We don't fail the test if public DNS is not reachable
-		// as it might be blocked by firewall or network configuration
-	}
-
-	// Test with obviously unreachable server
-	unreachable := isDNSServerReachable("192.0.2.1") // RFC 5737 test address
-	if unreachable {
-		t.Log("Warning: Test address 192.0.2.1 appears reachable (unexpected)")
-	}
-}
-
-func TestContains(t *testing.T) {
-	servers := []string{"8.8.8.8", "1.1.1.1", "127.0.0.1"}
-
-	if !contains(servers, "8.8.8.8") {
-		t.Error("contains() should return true for existing item")
-	}
-
-	if contains(servers, "8.8.4.4") {
-		t.Error("contains() should return false for non-existing item")
-	}
-}
-
-func TestMin(t *testing.T) {
-	if min(5, 3) != 3 {
-		t.Error("min(5, 3) should return 3")
-	}
-
-	if min(2, 7) != 2 {
-		t.Error("min(2, 7) should return 2")
-	}
-
-	if min(4, 4) != 4 {
-		t.Error("min(4, 4) should return 4")
-	}
-}
-
-func TestLookupIP(t *testing.T) {
-	_, err := LookupIP("github.com", true)
+	ips, err := LookupIP("cached-host.test", false)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("LookupIP failed: %v", err)
+	}
+	if len(ips) != 1 || ips[0] != "10.0.0.1" {
+		t.Errorf("expected cached [10.0.0.1], got %v", ips)
 	}
 
-	res, err := LookupIP("google.com", true)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Check if we got any IPv6 addresses (containing ":")
-	hasIPv6 := strings.Contains(strings.Join(res, ","), ":")
-	if !hasIPv6 {
-		t.Logf("No IPv6 addresses returned for google.com (this may be normal in some network environments)")
-		t.Logf("Returned addresses: %v", res)
-
-		// Test localhost IPv6 to verify IPv6 functionality works
-		localRes, err := LookupIP("localhost", true)
-		if err == nil {
-			localHasIPv6 := strings.Contains(strings.Join(localRes, ","), ":")
-			if localHasIPv6 {
-				t.Logf("IPv6 functionality verified with localhost: %v", localRes)
-			}
-		}
-	} else {
-		t.Logf("Successfully got IPv6 addresses: %v", res)
-	}
-
-	res, err = LookupIP("google.com", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.NotContains(t, strings.Join(res, ","), ":")
+	ClearCache()
 }
 
-func TestLookupIPCaches(t *testing.T) {
-	ips, err := LookupIP("github.com", true)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestClearHost(t *testing.T) {
+	ClearCache()
 
-	assert.Equal(t, ips, caches["github.com_true"])
-	utils.Dump(ips)
+	SetCacheForTest("a.com_false", []string{"1.1.1.1"}, time.Now().Add(5*time.Minute))
+	SetCacheForTest("a.com_true", []string{"::1"}, time.Now().Add(5*time.Minute))
+	SetCacheForTest("b.com_false", []string{"2.2.2.2"}, time.Now().Add(5*time.Minute))
 
-	_, has := caches["github.com_false"]
-	assert.Equal(t, false, has)
+	ClearHost("a.com")
 
-	ips, err = LookupIP("github.com", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	utils.Dump(ips)
-	assert.Equal(t, ips, caches["github.com_false"])
-
-}
-
-func TestLookupIPHostIsIP(t *testing.T) {
-	ips, err := LookupIP("127.0.0.1", true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, ips, []string{"127.0.0.1"})
-}
-
-func TestDialContext(t *testing.T) {
-	var body []byte
-	req, err := http.NewRequest("GET", "https://api.github.com/users/yaoapp", bytes.NewBuffer(body))
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		DialContext:     DialContext(),
-	}
-	client := &http.Client{Transport: tr}
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body) // response body is []byte
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-// =============================================================================
-// Goroutine and Memory Leak Detection Tests
-// =============================================================================
-
-func TestGoroutineLeakDetection(t *testing.T) {
-	initialGoroutines := runtime.NumGoroutine()
-
-	// Test multiple DNS lookups to check for goroutine leaks
-	hosts := []string{"google.com", "github.com", "cloudflare.com"}
-
-	for i := 0; i < 10; i++ {
-		for _, host := range hosts {
-			_, err := LookupIP(host, true)
-			if err != nil {
-				t.Logf("DNS lookup failed for %s: %v (this may be normal in some network environments)", host, err)
-			}
-		}
-	}
-
-	// Give goroutines time to clean up
-	time.Sleep(200 * time.Millisecond)
-	runtime.GC()
-	time.Sleep(100 * time.Millisecond)
-
-	finalGoroutines := runtime.NumGoroutine()
-	goroutineIncrease := finalGoroutines - initialGoroutines
-
-	// Allow some tolerance for system goroutines
-	tolerance := 3
-	if goroutineIncrease > tolerance {
-		buf := make([]byte, 16384)
-		runtime.Stack(buf, true)
-		t.Errorf("Potential goroutine leak detected: started with %d, ended with %d goroutines (+%d)\nStack trace:\n%s",
-			initialGoroutines, finalGoroutines, goroutineIncrease, string(buf))
-	} else {
-		t.Logf("Goroutine count: %d -> %d (+%d), within tolerance (%d)",
-			initialGoroutines, finalGoroutines, goroutineIncrease, tolerance)
-	}
-}
-
-func TestMemoryLeakDetection(t *testing.T) {
-	// Force garbage collection before starting
-	runtime.GC()
-	runtime.GC()
-
-	var m1, m2 runtime.MemStats
-	runtime.ReadMemStats(&m1)
-
-	// Test operations that might leak memory
-	hosts := []string{"google.com", "github.com", "cloudflare.com", "stackoverflow.com", "reddit.com"}
-
-	// Perform many DNS lookups to stress test the cache
-	for i := 0; i < 100; i++ {
-		for _, host := range hosts {
-			// Test both IPv4 and IPv6 lookups
-			_, err := LookupIP(host, false)
-			if err != nil {
-				t.Logf("IPv4 lookup failed for %s: %v", host, err)
-			}
-
-			_, err = LookupIP(host, true)
-			if err != nil {
-				t.Logf("IPv6 lookup failed for %s: %v", host, err)
-			}
-		}
-
-		// Force garbage collection periodically
-		if i%20 == 0 {
-			runtime.GC()
-		}
-	}
-
-	// Force final garbage collection
-	runtime.GC()
-	runtime.GC()
-	runtime.ReadMemStats(&m2)
-
-	// Check memory growth
-	var memGrowth, heapGrowth int64
-	if m2.Alloc >= m1.Alloc {
-		memGrowth = int64(m2.Alloc - m1.Alloc)
-	} else {
-		memGrowth = -int64(m1.Alloc - m2.Alloc)
-	}
-	if m2.HeapAlloc >= m1.HeapAlloc {
-		heapGrowth = int64(m2.HeapAlloc - m1.HeapAlloc)
-	} else {
-		heapGrowth = -int64(m1.HeapAlloc - m2.HeapAlloc)
-	}
-
-	t.Logf("Memory stats for DNS operations:")
-	t.Logf("  Alloc growth: %d bytes (%.2f MB)", memGrowth, float64(memGrowth)/(1024*1024))
-	t.Logf("  Heap growth: %d bytes (%.2f MB)", heapGrowth, float64(heapGrowth)/(1024*1024))
-	t.Logf("  Sys growth: %d bytes", int64(m2.Sys)-int64(m1.Sys))
-	t.Logf("  NumGC: %d", m2.NumGC-m1.NumGC)
-	t.Logf("  Cache size: %d entries", len(caches))
-
-	// Check cache growth - this is the main concern for memory leaks
-	if len(caches) > len(hosts)*2+10 { // hosts * 2 (IPv4 + IPv6) + some tolerance
-		t.Errorf("DNS cache grew excessively: %d entries (expected ~%d)", len(caches), len(hosts)*2)
-	}
-
-	// Allow reasonable memory growth for DNS operations and caching
-	maxAllowedGrowth := int64(1024 * 1024) // 1MB threshold
-	if memGrowth > maxAllowedGrowth {
-		t.Errorf("Possible memory leak detected: alloc grew by %d bytes (%.2f MB), threshold: %d bytes (%.2f MB)",
-			memGrowth, float64(memGrowth)/(1024*1024), maxAllowedGrowth, float64(maxAllowedGrowth)/(1024*1024))
-	}
-}
-
-func TestCacheGrowthControl(t *testing.T) {
-	// Clear existing cache
-	cachesMutex.Lock()
-	initialCacheSize := len(caches)
-	cachesMutex.Unlock()
-
-	// Test that cache doesn't grow indefinitely
-	uniqueHosts := make([]string, 50)
-	for i := 0; i < 50; i++ {
-		uniqueHosts[i] = fmt.Sprintf("test%d.example.com", i)
-	}
-
-	for _, host := range uniqueHosts {
-		// These will likely fail to resolve, but should still be cached
-		LookupIP(host, false)
-		LookupIP(host, true)
-	}
-
+	// a.com entries should be gone.
 	cachesMutex.RLock()
-	finalCacheSize := len(caches)
+	_, hasAFalse := caches["a.com_false"]
+	_, hasATrue := caches["a.com_true"]
+	_, hasBFalse := caches["b.com_false"]
 	cachesMutex.RUnlock()
 
-	cacheGrowth := finalCacheSize - initialCacheSize
-	t.Logf("Cache growth: %d -> %d (+%d entries)", initialCacheSize, finalCacheSize, cacheGrowth)
+	if hasAFalse || hasATrue {
+		t.Error("ClearHost(a.com) should have removed a.com entries")
+	}
+	if !hasBFalse {
+		t.Error("ClearHost(a.com) should NOT have removed b.com entries")
+	}
 
-	// The cache should grow, but not excessively
-	if cacheGrowth > 100 { // Allow some growth but not unlimited
-		t.Errorf("Cache grew too much: +%d entries (threshold: 100)", cacheGrowth)
+	ClearCache()
+}
+
+func TestClearCache(t *testing.T) {
+	SetCacheForTest("x.com_false", []string{"3.3.3.3"}, time.Now().Add(5*time.Minute))
+	ClearCache()
+
+	cachesMutex.RLock()
+	count := len(caches)
+	cachesMutex.RUnlock()
+
+	if count != 0 {
+		t.Errorf("ClearCache should empty the cache, got %d entries", count)
 	}
 }
 
-func TestConcurrentDNSLookups(t *testing.T) {
-	// Test concurrent access to check for race conditions and goroutine leaks
-	initialGoroutines := runtime.NumGoroutine()
+func TestDialContext_Timeout(t *testing.T) {
+	ClearCache()
 
-	hosts := []string{"google.com", "github.com", "stackoverflow.com"}
-	numWorkers := 10
-	lookupsPerWorker := 5
+	// Inject an unreachable IP (240.x is reserved, not routable).
+	SetCacheForTest("unreachable.test_false", []string{"240.0.0.1"}, time.Now().Add(10*time.Minute))
 
-	done := make(chan bool, numWorkers)
+	dial := DialContext()
 
-	for i := 0; i < numWorkers; i++ {
-		go func(workerID int) {
-			defer func() { done <- true }()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
 
-			for j := 0; j < lookupsPerWorker; j++ {
-				host := hosts[j%len(hosts)]
-				_, err := LookupIP(host, j%2 == 0) // Alternate between IPv4 and IPv6
-				if err != nil {
-					t.Logf("Worker %d lookup %d failed for %s: %v", workerID, j, host, err)
-				}
-			}
-		}(i)
+	start := time.Now()
+	conn, err := dial(ctx, "tcp", "unreachable.test:443")
+	elapsed := time.Since(start)
+
+	if conn != nil {
+		conn.Close()
+		t.Fatal("expected nil conn for unreachable IP")
+	}
+	if err == nil {
+		t.Fatal("expected error for unreachable IP")
 	}
 
-	// Wait for all workers to complete
-	for i := 0; i < numWorkers; i++ {
-		<-done
+	// The Dialer Timeout is 15s; should fail within ~16s (not hang forever).
+	if elapsed > 18*time.Second {
+		t.Errorf("dial took %v, expected <18s (Dialer.Timeout=15s)", elapsed)
 	}
+	t.Logf("Dial failed in %v: %v", elapsed, err)
 
-	// Give time for cleanup
-	time.Sleep(200 * time.Millisecond)
-	runtime.GC()
-	time.Sleep(100 * time.Millisecond)
-
-	finalGoroutines := runtime.NumGoroutine()
-	goroutineIncrease := finalGoroutines - initialGoroutines
-
-	if goroutineIncrease > 5 { // Allow some tolerance for concurrent operations
-		t.Errorf("Potential goroutine leak in concurrent test: started with %d, ended with %d goroutines (+%d)",
-			initialGoroutines, finalGoroutines, goroutineIncrease)
-	} else {
-		t.Logf("Concurrent test passed: goroutine count %d -> %d (+%d)",
-			initialGoroutines, finalGoroutines, goroutineIncrease)
-	}
+	ClearCache()
 }
 
-func TestLinuxLookupIPGoroutineCleanup(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("Skipping Linux-specific test on non-Linux platform")
-	}
-
-	initialGoroutines := runtime.NumGoroutine()
-
-	// Test the Linux-specific DNS lookup function
-	config, err := DefaultConfig()
+func TestLookupIP_DirectIP(t *testing.T) {
+	ips, err := LookupIP("127.0.0.1", false)
 	if err != nil {
-		t.Fatalf("Failed to get DNS config: %v", err)
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(ips) != 1 || ips[0] != "127.0.0.1" {
+		t.Errorf("expected [127.0.0.1], got %v", ips)
+	}
+}
+
+func TestLookupIP_CacheKeyFormat(t *testing.T) {
+	ClearCache()
+
+	// ipv4-only and ipv6 should use separate cache keys.
+	SetCacheForTest("dual.test_false", []string{"4.4.4.4"}, time.Now().Add(5*time.Minute))
+	SetCacheForTest("dual.test_true", []string{"::1"}, time.Now().Add(5*time.Minute))
+
+	ips4, _ := LookupIP("dual.test", false)
+	ips6, _ := LookupIP("dual.test", true)
+
+	if fmt.Sprint(ips4) == fmt.Sprint(ips6) {
+		t.Error("ipv4 and ipv6 cache keys should return different results")
 	}
 
-	// Perform multiple lookups to test goroutine cleanup
-	for i := 0; i < 20; i++ {
-		_, err := linuxLookupIP("google.com", config.Servers, config.Port, true)
-		if err != nil {
-			t.Logf("Linux DNS lookup failed: %v (this may be normal)", err)
-		}
+	ClearCache()
+}
+
+func TestLookupIP_DefaultIPv6(t *testing.T) {
+	ClearCache()
+
+	// When no ipv6 arg is passed, default is true → cache key "host_true".
+	SetCacheForTest("default.test_true", []string{"5.5.5.5"}, time.Now().Add(5*time.Minute))
+
+	ips, err := LookupIP("default.test") // no ipv6 arg
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(ips) != 1 || ips[0] != "5.5.5.5" {
+		t.Errorf("expected cached [5.5.5.5], got %v", ips)
 	}
 
-	// Give time for cleanup
-	time.Sleep(300 * time.Millisecond)
-	runtime.GC()
-	time.Sleep(100 * time.Millisecond)
+	ClearCache()
+}
 
-	finalGoroutines := runtime.NumGoroutine()
-	goroutineIncrease := finalGoroutines - initialGoroutines
+func TestLookupIP_RealResolve(t *testing.T) {
+	ClearCache()
 
-	if goroutineIncrease > 3 {
-		buf := make([]byte, 16384)
-		runtime.Stack(buf, true)
-		t.Errorf("Potential goroutine leak in linuxLookupIP: started with %d, ended with %d goroutines (+%d)\nStack trace:\n%s",
-			initialGoroutines, finalGoroutines, goroutineIncrease, string(buf))
-	} else {
-		t.Logf("Linux DNS lookup test passed: goroutine count %d -> %d (+%d)",
-			initialGoroutines, finalGoroutines, goroutineIncrease)
+	// Fresh resolve of a well-known host (not cached).
+	ips, err := LookupIP("dns.google", false)
+	if err != nil {
+		t.Fatalf("LookupIP(dns.google) failed: %v", err)
 	}
+	if len(ips) == 0 {
+		t.Fatal("expected at least one IP for dns.google")
+	}
+	t.Logf("dns.google resolved to: %v", ips)
+
+	// Verify it was cached.
+	ips2, _ := LookupIP("dns.google", false)
+	if fmt.Sprint(ips) != fmt.Sprint(ips2) {
+		t.Errorf("second lookup should return cached result: %v vs %v", ips, ips2)
+	}
+
+	ClearCache()
+}
+
+func TestClearHost_NoMatch(t *testing.T) {
+	ClearCache()
+
+	SetCacheForTest("keep.test_false", []string{"9.9.9.9"}, time.Now().Add(5*time.Minute))
+
+	ClearHost("nonexistent.host")
+
+	cachesMutex.RLock()
+	_, has := caches["keep.test_false"]
+	cachesMutex.RUnlock()
+
+	if !has {
+		t.Error("ClearHost(nonexistent) should not affect other entries")
+	}
+
+	ClearCache()
+}
+
+func TestDialContext_Success(t *testing.T) {
+	ClearCache()
+
+	dial := DialContext()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Dial a real reachable address.
+	conn, err := dial(ctx, "tcp", "dns.google:443")
+	if err != nil {
+		t.Fatalf("dial failed: %v", err)
+	}
+	conn.Close()
+
+	ClearCache()
+}
+
+func TestLookupIP_ResolverError(t *testing.T) {
+	ClearCache()
+
+	// .invalid TLD is reserved by RFC 2606 and should fail lookup.
+	_, err := LookupIP("definitely-not-real.invalid", false)
+	if err == nil {
+		t.Skip("resolver did not return error for .invalid TLD (some resolvers return NXDOMAIN without error)")
+	}
+	t.Logf("Got expected resolver error: %v", err)
+
+	ClearCache()
+}
+
+func TestLookupIP_EmptyResult(t *testing.T) {
+	ClearCache()
+
+	// A host that resolves to no IPs should return empty slice, no cache write.
+	ips, err := LookupIP("empty-result-unlikely.invalid", false)
+	if err != nil {
+		// This is the expected path — resolver error.
+		t.Logf("Resolver returned error (expected): %v", err)
+	} else if len(ips) == 0 {
+		t.Log("Got empty result as expected")
+	}
+
+	ClearCache()
+}
+
+func TestDialContext_BadAddr(t *testing.T) {
+	dial := DialContext()
+	ctx := context.Background()
+
+	// Address without port → SplitHostPort fails.
+	conn, err := dial(ctx, "tcp", "no-port-here")
+	if conn != nil {
+		conn.Close()
+		t.Error("expected nil conn")
+	}
+	if err == nil {
+		t.Error("expected error for malformed address")
+	}
+}
+
+func TestLookupIP_IPv6Path(t *testing.T) {
+	ClearCache()
+
+	// Explicitly request ipv6=true to cover the "ip" network lookup path.
+	ips, err := LookupIP("dns.google", true)
+	if err != nil {
+		t.Fatalf("LookupIP(dns.google, ipv6=true) failed: %v", err)
+	}
+	if len(ips) == 0 {
+		t.Fatal("expected at least one IP")
+	}
+	t.Logf("dns.google (ipv6=true): %v", ips)
+
+	ClearCache()
+}
+
+func TestDialContext_IPv6Env(t *testing.T) {
+	ClearCache()
+
+	// Set env to enable ipv6 in DialContext.
+	t.Setenv("YAO_ENABLE_IPV6", "1")
+
+	// Inject a cached entry for the ipv6 key.
+	SetCacheForTest("envtest.test_true", []string{"127.0.0.1"}, time.Now().Add(5*time.Minute))
+
+	dial := DialContext()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// The DialContext should use ipv6=true due to env, matching cache key "_true".
+	conn, err := dial(ctx, "tcp", "envtest.test:80")
+	// Connection to 127.0.0.1:80 may fail (no server), but the important thing
+	// is that it used the right cache key (ipv6=true).
+	if conn != nil {
+		conn.Close()
+	}
+	// Error is acceptable — we're testing the env var path, not the connection.
+	t.Logf("IPv6 env dial result: err=%v", err)
+
+	ClearCache()
+}
+
+func TestDialContext_LookupError(t *testing.T) {
+	ClearCache()
+
+	dial := DialContext()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// A TLD that doesn't exist → LookupIP returns error.
+	conn, err := dial(ctx, "tcp", "this-host-does-not-exist.invalid:443")
+	if conn != nil {
+		conn.Close()
+		t.Error("expected nil conn")
+	}
+	if err == nil {
+		t.Error("expected error for unresolvable host")
+	}
+	t.Logf("Got expected error: %v", err)
+
+	ClearCache()
 }

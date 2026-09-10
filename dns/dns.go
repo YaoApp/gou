@@ -13,9 +13,42 @@ import (
 	"github.com/yaoapp/kun/log"
 )
 
-// DNS cache with thread-safe access
-var caches = map[string][]string{}
+const defaultTTL = 600 * time.Second
+
+// cacheEntry holds resolved IPs with an expiration time.
+type cacheEntry struct {
+	ips      []string
+	expireAt time.Time
+}
+
+var caches = map[string]cacheEntry{}
 var cachesMutex sync.RWMutex
+
+// ClearHost removes all cached entries for the given hostname (both ipv4 and ipv6 keys).
+func ClearHost(host string) {
+	prefix := host + "_"
+	cachesMutex.Lock()
+	for k := range caches {
+		if len(k) >= len(prefix) && k[:len(prefix)] == prefix {
+			delete(caches, k)
+		}
+	}
+	cachesMutex.Unlock()
+}
+
+// ClearCache removes all entries from the DNS cache.
+func ClearCache() {
+	cachesMutex.Lock()
+	caches = map[string]cacheEntry{}
+	cachesMutex.Unlock()
+}
+
+// SetCacheForTest injects entries into the DNS cache with a custom expiration (test-only).
+func SetCacheForTest(key string, ips []string, expireAt time.Time) {
+	cachesMutex.Lock()
+	caches[key] = cacheEntry{ips: ips, expireAt: expireAt}
+	cachesMutex.Unlock()
+}
 
 // LookupIP looks up host using the local resolver. It returns a slice of that host's IPv4 and IPv6 addresses.
 func LookupIP(host string, ipv6 ...bool) ([]string, error) {
@@ -28,12 +61,11 @@ func LookupIP(host string, ipv6 ...bool) ([]string, error) {
 		ipv6 = []bool{true}
 	}
 
-	// the host was cached
 	cache := fmt.Sprintf("%s_%v", host, ipv6[0])
 	cachesMutex.RLock()
-	if ips, has := caches[cache]; has {
+	if entry, has := caches[cache]; has && time.Now().Before(entry.expireAt) {
 		cachesMutex.RUnlock()
-		return ips, nil
+		return entry.ips, nil
 	}
 	cachesMutex.RUnlock()
 
@@ -48,10 +80,9 @@ func LookupIP(host string, ipv6 ...bool) ([]string, error) {
 			return nil, err
 		}
 
-		// cache the host resolved result ( for linux )
 		if len(res) > 0 {
 			cachesMutex.Lock()
-			caches[cache] = res
+			caches[cache] = cacheEntry{ips: res, expireAt: time.Now().Add(defaultTTL)}
 			cachesMutex.Unlock()
 		}
 
@@ -77,10 +108,9 @@ func LookupIP(host string, ipv6 ...bool) ([]string, error) {
 		res = append(res, ip.String())
 	}
 
-	// cache the host resolved result
 	if len(res) > 0 {
 		cachesMutex.Lock()
-		caches[cache] = res
+		caches[cache] = cacheEntry{ips: res, expireAt: time.Now().Add(defaultTTL)}
 		cachesMutex.Unlock()
 	}
 
@@ -108,7 +138,7 @@ func DialContext() func(ctx context.Context, network, addr string) (net.Conn, er
 		}
 
 		for _, ip := range ips {
-			var dialer net.Dialer
+			dialer := net.Dialer{Timeout: 15 * time.Second}
 			conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(ip, port))
 			if err == nil {
 				return conn, nil

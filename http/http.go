@@ -7,8 +7,10 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
 	neturl "net/url"
 	"os"
@@ -535,7 +537,17 @@ func (r *Request) formBody() ([]byte, string, *Response) {
 	}
 
 	for _, f := range r.fileBytes {
-		part, _ := writer.CreateFormFile(f.Name, filepath.Base(f.Path))
+		filename := filepath.Base(f.Path)
+		contentType := "application/octet-stream"
+		if ext := filepath.Ext(filename); ext != "" {
+			if mt := mime.TypeByExtension(ext); mt != "" {
+				contentType = mt
+			}
+		}
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, f.Name, filename))
+		h.Set("Content-Type", contentType)
+		part, _ := writer.CreatePart(h)
 		part.Write(f.data)
 	}
 
