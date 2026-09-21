@@ -13,6 +13,7 @@ import (
 	mongo "github.com/yaoapp/gou/connector/mongo"
 	"github.com/yaoapp/gou/connector/openai"
 	"github.com/yaoapp/gou/connector/redis"
+	"github.com/yaoapp/gou/connector/typesafe"
 )
 
 // Connectors the loaded connectors
@@ -65,7 +66,7 @@ func LoadSource(source []byte, id string, file string) (Connector, error) {
 	}
 
 	// The AI connectors
-	if dsl.Type == "openai" || dsl.Type == "anthropic" || dsl.Type == "fastembed" {
+	if dsl.Type == "openai" || dsl.Type == "anthropic" || dsl.Type == "fastembed" || dsl.Type == "typesafe" {
 		label := dsl.Label
 		if label == "" {
 			label = dsl.Name
@@ -200,6 +201,10 @@ func makeConnector(typ string) (Connector, error) {
 
 	case ANTHROPIC:
 		c := &anthropic.Connector{}
+		return c, nil
+
+	case TYPESAFE:
+		c := &typesafe.Connector{}
 		return c, nil
 	}
 

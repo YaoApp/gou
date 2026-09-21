@@ -157,6 +157,37 @@ func TestToMap(t *testing.T) {
 	}
 }
 
+func TestHasDecision(t *testing.T) {
+	var c *Capabilities
+	if c.HasDecision() {
+		t.Error("nil receiver should return false")
+	}
+	c = &Capabilities{Decision: false}
+	if c.HasDecision() {
+		t.Error("Decision=false should return false")
+	}
+	c.Decision = true
+	if !c.HasDecision() {
+		t.Error("Decision=true should return true")
+	}
+}
+
+func TestToMap_Decision(t *testing.T) {
+	c := &Capabilities{Decision: true}
+	m := c.ToMap()
+	v, ok := m["decision"].(bool)
+	if !ok || !v {
+		t.Error("ToMap must include decision=true")
+	}
+
+	c.Decision = false
+	m = c.ToMap()
+	v, ok = m["decision"].(bool)
+	if !ok || v {
+		t.Error("ToMap must include decision=false when Decision=false")
+	}
+}
+
 func TestGetImageEditingFormat(t *testing.T) {
 	var c *Capabilities
 	if f := c.GetImageEditingFormat(); f != "" {

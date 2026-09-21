@@ -39,6 +39,9 @@ const (
 
 	// ANTHROPIC the anthropic connector (Claude API format)
 	ANTHROPIC
+
+	// TYPESAFE the TypeSafe AI (Jev decision) connector
+	TYPESAFE
 )
 
 var types = map[string]int{
@@ -58,6 +61,7 @@ var types = map[string]int{
 	"moapi":         MOAPI,
 	"fastembed":     FASTEMBED,
 	"anthropic":     ANTHROPIC,
+	"typesafe":      TYPESAFE,
 }
 
 // Connector the connector interface
