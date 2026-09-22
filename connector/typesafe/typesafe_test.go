@@ -3,10 +3,12 @@ package typesafe
 import (
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/yaoapp/gou/llm"
 )
@@ -243,7 +245,12 @@ func TestDecide_HTTPError(t *testing.T) {
 func TestDecide_RealAPI(t *testing.T) {
 	key := os.Getenv("TYPESAFE_API_KEY")
 	if key == "" {
-		t.Fatal("TYPESAFE_API_KEY not set — export it or add to test env before running")
+		t.Skip("TYPESAFE_API_KEY not set, skipping real API test")
+	}
+
+	// Pre-flight: verify api.typesafe.ai is reachable from this host
+	if _, err := net.DialTimeout("tcp", "api.typesafe.ai:443", 5*time.Second); err != nil {
+		t.Skipf("api.typesafe.ai unreachable, skipping real API test: %v", err)
 	}
 
 	c := &Connector{Options: Options{
