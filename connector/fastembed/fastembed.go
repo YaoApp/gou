@@ -15,6 +15,7 @@ type Connector struct {
 	Name    string  `json:"name"`
 	Options Options `json:"options"`
 	types.MetaInfo
+	types.ConnectorMetadata
 }
 
 // Options the fastembed connector option

@@ -74,6 +74,7 @@ type Connector interface {
 	Is(int) bool
 	Setting() map[string]interface{}
 	GetMetaInfo() gouTypes.MetaInfo
+	GetMetadata() map[string]interface{}
 }
 
 // Option the option interface
@@ -85,6 +86,7 @@ type Option struct {
 // DSL the connector DSL
 type DSL struct {
 	gouTypes.MetaInfo
+	gouTypes.ConnectorMetadata
 	ID   string `json:"-"`
 	Type string `json:"type"`
 	Name string `json:"name,omitempty"`

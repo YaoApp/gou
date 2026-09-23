@@ -22,6 +22,7 @@ type Connector struct {
 	Rdb     *redis.Client `json:"-"`
 	Options Options       `json:"options"`
 	types.MetaInfo
+	types.ConnectorMetadata
 }
 
 // Options the redis connector option

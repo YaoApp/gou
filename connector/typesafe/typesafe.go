@@ -28,6 +28,7 @@ type Connector struct {
 	Name    string  `json:"name"`
 	Options Options `json:"options"`
 	types.MetaInfo
+	types.ConnectorMetadata
 }
 
 // Options configures the TypeSafe connector.

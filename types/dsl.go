@@ -13,3 +13,15 @@ type MetaInfo struct {
 	Mtime       time.Time `json:"mtime,omitempty"`       // The mtime of the DSL
 	Ctime       time.Time `json:"ctime,omitempty"`       // The ctime of the DSL
 }
+
+// ConnectorMetadata holds display-only metadata for connectors.
+// Embed in connector structs — GetMetadata() is promoted automatically.
+// Fields vary by model family (e.g. model_name, model_family, reasoning_efforts, reasoning_effort).
+type ConnectorMetadata struct {
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// GetMetadata returns the display-only metadata map, or nil if not set.
+func (m ConnectorMetadata) GetMetadata() map[string]interface{} {
+	return m.Metadata
+}

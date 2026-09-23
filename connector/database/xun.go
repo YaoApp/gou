@@ -26,6 +26,7 @@ type Xun struct {
 	Version string           `json:"version,omitempty"`
 	Options XunOptions       `json:"options"`
 	types.MetaInfo
+	types.ConnectorMetadata
 }
 
 // XunOptions the connetion options

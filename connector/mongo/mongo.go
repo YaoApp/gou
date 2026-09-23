@@ -24,6 +24,7 @@ type Connector struct {
 	Client   *mongo.Client   `json:"-"`
 	Database *mongo.Database `json:"-"`
 	types.MetaInfo
+	types.ConnectorMetadata
 }
 
 // Options the connetion options

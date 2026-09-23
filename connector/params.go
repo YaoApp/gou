@@ -32,6 +32,7 @@ var connectorMetadataKeys = map[string]bool{
 	"protocols": true, "supported_params": true, "auth_mode": true,
 	"version": true, "organization": true,
 	"max_input_tokens": true, "max_output_tokens": true,
+	"metadata": true,
 }
 
 // FilterRequestBodyParams filters Setting() output to only keep parameters

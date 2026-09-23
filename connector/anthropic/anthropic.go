@@ -20,6 +20,7 @@ type Connector struct {
 	SupportedParams map[string]*llm.ParamSpec `json:"supported_params,omitempty"`
 	Options         Options                   `json:"options"`
 	types.MetaInfo
+	types.ConnectorMetadata
 }
 
 // Options the anthropic connector options

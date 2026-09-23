@@ -622,6 +622,110 @@ func TestAnthropic_LLMConnector_SupportedParams(t *testing.T) {
 	assert.Equal(t, 1.0, *tempSpec.Max)
 }
 
+func TestOpenAI_Metadata(t *testing.T) {
+	src := []byte(`{
+		"type": "openai",
+		"name": "with metadata",
+		"metadata": {
+			"model_name": "DeepSeek V4 Flash",
+			"model_family": "deepseek-v4-flash",
+			"reasoning_efforts": ["none", "high"],
+			"reasoning_effort": "none"
+		},
+		"options": {
+			"host": "https://api.deepseek.com",
+			"model": "deepseek-v4-flash",
+			"key": "sk-test"
+		}
+	}`)
+	conn, err := New("openai", "openai-meta-test", src)
+	assert.NoError(t, err)
+	defer delete(Connectors, "openai-meta-test")
+
+	meta := conn.GetMetadata()
+	assert.NotNil(t, meta, "GetMetadata should return non-nil for DSL with metadata")
+	assert.Equal(t, "DeepSeek V4 Flash", meta["model_name"])
+	assert.Equal(t, "deepseek-v4-flash", meta["model_family"])
+	assert.Equal(t, "none", meta["reasoning_effort"])
+
+	efforts, ok := meta["reasoning_efforts"].([]interface{})
+	assert.True(t, ok, "reasoning_efforts should be []interface{}")
+	assert.Equal(t, 2, len(efforts))
+
+	// metadata must NOT appear in Setting()
+	setting := conn.Setting()
+	_, hasMetadata := setting["metadata"]
+	assert.False(t, hasMetadata, "metadata must not leak into Setting()")
+}
+
+func TestOpenAI_NoMetadata(t *testing.T) {
+	src := []byte(`{
+		"type": "openai",
+		"name": "no metadata",
+		"options": {
+			"host": "https://api.openai.com",
+			"model": "gpt-4o",
+			"key": "sk-test"
+		}
+	}`)
+	conn, err := New("openai", "openai-nometa-test", src)
+	assert.NoError(t, err)
+	defer delete(Connectors, "openai-nometa-test")
+
+	meta := conn.GetMetadata()
+	assert.Nil(t, meta, "GetMetadata should return nil when DSL has no metadata")
+}
+
+func TestAnthropic_Metadata(t *testing.T) {
+	src := []byte(`{
+		"type": "anthropic",
+		"name": "with metadata",
+		"metadata": {
+			"model_name": "Claude Sonnet 4.6",
+			"model_family": "claude-sonnet-4.6",
+			"reasoning_efforts": ["thinking"],
+			"reasoning_effort": "thinking"
+		},
+		"options": {
+			"model": "claude-sonnet-4-6",
+			"key": "sk-ant-test"
+		}
+	}`)
+	conn, err := New("anthropic", "anthropic-meta-test", src)
+	assert.NoError(t, err)
+	defer delete(Connectors, "anthropic-meta-test")
+
+	meta := conn.GetMetadata()
+	assert.NotNil(t, meta)
+	assert.Equal(t, "Claude Sonnet 4.6", meta["model_name"])
+	assert.Equal(t, "thinking", meta["reasoning_effort"])
+}
+
+func TestTypesafe_Metadata(t *testing.T) {
+	src := []byte(`{
+		"type": "typesafe",
+		"name": "with metadata",
+		"metadata": {
+			"model_name": "Jev",
+			"model_family": "typesafe-jev",
+			"reasoning_efforts": ["none"],
+			"reasoning_effort": "none"
+		},
+		"options": {
+			"host": "https://api.typesafe.ai",
+			"model": "jev-latest",
+			"key": "ts-test"
+		}
+	}`)
+	conn, err := New("typesafe", "typesafe-meta-test", src)
+	assert.NoError(t, err)
+	defer delete(Connectors, "typesafe-meta-test")
+
+	meta := conn.GetMetadata()
+	assert.NotNil(t, meta)
+	assert.Equal(t, "Jev", meta["model_name"])
+}
+
 func prepare(t *testing.T, name string) string {
 	root := os.Getenv("GOU_TEST_APPLICATION")
 	app, err := application.OpenFromDisk(root) // Load app

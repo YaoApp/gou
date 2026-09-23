@@ -29,6 +29,7 @@ func (m *mockLLMConnector) ID() string                                    { retu
 func (m *mockLLMConnector) Is(t int) bool                                 { return m.typ == t }
 func (m *mockLLMConnector) Setting() map[string]interface{}               { return m.settings }
 func (m *mockLLMConnector) GetMetaInfo() gouTypes.MetaInfo                { return gouTypes.MetaInfo{} }
+func (m *mockLLMConnector) GetMetadata() map[string]interface{}           { return nil }
 func (m *mockLLMConnector) GetAuthMode() llm.AuthMode                     { return m.authMode }
 func (m *mockLLMConnector) GetURL() string                                { return m.url }
 func (m *mockLLMConnector) GetKey() string                                { return m.key }
@@ -50,6 +51,7 @@ func (p *plainConnector) ID() string                            { return "plain"
 func (p *plainConnector) Is(t int) bool                         { return p.typ == t }
 func (p *plainConnector) Setting() map[string]interface{}       { return p.settings }
 func (p *plainConnector) GetMetaInfo() gouTypes.MetaInfo        { return gouTypes.MetaInfo{} }
+func (p *plainConnector) GetMetadata() map[string]interface{}   { return nil }
 
 func TestFilterRequestBodyParams_WithSupportedParams(t *testing.T) {
 	max06 := 0.6
@@ -177,6 +179,41 @@ func TestFilterRequestBodyParams_UnknownType(t *testing.T) {
 	}
 	if result["custom_param"].(string) != "value" {
 		t.Error("custom_param should pass through")
+	}
+}
+
+func TestFilterRequestBodyParams_MetadataStripped(t *testing.T) {
+	settings := map[string]interface{}{
+		"host":        "https://api.example.com",
+		"key":         "sk-test",
+		"model":       "test-model",
+		"temperature": 0.7,
+		"metadata": map[string]interface{}{
+			"model_name":        "Test Model",
+			"model_family":      "test-family",
+			"reasoning_efforts": []string{"none", "high"},
+			"reasoning_effort":  "none",
+		},
+	}
+
+	// Path 2: known type (OpenAI) — metadata not in defaultParamsByType whitelist
+	connOAI := &plainConnector{typ: OPENAI, settings: settings}
+	result := FilterRequestBodyParams(settings, connOAI)
+	if _, ok := result["metadata"]; ok {
+		t.Error("metadata must not appear in OpenAI request body (whitelist path)")
+	}
+	if result["temperature"].(float64) != 0.7 {
+		t.Error("temperature should pass through")
+	}
+
+	// Path 3: unknown type — metadata in connectorMetadataKeys
+	connUnk := &plainConnector{typ: 999, settings: settings}
+	result = FilterRequestBodyParams(settings, connUnk)
+	if _, ok := result["metadata"]; ok {
+		t.Error("metadata must not appear in request body (stripMetadataKeys path)")
+	}
+	if result["temperature"].(float64) != 0.7 {
+		t.Error("temperature should pass through for unknown type")
 	}
 }
 

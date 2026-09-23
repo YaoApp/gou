@@ -42,6 +42,7 @@ func (m *mockConnector) Schema() (schema.Schema, error)                    { ret
 func (m *mockConnector) Close() error                                      { return nil }
 func (m *mockConnector) Setting() map[string]interface{}                   { return m.settings }
 func (m *mockConnector) GetMetaInfo() types.MetaInfo                       { return types.MetaInfo{} }
+func (m *mockConnector) GetMetadata() map[string]interface{}               { return nil }
 
 func TestPostLLM_LocalLLM(t *testing.T) {
 	// Read environment variables for local LLM
