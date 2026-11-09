@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/YaoApp/v8go"
 	"github.com/evanw/esbuild/pkg/api"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/process"
@@ -17,7 +18,6 @@ import (
 	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
-	"github.com/YaoApp/v8go"
 )
 
 // Scripts loaded scripts

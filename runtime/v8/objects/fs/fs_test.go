@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/YaoApp/v8go"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/fs"
 	"github.com/yaoapp/gou/fs/system"
@@ -20,7 +21,6 @@ import (
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/xun/capsule"
 	"github.com/yaoapp/xun/dbal/schema"
-	"github.com/YaoApp/v8go"
 )
 
 func TestFSObjectReadFile(t *testing.T) {

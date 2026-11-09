@@ -7,12 +7,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/YaoApp/v8go"
 	"github.com/fatih/color"
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/runtime/v8/objects/console"
 	"github.com/yaoapp/kun/log"
-	"github.com/YaoApp/v8go"
 )
 
 var reFuncHead = regexp.MustCompile(`\s*function\s+(\w+)\s*\(([^)]*)\)\s*\{`)

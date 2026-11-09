@@ -3,6 +3,7 @@ package query
 import (
 	"fmt"
 
+	"github.com/YaoApp/v8go"
 	"github.com/yaoapp/gou/query"
 	"github.com/yaoapp/gou/query/linter"
 	"github.com/yaoapp/gou/query/share"
@@ -10,7 +11,6 @@ import (
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
 	"github.com/yaoapp/kun/maps"
-	"github.com/YaoApp/v8go"
 )
 
 // Object Javascript API

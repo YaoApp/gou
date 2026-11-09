@@ -1,8 +1,8 @@
 package use
 
 import (
-	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/YaoApp/v8go"
+	"github.com/yaoapp/gou/runtime/v8/bridge"
 )
 
 // ExportFunction exports the Use function for resource management

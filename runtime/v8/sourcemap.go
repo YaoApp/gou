@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/YaoApp/v8go"
 	"github.com/fatih/color"
 	"github.com/go-sourcemap/sourcemap"
 	jsoniter "github.com/json-iterator/go"
@@ -14,7 +15,6 @@ import (
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/exception"
-	"github.com/YaoApp/v8go"
 )
 
 // SourceMaps the source maps

@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/YaoApp/v8go"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/kun/any"
-	"github.com/YaoApp/v8go"
 )
 
 func TestHTTPObjectGet(t *testing.T) {

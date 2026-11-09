@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yaoapp/gou/runtime/v8/store"
 	"github.com/YaoApp/v8go"
+	"github.com/yaoapp/gou/runtime/v8/store"
 )
 
 // var isoMaxSize = 10

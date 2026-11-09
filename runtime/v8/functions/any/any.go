@@ -1,9 +1,9 @@
 package any
 
 import (
+	"github.com/YaoApp/v8go"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/runtime/v8/functions/concurrent"
-	"github.com/YaoApp/v8go"
 )
 
 // ExportFunction returns the V8 function template for the Any() global function.

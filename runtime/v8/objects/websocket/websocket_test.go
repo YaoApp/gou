@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/YaoApp/v8go"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/websocket"
-	"github.com/YaoApp/v8go"
 )
 
 func TestWebSocketPush(t *testing.T) {

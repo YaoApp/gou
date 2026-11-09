@@ -3,8 +3,8 @@ package exception
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/YaoApp/v8go"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestException(t *testing.T) {

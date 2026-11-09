@@ -6,11 +6,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/YaoApp/v8go"
 	"github.com/fatih/color"
 	"github.com/yaoapp/gou/plan"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"github.com/YaoApp/v8go"
 )
 
 var plans sync.Map

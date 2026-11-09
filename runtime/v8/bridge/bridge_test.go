@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/yaoapp/gou/application"
 	"github.com/YaoApp/v8go"
+	"github.com/yaoapp/gou/application"
 )
 
 func call(ctx *v8go.Context, method string, args ...interface{}) (interface{}, error) {

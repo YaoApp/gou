@@ -3,9 +3,9 @@ package lang
 import (
 	"strings"
 
+	"github.com/YaoApp/v8go"
 	"github.com/yaoapp/gou/lang"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"github.com/YaoApp/v8go"
 )
 
 // ExportFunction function template

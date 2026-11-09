@@ -28,9 +28,9 @@ import (
 	websocketT "github.com/yaoapp/gou/runtime/v8/objects/websocket"
 	"github.com/yaoapp/gou/runtime/v8/store"
 
+	"github.com/YaoApp/v8go"
 	mcpJsapi "github.com/yaoapp/gou/mcp/jsapi"
 	"github.com/yaoapp/kun/log"
-	"github.com/YaoApp/v8go"
 )
 
 var isoReady chan *store.Isolate

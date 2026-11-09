@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/YaoApp/v8go"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/fs"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/log"
-	"github.com/YaoApp/v8go"
 )
 
 // var fs = new FS("data")

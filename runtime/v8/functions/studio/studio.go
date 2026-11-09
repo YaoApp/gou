@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/YaoApp/v8go"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"github.com/YaoApp/v8go"
 )
 
 // ExportFunction function template

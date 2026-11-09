@@ -3,9 +3,9 @@ package lang
 import (
 	"testing"
 
+	"github.com/YaoApp/v8go"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"github.com/YaoApp/v8go"
 )
 
 func TestReplace(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/YaoApp/v8go"
 	"github.com/google/uuid"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"github.com/YaoApp/v8go"
 )
 
 // Eval execute an anonymous function

@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/YaoApp/v8go"
 	"github.com/google/uuid"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/runtime/v8/objects/console"
 	"github.com/yaoapp/kun/log"
-	"github.com/YaoApp/v8go"
 )
 
 // ID is the runner id

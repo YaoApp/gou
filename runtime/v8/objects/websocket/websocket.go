@@ -3,10 +3,10 @@ package websocket
 import (
 	"fmt"
 
+	"github.com/YaoApp/v8go"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/websocket"
 	"github.com/yaoapp/kun/log"
-	"github.com/YaoApp/v8go"
 )
 
 // WebSocket Javascript WebSocket

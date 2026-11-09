@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/YaoApp/v8go"
 	"github.com/google/uuid"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"github.com/YaoApp/v8go"
 )
 
 var jobs = sync.Map{}

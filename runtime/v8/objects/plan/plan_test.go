@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/YaoApp/v8go"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/kun/maps"
-	"github.com/YaoApp/v8go"
 )
 
 func TestNewPlan(t *testing.T) {

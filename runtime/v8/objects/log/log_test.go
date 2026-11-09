@@ -3,8 +3,8 @@ package log
 import (
 	"testing"
 
-	"github.com/yaoapp/kun/log"
 	"github.com/YaoApp/v8go"
+	"github.com/yaoapp/kun/log"
 )
 
 func TestLogObject(t *testing.T) {

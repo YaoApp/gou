@@ -3,8 +3,8 @@ package authorized
 import (
 	"testing"
 
-	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/YaoApp/v8go"
+	"github.com/yaoapp/gou/runtime/v8/bridge"
 )
 
 func TestAuthorizedWithData(t *testing.T) {

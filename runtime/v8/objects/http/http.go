@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/YaoApp/v8go"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/gou/cast"
 	"github.com/yaoapp/gou/http"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/kun/log"
-	"github.com/YaoApp/v8go"
 )
 
 // USAGE

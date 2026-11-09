@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/YaoApp/v8go"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
 	"github.com/yaoapp/gou/connector"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/store"
 	"github.com/yaoapp/kun/any"
-	"github.com/YaoApp/v8go"
 )
 
 func TestStoreObjectLRU(t *testing.T) {
