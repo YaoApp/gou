@@ -293,6 +293,13 @@ jobs:
           chmod 600 $HOME/.yao/github_token
           ls -l $HOME/.yao/github_token
 
+      - name: Use sibling dependency checkouts (CI only)
+        run: |
+          go mod edit \
+            -replace=github.com/yaoapp/kun=../kun \
+            -replace=github.com/yaoapp/xun=../xun \
+            -replace=github.com/YaoApp/v8go=../v8go
+
       - name: Run Test
         run: |
           make vet

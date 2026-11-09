@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/websocket"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 func TestWebSocketPush(t *testing.T) {

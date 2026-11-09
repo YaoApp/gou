@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 // Eval execute an anonymous function

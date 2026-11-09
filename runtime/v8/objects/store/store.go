@@ -7,7 +7,7 @@ import (
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	kv "github.com/yaoapp/gou/store"
 	"github.com/yaoapp/kun/log"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 // Store Javascript API

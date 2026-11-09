@@ -12,7 +12,7 @@ import (
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/runtime/v8/objects/console"
 	"github.com/yaoapp/kun/log"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 var reFuncHead = regexp.MustCompile(`\s*function\s+(\w+)\s*\(([^)]*)\)\s*\{`)

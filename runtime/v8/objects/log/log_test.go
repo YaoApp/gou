@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/yaoapp/kun/log"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 func TestLogObject(t *testing.T) {

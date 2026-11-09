@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/yaoapp/kun/exception"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 // UndefinedT type of Undefined

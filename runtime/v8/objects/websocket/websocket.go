@@ -6,7 +6,7 @@ import (
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/websocket"
 	"github.com/yaoapp/kun/log"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 // WebSocket Javascript WebSocket

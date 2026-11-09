@@ -1,6 +1,6 @@
 package store
 
-import "rogchap.com/v8go"
+import "github.com/YaoApp/v8go"
 
 var caches = New()
 
