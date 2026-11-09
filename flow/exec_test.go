@@ -15,7 +15,7 @@ func TestExec(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC() // created_at 由模型按 UTC 写入，测试日期也用 UTC，避免受 runner 时区影响
 	yesterday := now.AddDate(0, 0, -1).Format("2006-01-02")
 	tomorrow := now.AddDate(0, 0, 1).Format("2006-01-02")
 	res, err := flow.Exec(yesterday, tomorrow)

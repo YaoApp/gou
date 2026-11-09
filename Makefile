@@ -1,4 +1,7 @@
 GO ?= go
+# v8go 的 C++ 头文件在 C++20 下有 -Wtemplate-id-cdtor 兼容性告警（仅编译期噪声）；
+# 这里定向关闭，保留其它警告。第二个参数用于容忍 clang 不认识 GCC 告警名。
+export CGO_CXXFLAGS ?= -Wno-template-id-cdtor -Wno-unknown-warning-option
 GOFMT ?= gofmt "-s"
 PACKAGES ?= $(shell $(GO) list ./...)
 VETPACKAGES ?= $(shell $(GO) list ./... | grep -v /examples/)

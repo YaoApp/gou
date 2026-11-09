@@ -10,6 +10,7 @@ on:
 
 env:
   GOU_TEST_AES_KEY: "^*aNBue!loLTTiP*4i&BSK7s#QRbe0^g"
+  CGO_CXXFLAGS: "-Wno-template-id-cdtor -Wno-unknown-warning-option"
   GOU_TEST_REDIS_HOST: "127.0.0.1"
   GOU_TEST_REDIS_PORT: "6379"
   GOU_TEST_GITHUB_TOKEN: ${{ secrets.GOU_TEST_GITHUB_TOKEN }}
