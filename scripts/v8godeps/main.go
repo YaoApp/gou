@@ -42,7 +42,7 @@ func run() error {
 		return fmt.Errorf("cannot locate %s module (run: go mod download %s): %v", v8goModule, v8goModule, err)
 	}
 
-	plat := runtime.GOOS + "_" + runtime.GOARCH
+	plat := platformDir(runtime.GOOS, runtime.GOARCH)
 	destDir := filepath.Join(dir, "deps", plat)
 	libName := "libv8.a"
 	zipName := "libv8.a.zip"
@@ -78,6 +78,21 @@ func run() error {
 	}
 	fmt.Printf("v8go native lib ready: %s\n", libPath)
 	return nil
+}
+
+// platformDir maps GOOS/GOARCH to v8go's deps directory naming
+// (amd64 is named x86_64, e.g. linux_amd64 -> linux_x86_64).
+func platformDir(goos, goarch string) string {
+	var arch string
+	switch goarch {
+	case "amd64":
+		arch = "x86_64"
+	case "arm64":
+		arch = "arm64"
+	default:
+		arch = goarch
+	}
+	return goos + "_" + arch
 }
 
 func extractFromZip(zipPath, destDir, want string) error {
