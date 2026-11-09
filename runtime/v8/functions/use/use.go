@@ -2,7 +2,7 @@ package use
 
 import (
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 // ExportFunction exports the Use function for resource management

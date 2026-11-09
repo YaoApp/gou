@@ -244,6 +244,9 @@ jobs:
       #   run: |
       #     make bench
 
+      - name: Prepare v8go native libs
+        run: make deps
+
       - name: Run Test
         run: |
           make vet

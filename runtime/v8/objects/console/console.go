@@ -6,7 +6,7 @@ import (
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/kun/log"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 // Object Javascript API

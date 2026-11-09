@@ -9,7 +9,7 @@ GOFILES := $(shell find . -name "*.go")
 TESTFOLDER := $(shell $(GO) list ./... | grep -E 'api|server/http|runtime|process|widget|model|plan|schema|lang|query|task|schedule|flow|session|store|fs|http|encoding|ssl|plugin|connector|wasm|websocket$|v8|application|diff' | grep -v -E 'wamr|socket')
 TESTTAGS ?= ""
 
-.PHONY: test
+.PHONY: test deps
 test:
 	echo "mode: count" > coverage.out
 	for d in $(TESTFOLDER); do \
@@ -91,3 +91,10 @@ tools:
 .PHONY: migrate
 migrate:
 	$(GO) test -tags $(TESTTAGS) -run TestModelMigrate$
+# ---------------------------------------------------------------------------
+# deps: 准备 v8go 原生库（在 Yao-Dev 工作区内复用 ../scripts/v8go-deps.sh）
+# 说明: v8go 模块 zip 只含 libv8.a.zip，cgo 链接需要解压后的库；
+#       发布版模块可直接解压到模块缓存，未发布版本会使用本地 ../v8go 参考源码。
+# ---------------------------------------------------------------------------
+deps:
+	go run ./scripts/v8godeps

@@ -5,7 +5,7 @@ import (
 
 	"github.com/yaoapp/gou/lang"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 // ExportFunction function template

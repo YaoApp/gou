@@ -2,7 +2,7 @@ package v8
 
 import (
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 // Require function template

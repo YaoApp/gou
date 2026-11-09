@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/yaoapp/gou/application"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 func call(ctx *v8go.Context, method string, args ...interface{}) (interface{}, error) {

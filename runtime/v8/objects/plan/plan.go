@@ -10,7 +10,7 @@ import (
 	"github.com/yaoapp/gou/plan"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 var plans sync.Map

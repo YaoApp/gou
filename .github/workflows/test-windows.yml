@@ -280,6 +280,13 @@ jobs:
           echo "=== pdftoppm ===" && (pdftoppm -v 2>&1) || echo "pdftoppm not available"
           echo "=== mutool ===" && (mutool -v 2>&1) || echo "mutool not available"
 
+      - name: Install GNU Make
+        run: choco install make -y
+
+      - name: Prepare v8go native libs
+        shell: bash
+        run: make deps
+
       # ── 17. Go Test (Windows x64) ─────────────────────────────────────
       - name: Go Test (Windows x64)
         if: runner.arch == 'X64'

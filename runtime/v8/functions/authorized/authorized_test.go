@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 func TestAuthorizedWithData(t *testing.T) {

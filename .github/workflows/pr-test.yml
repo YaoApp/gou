@@ -293,6 +293,9 @@ jobs:
           chmod 600 $HOME/.yao/github_token
           ls -l $HOME/.yao/github_token
 
+      - name: Prepare v8go native libs
+        run: make deps
+
       - name: Run Test
         run: |
           make vet

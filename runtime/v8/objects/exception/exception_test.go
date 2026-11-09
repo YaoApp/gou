@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 func TestException(t *testing.T) {

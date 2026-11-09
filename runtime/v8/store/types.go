@@ -3,7 +3,7 @@ package store
 import (
 	"sync"
 
-	"rogchap.com/v8go"
+	"github.com/YaoApp/v8go"
 )
 
 // Store the sync map
