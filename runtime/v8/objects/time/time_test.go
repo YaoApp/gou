@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/kun/exception"
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 func TestSleep(t *testing.T) {

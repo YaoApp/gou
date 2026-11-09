@@ -9,7 +9,7 @@ GOFILES := $(shell find . -name "*.go")
 TESTFOLDER := $(shell $(GO) list ./... | grep -E 'api|server/http|runtime|process|widget|model|plan|schema|lang|query|task|schedule|flow|session|store|fs|http|encoding|ssl|plugin|connector|wasm|websocket$|v8|application|diff' | grep -v -E 'wamr|socket')
 TESTTAGS ?= ""
 
-.PHONY: test deps
+.PHONY: test
 test:
 	echo "mode: count" > coverage.out
 	for d in $(TESTFOLDER); do \
@@ -91,21 +91,3 @@ tools:
 .PHONY: migrate
 migrate:
 	$(GO) test -tags $(TESTTAGS) -run TestModelMigrate$
-# ---------------------------------------------------------------------------
-# deps: 准备 v8go 原生库（在 Yao-Dev 工作区内复用 ../scripts/v8go-deps.sh）
-# 说明: v8go 模块 zip 只含 libv8.a.zip，cgo 链接需要解压后的库；
-#       发布版模块可直接解压到模块缓存，未发布版本会使用本地 ../v8go 参考源码。
-# ---------------------------------------------------------------------------
-deps:
-	@if [ -x ../scripts/v8go-deps.sh ]; then \
-		bash ../scripts/v8go-deps.sh gou; \
-	else \
-		plat=$$(go env GOOS)_$$(go env GOARCH); \
-		lib=$$(go list -m -f '{{.Dir}}' github.com/YaoApp/v8go 2>/dev/null)/deps/$$plat/libv8.a; \
-		if [ -f "$$lib" ]; then echo "v8go native lib ready: $$lib"; exit 0; fi; \
-		dir=$$(go list -m -f '{{.Dir}}' github.com/YaoApp/v8go 2>/dev/null); \
-		if [ -z "$$dir" ]; then echo "v8go module not downloaded; run: go mod download github.com/YaoApp/v8go"; exit 1; fi; \
-		chmod u+w "$$dir/deps/$$plat" 2>/dev/null || true; \
-		(cd "$$dir/deps/$$plat" && unzip -o -q libv8.a.zip); \
-		if [ -f "$$lib" ]; then echo "v8go native lib ready: $$lib"; else echo "missing $$lib"; exit 1; fi; \
-	fi

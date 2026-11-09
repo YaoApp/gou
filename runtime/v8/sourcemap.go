@@ -14,7 +14,7 @@ import (
 	"github.com/yaoapp/gou/helper"
 	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/exception"
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 // SourceMaps the source maps

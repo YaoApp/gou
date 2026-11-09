@@ -6,7 +6,7 @@ import (
 	"github.com/yaoapp/gou/mcp"
 	"github.com/yaoapp/gou/mcp/types"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 // MCP represents a JavaScript MCP client wrapper

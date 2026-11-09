@@ -280,14 +280,6 @@ jobs:
           echo "=== pdftoppm ===" && (pdftoppm -v 2>&1) || echo "pdftoppm not available"
           echo "=== mutool ===" && (mutool -v 2>&1) || echo "mutool not available"
 
-      - name: Use sibling dependency checkouts (CI only)
-        shell: bash
-        run: |
-          go mod edit \
-            -replace=github.com/yaoapp/kun=../kun \
-            -replace=github.com/yaoapp/xun=../xun \
-            -replace=github.com/YaoApp/v8go=../v8go
-
       # ── 17. Go Test (Windows x64) ─────────────────────────────────────
       - name: Go Test (Windows x64)
         if: runner.arch == 'X64'

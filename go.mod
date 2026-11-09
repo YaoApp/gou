@@ -19,10 +19,11 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.11.1
 	github.com/tidwall/buntdb v1.3.2
-	github.com/yaoapp/kun v1.0.0
-	github.com/yaoapp/xun v1.0.0
+	github.com/yaoapp/kun v0.9.0
+	github.com/yaoapp/xun v0.9.0
 	golang.org/x/crypto v0.54.0
 	gopkg.in/yaml.v3 v3.0.1
+	rogchap.com/v8go v0.9.0
 )
 
 require (
@@ -94,7 +95,6 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.1 // indirect
 	github.com/JohannesKaufmann/dom v0.2.0 // indirect
-	github.com/YaoApp/v8go v1.0.1
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
@@ -121,3 +121,9 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
+
+replace github.com/yaoapp/kun => ../kun
+
+replace github.com/yaoapp/xun => ../xun
+
+replace rogchap.com/v8go => ../v8go

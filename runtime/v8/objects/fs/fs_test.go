@@ -20,7 +20,7 @@ import (
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/xun/capsule"
 	"github.com/yaoapp/xun/dbal/schema"
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 func TestFSObjectReadFile(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"github.com/yaoapp/gou/http"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/kun/log"
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 // USAGE

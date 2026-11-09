@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/application"
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 func TestStackTrace(t *testing.T) {

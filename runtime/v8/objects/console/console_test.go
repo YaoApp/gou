@@ -3,7 +3,7 @@ package console
 import (
 	"testing"
 
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 func TestConsoleInDevelopmentMode(t *testing.T) {

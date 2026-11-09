@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yaoapp/gou/process"
 	"github.com/yaoapp/gou/runtime/v8/bridge"
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 func TestProcess(t *testing.T) {

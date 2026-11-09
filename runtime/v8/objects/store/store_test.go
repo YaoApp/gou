@@ -14,7 +14,7 @@ import (
 	"github.com/yaoapp/gou/runtime/v8/bridge"
 	"github.com/yaoapp/gou/store"
 	"github.com/yaoapp/kun/any"
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 func TestStoreObjectLRU(t *testing.T) {

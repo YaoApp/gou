@@ -17,7 +17,7 @@ import (
 	"github.com/yaoapp/gou/utils"
 	"github.com/yaoapp/kun/exception"
 	"github.com/yaoapp/kun/log"
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 // Scripts loaded scripts

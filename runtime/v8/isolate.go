@@ -30,7 +30,7 @@ import (
 
 	mcpJsapi "github.com/yaoapp/gou/mcp/jsapi"
 	"github.com/yaoapp/kun/log"
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 var isoReady chan *store.Isolate

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/yaoapp/gou/runtime/v8/store"
-	"github.com/YaoApp/v8go"
+	"rogchap.com/v8go"
 )
 
 // var isoMaxSize = 10
